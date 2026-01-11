@@ -111,7 +111,7 @@ class TestApproveCLO:
         reviewer_id = "admin-456"
         mock_db.get_course_outcome.return_value = {
             "id": outcome_id,
-            "status": CLOStatus.APPROVAL_PENDING,
+            "status": CLOStatus.AWAITING_APPROVAL,
             "feedback_comments": "Previous feedback",
         }
         mock_db.update_course_outcome.return_value = True
@@ -199,7 +199,7 @@ class TestRequestRework:
         assert result is True
         update_call = mock_db.update_course_outcome.call_args[0]
         update_data = update_call[1]
-        assert update_data["status"] == CLOStatus.APPROVAL_PENDING
+        assert update_data["status"] == CLOStatus.AWAITING_APPROVAL
         assert update_data["approval_status"] == CLOApprovalStatus.NEEDS_REWORK
         assert update_data["feedback_comments"] == comments
         assert update_data["reviewed_by_user_id"] == reviewer_id
@@ -397,7 +397,7 @@ class TestAutoMarkInProgress:
         user_id = "user-456"
         mock_db.get_course_outcome.return_value = {
             "id": outcome_id,
-            "status": CLOStatus.APPROVAL_PENDING,
+            "status": CLOStatus.AWAITING_APPROVAL,
         }
         mock_db.update_course_outcome.return_value = True
 
@@ -420,10 +420,10 @@ class TestAutoMarkInProgress:
 
     @patch("src.services.clo_workflow_service.db")
     def test_auto_mark_already_submitted(self, mock_db):
-        """Test auto-marking when already submitted (no-op)"""
+        """Test auto-marking when already submitted/completed (no-op)"""
         mock_db.get_course_outcome.return_value = {
             "id": "outcome-123",
-            "status": CLOStatus.AWAITING_APPROVAL,
+            "status": CLOStatus.COMPLETED,
         }
 
         result = CLOWorkflowService.auto_mark_in_progress("outcome-123", "user-456")

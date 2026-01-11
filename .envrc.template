@@ -115,7 +115,6 @@ export BASE_URL_SMOKE="http://localhost:3003"
 # Port configuration
 export LOOPCLOSER_DEFAULT_PORT_DEV="3001"
 export LOOPCLOSER_DEFAULT_PORT_E2E="3002"
-export LOOPCLOSER_DEFAULT_PORT_SMOKE="3003"
 
 # =============================================================================
 # EMAIL PROVIDER SELECTION

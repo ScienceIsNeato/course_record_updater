@@ -82,7 +82,7 @@ class CLOWorkflowService:
             # Verify CLO is in a state that can be approved
             if outcome.get("status") not in [
                 CLOStatus.AWAITING_APPROVAL,
-                CLOStatus.APPROVAL_PENDING,
+                CLOStatus.AWAITING_APPROVAL,
             ]:
                 logger.warning(
                     f"CLO {outcome_id} is in {outcome.get('status')} state, "
@@ -136,7 +136,7 @@ class CLOWorkflowService:
             # Verify CLO is in a state that can be sent back for rework
             if outcome.get("status") not in [
                 CLOStatus.AWAITING_APPROVAL,
-                CLOStatus.APPROVAL_PENDING,
+                CLOStatus.AWAITING_APPROVAL,
             ]:
                 logger.warning(
                     f"CLO {outcome_id} is in {outcome.get('status')} state, "
@@ -146,7 +146,7 @@ class CLOWorkflowService:
 
             # Update status and feedback
             update_data = {
-                "status": CLOStatus.APPROVAL_PENDING,
+                "status": CLOStatus.AWAITING_APPROVAL,
                 "approval_status": CLOApprovalStatus.NEEDS_REWORK,
                 "reviewed_at": datetime.now(timezone.utc),
                 "reviewed_by_user_id": reviewer_id,
@@ -312,7 +312,7 @@ class CLOWorkflowService:
             current_status = outcome.get("status")
 
             # Only auto-mark if currently assigned or approval_pending
-            if current_status not in [CLOStatus.ASSIGNED, CLOStatus.APPROVAL_PENDING]:
+            if current_status not in [CLOStatus.ASSIGNED, CLOStatus.AWAITING_APPROVAL]:
                 # Already in progress or submitted, don't change status
                 return True
 
@@ -696,6 +696,7 @@ class CLOWorkflowService:
                 if not section_id:
                     section_id = sections[0].get("section_id") or sections[0].get("id")
         except Exception:
+            # Silently ignore section resolution errors - non-critical to overall operation
             pass
 
         if not instructor:

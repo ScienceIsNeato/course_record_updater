@@ -196,13 +196,12 @@ function initializeCreateSectionModal() {
       offering_id: offeringSelect?.value,
       section_number: document.getElementById("sectionNumber").value,
       instructor_id: instructorValue || null,
-      enrollment: 0, // Start with 0 students enrolled
-      capacity:
-        capacityValue !== undefined && capacityValue !== ""
-          ? Number.parseInt(capacityValue, 10)
-          : null, // null means no cap on enrollment
+      enrollment: null,
       status: document.getElementById("sectionStatus").value,
     };
+    if (capacityValue !== undefined && capacityValue !== "") {
+      sectionData.capacity = Number.parseInt(capacityValue, 10);
+    }
     if (dueDateValue) {
       sectionData.due_date = dueDateValue;
     }
@@ -302,14 +301,12 @@ function initializeEditSectionModal() {
     const updateData = {
       section_number: document.getElementById("editSectionNumber").value,
       instructor_id: instructorValue || null,
-      enrollment: enrollmentValue ? Number.parseInt(enrollmentValue) : 0, // Default to 0 students
+      enrollment: enrollmentValue ? Number.parseInt(enrollmentValue) : null,
       status: document.getElementById("editSectionStatus").value,
     };
     const capacityInput = document.getElementById("editSectionCapacity");
     if (capacityInput && capacityInput.value !== "") {
-      updateData.capacity = Number.parseInt(capacityInput.value) || null; // null means no cap
-    } else {
-      updateData.capacity = null; // Explicitly set to null if not provided
+      updateData.capacity = Number.parseInt(capacityInput.value) || 0;
     }
     const dueDateInput = document.getElementById("editSectionDueDate");
     if (dueDateInput && dueDateInput.value) {

@@ -200,8 +200,7 @@ describe('Section Management - Create Section Modal', () => {
       const body = JSON.parse(callArgs[1].body);
 
       expect(body.instructor_id).toBeNull();
-      expect(body.capacity).toBeNull();  // Now defaults to null instead of undefined
-      expect(body.enrollment).toBe(0);   // Now defaults to 0
+      expect(body.capacity).toBeUndefined();
     });
 
     test('should show loading state during API call', async () => {

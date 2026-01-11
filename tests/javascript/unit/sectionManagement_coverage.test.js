@@ -9,15 +9,15 @@ describe('sectionManagement.js Coverage Boost', () => {
     setBody(`
       <form id="createSectionForm">
         <input id="sectionNumber" value="001">
-        <input id="sectionOfferingId" value="off1">
+        <select id="sectionOfferingId"><option value="off1">Offering</option></select>
         <select id="sectionCourseId"><option value="c1">Course</option></select>
         <select id="sectionTermId"><option value="t1">Term</option></select>
         <select id="sectionInstructorId"><option value="i1">Instructor</option></select>
+        <select id="sectionStatus"><option value="active">Active</option></select>
         <input id="sectionSchedule" value="MWF">
         <input id="sectionRoom" value="101">
         <input id="sectionCapacity" value="30">
         <input id="sectionEnrollment" value="0">
-        <input id="sectionStatus" value="active">
         <button type="submit" id="createSectionBtn">
             <span class="btn-text">Save</span>
             <span class="btn-spinner d-none"></span>
@@ -35,7 +35,7 @@ describe('sectionManagement.js Coverage Boost', () => {
         <input id="editSectionRoom" value="101">
         <input id="editSectionCapacity" value="30">
         <input id="editSectionEnrollment" value="0">
-        <input id="editSectionStatus" value="active">
+        <select id="editSectionStatus"><option value="active">Active</option></select>
         <button type="submit" id="editSectionBtn">
             <span class="btn-text">Save</span>
             <span class="btn-spinner d-none"></span>
@@ -55,11 +55,11 @@ describe('sectionManagement.js Coverage Boost', () => {
     global.bootstrap.Modal.getInstance = jest.fn(() => ({ hide: jest.fn() }));
 
     mockLoadSections = jest.fn();
-    global.loadSections = mockLoadSections;
-    
-    jest.spyOn(window, 'alert').mockImplementation(() => {});
+    globalThis.loadSections = mockLoadSections;
+
+    jest.spyOn(window, 'alert').mockImplementation(() => { });
     jest.spyOn(window, 'confirm').mockReturnValue(true);
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => { });
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -69,38 +69,31 @@ describe('sectionManagement.js Coverage Boost', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
-    delete global.loadSections;
+    delete globalThis.loadSections;
   });
 
-  // Skipping this test - it's flaky and doesn't add meaningful coverage
-  // The form submission code is already well-tested in sectionManagement.test.js
-  test.skip('createSectionForm calls loadSections on success', async () => {
-    // Add spy to track fetch calls
-    const fetchSpy = jest.spyOn(global, 'fetch');
-    
+  test('createSectionForm calls loadSections on success', async () => {
     require('../../../static/sectionManagement.js');
     document.dispatchEvent(new Event('DOMContentLoaded'));
-    
+
     const form = document.getElementById('createSectionForm');
     const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
     form.dispatchEvent(submitEvent);
-    
+
     await flushPromises();
-    
-    // Debug: Check if fetch was called
-    expect(fetchSpy).toHaveBeenCalled();
-    
-    // Now check if loadSections was called after fetch completes
+    await flushPromises(); // Extra flush for async operations
     expect(mockLoadSections).toHaveBeenCalled();
   });
 
   test('editSectionForm calls loadSections on success', async () => {
     require('../../../static/sectionManagement.js');
     document.dispatchEvent(new Event('DOMContentLoaded'));
-    
+
     const form = document.getElementById('editSectionForm');
-    form.dispatchEvent(new Event('submit'));
-    
+    const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+    form.dispatchEvent(submitEvent);
+
+    await flushPromises();
     await flushPromises();
     expect(mockLoadSections).toHaveBeenCalled();
   });

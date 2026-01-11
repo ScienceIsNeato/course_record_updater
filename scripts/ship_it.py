@@ -71,7 +71,6 @@ class QualityGateExecutor:
 
     def __init__(self, verbose: bool = False):
         # Get centralized quality gate logger
-        import os
 
         # Add parent directory to path for importing logging_config
         parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -150,16 +149,18 @@ class QualityGateExecutor:
                 "python-static-analysis", "🔍 Python Static Analysis (mypy, imports)"
             ),
             CheckDef(
-                "coverage",
-                "🧪 Python Unit Tests & 📊 Coverage Analysis (80% threshold)",
-            ),  # Includes test execution
+                "coverage-full",
+                "🧪 Python Unit Tests & 📊 Coverage Analysis (Total + New Code)",
+            ),
             CheckDef(
                 "js-tests-and-coverage",
                 "🧪 JavaScript Tests & 📊 JavaScript Coverage Analysis (80% threshold)",
             ),
-            # Zero tolerance (safety skipped for speed)
-            # Security checks moved to PR-only as requested by user
-            # Duplication, complexity excluded from commit (slower or PR-level)
+            CheckDef(
+                "complexity",
+                "🧠 Complexity Analysis (radon/xenon)",
+                self._run_complexity_analysis,
+            ),
         ]
 
         # Full checks for PR validation (all checks)
@@ -365,7 +366,6 @@ class QualityGateExecutor:
         fresh by Jest after each test run.
         """
         import json
-        import os
 
         coverage_file = "coverage/coverage-final.json"
         if not os.path.exists(coverage_file):
@@ -458,7 +458,6 @@ class QualityGateExecutor:
         approach as _show_js_coverage_report.
         """
         import json
-        import os
 
         coverage_file = "coverage/coverage-final.json"
         if not os.path.exists(coverage_file):
@@ -539,7 +538,6 @@ class QualityGateExecutor:
             check_name: Human-readable check name
             verbose: If True, stream output directly to console (no buffering)
         """
-        import os
 
         start_time = time.time()
 
@@ -1245,7 +1243,6 @@ def _get_pr_context() -> Tuple[Optional[int], Optional[str], Optional[str]]:
         Tuple of (pr_number, owner, name) or (None, None, None) if not in PR context
     """
     import json
-    import os
     import subprocess  # nosec
 
     # Detect current PR number from branch or environment
@@ -1293,7 +1290,6 @@ def _load_tracked_comments(pr_number: int) -> set[str]:
         Set of comment IDs that have been seen before
     """
     import json
-    import os
 
     tracking_file = f"logs/pr_{pr_number}_comments_tracked.json"
     if os.path.exists(tracking_file):
@@ -1315,7 +1311,6 @@ def _save_tracked_comments(pr_number: int, comment_ids: set[str]) -> None:
         comment_ids: Set of comment IDs to track
     """
     import json
-    import os
 
     # Ensure logs directory exists
     os.makedirs("logs", exist_ok=True)
@@ -1471,7 +1466,6 @@ def check_pr_comments() -> Tuple[List[Any], List[Any]]:
     """
     try:
         import json
-        import os
         import subprocess  # nosec
 
         pr_number, owner, name = _get_pr_context()
@@ -2115,7 +2109,6 @@ def generate_pr_issues_report(
         Dictionary with report data and file path
     """
     import json
-    import os
     from datetime import datetime
 
     all_comments, new_comments = comments_data

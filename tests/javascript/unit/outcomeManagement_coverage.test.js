@@ -252,7 +252,6 @@ describe('Outcome Management Coverage - Helpers', () => {
         document.body.innerHTML = '<meta name="csrf-token" content="tok">';
 
         // Mock deleteOutcome dependencies
-        const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true);
         global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
         global.loadOutcomes = jest.fn();
 

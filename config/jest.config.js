@@ -9,7 +9,7 @@ module.exports = {
     'static/**/*.js'
   ],
   coverageDirectory: '<rootDir>/coverage',
-  coverageReporters: ['lcov', 'text-summary', 'json'],
+  coverageReporters: ['lcov', 'text-summary'],
   coverageThreshold: {
     global: {
       lines: 80

@@ -30,9 +30,7 @@ describe('Offering Management - Loading Data', () => {
                             term_name: 'Fall 2024',
                             status: 'ACTIVE',
                             section_count: 2,
-                            total_enrollment: 50,
-                            program_ids: ['prog-1'],  // All offerings must have program associations
-                            program_names: ['Computer Science']
+                            total_enrollment: 50
                         }
                     ]
                 })

@@ -194,7 +194,6 @@ class TestInvitationServiceEmail:
         # Mock email service to succeed
         mock_email_service.send_invitation_email.return_value = True
         mock_email_service.pop_last_error_message.return_value = None
-        mock_db.update_invitation.return_value = True
 
         # Execute - should succeed despite institution not found
         # (send_invitation doesn't validate institution existence)

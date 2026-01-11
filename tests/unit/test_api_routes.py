@@ -1038,8 +1038,6 @@ class TestResendVerificationEndpoints:
         with app.test_client() as client:
             response = client.post("/api/auth/resend-verification")
 
-            # API uses get_json(silent=True) or {} so missing JSON returns empty dict
-            # This results in 400 "Email address is required" not 500
             assert response.status_code == 400
             data = json.loads(response.data)
             assert data["success"] is False

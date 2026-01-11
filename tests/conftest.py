@@ -113,6 +113,9 @@ def ensure_test_database(tmp_path_factory):
 
     yield
 
+    # Explicitly close connection to avoid ResourceWarnings
+    database_service.close_connection()
+
     # Cleanup happens automatically via tmp_path_factory
 
 

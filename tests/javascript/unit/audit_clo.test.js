@@ -397,12 +397,6 @@ describe("audit_clo.js - Utility Functions", () => {
 
     it("should handle CLOs with null values gracefully", () => {
       // Mock Blob and link for download
-      const mockLink = {
-        href: "",
-        download: "",
-        click: jest.fn(),
-        remove: jest.fn(),
-      };
       jest.spyOn(document.body, "appendChild").mockImplementation(() => {});
       jest.spyOn(document.body, "removeChild").mockImplementation(() => {});
 

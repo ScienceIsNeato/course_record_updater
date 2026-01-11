@@ -7,8 +7,6 @@ This test validates that:
 3. Program associations are properly displayed on both views
 """
 
-import re
-
 from playwright.sync_api import Page, expect
 
 from .conftest import BASE_URL

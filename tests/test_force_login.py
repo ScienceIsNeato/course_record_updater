@@ -6,9 +6,38 @@ Ensures users can recover from broken session states.
 
 import pytest
 
+from src.database.database_service import db
+from src.models.models import User
+from src.services.password_service import PasswordService
+
 
 class TestForceLogin:
     """Test force login parameter functionality"""
+
+    @pytest.fixture(autouse=True)
+    def setup_user(self):
+        """Create test user for login tests"""
+        password = "Demo2025!"
+        password_hash = PasswordService.hash_password(password)
+        user_data = User.create_schema(
+            email="demo2025.admin@example.com",
+            password_hash=password_hash,
+            role="site_admin",
+            first_name="Demo",
+            last_name="Admin",
+            institution_id="inst-123",
+            account_status="active",
+        )
+        user_data["email_verified"] = True
+
+        # Ensure institution exists (if strict FK enforcement)
+        if not db.get_institution_by_id("inst-123"):
+            db.create_new_institution_simple("Test Inst", "TEST")
+            # Update institution_id of user if needed, but create_new_institution_simple returns ID
+            # simplified: we just need a user. SQLite usually lenient on FK unless ENABLED.
+            # But let's be safe and just create user.
+
+        db.create_user(user_data)
 
     def test_force_login_clears_session(self, client):
         """Force login should clear existing session"""
@@ -82,6 +111,26 @@ class TestForceLogin:
 
 class TestLogoutErrorHandling:
     """Test logout error handling redirects to force login"""
+
+    @pytest.fixture(autouse=True)
+    def setup_user(self):
+        """Create test user for login tests"""
+        password = "Demo2025!"
+        password_hash = PasswordService.hash_password(password)
+        user_data = User.create_schema(
+            email="demo2025.admin@example.com",
+            password_hash=password_hash,
+            role="site_admin",
+            first_name="Demo",
+            last_name="Admin",
+            institution_id="inst-123",
+            account_status="active",
+        )
+        user_data["email_verified"] = True
+
+        if not db.get_institution_by_id("inst-123"):
+            db.create_new_institution_simple("Test Inst", "TEST")
+        db.create_user(user_data)
 
     def test_logout_success_redirects_to_home(self, client):
         """Successful logout should redirect to home"""

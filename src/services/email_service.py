@@ -17,7 +17,7 @@ Features:
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping, Optional, Tuple
+from typing import Any, Mapping, Optional
 from urllib.parse import urljoin
 
 from flask import Flask, current_app

@@ -92,11 +92,15 @@ describe('ProgramDashboard', () => {
   });
 
   it('scheduleRefresh sets interval and cleanup clears it', () => {
-    const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
-    ProgramDashboard.scheduleRefresh(5000);
+    const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+    const loadDataSpy = jest.spyOn(ProgramDashboard, 'loadData').mockResolvedValue();
+
+    ProgramDashboard.init(); // This sets intervalId via setInterval
     ProgramDashboard.cleanup();
-    expect(clearTimeoutSpy).toHaveBeenCalled();
-    clearTimeoutSpy.mockRestore();
+
+    expect(clearIntervalSpy).toHaveBeenCalled();
+    clearIntervalSpy.mockRestore();
+    loadDataSpy.mockRestore();
   });
 
   it('handles null and undefined programs in assessment results', () => {

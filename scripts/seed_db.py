@@ -354,7 +354,7 @@ class BaselineSeeder(ABC):
         users_data: List[Dict[str, Any]],
         program_ids_or_map: Union[Dict[str, str], List[str]],
         default_password_hash: str,
-    ) -> List[str]:
+    ) -> List[Optional[str]]:
         """
         Create users from manifest data.
 
@@ -382,11 +382,12 @@ class BaselineSeeder(ABC):
             program_ids_or_map if isinstance(program_ids_or_map, list) else None
         )
 
-        user_ids = []
+        user_ids: List[Optional[str]] = []
         for user_data in users_data:
             # Resolve email (may be from env var)
             email = self._resolve_user_email(user_data)
             if not email:
+                user_ids.append(None)  # Maintain index alignment
                 continue
 
             # Skip if user already exists
@@ -444,6 +445,8 @@ class BaselineSeeder(ABC):
                 self.log(
                     f"   ✓ Created user: {user_data.get('first_name')} {user_data.get('last_name')} ({role})"
                 )
+            else:
+                user_ids.append(None)  # Maintain index alignment on creation failure
 
         return user_ids
 
@@ -479,6 +482,7 @@ class BaselineSeeder(ABC):
             if password_value:
                 password_hash = hash_password(password_value)
         except ImportError:
+            # Gracefully handle missing test_credentials module - use default password hash
             pass
 
         return password_hash
@@ -807,7 +811,7 @@ class BaselineSeeder(ABC):
         status_str: str, submitted_value: Optional[str]
     ) -> Optional[datetime]:
         """Parse submitted_at when applicable."""
-        if status_str not in {"approved", "approval_pending"} or not submitted_value:
+        if status_str not in {"approved", "awaiting_approval"} or not submitted_value:
             return None
         try:
             return datetime.fromisoformat(submitted_value)
@@ -823,15 +827,15 @@ class BaselineSeeder(ABC):
             "approved": (CLOStatus.APPROVED, CLOApprovalStatus.APPROVED),
             "completed": (CLOStatus.COMPLETED, None),
             "needs_rework": (
-                CLOStatus.APPROVAL_PENDING,
+                CLOStatus.AWAITING_APPROVAL,
                 CLOApprovalStatus.NEEDS_REWORK,
             ),
             "never_coming_in": (
                 CLOStatus.NEVER_COMING_IN,
                 CLOApprovalStatus.NEVER_COMING_IN,
             ),
-            "approval_pending": (
-                CLOStatus.APPROVAL_PENDING,
+            "awaiting_approval": (
+                CLOStatus.AWAITING_APPROVAL,
                 CLOApprovalStatus.PENDING,
             ),
         }
@@ -1012,10 +1016,16 @@ class BaselineTestSeeder(BaselineSeeder):
         )
 
         # Filter instructor IDs for section assignment
-        instructor_ids = []
+        instructor_ids: List[str] = []
         for i, user_data in enumerate(manifest_data["users"]):
-            if user_data.get("role") == "instructor" and i < len(user_ids):
-                instructor_ids.append(user_ids[i])
+            if (
+                user_data.get("role") == "instructor"
+                and i < len(user_ids)
+                and user_ids[i] is not None
+            ):
+                user_id = user_ids[i]
+                if user_id is not None:  # Type narrowing for mypy
+                    instructor_ids.append(user_id)
 
         # Create offerings and sections
         self.log("📝 Creating course offerings and sections...")
@@ -1208,12 +1218,14 @@ class DemoSeeder(BaselineSeeder):
         self.log("📋 Creating demo offerings and sections...")
 
         # Use generic method which handles instructor verification
+        # Filter out None values for instructor assignment
+        valid_instructor_ids = [uid for uid in user_ids if uid is not None]
         result = self.create_offerings_from_manifest(
             institution_id=inst_ids[0],
             term_id_or_map=term_map,
             offerings_data=manifest["offerings"],
             course_map=course_map,
-            instructor_ids=user_ids,
+            instructor_ids=valid_instructor_ids,
         )
         self.log(
             f"   ✅ Created {len(result['offering_ids'])} offerings and {result['section_count']} sections"

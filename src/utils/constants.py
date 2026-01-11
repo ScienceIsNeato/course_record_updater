@@ -119,8 +119,9 @@ class CLOStatus:
     UNASSIGNED = "unassigned"  # CLO exists but course section has no instructor
     ASSIGNED = "assigned"  # CLO exists, instructor assigned (ready to work)
     IN_PROGRESS = "in_progress"  # Instructor has started editing
-    AWAITING_APPROVAL = "awaiting_approval"  # Instructor submitted for review
-    APPROVAL_PENDING = "approval_pending"  # Sent back for rework with feedback
+    AWAITING_APPROVAL = (
+        "awaiting_approval"  # Instructor submitted for review/needs rework
+    )
     APPROVED = "approved"  # Final approval granted
     NEVER_COMING_IN = (
         "never_coming_in"  # Instructor left/non-responsive (CEI demo feedback)

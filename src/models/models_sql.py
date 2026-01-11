@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime
 from typing import Any, Dict
@@ -24,6 +25,9 @@ from src.utils.term_utils import TERM_STATUS_ACTIVE, get_term_status
 from src.utils.time_utils import get_current_time
 
 Base = declarative_base()  # type: ignore[valid-type,misc]
+
+# Module logger
+logger = logging.getLogger(__name__)
 
 # Constants for foreign key references
 COURSES_ID = "courses.id"
@@ -706,8 +710,10 @@ def _course_outcome_to_dict(model: CourseOutcome) -> Dict[str, Any]:
                     },
                 }
             )
-    except Exception:
-        pass  # Relationship not loaded or detached
+    except Exception as e:
+        # Relationship not loaded or detached; log at debug level so it can be
+        # investigated without failing normal operations.
+        logger.debug("Course relationship not available for model: %s", e)
 
     return base_dict
 

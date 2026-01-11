@@ -17,15 +17,11 @@ import pytest
 import requests
 
 # Default configuration (can be overridden by environment)
-# Note: Port must be read at test time, not import time, for dynamic config
+
+DEFAULT_PORT = os.getenv("TEST_PORT", "3003")  # Smoke tests run on port 3003
+DEFAULT_BASE_URL = f"http://localhost:{DEFAULT_PORT}"
 DEFAULT_ADMIN_EMAIL = "siteadmin@system.local"
 DEFAULT_ADMIN_PASSWORD = "SiteAdmin123!"
-
-
-def get_smoke_target_url():
-    """Get the target URL dynamically to support runtime port configuration"""
-    port = os.getenv("TEST_PORT", "3003")
-    return os.getenv("BASE_URL", f"http://localhost:{port}").rstrip("/")
 
 
 @pytest.mark.smoke
@@ -34,8 +30,8 @@ class TestSystemSmoke:
 
     @pytest.fixture(scope="class")
     def smoke_target_url(self):
-        """Get the target base URL - evaluated at test time, not import time"""
-        return get_smoke_target_url()
+        """Get the target base URL"""
+        return os.getenv("BASE_URL", DEFAULT_BASE_URL).rstrip("/")
 
     @pytest.fixture(scope="class")
     def api_session(self, smoke_target_url):

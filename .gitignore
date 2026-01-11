@@ -32,7 +32,6 @@ logs/pr_coverage_gaps.txt
 course_records.db
 course_records_dev.db
 course_records_e2e.db
-course_records_smoke.db
 course_records_ci.db
 *.db
 *.db-*

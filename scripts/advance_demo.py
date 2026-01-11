@@ -185,7 +185,11 @@ def run_semester_end(app: Flask, db: ModuleType) -> None:
         for clo in existing:
             if str(clo.get("clo_number")) == str(clo_num):
                 outcome_id = clo.get("outcome_id") or clo.get("id")
-                assert outcome_id is not None
+                if outcome_id is None:
+                    logger.error(
+                        "Existing CLO missing outcome id for course %s", course_id
+                    )
+                    raise RuntimeError("Existing CLO has no outcome id")
                 return outcome_id
 
         schema = CourseOutcome.create_schema(
@@ -197,7 +201,9 @@ def run_semester_end(app: Flask, db: ModuleType) -> None:
         schema["status"] = CLOStatus.ASSIGNED
 
         outcome_id = db.create_course_outcome(schema)
-        assert outcome_id is not None
+        if outcome_id is None:
+            logger.error("Failed to create CLO %s for course %s", clo_num, course_id)
+            raise RuntimeError("Failed to create course outcome")
         logger.info(f"Created CLO {clo_num} for course {course_id}")
         return outcome_id
 

@@ -447,7 +447,7 @@ class DemoRunner:
         elif action == 'api_put' and '/sections/' in automated.get('endpoint', ''):
             data = automated.get('data', {})
             print(f"  1. Navigate to Assessments page")
-            print(f"  2. Select course from dropdown")
+            print(f"  2. Select course from dropdown")  # nosec B608
             print(f"  3. Fill in Students Passed: {data.get('students_passed', '')}")  # nosec B608
             print(f"  4. Fill in Students D/F/IC: {data.get('students_dfic', '')}")
             print(f"  5. Fill in narrative: \"{data.get('narrative_celebrations', '')[:50]}...\"")

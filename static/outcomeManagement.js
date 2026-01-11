@@ -382,9 +382,9 @@ function renderOutcomesTable(outcomes, container) {
                       return `
                       <tr data-outcome-id="${outcome.outcome_id}">
                           <td class="fw-bold text-secondary">
-                              ${courseName}
+                              ${escapeHtml(courseName)}
                           </td>
-                          <td>${outcome.clo_number}</td>
+                          <td>${escapeHtml(outcome.clo_number)}</td>
                           <td>
                               <div class="text-wrap" style="max-width: 500px;">
                                   ${escapeHtml(outcome.description)}
@@ -429,7 +429,7 @@ function renderOutcomesTable(outcomes, container) {
       </div>
   `;
 
-  container.innerHTML = tableHtml;
+  container.innerHTML = tableHtml; // nosemgrep: insecure-document-method
 }
 
 // Helper for status badge

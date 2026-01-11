@@ -51,6 +51,12 @@ def reset_database() -> bool:
     return False
 
 
+def close_connection() -> None:
+    """Close the underlying database connection."""
+    if hasattr(_db_service, "sqlite"):
+        _db_service.sqlite.close()
+
+
 def db_operation_timeout() -> AbstractContextManager[Any]:
     """
     Legacy no-op helper retained for API compatibility.

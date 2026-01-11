@@ -46,3 +46,8 @@ class SQLiteService:
             raise
         finally:
             session.close()
+
+    def close(self) -> None:
+        """Dispose of the engine and connection pool."""
+        self._session_factory.remove()
+        self.engine.dispose()
