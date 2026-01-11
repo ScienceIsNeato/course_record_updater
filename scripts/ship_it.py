@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-ship_it.py - Course Record Updater Quality Gate Executor
+ship_it.py - LoopCloser Quality Gate Executor
 
 A Python wrapper for the maintAInability-gate.sh script that executes
 quality checks in parallel to reduce total execution time.
@@ -24,6 +24,8 @@ is always enabled for rapid development cycles.
 
 import argparse
 import concurrent.futures
+import json
+import os
 import re
 import subprocess  # nosec B404
 import sys
@@ -31,7 +33,14 @@ import threading
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Sequence, Tuple
+
+
+@dataclass
+class CheckDef:
+    flag: str
+    name: str
+    custom: Optional[Callable[[], "CheckResult"]] = None
 
 
 class CheckStatus(Enum):
@@ -62,7 +71,6 @@ class QualityGateExecutor:
 
     def __init__(self, verbose: bool = False):
         # Get centralized quality gate logger
-        import os
 
         # Add parent directory to path for importing logging_config
         parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -71,6 +79,7 @@ class QualityGateExecutor:
 
         # Change to project root so all relative paths work regardless of where script is invoked
         os.chdir(parent_dir)
+        self.project_root = parent_dir
 
         from src.utils.logging_config import setup_quality_gate_logger
 
@@ -82,83 +91,442 @@ class QualityGateExecutor:
         self._process_lock = threading.Lock()
         self._running_processes: dict[int, subprocess.Popen] = {}
 
-        self.security_check = (
-            "security",
-            "🔒 Security Audit (bandit, semgrep, safety)",
+        self.security_check: CheckDef = CheckDef(
+            flag="security", name="🔒 Security Audit (bandit, semgrep, safety)"
         )
-        self.security_local_check = (
-            "security-local",
-            "🔒 Security Audit (bandit, semgrep)",
+        self.security_local_check: CheckDef = CheckDef(
+            flag="security-local",
+            name="🔒 Security Audit (bandit, semgrep)",
         )
 
         # Define all quality checks - adapted for Python/Flask
         # Ordered by importance and speed, broken down into atomic checks
-        self.all_checks = [
-            ("python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"),
-            ("js-lint-format", "🎨 JavaScript Lint & Format (ESLint, Prettier)"),
-            ("python-static-analysis", "🔍 Python Static Analysis (mypy, imports)"),
-            ("tests", "🧪 Test Suite Execution (pytest)"),
-            ("js-tests", "🧪 JavaScript Test Suite (Jest)"),
-            ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
-            ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
+        self.all_checks: List[CheckDef] = [
+            CheckDef(
+                "python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"
+            ),
+            CheckDef(
+                "js-lint-format", "🎨 JavaScript Lint & Format (ESLint, Prettier)"
+            ),
+            CheckDef(
+                "python-static-analysis", "🔍 Python Static Analysis (mypy, imports)"
+            ),
+            CheckDef("tests", "🧪 Test Suite Execution (pytest)"),
+            CheckDef("coverage", "📊 Test Coverage Analysis (80% threshold)"),
+            CheckDef(
+                "js-tests-and-coverage",
+                "🧪 JavaScript Tests & 📊 JavaScript Coverage Analysis (80% threshold)",
+            ),
             self.security_check,
-            ("complexity", "🧠 Complexity Analysis (radon/xenon)"),
-            ("duplication", "🔄 Code Duplication Check"),
-            ("e2e", "🎭 End-to-End Tests (Playwright browser automation)"),
-            ("integration", "🔗 Integration Tests (component interactions)"),
-            ("smoke", "🔥 Smoke Tests (end-to-end validation)"),
-            (
+            CheckDef(
+                "complexity",
+                "🧠 Complexity Analysis (radon/xenon)",
+                self._run_complexity_analysis,
+            ),
+            CheckDef("duplication", "🔄 Code Duplication Check"),
+            CheckDef("e2e", "🎭 End-to-End Tests (Playwright browser automation)"),
+            CheckDef("integration", "🔗 Integration Tests (component interactions)"),
+            CheckDef("smoke", "🔥 Smoke Tests (end-to-end validation)"),
+            CheckDef(
                 "coverage-new-code",
                 "📊 Coverage on New Code (80% threshold on PR changes)",
             ),
-            ("frontend-check", "🌐 Frontend Check (quick UI validation)"),
+            CheckDef("frontend-check", "🌐 Frontend Check (quick UI validation)"),
         ]
 
         # Fast checks for commit validation (optimized for <40s total time)
         # Key optimization: Run coverage instead of tests (coverage includes tests)
         # This saves ~28s by avoiding duplicate test execution
         # Security runs in parallel, so doesn't add to total time
-        self.commit_checks = [
-            ("python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"),
-            ("js-lint-format", "🎨 JavaScript Lint & Format (ESLint, Prettier)"),
-            ("python-static-analysis", "🔍 Python Static Analysis (mypy, imports)"),
-            (
-                "coverage",
-                "🧪 Python Unit Tests & 📊 Coverage Analysis (80% threshold)",
-            ),  # Includes test execution
-            ("js-tests", "🧪 JavaScript Test Suite (Jest)"),
-            ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
-            # Zero tolerance (safety skipped for speed)
-            # Security checks moved to PR-only as requested by user
-            # Duplication, complexity excluded from commit (slower or PR-level)
+        self.commit_checks: List[CheckDef] = [
+            CheckDef(
+                "python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"
+            ),
+            CheckDef(
+                "js-lint-format", "🎨 JavaScript Lint & Format (ESLint, Prettier)"
+            ),
+            CheckDef(
+                "python-static-analysis", "🔍 Python Static Analysis (mypy, imports)"
+            ),
+            CheckDef(
+                "coverage-full",
+                "🧪 Python Unit Tests & 📊 Coverage Analysis (Total + New Code)",
+            ),
+            CheckDef(
+                "js-tests-and-coverage",
+                "🧪 JavaScript Tests & 📊 JavaScript Coverage Analysis (80% threshold)",
+            ),
+            CheckDef(
+                "complexity",
+                "🧠 Complexity Analysis (radon/xenon)",
+                self._run_complexity_analysis,
+            ),
         ]
 
         # Full checks for PR validation (all checks)
-        self.pr_checks = list(self.all_checks)
+        self.pr_checks: List[CheckDef] = list(self.all_checks)
 
         # Integration test validation (component interactions using SQLite persistence)
-        self.integration_checks = [
-            ("python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"),
-            ("tests", "🧪 Test Suite Execution (pytest)"),
-            ("integration", "🔗 Integration Tests (component interactions)"),
+        self.integration_checks: List[CheckDef] = [
+            CheckDef(
+                "python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"
+            ),
+            CheckDef("tests", "🧪 Test Suite Execution (pytest)"),
+            CheckDef("integration", "🔗 Integration Tests (component interactions)"),
         ]
 
         # Smoke test validation (requires running server + browser)
-        self.smoke_checks = [
-            ("python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"),
-            ("tests", "🧪 Test Suite Execution (pytest)"),
-            ("smoke", "🔥 Smoke Tests (end-to-end validation)"),
+        self.smoke_checks: List[CheckDef] = [
+            CheckDef(
+                "python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"
+            ),
+            CheckDef("tests", "🧪 Test Suite Execution (pytest)"),
+            CheckDef("smoke", "🔥 Smoke Tests (end-to-end validation)"),
         ]
 
         # Full validation (everything)
         # Full validation prefers the full security scan over the lightweight variant
-        full_commit_checks = [
+        full_commit_checks: List[CheckDef] = [
             self.security_check if check == self.security_local_check else check
             for check in self.commit_checks
         ]
-        self.full_checks = full_commit_checks + [
+        self.full_checks: List[CheckDef] = full_commit_checks + [
             check for check in self.all_checks if check not in full_commit_checks
         ]
+
+    def _run_complexity_analysis(self) -> CheckResult:
+        """Run code complexity analysis using radon and xenon."""
+        start_time = time.time()
+        try:
+            # First check if radon is installed
+            try:
+                subprocess.run(  # nosec B603,B607
+                    ["radon", "--version"],
+                    capture_output=True,
+                    check=True,
+                    text=True,
+                )
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                return CheckResult(
+                    name="complexity",
+                    status=CheckStatus.FAILED,
+                    duration=time.time() - start_time,
+                    output="radon not installed. Install with: pip install radon",
+                    error="radon not installed",
+                )
+
+            # Run radon to get complexity metrics
+            radon_cmd = [
+                "radon",
+                "cc",
+                "-j",  # JSON output for reliable parsing
+                "--min",
+                "D",  # Minimum rank to show (D or higher)
+                "src",
+                "tests",
+                "scripts",
+            ]
+            radon_cmd_display = "radon cc --min D -s -a --md src tests scripts"
+
+            radon_result = subprocess.run(  # nosec B603,B607
+                radon_cmd,
+                capture_output=True,
+                text=True,
+                cwd=self.project_root,
+            )
+
+            try:
+                radon_payload = json.loads(radon_result.stdout or "{}")
+            except json.JSONDecodeError as exc:
+                return CheckResult(
+                    name="complexity",
+                    status=CheckStatus.FAILED,
+                    duration=time.time() - start_time,
+                    output=(
+                        "🔴 Complexity analysis failed: could not parse radon output "
+                        f"({exc})"
+                    ),
+                    error="radon output parse error",
+                )
+
+            high_complexity = []
+            for path, entries in radon_payload.items():
+                for entry in entries:
+                    if entry.get("rank") in {"D", "E", "F"}:
+                        high_complexity.append(
+                            {
+                                "path": path,
+                                "name": entry.get("name", "<unknown>"),
+                                "rank": entry.get("rank", "?"),
+                                "line": entry.get("lineno", 0),
+                                "col": entry.get("col_offset", 0),
+                                "complexity": entry.get("complexity", 0),
+                            }
+                        )
+
+            high_complexity.sort(
+                key=lambda item: (item["complexity"], item["rank"]), reverse=True
+            )
+
+            if high_complexity:
+                issues = "\n".join(
+                    [
+                        (
+                            f"{item['rank']} {item['path']}:{item['line']}:{item['col']} "
+                            f"{item['name']} ({item['complexity']})"
+                        )
+                        for item in high_complexity[:10]
+                    ]
+                )
+                more = len(high_complexity) - 10
+                more_text = f"\n... and {more} more issues found" if more > 0 else ""
+
+                return CheckResult(
+                    name="complexity",
+                    status=CheckStatus.FAILED,
+                    duration=time.time() - start_time,
+                    output=(
+                        "🧠 Found "
+                        f"{len(high_complexity)} high complexity functions/methods (D or higher):"
+                        f"{more_text}\n{issues}\nTo see full complexity output, run: "
+                        f"{radon_cmd_display}"
+                    ),
+                    error=f"Found {len(high_complexity)} high complexity functions",
+                )
+
+            return CheckResult(
+                name="complexity",
+                status=CheckStatus.PASSED,
+                duration=time.time() - start_time,
+                output="✅ No high complexity issues found (all functions have cyclomatic complexity < 10)",
+            )
+
+        except Exception as e:
+            return CheckResult(
+                name="complexity",
+                status=CheckStatus.FAILED,
+                duration=time.time() - start_time,
+                output=f"🔴 Complexity analysis failed: {str(e)}",
+                error=str(e),
+            )
+
+    def _find_contiguous_uncovered_blocks(self, file_data: dict) -> list:
+        """Find contiguous blocks of uncovered lines from statement map.
+
+        Returns list of (start_line, end_line, statement_count) tuples
+        sorted by statement_count descending (biggest blocks first).
+        """
+        statement_map = file_data.get("statementMap", {})
+        s_hits = file_data.get("s", {})
+
+        # Collect all uncovered line numbers
+        uncovered_lines = set()
+        for stmt_id, loc in statement_map.items():
+            if s_hits.get(stmt_id, 0) == 0:
+                start = loc.get("start", {}).get("line", 0)
+                end = loc.get("end", {}).get("line", start)
+                for line in range(start, end + 1):
+                    uncovered_lines.add(line)
+
+        if not uncovered_lines:
+            return []
+
+        # Find contiguous blocks
+        sorted_lines = sorted(uncovered_lines)
+        blocks = []
+        block_start = sorted_lines[0]
+        prev_line = sorted_lines[0]
+
+        for line in sorted_lines[1:]:
+            if line > prev_line + 1:
+                # Gap found - save current block
+                blocks.append((block_start, prev_line, prev_line - block_start + 1))
+                block_start = line
+            prev_line = line
+
+        # Don't forget the last block
+        blocks.append((block_start, prev_line, prev_line - block_start + 1))
+
+        # Sort by size (biggest blocks first)
+        blocks.sort(key=lambda x: x[2], reverse=True)
+        return blocks
+
+    def _show_js_coverage_report(self) -> None:
+        """Show JavaScript coverage report with actionable instructions.
+
+        Rapid Iteration Strategy:
+        =========================
+        Shows the TOP 5 longest contiguous blocks of uncovered code with
+        explicit instructions on how to cover them. Each block shows:
+        - File and exact line range
+        - Number of statements to cover
+        - Clear action: extend nearby test OR add new test
+
+        Line numbers come from coverage/coverage-final.json, regenerated
+        fresh by Jest after each test run.
+        """
+        import json
+
+        coverage_file = "coverage/coverage-final.json"
+        if not os.path.exists(coverage_file):
+            self.logger.warning(f"Coverage file not found: {coverage_file}")
+            return
+
+        try:
+            with open(coverage_file, "r") as f:
+                data = json.load(f)
+
+            total_statements = 0
+            covered_statements = 0
+            all_uncovered_blocks = []  # (file, start, end, count)
+
+            for filepath, file_data in data.items():
+                s_data = file_data.get("s", {})
+                if s_data:
+                    total_statements += len(s_data)
+                    covered_statements += sum(
+                        1 for count in s_data.values() if count > 0
+                    )
+
+                    # Get contiguous uncovered blocks for this file
+                    short_path = filepath.replace(
+                        "/Users/pacey/Documents/SourceCode/course_record_updater/static/",
+                        "",
+                    ).replace(
+                        "/Users/pacey/Documents/SourceCode/course_record_updater/tests/javascript/",
+                        "tests/",
+                    )
+
+                    blocks = self._find_contiguous_uncovered_blocks(file_data)
+                    for start, end, count in blocks:
+                        all_uncovered_blocks.append((short_path, start, end, count))
+
+            overall_pct = (
+                (covered_statements / total_statements * 100)
+                if total_statements > 0
+                else 0
+            )
+            needed_statements = int(total_statements * 0.8) - covered_statements
+
+            self.logger.info("\n📊 JavaScript Coverage Analysis:")
+            self.logger.info("━" * 70)
+            self.logger.info(
+                f"Overall: {overall_pct:.2f}% ({covered_statements}/{total_statements} statements)"
+            )
+            self.logger.info(
+                f"Target:  80.00% ({int(total_statements * 0.8)} statements)"
+            )
+            self.logger.info(f"Gap:     {needed_statements} more statements needed")
+
+            # Show TOP 5 biggest uncovered blocks with explicit instructions
+            if all_uncovered_blocks:
+                all_uncovered_blocks.sort(key=lambda x: x[3], reverse=True)
+                self.logger.info("")
+                self.logger.info("🎯 TOP 5 UNCOVERED BLOCKS (biggest coverage gains):")
+                self.logger.info("━" * 70)
+
+                for i, (filepath, start, end, count) in enumerate(
+                    all_uncovered_blocks[:5], 1
+                ):
+                    self.logger.info(f"")
+                    self.logger.info(
+                        f"  #{i}: {filepath} lines {start}-{end} ({count} statements)"
+                    )
+                    self.logger.info(
+                        f"      ACTION: Extend existing tests for {filepath} to cover"
+                    )
+                    self.logger.info(
+                        f"              lines {start}-{end}, OR add a new test targeting"
+                    )
+                    self.logger.info(f"              this specific code block.")
+
+                self.logger.info("")
+                self.logger.info("━" * 70)
+                self.logger.info(
+                    "💡 Line numbers from coverage/coverage-final.json (auto-updated by Jest)"
+                )
+
+            self.logger.info("━" * 70)
+
+        except Exception as e:
+            self.logger.warning(f"Failed to parse coverage report: {e}")
+
+    def _format_js_coverage_report(self) -> List[str]:
+        """Format JavaScript coverage report with actionable instructions.
+
+        Returns lines for inclusion in output. Uses same contiguous block
+        approach as _show_js_coverage_report.
+        """
+        import json
+
+        coverage_file = "coverage/coverage-final.json"
+        if not os.path.exists(coverage_file):
+            return ["     ⚠️  Coverage report file not found"]
+
+        try:
+            with open(coverage_file, "r") as f:
+                data = json.load(f)
+
+            total_statements = 0
+            covered_statements = 0
+            all_uncovered_blocks = []
+
+            for filepath, file_data in data.items():
+                s_data = file_data.get("s", {})
+                if s_data:
+                    total_statements += len(s_data)
+                    covered_statements += sum(
+                        1 for count in s_data.values() if count > 0
+                    )
+
+                    short_path = filepath.replace(
+                        "/Users/pacey/Documents/SourceCode/course_record_updater/static/",
+                        "",
+                    ).replace(
+                        "/Users/pacey/Documents/SourceCode/course_record_updater/tests/javascript/",
+                        "tests/",
+                    )
+
+                    blocks = self._find_contiguous_uncovered_blocks(file_data)
+                    for start, end, count in blocks:
+                        all_uncovered_blocks.append((short_path, start, end, count))
+
+            overall_pct = (
+                (covered_statements / total_statements * 100)
+                if total_statements > 0
+                else 0
+            )
+            needed_statements = int(total_statements * 0.8) - covered_statements
+
+            lines = []
+            lines.append("     ")
+            lines.append("     📊 Coverage Analysis:")
+            lines.append(
+                f"       Overall: {overall_pct:.2f}% ({covered_statements}/{total_statements} statements)"
+            )
+            lines.append(
+                f"       Target:  80.00% ({int(total_statements * 0.8)} statements)"
+            )
+            lines.append(f"       Gap:     {needed_statements} more statements needed")
+
+            if all_uncovered_blocks:
+                all_uncovered_blocks.sort(key=lambda x: x[3], reverse=True)
+                lines.append("       ")
+                lines.append("       🎯 TOP 5 UNCOVERED BLOCKS:")
+                for i, (filepath, start, end, count) in enumerate(
+                    all_uncovered_blocks[:5], 1
+                ):
+                    lines.append(
+                        f"         #{i}: {filepath} L{start}-{end} ({count} stmts)"
+                    )
+                    lines.append(
+                        f"             → Extend tests or add new test for this block"
+                    )
+
+            return lines
+
+        except Exception as e:
+            return [f"     ⚠️  Failed to parse coverage report: {e}"]
 
     def run_single_check(
         self, check_flag: str, check_name: str, verbose: bool = False
@@ -170,7 +538,6 @@ class QualityGateExecutor:
             check_name: Human-readable check name
             verbose: If True, stream output directly to console (no buffering)
         """
-        import os
 
         start_time = time.time()
 
@@ -194,6 +561,9 @@ class QualityGateExecutor:
                 timeout_seconds = 900
             else:
                 timeout_seconds = 900
+
+            if check_flag == "smoke":
+                os.environ.setdefault("LOOPCLOSER_DEFAULT_PORT_SMOKE", "3003")
 
             # Build command with verbose flag if enabled
             cmd = [self.script_path, f"--{actual_flag}"]
@@ -280,7 +650,12 @@ class QualityGateExecutor:
         with self._process_lock:
             self._running_processes.pop(process.pid, None)
 
-    def _terminate_running_processes(self) -> None:
+    def _terminate_running_processes(self, wait_timeout: float = 1.0) -> None:
+        """Terminate all running subprocesses.
+
+        Args:
+            wait_timeout: How long to wait for graceful termination before killing (default 1.0s)
+        """
         with self._process_lock:
             processes = list(self._running_processes.values())
             self._running_processes.clear()
@@ -292,39 +667,144 @@ class QualityGateExecutor:
                 except Exception:  # nosec B110 - Process may already be dead
                     pass
                 try:
-                    proc.wait(timeout=5)
+                    proc.wait(timeout=wait_timeout)
                 except subprocess.TimeoutExpired:
                     try:
                         proc.kill()
                     except Exception:  # nosec B110 - Process may already be dead
                         pass
 
+    def _is_server_running(self, port: int = 3001) -> bool:
+        """Check if the dev server is running on the specified port."""
+        import socket
+
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(1)
+                result = s.connect_ex(("localhost", port))
+                return result == 0
+        except Exception:
+            return False
+
+    def _get_problem_env(self, check_flags: set[str]) -> str:
+        if "smoke" in check_flags:
+            return "smoke"
+        if "e2e" in check_flags:
+            return "e2e"
+        return "dev"
+
+    def _resolve_server_port(self, env: str) -> int:
+        if env == "smoke":
+            return int(os.getenv("LOOPCLOSER_DEFAULT_PORT_SMOKE", "3003"))
+        if env == "e2e":
+            return int(os.getenv("LOOPCLOSER_DEFAULT_PORT_E2E", "3002"))
+        return int(os.getenv("LOOPCLOSER_DEFAULT_PORT_DEV", "3001"))
+
+    def _ensure_server_running(self, checks_to_run: Sequence[CheckDef]) -> bool:
+        """Ensure dev server is running if checks require it.
+
+        Args:
+            checks_to_run: List of check tuples to examine
+
+        Returns:
+            True if server is ready (or not needed), False if server failed to start
+        """
+        # Checks that require the dev server
+        server_dependent_checks = {"frontend-check", "e2e", "smoke"}
+
+        # Extract check flags from tuples (handles both 2 and 3 element tuples)
+        check_flags = {check.flag for check in checks_to_run}
+
+        # Check if any server-dependent checks are in the list
+        needs_server = bool(check_flags & server_dependent_checks)
+
+        if not needs_server:
+            return True
+
+        server_env = self._get_problem_env(check_flags)
+        server_port = self._resolve_server_port(server_env)
+
+        # Check if server is already running
+        if self._is_server_running(server_port):
+            self.logger.info(
+                f"✅ Server already running on port {server_port} (env={server_env})"
+            )
+            return True
+
+        # Server not running, start it
+        self.logger.info(
+            f"🚀 Starting {server_env} server for frontend/E2E checks on port {server_port}..."
+        )
+
+        try:
+            # Start server in background
+            # Note: restart_server.sh starts the Flask server in background and exits immediately
+            # This is CORRECT behavior - we wait for the port to respond, not for the script to finish
+            process = subprocess.Popen(  # nosec
+                ["bash", "scripts/restart_server.sh", server_env],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+
+            # Wait for server to be ready (max 30 seconds)
+            import time
+
+            max_wait = 30
+            start_time = time.time()
+
+            while time.time() - start_time < max_wait:
+                if self._is_server_running(server_port):
+                    self.logger.info(
+                        f"✅ {server_env.capitalize()} server started in {time.time() - start_time:.1f}s"
+                    )
+                    return True
+                time.sleep(0.5)
+
+            # Timeout - check if the restart script itself failed
+            # The script exits immediately after starting background server, so poll() will be non-None
+            # Only treat as script failure if it exited with non-zero code within first few seconds
+            if process.poll() is not None and process.returncode != 0:
+                _, stderr = process.communicate()
+                self.logger.error(f"❌ Restart script failed: {stderr}")
+                return False
+
+            self.logger.error(f"❌ Server failed to start within {max_wait}s")
+            self.logger.error("💡 Check logs/server.log for details")
+            return False
+
+        except Exception as e:
+            self.logger.error(f"❌ Failed to start server: {e}")
+            return False
+
     def run_checks_parallel(
         self,
-        checks: List[Tuple[str, str]],
-        max_workers: int = None,  # Use all available CPU cores
+        checks: List[CheckDef],
+        max_workers: Optional[int] = None,  # Use all available CPU cores
         fail_fast: bool = True,
         verbose: bool = False,
     ) -> List[CheckResult]:
         """Run multiple checks in parallel using ThreadPoolExecutor."""
-        results = []
+        results: List[CheckResult] = []
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
 
         try:
             # Submit all checks
-            future_to_check = {
-                executor.submit(
-                    self.run_single_check, check_flag, check_name, verbose
-                ): (
-                    check_flag,
-                    check_name,
-                )
-                for check_flag, check_name in checks
-            }
+            # Build future_to_check mapping - checks can have optional custom functions
+            future_to_check: dict[concurrent.futures.Future[CheckResult], CheckDef] = {}
+            for check in checks:
+                if check.custom is not None:
+                    future = executor.submit(check.custom)
+                else:
+                    future = executor.submit(
+                        self.run_single_check, check.flag, check.name, verbose
+                    )
+                future_to_check[future] = check
 
             # Collect results as they complete
             for future in concurrent.futures.as_completed(future_to_check):
-                _, check_name = future_to_check[future]
+                check_info = future_to_check[future]
+                check_name = check_info.name
                 try:
                     result = future.result()
                     results.append(result)
@@ -345,12 +825,22 @@ class QualityGateExecutor:
                         self.logger.info(result.output)
                         self.logger.info("━" * 60)
 
-                        # Cancel all remaining futures and shutdown immediately
+                        # If JS coverage failed, show the coverage report
+                        if "JavaScript Coverage" in result.name:
+                            self._show_js_coverage_report()
+
+                        # Terminate all running processes FIRST (before canceling futures)
+                        self._terminate_running_processes()
+
+                        # Cancel all remaining futures
                         for f in future_to_check:
                             f.cancel()
-                        self._terminate_running_processes()
-                        executor.shutdown(wait=False)
-                        sys.exit(1)
+
+                        # Shutdown executor immediately without waiting for threads
+                        executor.shutdown(wait=False, cancel_futures=True)
+
+                        # Force exit immediately - don't wait for anything
+                        os._exit(1)  # More forceful than sys.exit(1), bypasses cleanup
 
                 except (concurrent.futures.TimeoutError, RuntimeError) as exc:
                     # Handle any exceptions from the future
@@ -476,6 +966,11 @@ class QualityGateExecutor:
             lines.append(f"     Error: {result.error}")
 
         lines.extend(self._format_check_output(result))
+
+        # If JavaScript coverage failed, include the detailed coverage report
+        if "JavaScript Coverage" in result.name:
+            lines.extend(self._format_js_coverage_report())
+
         lines.append("")
 
         return lines
@@ -492,9 +987,9 @@ class QualityGateExecutor:
 
     def _get_check_flag(self, result_name: str) -> str:
         """Get the command-line flag for a specific check result."""
-        for flag, name in self.all_checks:
-            if name == result_name:
-                return flag
+        for check in self.all_checks:
+            if check.name == result_name:
+                return check.flag
         return "unknown"
 
     def _format_success_summary(self) -> List[str]:
@@ -534,7 +1029,7 @@ class QualityGateExecutor:
 
         return lines
 
-    def _extract_coverage_failure_reason(self, output: str) -> str:
+    def _extract_coverage_failure_reason(self, output: str) -> Optional[str]:
         """Extract coverage failure details from output."""
         output_lower = output.lower()
         if "coverage" not in output_lower:
@@ -613,7 +1108,7 @@ class QualityGateExecutor:
 
     def execute(
         self,
-        checks: List[str] = None,
+        checks: Optional[List[str]] = None,
         validation_type: ValidationType = ValidationType.COMMIT,
         fail_fast: bool = True,
     ) -> int:
@@ -627,57 +1122,24 @@ class QualityGateExecutor:
         }
         validation_name = validation_name_map[validation_type]
         self.logger.info(
-            f"🔍 Running Course Record Updater quality checks ({validation_name} validation - PARALLEL MODE with auto-fix)..."
+            f"🔍 Running LoopCloser quality checks ({validation_name} validation - PARALLEL MODE with auto-fix)..."
         )
         self.logger.info("🐍 Python/Flask enterprise validation suite")
         self.logger.info("")
 
-        # Determine which checks to run
-        if checks is None:
-            # Default: use validation type to determine check set
-            if validation_type == ValidationType.COMMIT:
-                checks_to_run = self.commit_checks
-                self.logger.info(
-                    "📦 Running COMMIT validation (fast checks, excludes security)"
-                )
-            elif validation_type == ValidationType.PR:
-                checks_to_run = self.pr_checks
-                self.logger.info(
-                    "🔍 Running PR validation (all checks including security)"
-                )
-            elif validation_type == ValidationType.INTEGRATION:
-                checks_to_run = self.integration_checks
-                self.logger.info(
-                    "🔗 Running INTEGRATION validation (component interactions against SQLite persistence)"
-                )
-            elif validation_type == ValidationType.SMOKE:
-                checks_to_run = self.smoke_checks
-                self.logger.info(
-                    "🔥 Running SMOKE validation (end-to-end tests, requires running server + browser)"
-                )
-            elif validation_type == ValidationType.FULL:
-                checks_to_run = self.full_checks
-                self.logger.info(
-                    "🚀 Running FULL validation (comprehensive validation, all dependencies required)"
-                )
-        else:
-            # Run only specified checks
-            available_checks = {flag: (flag, name) for flag, name in self.all_checks}
-            checks_to_run = []
-            for check in checks:
-                if check in available_checks:
-                    checks_to_run.append(available_checks[check])
-                else:
-                    self.logger.error(f"❌ Unknown check: {check}")
-                    self.logger.info(
-                        f"Available checks: {', '.join(available_checks.keys())}"
-                    )
-                    return 1
+        try:
+            checks_to_run = self._determine_checks_to_run(checks, validation_type)
+        except ValueError:
+            return 1
+
+        # Note: Each check manages its own server/resources independently
+        # No shared server startup needed - checks are self-contained
 
         start_time = time.time()
 
         # Run all checks in parallel (with or without fail-fast)
-        check_names = [flag for flag, _ in checks_to_run]
+        # Use indexing instead of unpacking - checks can be 2 or 3 element tuples
+        check_names = [check.flag for check in checks_to_run]
         if fail_fast:
             self.logger.info(
                 f"🚀 Running checks in parallel with fail-fast [{', '.join(check_names)}]"
@@ -699,6 +1161,63 @@ class QualityGateExecutor:
         failed_count = len([r for r in all_results if r.status == CheckStatus.FAILED])
         return 1 if failed_count > 0 else 0
 
+    def _determine_checks_to_run(
+        self, checks: Optional[List[str]], validation_type: ValidationType
+    ) -> List[CheckDef]:
+        """Determine which checks should run based on user input or validation type."""
+        if checks is None:
+            return self._checks_for_validation(validation_type)
+        return self._checks_for_user_selected_checks(checks)
+
+    def _checks_for_validation(self, validation_type: ValidationType) -> List[CheckDef]:
+        """Return the configured check list for a validation type."""
+        if validation_type == ValidationType.COMMIT:
+            self.logger.info(
+                "📦 Running COMMIT validation (fast checks, excludes security)"
+            )
+            return self.commit_checks
+        if validation_type == ValidationType.PR:
+            self.logger.info("🔍 Running PR validation (all checks including security)")
+            return self.pr_checks
+        if validation_type == ValidationType.INTEGRATION:
+            self.logger.info(
+                "🔗 Running INTEGRATION validation (component interactions against SQLite persistence)"
+            )
+            return self.integration_checks
+        if validation_type == ValidationType.SMOKE:
+            self.logger.info(
+                "🔥 Running SMOKE validation (end-to-end tests, requires running server + browser)"
+            )
+            return self.smoke_checks
+        if validation_type == ValidationType.FULL:
+            self.logger.info(
+                "🚀 Running FULL validation (comprehensive validation, all dependencies required)"
+            )
+            return self.full_checks
+        # Fallback to commit checks
+        self.logger.info(
+            "📦 Running COMMIT validation (fast checks, excludes security)"
+        )
+        return self.commit_checks
+
+    def _checks_for_user_selected_checks(self, checks: List[str]) -> List[CheckDef]:
+        """Return configured checks for explicitly provided flags."""
+        available_checks: dict[str, CheckDef] = {
+            check.flag: check for check in self.all_checks
+        }
+
+        checks_to_run = []
+        for check in checks:
+            if check in available_checks:
+                checks_to_run.append(available_checks[check])
+            else:
+                self.logger.error(f"❌ Unknown check: {check}")
+                self.logger.info(
+                    f"Available checks: {', '.join(available_checks.keys())}"
+                )
+                raise ValueError(f"Unknown check: {check}")
+        return checks_to_run
+
     def _extract_slow_tests(self, output: str) -> List[str]:
         """Extract slow tests (>0.5s) from pytest output with --durations=0."""
         slow_tests = []
@@ -716,7 +1235,7 @@ class QualityGateExecutor:
         return sorted(slow_tests, key=lambda x: float(x.split("s")[0]), reverse=True)
 
 
-def _get_pr_context():
+def _get_pr_context() -> Tuple[Optional[int], Optional[str], Optional[str]]:
     """
     Get PR number and repository info from environment or git context.
 
@@ -724,7 +1243,6 @@ def _get_pr_context():
         Tuple of (pr_number, owner, name) or (None, None, None) if not in PR context
     """
     import json
-    import os
     import subprocess  # nosec
 
     # Detect current PR number from branch or environment
@@ -758,13 +1276,13 @@ def _get_pr_context():
         repo_data = json.loads(repo_result.stdout)
         owner = repo_data.get("owner", {}).get("login", "")
         name = repo_data.get("name", "")
-        return pr_number, owner, name
+        return int(pr_number), owner, name
     except:
         print("⚠️  Could not detect repository info")
         return None, None, None
 
 
-def _load_tracked_comments(pr_number):
+def _load_tracked_comments(pr_number: int) -> set[str]:
     """
     Load previously tracked comment IDs from file.
 
@@ -772,7 +1290,6 @@ def _load_tracked_comments(pr_number):
         Set of comment IDs that have been seen before
     """
     import json
-    import os
 
     tracking_file = f"logs/pr_{pr_number}_comments_tracked.json"
     if os.path.exists(tracking_file):
@@ -785,7 +1302,7 @@ def _load_tracked_comments(pr_number):
     return set()
 
 
-def _save_tracked_comments(pr_number, comment_ids):
+def _save_tracked_comments(pr_number: int, comment_ids: set[str]) -> None:
     """
     Save tracked comment IDs to file.
 
@@ -794,7 +1311,6 @@ def _save_tracked_comments(pr_number, comment_ids):
         comment_ids: Set of comment IDs to track
     """
     import json
-    import os
 
     # Ensure logs directory exists
     os.makedirs("logs", exist_ok=True)
@@ -812,7 +1328,7 @@ def _save_tracked_comments(pr_number, comment_ids):
         print(f"⚠️  Could not save tracked comments: {e}")
 
 
-def resolve_review_thread(thread_id):
+def resolve_review_thread(thread_id: str) -> bool:
     """
     Resolve a review thread via GitHub GraphQL API.
 
@@ -880,7 +1396,12 @@ def resolve_review_thread(thread_id):
         return False
 
 
-def reply_to_pr_comment(comment_id, body, thread_id=None, resolve_thread=False):
+def reply_to_pr_comment(
+    comment_id: str,
+    body: str,
+    thread_id: Optional[str] = None,
+    resolve_thread: bool = False,
+) -> bool:
     """
     Reply to a PR comment and optionally resolve the thread.
 
@@ -901,78 +1422,40 @@ def reply_to_pr_comment(comment_id, body, thread_id=None, resolve_thread=False):
         if not pr_number:
             return False
 
-        # For review threads, add a reply to the thread
-        if thread_id:
-            # GraphQL mutation to add a reply to a review thread
-            mutation = """
-            mutation($threadId: ID!, $body: String!) {
-              addPullRequestReviewThreadComment(input: {
-                pullRequestReviewThreadId: $threadId
-                body: $body
-              }) {
-                comment {
-                  id
-                }
-              }
-            }
-            """
+        try:
+            # Try to post a comment to the PR
+            comment = {"body": body}
 
-            result = subprocess.run(  # nosec
+            # Use GitHub CLI to post the comment
+            result = subprocess.run(  # nosec B603,B607
                 [
                     "gh",
                     "api",
-                    "graphql",
-                    "-F",
-                    f"owner={owner}",
-                    "-F",
-                    f"name={name}",
-                    "-F",
-                    f"number={pr_number}",
-                    "-f",
-                    f"query={mutation}",
-                    "-f",
-                    f"threadId={thread_id}",
-                    "-f",
-                    f"body={body}",
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-            if result.returncode == 0:
-                # Optionally resolve the thread
-                if resolve_thread:
-                    resolve_review_thread(thread_id)
-                return True
-
-        # For general comments, use REST API
-        else:
-            result = subprocess.run(  # nosec
-                [
-                    "gh",
-                    "api",
-                    f"repos/{owner}/{name}/pulls/{pr_number}/comments/{comment_id}/replies",
+                    f"repos/{owner}/{name}/issues/{pr_number}/comments",
                     "-X",
                     "POST",
+                    "-H",
+                    "Accept: application/vnd.github.v3+json",
                     "-f",
-                    f"body={body}",
+                    f"body={comment['body']}",
                 ],
                 capture_output=True,
                 text=True,
-                check=False,
+                check=True,
             )
 
             return result.returncode == 0
 
-        return False
+        except Exception as e:
+            print(f"⚠️  Could not post PR comment: {e}")
+            return False
 
     except Exception as e:
         print(f"⚠️  Could not reply to PR comment: {e}")
         return False
 
 
-def check_pr_comments():
+def check_pr_comments() -> Tuple[List[Any], List[Any]]:
     """
     Check for unresolved PR comments (both review threads and general PR comments).
 
@@ -983,7 +1466,6 @@ def check_pr_comments():
     """
     try:
         import json
-        import os
         import subprocess  # nosec
 
         pr_number, owner, name = _get_pr_context()
@@ -1098,7 +1580,11 @@ def check_pr_comments():
         new_comments = [c for c in all_unresolved if c.get("id") not in tracked_ids]
 
         # Update tracking file with all current comment IDs
-        current_ids = {c.get("id") for c in all_unresolved if c.get("id")}
+        current_ids: set[str] = set()
+        for c in all_unresolved:
+            comment_id = c.get("id")
+            if comment_id is not None and isinstance(comment_id, str):
+                current_ids.add(comment_id)
         if current_ids:
             _save_tracked_comments(pr_number, current_ids | tracked_ids)
 
@@ -1109,11 +1595,13 @@ def check_pr_comments():
         return [], []
 
 
-def _parse_rollup_items(statuses):
+def _parse_rollup_items(
+    statuses: List[Any],
+) -> Tuple[List[str], List[str], List[str]]:
     """Parse statusCheckRollup items to categorize jobs."""
-    failed = []
-    in_progress = []
-    pending = []
+    failed: List[str] = []
+    in_progress: List[str] = []
+    pending: List[str] = []
 
     for status in statuses:
         state = status.get("state", "").lower() if status.get("state") else None
@@ -1140,7 +1628,9 @@ def _parse_rollup_items(statuses):
     return failed, in_progress, pending
 
 
-def _get_ci_status_from_rollup(pr_number):
+def _get_ci_status_from_rollup(
+    pr_number: int,
+) -> Optional[Any]:
     """Try to get CI status from GitHub statusCheckRollup."""
     try:
         import json
@@ -1181,7 +1671,7 @@ def _get_ci_status_from_rollup(pr_number):
     return None
 
 
-def _get_ci_status_fallback(pr_number, owner, name):
+def _get_ci_status_fallback(pr_number: int, owner: str, name: str) -> Optional[Any]:
     """Fallback to workflow runs API if rollup fails."""
     import json
     import subprocess  # nosec
@@ -1239,7 +1729,7 @@ def _get_ci_status_fallback(pr_number, owner, name):
     }
 
 
-def check_ci_status():
+def check_ci_status() -> Optional[Any]:
     """
     Check GitHub Actions CI status for the current PR.
 
@@ -1248,7 +1738,7 @@ def check_ci_status():
     """
     try:
         pr_number, owner, name = _get_pr_context()
-        if not pr_number:
+        if not pr_number or not owner or not name:
             return {
                 "all_passed": None,
                 "failed_jobs": [],
@@ -1288,7 +1778,7 @@ def check_ci_status():
         }
 
 
-def _get_current_commit_sha():
+def _get_current_commit_sha() -> Optional[str]:
     """Get the current git commit SHA."""
     import subprocess  # nosec
 
@@ -1304,9 +1794,14 @@ def _get_current_commit_sha():
         return "unknown"
 
 
-def _save_check_error_logs(failed_checks, pr_number, commit_sha, timestamp):
+def _save_check_error_logs(
+    failed_checks: List[CheckResult],
+    pr_number: int,
+    commit_sha: str,
+    timestamp: str,
+) -> dict[str, str]:
     """Save full error output for each failed check to log files."""
-    error_log_files = {}
+    error_log_files: dict[str, str] = {}
     for check in failed_checks:
         check_flag = _get_check_flag_for_result(check.name)
         error_log_file = f"logs/pr_{pr_number}_error_{check_flag}_{commit_sha[:8]}.log"
@@ -1336,8 +1831,12 @@ def _save_check_error_logs(failed_checks, pr_number, commit_sha, timestamp):
 
 
 def _write_checklist_ci_section(
-    f, ci_status, checklist_state, checklist_items, item_number
-):
+    f: Any,
+    ci_status: Any,
+    checklist_state: Any,
+    checklist_items: List[dict[str, Any]],
+    item_number: int,
+) -> int:
     """Write CI Status section to the checklist."""
     if ci_status.get("all_passed") is not False:
         return item_number
@@ -1378,7 +1877,7 @@ def _write_checklist_ci_section(
     return item_number + 1
 
 
-def _resolve_comment_location(comment):
+def _resolve_comment_location(comment: Any) -> str:
     """Resolve location string for a comment."""
     if comment.get("path") and comment.get("line"):
         return f"`{comment['path']}:{comment['line']}`"
@@ -1388,8 +1887,13 @@ def _resolve_comment_location(comment):
 
 
 def _write_single_comment_item(
-    f, comment, location, is_new, checklist_state, checklist_items
-):
+    f: Any,
+    comment: Any,
+    location: str,
+    is_new: bool,
+    checklist_state: Any,
+    checklist_items: List[Any],
+) -> None:
     """Write a single comment item to the checklist."""
     author = comment["author"]
     body = comment["body"]
@@ -1414,8 +1918,12 @@ def _write_single_comment_item(
 
 
 def _write_checklist_comments_section(
-    f, comments_data, checklist_state, checklist_items, item_number
-):
+    f: Any,
+    comments_data: Tuple[List[Any], List[Any]],
+    checklist_state: Any,
+    checklist_items: List[Any],
+    item_number: int,
+) -> int:
     """Write PR Comments section to the checklist."""
     all_comments, new_comments = comments_data
     if not all_comments:
@@ -1457,8 +1965,13 @@ def _write_checklist_comments_section(
 
 
 def _write_checklist_quality_section(
-    f, failed_checks, error_log_files, checklist_state, checklist_items, item_number
-):
+    f: Any,
+    failed_checks: List[CheckResult],
+    error_log_files: dict[str, str],
+    checklist_state: Any,
+    checklist_items: List[Any],
+    item_number: int,
+) -> int:
     """Write Quality Gate Failures section to the checklist."""
     if not failed_checks:
         return item_number
@@ -1499,8 +2012,13 @@ def _write_checklist_quality_section(
 
 
 def _write_report_summary(
-    f, checklist_items, ci_status, comments_data, passed_checks, failed_checks
-):
+    f: Any,
+    checklist_items: List[Any],
+    ci_status: Any,
+    comments_data: Tuple[List[Any], List[Any]],
+    passed_checks: List[CheckResult],
+    failed_checks: List[CheckResult],
+) -> None:
     """Write the report summary section."""
     all_comments, new_comments = comments_data
     f.write("---\n\n")
@@ -1519,7 +2037,12 @@ def _write_report_summary(
     )
 
 
-def _write_detailed_sections(f, ci_status, failed_checks, error_log_files):
+def _write_detailed_sections(
+    f: Any,
+    ci_status: Any,
+    failed_checks: List[CheckResult],
+    error_log_files: dict[str, str],
+) -> None:
     """Write the detailed information sections."""
     f.write("---\n\n")
     f.write("## 📋 Detailed Information\n\n")
@@ -1568,8 +2091,11 @@ def _write_detailed_sections(f, ci_status, failed_checks, error_log_files):
 
 
 def generate_pr_issues_report(
-    ci_status, comments_data, quality_check_results, pr_number
-):
+    ci_status: Any,
+    comments_data: Tuple[List[Any], List[Any]],
+    quality_check_results: List[CheckResult],
+    pr_number: int,
+) -> dict[str, Any]:
     """
     Generate a comprehensive PR issues report with checklist format.
 
@@ -1583,11 +2109,10 @@ def generate_pr_issues_report(
         Dictionary with report data and file path
     """
     import json
-    import os
     from datetime import datetime
 
     all_comments, new_comments = comments_data
-    commit_sha = _get_current_commit_sha()
+    commit_sha = _get_current_commit_sha() or "unknown"
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Ensure logs directory exists
@@ -1610,10 +2135,10 @@ def generate_pr_issues_report(
 
     # Save full error output for each failed check
     error_log_files = _save_check_error_logs(
-        failed_checks, pr_number, commit_sha, timestamp
+        failed_checks, pr_number, commit_sha or "unknown", timestamp
     )
 
-    checklist_items = []
+    checklist_items: List[dict[str, Any]] = []
 
     with open(report_file, "w", encoding="utf-8") as f:
         f.write(f"# Outstanding PR Issues Report\n\n")
@@ -1670,13 +2195,15 @@ def _get_check_flag_for_result(result_name: str) -> str:
     """Get the command-line flag for a specific check result name."""
     # Map of result names to check flags
     executor = QualityGateExecutor()
-    for flag, name in executor.all_checks:
+    for check in executor.all_checks:
+        flag = check.flag
+        name = check.name
         if name == result_name:
             return flag
     return "unknown"
 
 
-def _get_item_status(checklist_state, item_text):
+def _get_item_status(checklist_state: Any, item_text: str) -> str:
     """Get status of a checklist item from state."""
     if not checklist_state or "items" not in checklist_state:
         return "pending"
@@ -1689,7 +2216,9 @@ def _get_item_status(checklist_state, item_text):
     return "pending"
 
 
-def write_pr_comments_scratch(comments, new_comments=None):
+def write_pr_comments_scratch(
+    comments: List[Any], new_comments: Optional[List[Any]] = None
+) -> None:
     """Write detailed PR comments to scratch file for AI analysis."""
     try:
         with open("pr_comments_scratch.md", "w") as f:
@@ -1765,11 +2294,11 @@ def write_pr_comments_scratch(comments, new_comments=None):
         print(f"⚠️  Could not write scratch file: {e}")
 
 
-def _handle_pr_validation(args) -> int:
+def _handle_pr_validation(args: Any) -> Optional[int]:
     """Handle PR validation with comprehensive batch reporting.
 
     Returns:
-        Exit code (0 for success, 1 for failures)
+        Exit code (0 for success, 1 for failures, None to fall through)
     """
     pr_number, _, _ = _get_pr_context()
     if not pr_number:
@@ -1786,10 +2315,13 @@ def _handle_pr_validation(args) -> int:
     executor = QualityGateExecutor(verbose=args.verbose)
 
     # Determine which checks to run
+    checks_to_run: List[CheckDef]
     if args.checks is None:
         checks_to_run = executor.pr_checks
     else:
-        available_checks = {flag: (flag, name) for flag, name in executor.all_checks}
+        available_checks: dict[str, CheckDef] = {
+            check.flag: check for check in executor.all_checks
+        }
         checks_to_run = [
             available_checks[c] for c in args.checks if c in available_checks
         ]
@@ -1802,6 +2334,9 @@ def _handle_pr_validation(args) -> int:
         )
     else:
         print("ℹ️ Fail-fast disabled: collecting results for all checks.")
+
+    # Note: Each check manages its own server/resources independently
+    # No shared server startup needed - checks are self-contained
 
     # Run checks (may exit early when fail-fast is enabled)
     start_time = time.time()
@@ -1903,10 +2438,10 @@ def _print_pr_summary(report: dict) -> None:
     print()
 
 
-def main():
+def main() -> None:
     """Main entry point for the parallel quality gate executor."""
     parser = argparse.ArgumentParser(
-        description="Course Record Updater Quality Gate - Run maintainability checks in parallel with fail-fast",
+        description="LoopCloser Quality Gate - Run maintainability checks in parallel with fail-fast",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -1920,7 +2455,7 @@ Validation Types:
   commit - Fast checks for development cycle (~40s savings)
   PR     - Full validation for pull requests (all checks including security)
 
-Available checks: python-lint-format, js-lint-format, python-static-analysis, tests, js-tests, coverage, js-coverage, security, duplication, e2e, integration, smoke, frontend-check
+Available checks: python-lint-format, js-lint-format, python-static-analysis, tests, coverage, js-tests-and-coverage, security, duplication, e2e, integration, smoke, frontend-check
 
 By default, runs COMMIT validation for fast development cycles.
 Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
@@ -1943,7 +2478,7 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
     parser.add_argument(
         "--checks",
         nargs="+",
-        help="Run specific checks only (e.g. --checks python-lint-format tests). Available: python-lint-format, js-lint-format, python-static-analysis, tests, js-tests, coverage, js-coverage, security, duplication, e2e, integration, smoke, frontend-check",
+        help="Run specific checks only (e.g. --checks python-lint-format tests). Available: python-lint-format, js-lint-format, python-static-analysis, tests, coverage, js-tests-and-coverage, security, duplication, e2e, integration, smoke, frontend-check",
     )
 
     parser.add_argument(

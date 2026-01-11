@@ -1,5 +1,5 @@
 """
-Global pytest configuration for course record updater.
+Global pytest configuration for LoopCloser.
 
 This file provides pytest fixtures and configuration that are available
 to all test modules.
@@ -8,15 +8,17 @@ All tests use CSRF-enabled clients to properly exercise security code paths.
 """
 
 import re
+from typing import Any, Callable, Generator, cast
 
 import pytest
+from flask.testing import FlaskClient
 
 
-def _get_csrf_token_from_session_or_generate(client):
+def _get_csrf_token_from_session_or_generate(client: FlaskClient) -> str | None:
     """Get CSRF token from session or generate a new one."""
     import secrets
 
-    from flask_wtf.csrf import generate_csrf
+    from flask_wtf.csrf import generate_csrf  # type: ignore[import]
 
     from src.app import app
 
@@ -49,10 +51,12 @@ def _get_csrf_token_from_session_or_generate(client):
         return None
 
 
-def _make_csrf_wrapper(client, original_method):
+def _make_csrf_wrapper(
+    client: FlaskClient, original_method: Callable[..., Any]
+) -> Callable[..., Any]:
     """Create a wrapper that injects CSRF tokens from session on-demand."""
 
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         # Get token (checks session first, then generates if needed)
         token = _get_csrf_token_from_session_or_generate(client)
         if not token:
@@ -86,7 +90,7 @@ def _make_csrf_wrapper(client, original_method):
 
 
 @pytest.fixture(scope="function", autouse=True)
-def _configure_csrf_for_testing():
+def _configure_csrf_for_testing() -> Generator[None, None, None]:
     """
     Auto-applied fixture that ensures CSRF is enabled for all tests.
 
@@ -104,31 +108,47 @@ def _configure_csrf_for_testing():
     app.config["WTF_CSRF_ENABLED"] = True
 
     # Monkeypatch app.test_client() to return CSRF-aware clients
-    def csrf_aware_test_client(*args, **kwargs):
+    def csrf_aware_test_client(*args: Any, **kwargs: Any) -> FlaskClient:
         """Create a test client with automatic CSRF injection."""
         client = original_test_client(*args, **kwargs)
 
         # Wrap POST/PUT/PATCH/DELETE methods with CSRF injection
         # Wrap all mutation methods with CSRF injection
-        client.post = _make_csrf_wrapper(client, client.post)
-        client.put = _make_csrf_wrapper(client, client.put)
-        client.patch = _make_csrf_wrapper(client, client.patch)
-        client.delete = _make_csrf_wrapper(client, client.delete)
+        setattr(
+            client,
+            "post",
+            cast(Callable[..., Any], _make_csrf_wrapper(client, client.post)),
+        )
+        setattr(
+            client,
+            "put",
+            cast(Callable[..., Any], _make_csrf_wrapper(client, client.put)),
+        )
+        setattr(
+            client,
+            "patch",
+            cast(Callable[..., Any], _make_csrf_wrapper(client, client.patch)),
+        )
+        setattr(
+            client,
+            "delete",
+            cast(Callable[..., Any], _make_csrf_wrapper(client, client.delete)),
+        )
 
         return client
 
-    app.test_client = csrf_aware_test_client
+    setattr(app, "test_client", csrf_aware_test_client)
 
     yield
 
     # Restore original (cleanup)
-    app.test_client = original_test_client
+    setattr(app, "test_client", original_test_client)
     if original_csrf is not None:
         app.config["WTF_CSRF_ENABLED"] = original_csrf
 
 
 @pytest.fixture
-def client():
+def client() -> Generator[FlaskClient, None, None]:
     """
     Create a Flask test client with CSRF ENABLED.
 
@@ -141,7 +161,7 @@ def client():
 
 
 @pytest.fixture
-def csrf_token(client):
+def csrf_token(client: FlaskClient) -> str:
     """
     Get a valid CSRF token from the login page.
 
@@ -162,7 +182,10 @@ def csrf_token(client):
 
 
 @pytest.fixture
-def authenticated_client(client, csrf_token):
+def authenticated_client(
+    client: FlaskClient,
+    csrf_token: str,
+) -> Generator[FlaskClient, None, None]:
     """
     Create an authenticated test client with proper CSRF handling.
 
@@ -188,7 +211,7 @@ def authenticated_client(client, csrf_token):
     original_put = client.put
     original_delete = client.delete
 
-    def post_with_csrf(*args, **kwargs):
+    def post_with_csrf(*args: Any, **kwargs: Any) -> Any:
         """POST with automatic CSRF token injection"""
         if "headers" not in kwargs:
             kwargs["headers"] = {}
@@ -196,7 +219,7 @@ def authenticated_client(client, csrf_token):
             kwargs["headers"]["X-CSRFToken"] = csrf_token
         return original_post(*args, **kwargs)
 
-    def put_with_csrf(*args, **kwargs):
+    def put_with_csrf(*args: Any, **kwargs: Any) -> Any:
         """PUT with automatic CSRF token injection"""
         if "headers" not in kwargs:
             kwargs["headers"] = {}
@@ -204,7 +227,7 @@ def authenticated_client(client, csrf_token):
             kwargs["headers"]["X-CSRFToken"] = csrf_token
         return original_put(*args, **kwargs)
 
-    def delete_with_csrf(*args, **kwargs):
+    def delete_with_csrf(*args: Any, **kwargs: Any) -> Any:
         """DELETE with automatic CSRF token injection"""
         if "headers" not in kwargs:
             kwargs["headers"] = {}
@@ -213,13 +236,13 @@ def authenticated_client(client, csrf_token):
         return original_delete(*args, **kwargs)
 
     # Monkey-patch the client
-    client.post = post_with_csrf
-    client.put = put_with_csrf
-    client.delete = delete_with_csrf
+    setattr(client, "post", cast(Callable[..., Any], post_with_csrf))
+    setattr(client, "put", cast(Callable[..., Any], put_with_csrf))
+    setattr(client, "delete", cast(Callable[..., Any], delete_with_csrf))
 
     yield client
 
     # Restore original methods
-    client.post = original_post
-    client.put = original_put
-    client.delete = original_delete
+    setattr(client, "post", original_post)
+    setattr(client, "put", original_put)
+    setattr(client, "delete", original_delete)

@@ -91,11 +91,20 @@ class TestModelDispatch:
 
     def test_get_model_data_term(self):
         """Test _get_model_data dispatches Term correctly."""
-        mock_term = Mock(spec=Term)
-        mock_term.id = "term_123"
+        term = Term(
+            id="term_123",
+            term_name="Fall 2025",
+            name="Fall 2025",
+            start_date="2025-08-30",
+            end_date="2025-12-15",
+            assessment_due_date="2025-12-20",
+            institution_id="inst-1",
+        )
 
-        result = _get_model_data(mock_term)
+        result = _get_model_data(term)
         assert isinstance(result, dict)
+        assert result["status"] in {"ACTIVE", "SCHEDULED", "PASSED", "UNKNOWN"}
+        assert isinstance(result["is_active"], bool)
 
     def test_get_model_data_course_offering(self):
         """Test _get_model_data dispatches CourseOffering correctly."""

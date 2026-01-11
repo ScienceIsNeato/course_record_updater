@@ -27,26 +27,8 @@ from tests.e2e.test_helpers import (
 )
 
 
-@pytest.mark.e2e
-@pytest.mark.e2e
-def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
-    """
-    Test complete CLO lifecycle through all states.
-
-    Validates the full workflow from UNASSIGNED to APPROVED with audit trail.
-    """
-    admin_page = authenticated_institution_admin_page
-
-    # Get institution ID
-    institution_id = get_institution_id_from_user(admin_page)
-
-    # Get CSRF token
-    csrf_token = admin_page.evaluate(
-        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
-    )
-
-    # === STEP 1: Create course section with CLOs (UNASSIGNED) ===
-
+def _step_1_create_structure(admin_page, institution_id, csrf_token):
+    """Create program, course, term, section, and CLO."""
     # Create program
     program_response = admin_page.request.post(
         f"{BASE_URL}/api/programs",
@@ -151,8 +133,13 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     assert outcome.ok
     assert outcome.json()["outcome"]["status"] == "unassigned"
 
-    # === STEP 2: Assign instructor (→ ASSIGNED) ===
+    return program_id, course_id, section_id, clo_id
 
+
+def _step_2_assign_instructor(
+    admin_page, institution_id, program_id, section_id, clo_id, csrf_token
+):
+    """Create instructor and assign to section."""
     # Create instructor
     instructor = create_test_user_via_api(
         admin_page=admin_page,
@@ -205,15 +192,13 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     assert outcome.ok
     assert outcome.json()["outcome"]["status"] == "assigned"
 
-    # === STEP 3: Instructor edits (→ IN_PROGRESS) ===
+    return instructor_id
 
-    # Create separate browser context for instructor to avoid session conflicts
-    instructor_context = admin_page.context.browser.new_context()
-    instructor_page = instructor_context.new_page()
-    login_as_user(
-        instructor_page, BASE_URL, "uat010.instructor@test.com", "TestUser123!"
-    )
 
+def _step_3_instructor_edits(
+    instructor_page, course_id, clo_id, admin_page, csrf_token
+):
+    """Instructor edits CLO (IN_PROGRESS)."""
     instructor_page.goto(f"{BASE_URL}/assessments")
     # Select course - wait for option to be present first
     instructor_page.wait_for_selector(
@@ -250,8 +235,11 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     assert outcome.ok
     assert outcome.json()["outcome"]["status"] == "in_progress"
 
-    # === STEP 4: Instructor submits (→ AWAITING_APPROVAL) ===
 
+def _step_4_instructor_submits(
+    instructor_page, clo_id, instructor_id, admin_page, csrf_token
+):
+    """Instructor submits CLO (AWAITING_APPROVAL)."""
     instructor_csrf = instructor_page.evaluate(
         "document.querySelector('meta[name=\"csrf-token\"]')?.content"
     )
@@ -277,8 +265,9 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     assert outcome_data["submitted_at"] is not None
     assert outcome_data["submitted_by_user_id"] == instructor_id
 
-    # === STEP 5: Admin requests rework (→ APPROVAL_PENDING) ===
 
+def _step_5_admin_rework(admin_page, clo_id, csrf_token):
+    """Admin requests rework (APPROVAL_PENDING)."""
     admin_page.goto(f"{BASE_URL}/audit-clo")
     admin_page.wait_for_load_state("networkidle")
     admin_page.wait_for_selector("#cloListContainer", timeout=10000)
@@ -325,8 +314,11 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     assert outcome_data["feedback_comments"] is not None
     assert outcome_data["feedback_provided_at"] is not None
 
-    # === STEP 6: Instructor addresses and resubmits (→ AWAITING_APPROVAL) ===
 
+def _step_6_instructor_resubmits(
+    instructor_page, course_id, clo_id, admin_page, csrf_token
+):
+    """Instructor addresses feedback and resubmits (AWAITING_APPROVAL)."""
     instructor_page.goto(f"{BASE_URL}/assessments")
     # Robust selection
     instructor_page.wait_for_selector(
@@ -367,10 +359,6 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     # Wait for completion
     instructor_page.wait_for_timeout(2000)
 
-    # Verify successful submission (URL or updated UI state)
-    # Skipped explicit API check for 200 OK since we clicked a button,
-    # but we will check the status via API in next step.
-
     # Verify status is AWAITING_APPROVAL again
     outcome = admin_page.request.get(
         f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
@@ -379,8 +367,9 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     assert outcome.ok
     assert outcome.json()["outcome"]["status"] == "awaiting_approval"
 
-    # === STEP 7: Admin approves (→ APPROVED) ===
 
+def _step_7_admin_approves(admin_page, clo_id):
+    """Admin approves (APPROVED)."""
     admin_page.goto(f"{BASE_URL}/audit-clo")
     admin_page.wait_for_load_state("networkidle")
     admin_page.wait_for_selector("#cloListContainer", timeout=10000)
@@ -404,8 +393,9 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     # Modal should close after approval
     expect(modal).not_to_be_visible(timeout=5000)
 
-    # === STEP 8: Verify audit trail in database ===
 
+def _verify_audit_trail(admin_page, clo_id, instructor_id, csrf_token):
+    """Verify final state and audit trail."""
     outcome = admin_page.request.get(
         f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
@@ -430,9 +420,67 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     assert outcome_data["students_took"] is not None
     assert outcome_data["students_passed"] is not None
 
-    # === Complete lifecycle verified ===
-    # UNASSIGNED → ASSIGNED → IN_PROGRESS → AWAITING_APPROVAL →
-    # APPROVAL_PENDING → AWAITING_APPROVAL → APPROVED
 
-    # Cleanup
-    instructor_page.close()
+@pytest.mark.e2e
+@pytest.mark.e2e
+def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
+    """
+    Test complete CLO lifecycle through all states.
+
+    Validates the full workflow from UNASSIGNED to APPROVED with audit trail.
+    """
+    admin_page = authenticated_institution_admin_page
+
+    # Get institution ID
+    institution_id = get_institution_id_from_user(admin_page)
+
+    # Get CSRF token
+    csrf_token = admin_page.evaluate(
+        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
+    )
+
+    # === STEP 1: Create structure ===
+    program_id, course_id, section_id, clo_id = _step_1_create_structure(
+        admin_page, institution_id, csrf_token
+    )
+
+    # === STEP 2: Assign instructor ===
+    instructor_id = _step_2_assign_instructor(
+        admin_page, institution_id, program_id, section_id, clo_id, csrf_token
+    )
+
+    # === STEP 3: Instructor setup & edits ===
+    # Create separate browser context for instructor to avoid session conflicts
+    instructor_context = admin_page.context.browser.new_context()
+    instructor_page = instructor_context.new_page()
+    try:
+        login_as_user(
+            instructor_page, BASE_URL, "uat010.instructor@test.com", "TestUser123!"
+        )
+
+        _step_3_instructor_edits(
+            instructor_page, course_id, clo_id, admin_page, csrf_token
+        )
+
+        # === STEP 4: Instructor submits ===
+        _step_4_instructor_submits(
+            instructor_page, clo_id, instructor_id, admin_page, csrf_token
+        )
+
+        # === STEP 5: Admin rework ===
+        _step_5_admin_rework(admin_page, clo_id, csrf_token)
+
+        # === STEP 6: Instructor resubmits ===
+        _step_6_instructor_resubmits(
+            instructor_page, course_id, clo_id, admin_page, csrf_token
+        )
+
+        # === STEP 7: Admin approves ===
+        _step_7_admin_approves(admin_page, clo_id)
+
+        # === STEP 8: Verify audit trail ===
+        _verify_audit_trail(admin_page, clo_id, instructor_id, csrf_token)
+
+    finally:
+        # Cleanup
+        instructor_page.close()

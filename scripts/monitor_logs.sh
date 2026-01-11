@@ -19,7 +19,7 @@ ENVIRONMENT=""
 show_usage() {
     echo "Usage: $0 [OPTIONS]"
     echo ""
-    echo "Monitor Course Record Updater server logs in real-time"
+    echo "Monitor LoopCloser server logs in real-time"
     echo ""
     echo "Options:"
     echo "  --env ENV          Environment: dev, e2e, or uat (default: dev)"
@@ -133,7 +133,7 @@ colorize_logs() {
 }
 
 # Main execution
-echo -e "${BLUE}📋 Course Record Updater - Log Monitor${NC}"
+echo -e "${BLUE}📋 LoopCloser - Log Monitor${NC}"
 echo -e "${BLUE}=======================================${NC}"
 echo -e "${BLUE}🌍 Environment: $ENVIRONMENT${NC}"
 echo -e "${BLUE}📁 Monitoring: $LOG_FILE${NC}"

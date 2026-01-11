@@ -20,7 +20,6 @@
     <div class="auth-container">
         <div class="auth-card">
             <div class="auth-header">
-                <img src="{{ url_for('static', filename='images/mocku_logo.jpg') }}" alt="MockU Logo" class="auth-logo">
                 <h2 class="auth-title">Complete Registration</h2>
                 <p class="auth-subtitle">Set up your account</p>
             </div>
@@ -53,13 +52,13 @@
 
                 <!-- Email (pre-filled, readonly) -->
                 <div class="form-floating mb-3">
-                    <input type="email" class="form-control" id="email" name="email" readonly required>
+                    <input type="email" class="form-control readonly-field" id="email" name="email" readonly required>
                     <label for="email">Email Address</label>
                 </div>
 
                 <!-- Role (pre-filled, readonly) -->
                 <div class="form-floating mb-3">
-                    <input type="text" class="form-control" id="role" name="role" readonly required>
+                    <input type="text" class="form-control readonly-field" id="role" name="role" readonly required>
                     <label for="role">Role</label>
                 </div>
 
@@ -89,15 +88,15 @@
 
                 <!-- Password -->
                 <div class="input-group mb-2 has-validation">
-                    <div class="form-floating">
+                    <div class="form-floating flex-grow-1">
                         <input type="password" class="form-control" id="password" name="password" placeholder="Password"
                             required minlength="8">
                         <label for="password">Password</label>
                     </div>
-                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                    <button class="btn btn-outline-secondary password-toggle-btn" type="button" id="togglePassword">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <div class="invalid-feedback">
+                    <div class="invalid-feedback w-100">
                         Password does not meet requirements.
                     </div>
                 </div>
@@ -114,15 +113,15 @@
 
                 <!-- Confirm Password -->
                 <div class="input-group mb-4 has-validation">
-                    <div class="form-floating">
+                    <div class="form-floating flex-grow-1">
                         <input type="password" class="form-control" id="confirmPassword" name="confirm_password"
                             placeholder="Confirm Password" required>
                         <label for="confirmPassword">Confirm Password</label>
                     </div>
-                    <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword">
+                    <button class="btn btn-outline-secondary password-toggle-btn" type="button" id="toggleConfirmPassword">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <div class="invalid-feedback">
+                    <div class="invalid-feedback w-100">
                         Passwords must match.
                     </div>
                 </div>

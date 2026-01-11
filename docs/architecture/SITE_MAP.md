@@ -1,4 +1,4 @@
-# Course Record Updater - Site Map & URL Structure
+# LoopCloser - Site Map & URL Structure
 
 ## **Design Philosophy**
 - **Workflow-centered navigation**: Pages follow Leslie's actual assessment workflow

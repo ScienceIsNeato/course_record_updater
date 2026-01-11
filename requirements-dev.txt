@@ -1,4 +1,4 @@
-# Course Record Updater - Development Dependencies
+# LoopCloser - Development Dependencies
 # Quality assurance and development tools
 
 # Code formatting and style

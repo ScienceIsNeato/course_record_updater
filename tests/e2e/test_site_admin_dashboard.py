@@ -8,6 +8,8 @@ and site-wide administration functionality.
 import pytest
 from playwright.sync_api import Page, expect
 
+from tests.e2e.header_navigator import HeaderNavigator
+
 
 @pytest.mark.e2e
 class TestSiteAdminDashboardWorkflow:
@@ -37,7 +39,8 @@ class TestSiteAdminDashboardWorkflow:
         page.goto("http://localhost:3002/dashboard")
         page.wait_for_load_state("networkidle")
 
-        users_link = page.locator('a.nav-link[href="/admin/users"]')
+        navigator = HeaderNavigator(page)
+        users_link = navigator.get_link("Users")
         expect(users_link).to_be_visible()
 
         href = users_link.get_attribute("href")
@@ -53,7 +56,8 @@ class TestSiteAdminDashboardWorkflow:
         page.goto("http://localhost:3002/dashboard")
         page.wait_for_load_state("networkidle")
 
-        institutions_btn = page.locator('button.nav-link[onclick="showInstitutions()"]')
+        navigator = HeaderNavigator(page)
+        institutions_btn = navigator.get_link("Institutions")
         expect(institutions_btn).to_be_visible()
         expect(institutions_btn).to_contain_text("Institutions")
 
@@ -63,6 +67,7 @@ class TestSiteAdminDashboardWorkflow:
         page.goto("http://localhost:3002/dashboard")
         page.wait_for_load_state("networkidle")
 
-        system_btn = page.locator('button.nav-link[onclick="showSystemSettings()"]')
+        navigator = HeaderNavigator(page)
+        system_btn = navigator.get_link("System")
         expect(system_btn).to_be_visible()
         expect(system_btn).to_contain_text("System")

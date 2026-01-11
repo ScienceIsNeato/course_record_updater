@@ -82,7 +82,7 @@ class CLOWorkflowService:
             # Verify CLO is in a state that can be approved
             if outcome.get("status") not in [
                 CLOStatus.AWAITING_APPROVAL,
-                CLOStatus.APPROVAL_PENDING,
+                CLOStatus.AWAITING_APPROVAL,
             ]:
                 logger.warning(
                     f"CLO {outcome_id} is in {outcome.get('status')} state, "
@@ -136,7 +136,7 @@ class CLOWorkflowService:
             # Verify CLO is in a state that can be sent back for rework
             if outcome.get("status") not in [
                 CLOStatus.AWAITING_APPROVAL,
-                CLOStatus.APPROVAL_PENDING,
+                CLOStatus.AWAITING_APPROVAL,
             ]:
                 logger.warning(
                     f"CLO {outcome_id} is in {outcome.get('status')} state, "
@@ -146,7 +146,7 @@ class CLOWorkflowService:
 
             # Update status and feedback
             update_data = {
-                "status": CLOStatus.APPROVAL_PENDING,
+                "status": CLOStatus.AWAITING_APPROVAL,
                 "approval_status": CLOApprovalStatus.NEEDS_REWORK,
                 "reviewed_at": datetime.now(timezone.utc),
                 "reviewed_by_user_id": reviewer_id,
@@ -174,7 +174,9 @@ class CLOWorkflowService:
             return False
 
     @staticmethod
-    def mark_as_nci(outcome_id: str, reviewer_id: str, reason: str = None) -> bool:
+    def mark_as_nci(
+        outcome_id: str, reviewer_id: str, reason: Optional[str] = None
+    ) -> bool:
         """
         Mark a CLO as "Never Coming In" (NCI) - added from CEI demo feedback.
 
@@ -310,7 +312,7 @@ class CLOWorkflowService:
             current_status = outcome.get("status")
 
             # Only auto-mark if currently assigned or approval_pending
-            if current_status not in [CLOStatus.ASSIGNED, CLOStatus.APPROVAL_PENDING]:
+            if current_status not in [CLOStatus.ASSIGNED, CLOStatus.AWAITING_APPROVAL]:
                 # Already in progress or submitted, don't change status
                 return True
 
@@ -409,7 +411,7 @@ class CLOWorkflowService:
 
     @staticmethod
     def validate_course_submission(
-        course_id: str, section_id: str = None
+        course_id: str, section_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Validate all CLOs and course-level data are complete before submission.
@@ -463,7 +465,7 @@ class CLOWorkflowService:
 
     @staticmethod
     def submit_course_for_approval(
-        course_id: str, user_id: str, section_id: str = None
+        course_id: str, user_id: str, section_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Submit all CLOs for a course for approval after validation.
@@ -491,7 +493,9 @@ class CLOWorkflowService:
             submitted_count = 0
             for outcome in outcomes:
                 outcome_id = outcome.get("outcome_id") or outcome.get("id")
-                if CLOWorkflowService.submit_clo_for_approval(outcome_id, user_id):
+                if outcome_id and CLOWorkflowService.submit_clo_for_approval(
+                    str(outcome_id), user_id
+                ):
                     submitted_count += 1
 
             return {
@@ -667,11 +671,36 @@ class CLOWorkflowService:
     @staticmethod
     def _enrich_outcome_with_instructor_details(
         outcome: Dict[str, Any], course_id: str, outcome_id: str
-    ) -> tuple[Optional[str], Optional[str], Optional[str]]:
-        """Get instructor name, email, and term name for an outcome."""
+    ) -> tuple[
+        Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]
+    ]:
+        """Get instructor name, email, term name, instructor ID, and section ID."""
         instructor = CLOWorkflowService._get_instructor_from_outcome(outcome)
+
+        section_id = None
+        try:
+            # Resolve section ID
+            sections = db.get_sections_by_course(course_id)
+            if sections:
+                if instructor:
+                    inst_id = instructor.get("user_id") or instructor.get("id")
+                    relevant = [
+                        s for s in sections if s.get("instructor_id") == inst_id
+                    ]
+                    if relevant:
+                        section_id = relevant[0].get("section_id") or relevant[0].get(
+                            "id"
+                        )
+
+                # Fallback to first section if still no section_id (e.g. Unassigned)
+                if not section_id:
+                    section_id = sections[0].get("section_id") or sections[0].get("id")
+        except Exception:
+            # Silently ignore section resolution errors - non-critical to overall operation
+            pass
+
         if not instructor:
-            return None, None, None
+            return None, None, None, None, section_id
 
         instructor_name = CLOWorkflowService._build_instructor_name(instructor)
         instructor_email = instructor.get("email")
@@ -684,7 +713,7 @@ class CLOWorkflowService:
             else None
         )
 
-        return instructor_name, instructor_email, term_name
+        return instructor_name, instructor_email, term_name, instructor_id, section_id
 
     @staticmethod
     def get_outcome_with_details(outcome_id: str) -> Optional[Dict[str, Any]]:
@@ -703,7 +732,8 @@ class CLOWorkflowService:
             if not outcome:
                 return None
 
-            course_id = outcome.get("course_id")
+            raw_course_id = outcome.get("course_id")
+            course_id = raw_course_id if isinstance(raw_course_id, str) else None
             course = db.get_course(course_id) if course_id else None
 
             instructor_name = None
@@ -711,11 +741,13 @@ class CLOWorkflowService:
             program_name = None
             term_name = None
 
-            if course:
+            if course and course_id:
                 (
                     instructor_name,
                     instructor_email,
                     term_name,
+                    instructor_id,
+                    section_id,
                 ) = CLOWorkflowService._enrich_outcome_with_instructor_details(
                     outcome, course_id, outcome_id
                 )
@@ -729,6 +761,8 @@ class CLOWorkflowService:
                 "course_title": course.get("course_title") if course else None,
                 "instructor_name": instructor_name,
                 "instructor_email": instructor_email,
+                "instructor_id": instructor_id,
+                "section_id": section_id,
                 "program_name": program_name,
                 "term_name": term_name,
             }

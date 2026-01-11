@@ -412,6 +412,81 @@ def clear_ethereal_inbox() -> bool:
         return False
 
 
+def _extract_body_content(email_message) -> tuple:
+    """Extract text and HTML body from email message."""
+    body = ""
+    html_body = ""
+    if email_message.is_multipart():
+        for part in email_message.walk():
+            content_type = part.get_content_type()
+            payload = part.get_payload(decode=True)
+            if not payload:
+                continue
+
+            # Simple decode, could be improved with charset detection
+            decoded = payload.decode(errors="replace")
+            if content_type == "text/plain":
+                body = decoded
+            elif content_type == "text/html":
+                html_body = decoded
+    else:
+        payload = email_message.get_payload(decode=True)
+        if payload:
+            body = payload.decode(errors="replace")
+
+    return body, html_body
+
+
+def _check_recipient(email_message, expected_recipient: str) -> bool:
+    """Check if email matches expected recipient."""
+    if not expected_recipient:
+        return True
+
+    from email.utils import parseaddr
+
+    to_field = email_message.get("To", "")
+    to_emails = [parseaddr(e.strip())[1].lower() for e in to_field.split(",")]
+    return expected_recipient.lower() in to_emails
+
+
+def _parse_and_match_email(
+    msg_data,
+    recipient_email: str,
+    subject_substring: Optional[str],
+    unique_identifier: Optional[str],
+) -> Optional[Dict[str, Any]]:
+    """
+    Parse email data and check against criteria.
+    Returns email dict if match, None otherwise.
+    """
+    email_message = email.message_from_bytes(msg_data[0][1])
+    subject = email_message.get("Subject", "")
+
+    # Check subject filter
+    if subject_substring and subject_substring not in subject:
+        return None
+
+    # Extract content
+    body, html_body = _extract_body_content(email_message)
+
+    # Check unique identifier
+    if unique_identifier:
+        if unique_identifier not in subject and unique_identifier not in body:
+            return None
+
+    # Check recipient
+    if not _check_recipient(email_message, recipient_email):
+        return None
+
+    return {
+        "subject": subject,
+        "from": email_message.get("From", ""),
+        "to": email_message.get("To", ""),
+        "body": body,
+        "html_body": html_body,
+    }
+
+
 def wait_for_email_via_imap(
     recipient_email: str,
     subject_substring: Optional[str] = None,
@@ -469,66 +544,22 @@ def wait_for_email_via_imap(
                     status, msg_data = mail.fetch(email_id, "(RFC822)")
 
                     if status == "OK":
-                        # Parse email
-                        email_message = email.message_from_bytes(msg_data[0][1])
+                        result = _parse_and_match_email(
+                            msg_data,
+                            recipient_email,
+                            subject_substring,
+                            unique_identifier,
+                        )
 
-                        # Extract subject
-                        subject = email_message.get("Subject", "")
+                        if result:
+                            # Found a match!
+                            mail.close()
+                            mail.logout()
 
-                        # Check if this email matches our criteria
-                        if subject_substring and subject_substring not in subject:
-                            continue
-
-                        # Extract body
-                        body = ""
-                        html_body = ""
-                        if email_message.is_multipart():
-                            for part in email_message.walk():
-                                content_type = part.get_content_type()
-                                if content_type == "text/plain":
-                                    body = part.get_payload(decode=True).decode()
-                                elif content_type == "text/html":
-                                    html_body = part.get_payload(decode=True).decode()
-                        else:
-                            body = email_message.get_payload(decode=True).decode()
-
-                        # Check unique identifier if specified
-                        if unique_identifier:
-                            if (
-                                unique_identifier not in subject
-                                and unique_identifier not in body
-                            ):
-                                continue
-
-                        # Check recipient email if specified
-                        if recipient_email:
-                            from email.utils import parseaddr
-
-                            to_field = email_message.get("To", "")
-                            # Handle both single email and comma-separated list with display names
-                            # parseaddr handles formats like "John Doe <john@example.com>"
-                            to_emails = [
-                                parseaddr(e.strip())[1].lower()
-                                for e in to_field.split(",")
-                            ]
-                            if recipient_email.lower() not in to_emails:
-                                continue
-
-                        # Found a match!
-                        mail.close()
-                        mail.logout()
-
-                        print(f"✅ Email found on attempt {attempt}!")
-                        print(f"   Subject: {subject}")
-                        print(f"   To: {email_message.get('To', '')}")
-
-                        return {
-                            "subject": subject,
-                            "from": email_message.get("From", ""),
-                            "to": email_message.get("To", ""),
-                            "body": body,
-                            "html_body": html_body,
-                        }
+                            print(f"✅ Email found on attempt {attempt}!")
+                            print(f"   Subject: {result['subject']}")
+                            print(f"   To: {result['to']}")
+                            return result
 
             # Close connection properly
             if mail:

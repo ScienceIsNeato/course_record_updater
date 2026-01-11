@@ -1,0 +1,100 @@
+<!-- _outcome_modals.html -->
+<!-- Outcome (CLO) Management Modals -->
+
+<!-- Create Outcome Modal -->
+<div class="modal fade" id="createOutcomeModal" tabindex="-1" aria-labelledby="createOutcomeModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createOutcomeModalLabel">Create New Course Learning Outcome</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="createOutcomeForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="outcomeCourseId" class="form-label">Course *</label>
+                        <select class="form-control" id="outcomeCourseId" name="course_id" required>
+                            <option value="">Select Course</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="outcomeCloNumber" class="form-label">CLO Number *</label>
+                        <input type="number" class="form-control" id="outcomeCloNumber" name="clo_number" required
+                            min="1" placeholder="e.g., 1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="outcomeDescription" class="form-label">Description *</label>
+                        <textarea class="form-control" id="outcomeDescription" name="description" rows="3"
+                            required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="outcomeAssessmentMethod" class="form-label">Assessment Method</label>
+                        <input type="text" class="form-control" id="outcomeAssessmentMethod" name="assessment_method">
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="outcomeActive" name="active" checked>
+                            <label class="form-check-label" for="outcomeActive">Active</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="createOutcomeBtn">
+                        <span class="btn-text">Create Outcome</span>
+                        <span class="btn-spinner d-none">
+                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                            Creating...
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Outcome Modal -->
+<div class="modal fade" id="editOutcomeModal" tabindex="-1" aria-labelledby="editOutcomeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editOutcomeModalLabel">Edit Course Learning Outcome</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editOutcomeForm">
+                <input type="hidden" id="editOutcomeId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editOutcomeCloNumber" class="form-label">CLO Number *</label>
+                        <input type="number" class="form-control" id="editOutcomeCloNumber" required min="1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editOutcomeDescription" class="form-label">Description *</label>
+                        <textarea class="form-control" id="editOutcomeDescription" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editOutcomeAssessmentMethod" class="form-label">Assessment Method</label>
+                        <input type="text" class="form-control" id="editOutcomeAssessmentMethod">
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="editOutcomeActive">
+                            <label class="form-check-label" for="editOutcomeActive">Active</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="btn-text">Update</span>
+                        <span class="btn-spinner d-none">
+                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                            Updating...
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

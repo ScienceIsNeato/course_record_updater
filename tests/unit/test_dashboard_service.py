@@ -104,7 +104,7 @@ class TestDashboardServiceScoped:
             }
         ]
         mock_terms.return_value = [
-            {"term_id": "t1", "name": "Fall 2024", "active": True}
+            {"term_id": "t1", "name": "Fall 2024", "status": "ACTIVE"}
         ]
         mock_institution.return_value = {"institution_id": "inst-1", "name": "Inst One"}
 

@@ -260,8 +260,8 @@ class TestAuthenticatedRouteGuards:
             assert "/users" in response.location
 
             response = client.get("/outcomes")
-            assert response.status_code == 302
-            assert "/assessments" in response.location
+            # Outcomes now renders the outcomes page for instructors
+            assert response.status_code == 200
 
     @patch("src.app.is_authenticated")
     def test_forgot_password_route_renders_template(self, mock_is_authenticated):

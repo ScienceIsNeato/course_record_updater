@@ -13,7 +13,7 @@ import mimetypes
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from src.database import database_service as db
 from src.utils.constants import (
@@ -82,7 +82,7 @@ class InstitutionService:
             raise LogoValidationError("Logo file is too large (max 5 MB)")
 
         extension = (
-            mimetypes.guess_extension(file.mimetype) or Path(file.filename).suffix
+            mimetypes.guess_extension(file.mimetype) or Path(file.filename or "").suffix
         )
         safe_extension = extension.lower()
         if safe_extension not in {".png", ".jpg", ".jpeg", ".svg"}:
@@ -118,7 +118,7 @@ class InstitutionService:
         website_url: Optional[str] = None,
         logo: Optional["FileStorage"] = None,
         remove_logo: bool = False,
-    ) -> Dict:
+    ) -> Optional[Dict[str, Any]]:
         institution = self.get_institution(institution_id)
 
         updates: Dict[str, Optional[str]] = {}

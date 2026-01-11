@@ -8,6 +8,15 @@
  * - API communication with CSRF protection
  */
 
+function publishProgramMutation(action, metadata = {}) {
+  globalThis.DashboardEvents?.publishMutation({
+    entity: "programs",
+    action,
+    metadata,
+    source: "programManagement",
+  });
+}
+
 /* eslint-disable no-console */
 // Initialize when DOM is ready
 // Handle case where DOM is already loaded (avoid race condition)
@@ -177,6 +186,8 @@ function initializeCreateProgramModal() {
 
         alert(result.message || "Program created successfully!");
 
+        publishProgramMutation("create", { programId: result.program_id });
+
         // Reload programs list if function exists
         if (typeof globalThis.loadPrograms === "function") {
           globalThis.loadPrograms();
@@ -253,6 +264,7 @@ function initializeEditProgramModal() {
         }
 
         alert(result.message || "Program updated successfully!");
+        publishProgramMutation("update", { programId });
 
         // Reload programs list
         if (typeof globalThis.loadPrograms === "function") {
@@ -321,6 +333,7 @@ async function deleteProgram(programId, programName) {
 
     if (response.ok) {
       alert(`${programName} deleted successfully.`);
+      publishProgramMutation("delete", { programId });
 
       // Refresh dashboard data if available
       if (

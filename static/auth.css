@@ -125,6 +125,45 @@
     font-weight: 600;
 }
 
+/* Read-only fields */
+.auth-form .readonly-field {
+    background-color: #e2e8f0 !important;
+    cursor: not-allowed;
+    color: #4a5568;
+}
+
+.auth-form .readonly-field:focus {
+    background-color: #e2e8f0 !important;
+    border-color: #cbd5e0;
+    box-shadow: none;
+}
+
+/* Password input group alignment */
+.input-group .form-floating.flex-grow-1 {
+    flex: 1 1 auto;
+}
+
+.password-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-left: none;
+    padding: 0 1rem;
+    min-width: 52px;
+}
+
+.password-toggle-btn:hover {
+    background-color: #f8fafc;
+}
+
+.input-group .invalid-feedback.w-100 {
+    display: block;
+    width: 100%;
+    margin-top: 0.25rem;
+}
+
 /* Password Toggle */
 .password-toggle {
     position: absolute;
@@ -221,31 +260,60 @@
 
 /* Buttons */
 .auth-form .btn {
-    border-radius: 12px;
+    border-radius: 0.5rem;
     padding: 0.875rem 1.5rem;
     font-weight: 600;
     font-size: 1rem;
-    transition: all 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
     position: relative;
     overflow: hidden;
+    box-shadow: none;
+}
+
+.auth-form .btn-primary,
+.auth-form .btn-secondary {
+    border-width: 1px;
 }
 
 .auth-form .btn-primary {
-    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-    border: none;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
 }
 
 .auth-form .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    background-color: #0b5ed7;
+    border-color: #0b5ed7;
 }
 
-.auth-form .btn-primary:disabled {
+.auth-form .btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: #fff;
+}
+
+.auth-form .btn-secondary:hover {
+    background-color: #5c636a;
+    border-color: #5c636a;
+}
+
+.auth-form .btn-primary:disabled,
+.auth-form .btn-secondary:disabled {
     background: #cbd5e0;
+    border-color: #cbd5e0;
+    color: #6c757d;
     transform: none;
-    box-shadow: none;
     cursor: not-allowed;
+}
+
+.standard-profile-btn {
+    min-width: 200px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    font-size: 1rem;
 }
 
 .btn-spinner {

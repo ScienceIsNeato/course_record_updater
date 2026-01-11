@@ -8,6 +8,15 @@
  * - API communication with CSRF protection
  */
 
+function publishCourseMutation(action, metadata = {}) {
+  globalThis.DashboardEvents?.publishMutation({
+    entity: "courses",
+    action,
+    metadata,
+    source: "courseManagement",
+  });
+}
+
 // Initialize when DOM is ready
 // Handle case where DOM is already loaded (avoid race condition)
 function initCourseManagement() {
@@ -164,6 +173,7 @@ function initializeCreateCourseModal() {
         form.reset();
 
         alert(result.message || "Course created successfully!");
+        publishCourseMutation("create", { courseId: result.course_id });
 
         // Reload courses list if function exists
         if (typeof globalThis.loadCourses === "function") {
@@ -250,6 +260,7 @@ function initializeEditCourseModal() {
         modal.hide();
 
         alert(result.message || "Course updated successfully!");
+        publishCourseMutation("update", { courseId });
 
         // Reload courses list
         if (typeof globalThis.loadCourses === "function") {
@@ -337,6 +348,7 @@ async function deleteCourse(courseId, courseNumber, courseTitle) {
 
     if (response.ok) {
       alert(`${courseNumber} deleted successfully.`);
+      publishCourseMutation("delete", { courseId });
 
       if (typeof globalThis.loadCourses === "function") {
         globalThis.loadCourses();
@@ -393,6 +405,10 @@ async function duplicateCourse(courseId, rawCourseData) {
     if (typeof globalThis.loadCourses === "function") {
       globalThis.loadCourses();
     }
+    publishCourseMutation("duplicate", {
+      courseId: result.course?.course_id,
+      sourceCourseId: courseId,
+    });
 
     if (result.course) {
       openEditCourseModal(result.course.course_id, result.course);

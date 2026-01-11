@@ -1,0 +1,17 @@
+{% set institution_nav_items = [
+    {"href": "/dashboard", "icon": "fa-tachometer-alt", "label": "Dashboard"},
+    {"href": "/audit-clo", "icon": "fa-history", "label": "Audit"},
+    {"href": "/assessments", "icon": "fa-chart-line", "label": "Progress"},
+    {"href": "/outcomes", "icon": "fa-bullseye", "label": "CLOs"},
+    {"href": "/users", "icon": "fa-users", "label": "Users"},
+    {"href": "/courses", "icon": "fa-book", "label": "Courses"},
+    {"href": "/offerings", "icon": "fa-clipboard-list", "label": "Offerings"},
+    {"href": "/sections", "icon": "fa-layer-group", "label": "Sections"},
+] %}
+
+{% for item in institution_nav_items %}
+    {% set is_active = request.path.startswith(item.href) %}
+    <a class="nav-link btn btn-link{% if is_active %} active{% endif %}" href="{{ item.href }}">
+        <i class="fas {{ item.icon }} me-1"></i>{{ item.label }}
+    </a>
+{% endfor %}

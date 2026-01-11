@@ -160,7 +160,12 @@ def _add_utc_offset(datetime_str: str) -> str:
 class ImportService:
     """Service for handling data imports with conflict resolution using the adapter registry system"""
 
-    def __init__(self, institution_id, verbose=False, progress_callback=None):
+    def __init__(
+        self,
+        institution_id: str,
+        verbose: bool = False,
+        progress_callback: Optional[Callable] = None,
+    ) -> None:
         """
         Initialize the ImportService for a specific institution.
 
@@ -175,17 +180,20 @@ class ImportService:
         self.institution_id = institution_id
         self.verbose = verbose
         self.progress_callback = progress_callback
-        self._processed_users = set()  # Track users we've already processed
-        self._processed_courses = set()  # Track courses we've already processed
+        self._processed_users: set[str] = set()  # Track users we've already processed
+        self._processed_courses: set[str] = (
+            set()
+        )  # Track courses we've already processed
 
         # Get centralized logger
         from src.utils.logging_config import get_import_logger
 
         self.logger = get_import_logger()
 
+        self.stats: Dict[str, Any] = {}
         self.reset_stats()
 
-    def reset_stats(self):
+    def reset_stats(self) -> None:
         """Reset import statistics"""
         self.stats = {
             "records_processed": 0,
@@ -199,7 +207,7 @@ class ImportService:
             "conflicts": [],
         }
 
-    def _log(self, message: str, level: str = "info"):
+    def _log(self, message: str, level: str = "info") -> None:
         """Smart logging that respects verbose mode"""
         if self.verbose or level in ["error", "warning", "summary"]:
             if level == "error":
@@ -298,13 +306,13 @@ class ImportService:
 
     def _log_import_start(
         self, file_path: str, conflict_strategy: ConflictStrategy, dry_run: bool
-    ):
+    ) -> None:
         """Log import start information."""
         self.logger.info(f"[Import] Starting import from: {file_path}")
         self.logger.info(f"[Import] Conflict strategy: {conflict_strategy.value}")
         self.logger.info(f"[Import] Mode: {'DRY RUN' if dry_run else 'EXECUTE'}")
 
-    def _prepare_import(self, file_path: str, adapter_id: str):
+    def _prepare_import(self, file_path: str, adapter_id: str) -> Optional[Any]:
         """Prepare import by validating file and getting adapter."""
         # Validate file exists
         if not os.path.exists(file_path):
@@ -345,7 +353,9 @@ class ImportService:
 
         return adapter
 
-    def _parse_file_data(self, adapter, file_path: str, adapter_id: str):
+    def _parse_file_data(
+        self, adapter: Any, file_path: str, adapter_id: str
+    ) -> Optional[Dict[str, List[Any]]]:
         """Parse file data using the adapter."""
         try:
             parse_options = {"institution_id": self.institution_id}
@@ -380,7 +390,7 @@ class ImportService:
         parsed_data: Dict[str, List],
         conflict_strategy: ConflictStrategy,
         dry_run: bool,
-    ):
+    ) -> None:
         """Process all parsed data in dependency order."""
         all_conflicts = []
         total_records = sum(len(records) for records in parsed_data.values())
@@ -426,7 +436,7 @@ class ImportService:
         dry_run: bool,
         processed_records: int,
         total_records: int,
-    ) -> List:
+    ) -> List[ConflictRecord]:
         """Process records for a specific data type."""
         all_conflicts = []
 
@@ -452,7 +462,7 @@ class ImportService:
 
     def _update_progress(
         self, processed_records: int, total_records: int, data_type: str
-    ):
+    ) -> None:
         """Update progress reporting."""
         progress = int(processed_records / total_records * 100)
         if (
@@ -478,7 +488,7 @@ class ImportService:
         record: Dict,
         conflict_strategy: ConflictStrategy,
         dry_run: bool,
-    ) -> List:
+    ) -> List[ConflictRecord]:
         """Process a single record based on its data type."""
         if data_type == "courses":
             _, conflicts = self.process_course_import(
@@ -560,7 +570,7 @@ class ImportService:
         # Never trust institution_id from import data (multi-tenant isolation)
         course_data["institution_id"] = self.institution_id
 
-        course_number = course_data.get("course_number")
+        course_number = course_data.get("course_number") or ""
 
         # Detect conflicts by comparing fields
         detected_conflicts = self._detect_course_conflicts(
@@ -661,7 +671,8 @@ class ImportService:
             update_data.pop(field, None)
 
         converted_course_data = _convert_datetime_fields(update_data)
-        update_course(existing_course.get("course_id"), converted_course_data)
+        course_id = existing_course.get("course_id") or ""
+        update_course(course_id, converted_course_data)
         self.stats["records_updated"] += 1
         self._log(f"Updated course: {course_number}")
 
@@ -766,7 +777,7 @@ class ImportService:
         # Never trust institution_id from import data (multi-tenant isolation)
         user_data["institution_id"] = self.institution_id
 
-        email = user_data.get("email")
+        email = user_data.get("email") or ""
 
         # Detect conflicts by comparing fields
         detected_conflicts = self._detect_user_conflicts(
@@ -812,15 +823,6 @@ class ImportService:
                 detected_conflicts.append(conflict)
 
         return detected_conflicts
-
-    def _mark_conflicts_resolved(
-        self, detected_conflicts: List[ConflictRecord], strategy: ConflictStrategy
-    ) -> None:
-        """Mark conflicts as resolved with the given strategy."""
-        if detected_conflicts:
-            self.stats["conflicts_resolved"] += len(detected_conflicts)
-            for conflict in detected_conflicts:
-                conflict.resolution = strategy.value
 
     def _prepare_user_update_data(
         self, user_data: Dict[str, Any], existing_user: Dict[str, Any], email: str
@@ -950,7 +952,9 @@ class ImportService:
 
         return conflicts
 
-    def _process_term_import(self, term_data: Dict[str, Any], dry_run: bool = False):
+    def _process_term_import(
+        self, term_data: Dict[str, Any], dry_run: bool = False
+    ) -> None:
         """Process term import (simplified implementation)"""
         try:
             term_name = term_data.get("term_name")
@@ -1025,7 +1029,7 @@ class ImportService:
         offering_data: Dict[str, Any],
         strategy: ConflictStrategy,
         dry_run: bool = False,
-    ):
+    ) -> None:
         """Process course offering import"""
         try:
             # Extract and validate required data
@@ -1069,7 +1073,6 @@ class ImportService:
                 course_id=course_id,
                 term_id=term_id,
                 institution_id=institution_id,
-                status="active",
             )
 
             offering_id = create_course_offering(offering_schema)
@@ -1111,7 +1114,6 @@ class ImportService:
             course_id=course_id,
             term_id=term_id,
             institution_id=institution_id,
-            status="active",
         )
         offering_id = create_course_offering(offering_schema)
 
@@ -1144,7 +1146,7 @@ class ImportService:
         self,
         section_data: Dict[str, Any],
         dry_run: bool = False,
-    ):
+    ) -> None:
         """Process course section import"""
         try:
             # Extract required data
@@ -1228,7 +1230,7 @@ class ImportService:
         clo_data: Dict[str, Any],
         strategy: ConflictStrategy,
         dry_run: bool = False,
-    ):
+    ) -> None:
         """Process course learning outcome (CLO) import"""
         try:
             # Extract required data
@@ -1307,8 +1309,12 @@ class ImportService:
             self._log(f"Traceback: {traceback.format_exc()}", "error")
 
     def _try_link_single_course(
-        self, course, program_lookup, course_mappings, add_course_to_program_func
-    ):
+        self,
+        course: Dict[str, Any],
+        program_lookup: Dict[str, str],
+        course_mappings: Dict[str, str],
+        add_course_to_program_func: Callable[[str, str], bool],
+    ) -> bool:
         """Helper to link a single course to its program. Returns True if linked."""
         course_number = course["course_number"]
         prefix = course_number.split("-")[0] if "-" in course_number else None
@@ -1336,7 +1342,7 @@ class ImportService:
             # Already linked, that's fine
             return False
 
-    def _link_courses_to_programs(self):
+    def _link_courses_to_programs(self) -> None:
         """
         Automatically link imported courses to programs based on course number prefixes.
 
@@ -1387,12 +1393,22 @@ class ImportService:
             # Remove None values if no default program found
             course_mappings = {k: v for k, v in course_mappings.items() if v}
 
-            linked_count = sum(
-                1
-                for course in courses
-                if self._try_link_single_course(
-                    course, program_lookup, course_mappings, add_course_to_program
-                )
+            # Narrow type to Dict[str, str] for mypy
+            from typing import cast
+
+            course_mappings_typed = cast(Dict[str, str], course_mappings)
+
+            linked_count = len(
+                [
+                    course
+                    for course in courses
+                    if self._try_link_single_course(
+                        course,
+                        program_lookup,
+                        course_mappings_typed,
+                        add_course_to_program,
+                    )
+                ]
             )
 
             if linked_count > 0:

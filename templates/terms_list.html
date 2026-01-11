@@ -1,6 +1,6 @@
 {% extends "dashboard/base_dashboard.html" %}
 
-{% block title %}Terms - Course Record Updater{% endblock %}
+{% block title %}Terms - LoopCloser{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
@@ -45,28 +45,38 @@
                 <h5 class="modal-title" id="editTermModalLabel">Edit Term</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <input type="hidden" id="editTermId">
-                <div class="mb-3">
-                    <label for="editTermName" class="form-label">Term Name *</label>
-                    <input type="text" class="form-control" id="editTermName" required placeholder="e.g., Fall 2025">
+            <form id="editTermForm">
+                <div class="modal-body">
+                    <input type="hidden" id="editTermId">
+                    <div class="mb-3">
+                        <label for="editTermName" class="form-label">Term Name *</label>
+                        <input type="text" class="form-control" id="editTermName" required
+                            placeholder="e.g., Fall 2025">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editTermStartDate" class="form-label">Start Date *</label>
+                        <input type="date" class="form-control" id="editTermStartDate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editTermEndDate" class="form-label">End Date *</label>
+                        <input type="date" class="form-control" id="editTermEndDate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editTermAssessmentDueDate" class="form-label">Assessment Due Date</label>
+                        <input type="date" class="form-control" id="editTermAssessmentDueDate">
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label for="editTermStartDate" class="form-label">Start Date *</label>
-                    <input type="date" class="form-control" id="editTermStartDate" required>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="btn-text">Save Changes</span>
+                        <span class="btn-spinner d-none">
+                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                            Saving...
+                        </span>
+                    </button>
                 </div>
-                <div class="mb-3">
-                    <input type="date" class="form-control" id="editTermEndDate" required>
-                </div>
-                <div class="mb-3">
-                    <label for="editTermAssessmentDueDate" class="form-label">Assessment Due Date</label>
-                    <input type="date" class="form-control" id="editTermAssessmentDueDate">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="saveEditedTerm()">Save Changes</button>
-            </div>
+            </form>
         </div>
     </div>
 </div>

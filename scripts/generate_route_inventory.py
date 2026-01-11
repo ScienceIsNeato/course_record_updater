@@ -29,12 +29,12 @@ ROLES = ["site_admin", "institution_admin", "program_admin", "instructor"]
 class RouteExtractor(ast.NodeVisitor):
     """AST visitor to extract route decorators and function metadata."""
 
-    def __init__(self):
-        self.routes = []
-        self.current_function = None
-        self.current_decorators = []
+    def __init__(self) -> None:
+        self.routes: List[Dict[str, Any]] = []
+        self.current_function: str | None = None
+        self.current_decorators: List[Dict[str, Any]] = []
 
-    def visit_FunctionDef(self, node):
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         """Visit function definitions to extract route decorators."""
         self.current_function = node.name
         self.current_decorators = []
@@ -52,7 +52,7 @@ class RouteExtractor(ast.NodeVisitor):
 
         self.generic_visit(node)
 
-    def visit_Call(self, node):
+    def visit_Call(self, node: ast.Call) -> None:
         """Extract route decorator calls."""
         if isinstance(node.func, ast.Attribute):
             # Handle @app.route, @api.route, @blueprint.route
@@ -69,9 +69,10 @@ class RouteExtractor(ast.NodeVisitor):
                     if keyword.arg == "methods":
                         if isinstance(keyword.value, ast.List):
                             methods = [
-                                elt.value
+                                str(elt.value)
                                 for elt in keyword.value.elts
                                 if isinstance(elt, ast.Constant)
+                                and isinstance(elt.value, str)
                             ]
 
                 self.current_decorators.append(
@@ -271,7 +272,7 @@ def map_route_to_template(route_path: str, source_file: str) -> str:
     return ""
 
 
-def _determine_api_role_access(route_path, auth_info):
+def _determine_api_role_access(route_path: str, auth_info: Dict[str, Any]) -> List[str]:
     """Determine role access for API routes."""
     # Health check is public
     if route_path == "/api/health" or route_path.endswith("/health"):
@@ -299,7 +300,9 @@ def _determine_api_role_access(route_path, auth_info):
     return ["public"]
 
 
-def _determine_page_role_access(route_path, auth_info):
+def _determine_page_role_access(
+    route_path: str, auth_info: Dict[str, Any]
+) -> List[str]:
     """Determine role access for page routes."""
     if route_path in ["/", "/login", "/register"]:
         return ["public"]
@@ -331,7 +334,7 @@ def determine_role_access(
     return _determine_page_role_access(route_path, auth_info)
 
 
-def _extract_app_routes(project_root):
+def _extract_app_routes(project_root: Path) -> List[Dict[str, Any]]:
     """Extract routes from app.py."""
     routes = []
     app_py = project_root / "app.py"
@@ -348,7 +351,7 @@ def _extract_app_routes(project_root):
     return routes
 
 
-def _extract_api_routes(project_root):
+def _extract_api_routes(project_root: Path) -> List[Dict[str, Any]]:
     """Extract routes from api_routes.py."""
     routes = []
     api_routes_py = project_root / "api_routes.py"
@@ -367,7 +370,7 @@ def _extract_api_routes(project_root):
     return routes
 
 
-def _extract_blueprint_routes(project_root):
+def _extract_blueprint_routes(project_root: Path) -> List[Dict[str, Any]]:
     """Extract routes from api/routes/*.py."""
     routes = []
     api_routes_dir = project_root / "api" / "routes"
@@ -393,7 +396,7 @@ def _extract_blueprint_routes(project_root):
     return routes
 
 
-def _deduplicate_routes(routes):
+def _deduplicate_routes(routes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Deduplicate routes by path + methods."""
     seen = set()
     unique_routes = []
@@ -405,7 +408,7 @@ def _deduplicate_routes(routes):
     return unique_routes
 
 
-def _enrich_routes(unique_routes):
+def _enrich_routes(unique_routes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Organize and enrich routes with metadata."""
     organized_routes = []
     for route in unique_routes:
@@ -437,7 +440,7 @@ def _enrich_routes(unique_routes):
     return organized_routes
 
 
-def _write_page_routes_section(f, page_routes):
+def _write_page_routes_section(f: Any, page_routes: List[Dict[str, Any]]) -> None:
     """Write page routes table."""
     f.write(f"### Page Routes ({len(page_routes)} total)\n\n")
     f.write("| Path | Methods | Template | Auth Required | Permission | Roles |\n")
@@ -454,7 +457,7 @@ def _write_page_routes_section(f, page_routes):
         )
 
 
-def _write_api_routes_section(f, api_routes):
+def _write_api_routes_section(f: Any, api_routes: List[Dict[str, Any]]) -> None:
     """Write API routes table."""
     f.write(f"\n### API Routes ({len(api_routes)} total)\n\n")
     f.write("| Path | Methods | Auth Required | Permission | Roles |\n")
@@ -470,7 +473,7 @@ def _write_api_routes_section(f, api_routes):
         )
 
 
-def _write_role_routes_section(f, organized_routes):
+def _write_role_routes_section(f: Any, organized_routes: List[Dict[str, Any]]) -> None:
     """Write routes organized by role."""
     f.write("\n## Routes by Role\n\n")
 
@@ -495,7 +498,9 @@ def _write_role_routes_section(f, organized_routes):
             f.write("\n")
 
 
-def _write_markdown_report(output_file, organized_routes):
+def _write_markdown_report(
+    output_file: Path, organized_routes: List[Dict[str, Any]]
+) -> None:
     """Generate markdown report."""
     page_routes = [r for r in organized_routes if r["type"] == "page"]
     api_routes = [r for r in organized_routes if r["type"] == "api"]
@@ -517,7 +522,7 @@ def _write_markdown_report(output_file, organized_routes):
     print(f"  - API routes: {len(api_routes)}")
 
 
-def main():
+def main() -> None:
     """Generate route inventory."""
     project_root = Path(__file__).parent.parent
     output_dir = project_root / "logs" / "exploration"

@@ -9,12 +9,11 @@ Tests create their own specific data (users, sections) via API calls.
 import argparse
 import json
 import os
-import random
 import sys
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
@@ -24,6 +23,7 @@ import src.database.database_service as database_service
 from src.models.models import (
     Course,
     CourseOffering,
+    CourseOutcome,
     CourseSection,
     Institution,
     Program,
@@ -50,8 +50,8 @@ class BaselineSeeder(ABC):
     See SEED_DB_REFACTOR_PLAN.md for migration strategy.
     """
 
-    def __init__(self):
-        self.created = {
+    def __init__(self) -> None:
+        self.created: Dict[str, List[Any]] = {
             "institutions": [],
             "users": [],
             "programs": [],
@@ -59,7 +59,18 @@ class BaselineSeeder(ABC):
             "courses": [],
         }
 
-    def log(self, message: str):
+    @staticmethod
+    def _coerce_to_str(value: Any) -> Optional[str]:
+        """Return a string representation for IDs when possible."""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        if isinstance(value, int):
+            return str(value)
+        return None
+
+    def log(self, message: str) -> None:
         """Log with [SEED] prefix"""
         print(f"[SEED] {message}")
 
@@ -81,367 +92,106 @@ class BaselineSeeder(ABC):
             self.log(f"⚠️  Failed to load manifest: {e}")
             return {}
 
-    @abstractmethod
-    def seed(self):
-        """Implement seeding logic in subclasses"""
-        pass
+    def create_institutions_from_manifest(
+        self, institutions_data: List[Dict[str, Any]]
+    ) -> List[str]:
+        """
+        Create institutions from manifest data.
 
+        Args:
+            institutions_data: List of institution dictionaries
 
-class BaselineTestSeeder(BaselineSeeder):
-    """
-    Seeds baseline test infrastructure for E2E/integration tests.
-
-    TODO (Future - Phase 2): Move hardcoded data to tests/fixtures/baseline_test_manifest.json
-    This class currently contains hardcoded institution, program, and term data
-    that should be externalized to JSON manifests for flexibility.
-    See SEED_DB_REFACTOR_PLAN.md for migration strategy.
-    """
-
-    def __init__(self):
-        super().__init__()
-
-    def log(self, message: str):
-        """Log with [SEED] prefix"""
-        print(f"[SEED] {message}")
-
-    def seed(self):
-        """Implementation of abstract seed method - calls seed_baseline()"""
-        return self.seed_baseline()
-
-    def create_institutions(self, manifest_institutions=None):
-        """Create 3 test institutions"""
-        self.log("🏢 Creating test institutions...")
-
-        institutions = [
-            {
-                "name": "Mock University",
-                "short_name": "MOCKU",
-                "admin_email": "admin@mocku.test",
-                "website_url": "https://mocku.test",
-                "created_by": "system",
-            },
-            {
-                "name": "Riverside Community College",
-                "short_name": "RCC",
-                "admin_email": "admin@riverside.edu",
-                "website_url": "https://riverside.edu",
-                "created_by": "system",
-            },
-            {
-                "name": "Pacific Technical University",
-                "short_name": "PTU",
-                "admin_email": "admin@pactech.edu",
-                "website_url": "https://pactech.edu",
-                "created_by": "system",
-            },
-        ]
-
-        # Merge in logo_path from manifest if provided
-        if manifest_institutions:
-            for manifest_inst in manifest_institutions:
-                short_name = manifest_inst.get("short_name")
-                logo_path = manifest_inst.get("logo_path")
-                if short_name and logo_path:
-                    for inst_data in institutions:
-                        if inst_data["short_name"] == short_name:
-                            inst_data["logo_path"] = logo_path
-                            break
-
+        Returns:
+            List of created/existing institution IDs
+        """
         institution_ids = []
-        for inst_data in institutions:
-            existing = database_service.db.get_institution_by_short_name(
-                inst_data["short_name"]
-            )
+        for inst_data in institutions_data:
+            short_name = inst_data.get("short_name", "")
+
+            # Check if already exists
+            existing = database_service.db.get_institution_by_short_name(short_name)
             if existing:
                 institution_ids.append(existing["institution_id"])
                 continue
 
-            schema = Institution.create_schema(**inst_data)
+            schema = Institution.create_schema(
+                name=inst_data.get("name", short_name),
+                short_name=short_name,
+                admin_email=inst_data.get(
+                    "admin_email", f"admin@{short_name.lower()}.test"
+                ),
+                website_url=inst_data.get(
+                    "website_url", f"https://{short_name.lower()}.test"
+                ),
+                created_by="system",
+            )
+            if inst_data.get("logo_path"):
+                schema["logo_path"] = inst_data["logo_path"]
+
             inst_id = database_service.db.create_institution(schema)
             if inst_id:
                 institution_ids.append(inst_id)
                 self.created["institutions"].append(inst_id)
+                self.log(f"   ✓ Created institution: {inst_data.get('name')}")
 
         return institution_ids
 
-    def create_site_admin(self):
-        """Create site administrator account"""
-        self.log("👑 Creating site administrator...")
+    def create_terms_from_manifest(
+        self, institution_ids: List[str], terms_data: List[Dict[str, Any]]
+    ) -> List[str]:
+        """
+        Create terms from manifest data.
 
-        from tests.test_credentials import SITE_ADMIN_EMAIL, SITE_ADMIN_PASSWORD
+        Args:
+            institution_ids: List of institution IDs to create terms for
+            terms_data: List of term dictionaries with name, code, and offset days
 
-        email = SITE_ADMIN_EMAIL
-        password = SITE_ADMIN_PASSWORD  # pragma: allowlist secret - Imported from test_credentials
-
-        existing = database_service.db.get_user_by_email(email)
-        if existing:
-            return existing["user_id"]
-
-        password_hash = hash_password(password)
-        schema = User.create_schema(
-            email=email,
-            first_name="Site",
-            last_name="Administrator",
-            role="site_admin",
-            institution_id=SITE_ADMIN_INSTITUTION_ID,
-            password_hash=password_hash,
-            account_status="active",
-        )
-        schema["email_verified"] = True
-
-        user_id = database_service.db.create_user(schema)
-        if user_id:
-            self.created["users"].append(user_id)
-        return user_id
-
-    def seed_baseline(self, manifest_data=None):
-        """Seed minimal baseline data"""
-        self.log("🌱 Seeding baseline E2E infrastructure...")
-
-        manifest_institutions = (
-            manifest_data.get("institutions") if manifest_data else None
-        )
-        inst_ids = self.create_institutions(manifest_institutions)
-        self.create_site_admin()
-
-        # Create programs BEFORE users - users may reference program_code for assignment
-        prog_ids = self.create_programs(inst_ids)
-        term_ids = self.create_terms(inst_ids)
-
-        # Users from manifest or fallback (must be after programs for program_code resolution)
-        custom_admins = []
-        if manifest_data and "users" in manifest_data:
-            custom_admins = manifest_data["users"]
-
-        self.create_institution_admins(inst_ids, custom_admins)
-
-        course_ids = self.create_sample_courses(inst_ids, prog_ids)
-        instructor_ids = self.create_sample_instructors(inst_ids, prog_ids)
-
-        # Only create default program admin if not in manifest (manifest might handle it)
-        # But for now, let's keep it unless we want full override.
-        # The manifest 'users' list can contain any role.
-        # create_institution_admins processes the list.
-        # Wait, create_institution_admins logic needs to handle role types if we mix them?
-        # Let's check create_institution_admins logic below.
-
-        self.create_sample_program_admins(inst_ids, prog_ids)
-        self.create_sample_sections(course_ids, term_ids, instructor_ids, inst_ids)
-
-        self.log("✅ Baseline seeding completed!")
-        self.print_summary()
-        return True
-
-    # ... create_institutions ... create_site_admin ...
-
-    def _resolve_institution_id(self, user_data, institution_ids):
-        """Resolve institution ID from user data (helper for create_institution_admins)"""
-        if "institution_idx" in user_data:
-            idx = user_data["institution_idx"]
-            if idx < len(institution_ids):
-                return institution_ids[idx]
-            return None
-        if "institution_short_name" in user_data:
-            short = user_data["institution_short_name"]
-            found = database_service.db.get_institution_by_short_name(short)
-            if found:
-                return found["institution_id"]
-        return None
-
-    def _resolve_password(self, user_data):
-        """Resolve and hash password from user data (helper for create_institution_admins)"""
-        pwd_env = user_data.get("password_env_var", "DEFAULT_PASSWORD")  # nosec B105
-        pwd_raw = "InstitutionAdmin123!"  # nosec B105 # pragma: allowlist secret
-        if pwd_env != "DEFAULT_PASSWORD" and os.getenv(pwd_env):  # nosec B105
-            pwd_raw = os.getenv(pwd_env)
-        elif "password" in user_data:
-            pwd_raw = user_data["password"]
-        return hash_password(pwd_raw)
-
-    def _resolve_program_assignment(self, user_data, inst_id):
-        """Resolve program IDs from user data (helper for create_institution_admins)"""
-        if "program_code" not in user_data:
-            return []
-        progs = database_service.db.get_programs_by_institution(inst_id)
-        for p in progs:
-            if p["short_name"] == user_data["program_code"]:
-                return [p["program_id"]]
-        return []
-
-    def create_institution_admins(self, institution_ids, custom_data=None):
-        """Create institution admins (and other users if specified in manifest)"""
-        self.log("🎓 Creating institution administrators...")
-
-        users_to_create = (
-            custom_data
-            if custom_data
-            else self._build_default_admin_list(institution_ids)
-        )
-        return self._create_users_from_list(users_to_create, institution_ids)
-
-    def _build_default_admin_list(self, institution_ids):
-        """Build default admin user list when no manifest provided"""
-        from tests.test_credentials import INSTITUTION_ADMIN_EMAIL
-
-        users = []
-        email_map = {
-            0: INSTITUTION_ADMIN_EMAIL,
-            1: "mike.admin@riverside.edu",
-            2: "linda.admin@pactech.edu",
-        }
-        for idx in range(len(institution_ids)):
-            # Use specific email for tests
-            email = email_map.get(idx, f"admin{idx+1}@example.com")
-
-            users.append(
-                {
-                    "email": email,
-                    "first_name": "Admin",
-                    "last_name": f"User {idx+1}",
-                    "institution_idx": idx,
-                    "password_env_var": "DEFAULT_PASSWORD",
-                    "role": "institution_admin",
-                }
-            )
-        return users
-
-    def _create_users_from_list(self, users_to_create, institution_ids):
-        """Create users from a list of user data dictionaries"""
-        created_ids = []
-        for user_data in users_to_create:
-            user_id = self._create_single_user(user_data, institution_ids)
-            if user_id:
-                created_ids.append(user_id)
-        return created_ids
-
-    def _create_single_user(self, user_data, institution_ids):
-        """Create a single user from user data dictionary"""
-        email = user_data["email"]
-
-        # Resolve institution
-        inst_id = self._resolve_institution_id(user_data, institution_ids)
-        if not inst_id and user_data.get("role") != "site_admin":
-            self.log(f"   ⚠️  Skipping {email} - unknown institution")
-            return None
-
-        # Check for existing user
-        existing = database_service.db.get_user_by_email(email)
-        if existing:
-            return existing["user_id"]
-
-        # Build user schema
-        password_hash = self._resolve_password(user_data)
-        role = user_data.get("role", "institution_admin")
-
-        schema = User.create_schema(
-            email=email,
-            first_name=user_data["first_name"],
-            last_name=user_data["last_name"],
-            role=role,
-            institution_id=inst_id,
-            password_hash=password_hash,
-            account_status="active",
-        )
-        schema["email_verified"] = True
-
-        # Handle program assignment if needed
-        program_ids = self._resolve_program_assignment(user_data, inst_id)
-        if program_ids:
-            schema["program_ids"] = program_ids
-
-        user_id = database_service.db.create_user(schema)
-        if user_id:
-            self.created["users"].append(user_id)
-        return user_id
-
-    def create_programs(self, institution_ids):
-        """Create academic programs"""
-        self.log("📚 Creating academic programs...")
-
-        programs_data = [
-            {"name": "Computer Science", "code": "CS", "institution_idx": 0},
-            {"name": "Electrical Engineering", "code": "EE", "institution_idx": 0},
-            {"name": "Business Administration", "code": "BUS", "institution_idx": 0},
-            {"name": "Liberal Arts", "code": "LA", "institution_idx": 1},
-            {"name": "Nursing", "code": "NURS", "institution_idx": 1},
-            {"name": "Mechanical Engineering", "code": "ME", "institution_idx": 2},
-            {"name": "Computer Engineering", "code": "CE", "institution_idx": 2},
-            {"name": "Civil Engineering", "code": "CIV", "institution_idx": 2},
-        ]
-
-        program_ids = []
-        for prog_data in programs_data:
-            inst_id = institution_ids[prog_data["institution_idx"]]
-
-            schema = Program.create_schema(
-                name=prog_data["name"],
-                short_name=prog_data["code"],
-                institution_id=inst_id,
-                description=PROGRAM_DEFAULT_DESCRIPTION,
-                created_by="system",
-            )
-
-            prog_id = database_service.db.create_program(schema)
-            if prog_id:
-                program_ids.append(prog_id)
-                self.created["programs"].append(prog_id)
-
-        return program_ids
-
-    def create_terms(self, institution_ids):
-        """Create academic terms"""
-        self.log("📅 Creating academic terms...")
-
-        base_date = datetime.now(timezone.utc)
-        terms_data = [
-            {
-                "name": "Fall 2025",
-                "code": "FA2025",
-                "start_offset": -90,
-                "end_offset": -1,
-            },
-            {
-                "name": "Spring 2026",
-                "code": "SP2026",
-                "start_offset": 0,
-                "end_offset": 120,
-            },
-            {
-                "name": "Summer 2026",
-                "code": "SU2026",
-                "start_offset": 121,
-                "end_offset": 180,
-            },
-            {
-                "name": "Fall 2026",
-                "code": "FA2026",
-                "start_offset": 181,
-                "end_offset": 300,
-            },
-            {
-                "name": "Spring 2027",
-                "code": "SP2027",
-                "start_offset": 301,
-                "end_offset": 420,
-            },
-        ]
-
+        Returns:
+            List of created term IDs
+        """
         term_ids = []
+        base_date = datetime.now(timezone.utc)
+
         for term_data in terms_data:
             for inst_id in institution_ids:
-                start_date = base_date + timedelta(days=term_data["start_offset"])
-                end_date = base_date + timedelta(days=term_data["end_offset"])
+                # Use explicit dates if provided, else calculate relative to now
+                if term_data.get("start_date") and term_data.get("end_date"):
+                    # Parse YYYY-MM-DD strings
+                    try:
+                        # Handle both date-only and full timestamps if necessary
+                        sd_str = term_data["start_date"]
+                        ed_str = term_data["end_date"]
+                        # Create naive datetimes (or timezone aware if needed, standardizing on UTC is safest but inputs are likely naive dates)
+                        # We use .fromisoformat which handles YYYY-MM-DD as midnight
+                        start_date = datetime.fromisoformat(sd_str)
+                        end_date = datetime.fromisoformat(ed_str)
+                        # Ensure timezone awareness if base_date is aware (base_date is UTC)
+                        if start_date.tzinfo is None:
+                            start_date = start_date.replace(tzinfo=timezone.utc)
+                        if end_date.tzinfo is None:
+                            end_date = end_date.replace(tzinfo=timezone.utc)
+                    except ValueError:
+                        self.log(
+                            f"   ⚠️ Invalid date format for term {term_data.get('name')}, falling back to defaults"
+                        )
+                        start_date = base_date
+                        end_date = base_date + timedelta(days=120)
+                else:
+                    start_offset = term_data.get("start_offset_days", 0)
+                    end_offset = term_data.get("end_offset_days", 120)
+                    start_date = base_date + timedelta(days=start_offset)
+                    end_date = base_date + timedelta(days=end_offset)
 
                 schema = Term.create_schema(
-                    name=term_data["name"],
+                    name=term_data.get("name", "Default Term"),
                     start_date=start_date.isoformat(),
                     end_date=end_date.isoformat(),
                     assessment_due_date=end_date.isoformat(),
-                    active=True,
                 )
-                # Database layer expects both 'name' and 'term_name'
-                schema["term_name"] = term_data["name"]
-                schema["term_code"] = term_data["code"]
+                schema["term_name"] = term_data.get("name")
+                schema["term_code"] = term_data.get("term_code") or term_data.get(
+                    "code", ""
+                )
                 schema["institution_id"] = inst_id
 
                 term_id = database_service.db.create_term(schema)
@@ -449,58 +199,141 @@ class BaselineTestSeeder(BaselineSeeder):
                     term_ids.append(term_id)
                     self.created["terms"].append(term_id)
 
+        self.log(
+            f"   ✓ Created {len(term_ids)} terms across {len(institution_ids)} institutions"
+        )
         return term_ids
 
-    def create_sample_courses(self, institution_ids, program_ids):
-        """Create sample courses"""
-        self.log("📖 Creating sample courses...")
+    def create_programs_from_manifest(
+        self,
+        institution_id_or_ids: Union[str, List[str]],
+        programs_data: List[Dict[str, Any]],
+    ) -> List[str]:
+        """
+        Create programs from manifest data.
 
-        courses_data = [
-            {
-                "name": "Introduction to Programming",
-                "code": "CS-101",
-                "credits": 3,
-                "program_idx": 0,
-            },
-            {
-                "name": "Data Structures",
-                "code": "CS-201",
-                "credits": 4,
-                "program_idx": 0,
-            },
-            {
-                "name": "Circuit Analysis",
-                "code": "EE-101",
-                "credits": 4,
-                "program_idx": 1,
-            },
-            {
-                "name": "English Composition",
-                "code": "ENG-101",
-                "credits": 3,
-                "program_idx": 3,
-            },
-            {
-                "name": "Thermodynamics",
-                "code": "ME-201",
-                "credits": 3,
-                "program_idx": 5,
-            },
-        ]
+        Args:
+            institution_id_or_ids: Single institution ID or list of institution IDs
+            programs_data: List of program dictionaries with 'name', optional 'code', 'description', 'institution_idx'
+
+        Returns:
+            List of created program IDs
+        """
+        # Normalize to list
+        raw_institution_ids = (
+            institution_id_or_ids
+            if isinstance(institution_id_or_ids, list)
+            else [institution_id_or_ids]
+        )
+        institution_ids: List[str] = []
+        for inst_id in raw_institution_ids:
+            normalized = self._coerce_to_str(inst_id)
+            if normalized:
+                institution_ids.append(normalized)
+        if not institution_ids:
+            return []
+
+        program_ids = []
+        for prog_data in programs_data:
+            # Determine institution - use institution_idx if provided, else first institution
+            inst_idx = prog_data.get("institution_idx", 0)
+            if inst_idx < len(institution_ids):
+                institution_id = institution_ids[inst_idx]
+            else:
+                institution_id = institution_ids[0]
+
+            schema = Program.create_schema(
+                name=prog_data["name"],
+                short_name=prog_data.get("code", prog_data["name"][:4].upper()),
+                institution_id=institution_id,
+                description=prog_data.get("description", PROGRAM_DEFAULT_DESCRIPTION),
+                created_by="system",
+            )
+
+            prog_id = database_service.db.create_program(schema)
+            if prog_id:
+                program_ids.append(prog_id)
+                self.created["programs"].append(prog_id)
+                self.log(f"   ✓ Created program: {prog_data['name']}")
+
+        return program_ids
+
+    def create_courses_from_manifest(
+        self,
+        institution_id_or_ids: Union[str, List[str]],
+        courses_data: List[Dict[str, Any]],
+        program_ids_or_map: Union[List[str], Dict[str, str]],
+    ) -> List[str]:
+        """
+        Create courses from manifest data.
+
+        Args:
+            institution_id_or_ids: Single institution ID or list of institution IDs
+            courses_data: List of course dictionaries with 'code', 'name', 'credits', 'program_code' or 'program_idx'
+            program_ids_or_map: Either a Dict mapping program codes to IDs, or a List of program IDs
+
+        Returns:
+            List of created course IDs
+        """
+        # Normalize institutions
+        raw_institution_ids = (
+            institution_id_or_ids
+            if isinstance(institution_id_or_ids, list)
+            else [institution_id_or_ids]
+        )
+        institution_ids: List[str] = []
+        for inst_id in raw_institution_ids:
+            normalized = self._coerce_to_str(inst_id)
+            if normalized:
+                institution_ids.append(normalized)
+        if not institution_ids:
+            return []
+
+        # Normalize program reference - can be dict (code->id) or list (by index)
+        if isinstance(program_ids_or_map, dict):
+            program_map: Optional[Dict[str, str]] = cast(
+                Dict[str, str], program_ids_or_map
+            )
+            program_list: Optional[List[str]] = None
+        else:
+            program_map = None
+            program_list = cast(List[str], program_ids_or_map)
 
         course_ids = []
         for course_data in courses_data:
-            program_id = program_ids[course_data["program_idx"]]
+            # Resolve program ID
+            program_id = None
+            if "program_code" in course_data and program_map:
+                program_id = program_map.get(course_data["program_code"])
+            elif "program_idx" in course_data and program_list:
+                idx = course_data["program_idx"]
+                if idx < len(program_list):
+                    program_id = program_list[idx]
+
+            if not program_id:
+                self.log(
+                    f"   ⚠️  No program found for course {course_data.get('code')}, skipping"
+                )
+                continue
+
+            # Get institution from program if we have multiple
             program = database_service.db.get_program_by_id(program_id)
+            institution_id = self._coerce_to_str(
+                program.get("institution_id") if program else None
+            )
+            if institution_id is None:
+                institution_id = institution_ids[0]
 
             schema = Course.create_schema(
                 course_number=course_data["code"],
                 course_title=course_data["name"],
-                department=course_data["code"][
-                    :2
-                ],  # Extract dept from code (e.g., "CS" from "CS101")
-                institution_id=program["institution_id"],
-                credit_hours=course_data["credits"],
+                department=(
+                    course_data["code"].split("-")[0]
+                    if "-" in course_data["code"]
+                    else course_data["code"][:4]
+                ),
+                institution_id=institution_id,
+                credit_hours=course_data.get("credits", 3),
                 program_ids=[program_id],
                 active=True,
             )
@@ -509,143 +342,723 @@ class BaselineTestSeeder(BaselineSeeder):
             if course_id:
                 course_ids.append(course_id)
                 self.created["courses"].append(course_id)
+                self.log(
+                    f"   ✓ Created course: {course_data['code']} - {course_data['name']}"
+                )
 
         return course_ids
 
-    def create_sample_instructors(self, institution_ids, program_ids):
-        """Create sample instructors for dashboard display tests"""
-        self.log("👨‍🏫 Creating sample instructors...")
+    def create_users_from_manifest(
+        self,
+        institution_id_or_ids: Union[str, List[str]],
+        users_data: List[Dict[str, Any]],
+        program_ids_or_map: Union[Dict[str, str], List[str]],
+        default_password_hash: str,
+    ) -> List[Optional[str]]:
+        """
+        Create users from manifest data.
 
-        from tests.test_credentials import INSTRUCTOR_EMAIL
+        Args:
+            institution_id_or_ids: Single institution ID or list of institution IDs
+            users_data: List of user dictionaries with email, first_name, last_name, role
+            program_ids_or_map: Dict mapping program codes to IDs, or list of program IDs
+            default_password_hash: Hashed password to use for users without password_env_var
 
-        instructors_data = [
-            {
-                "email": INSTRUCTOR_EMAIL,
-                "first_name": "John",
-                "last_name": "Smith",
-                "institution_idx": 0,
-                "program_idx": 0,
-            },
-            {
-                "email": "jane.instructor@mocku.test",
-                "first_name": "Jane",
-                "last_name": "Doe",
-                "institution_idx": 0,
-                "program_idx": 1,
-            },
-        ]
+        Returns:
+            List of created user IDs
+        """
+        # Normalize institutions
+        institution_ids = (
+            institution_id_or_ids
+            if isinstance(institution_id_or_ids, list)
+            else [institution_id_or_ids]
+        )
 
-        instructor_ids = []
-        from tests.test_credentials import INSTRUCTOR_PASSWORD
+        # Normalize program reference
+        program_map = (
+            program_ids_or_map if isinstance(program_ids_or_map, dict) else None
+        )
+        program_list = (
+            program_ids_or_map if isinstance(program_ids_or_map, list) else None
+        )
 
-        password_hash = hash_password(
-            INSTRUCTOR_PASSWORD
-        )  # pragma: allowlist secret - Imported from test_credentials
-
-        for inst_data in instructors_data:
-            inst_id = institution_ids[inst_data["institution_idx"]]
-
-            existing = database_service.db.get_user_by_email(inst_data["email"])
-            if existing:
-                instructor_ids.append(existing["user_id"])
+        user_ids: List[Optional[str]] = []
+        for user_data in users_data:
+            # Resolve email (may be from env var)
+            email = self._resolve_user_email(user_data)
+            if not email:
+                user_ids.append(None)  # Maintain index alignment
                 continue
 
+            # Skip if user already exists
+            existing = database_service.db.get_user_by_email(email)
+            if existing:
+                user_ids.append(existing["user_id"])
+                continue
+
+            # Resolve institution
+            inst_idx = user_data.get("institution_idx", 0)
+            role = user_data.get("role", "instructor")
+
+            # Site admins use special institution ID
+            if role == "site_admin":
+                inst_id = str(SITE_ADMIN_INSTITUTION_ID)
+            else:
+                inst_id = (
+                    institution_ids[inst_idx]
+                    if inst_idx < len(institution_ids)
+                    else institution_ids[0]
+                )
+
+            password_hash = self._resolve_user_password_hash(
+                user_data, default_password_hash
+            )
+            program_ids = self._resolve_user_program_ids(
+                user_data, program_map, program_list
+            )
+
             schema = User.create_schema(
-                email=inst_data["email"],
-                first_name=inst_data["first_name"],
-                last_name=inst_data["last_name"],
-                role="instructor",
+                email=email,
+                first_name=user_data.get("first_name", ""),
+                last_name=user_data.get("last_name", ""),
+                role=role,
                 institution_id=inst_id,
                 password_hash=password_hash,
                 account_status="active",
-                program_ids=[program_ids[inst_data["program_idx"]]],
+                program_ids=program_ids,
             )
             schema["email_verified"] = True
+            if user_data.get("system_date_override"):
+                try:
+                    schema["system_date_override"] = datetime.fromisoformat(
+                        user_data["system_date_override"]
+                    )
+                except ValueError:
+                    self.log(
+                        f"   ⚠️ Invalid date format for system_date_override: {user_data['system_date_override']}"
+                    )
 
             user_id = database_service.db.create_user(schema)
             if user_id:
-                instructor_ids.append(user_id)
+                user_ids.append(user_id)
                 self.created["users"].append(user_id)
+                self.log(
+                    f"   ✓ Created user: {user_data.get('first_name')} {user_data.get('last_name')} ({role})"
+                )
+            else:
+                user_ids.append(None)  # Maintain index alignment on creation failure
 
-        return instructor_ids
+        return user_ids
 
-    def create_sample_program_admins(self, institution_ids, program_ids):
-        """Create sample program admin for E2E tests"""
-        self.log("👔 Creating sample program admin...")
+    def _resolve_user_email(self, user_data: Dict[str, Any]) -> Optional[str]:
+        """Return email from manifest or test credentials env."""
+        email = user_data.get("email")
+        if email:
+            return email
+        env_key = user_data.get("email_env_var")
+        if not env_key:
+            return None
 
-        from tests.test_credentials import PROGRAM_ADMIN_EMAIL
+        try:
+            from tests import test_credentials  # Local import to avoid cycles
 
-        # Create CS program admin
-        email = PROGRAM_ADMIN_EMAIL
-        existing = database_service.db.get_user_by_email(email)
-        if existing:
-            return existing["user_id"]
+            return getattr(test_credentials, env_key, None)
+        except ImportError:
+            return None
 
-        from tests.test_credentials import PROGRAM_ADMIN_PASSWORD
+    def _resolve_user_password_hash(
+        self, user_data: Dict[str, Any], fallback: str
+    ) -> str:
+        """Hash password from manifest or fall back to default."""
+        password_hash = fallback
+        env_key = user_data.get("password_env_var")
+        if not env_key:
+            return password_hash
 
-        password_hash = hash_password(
-            PROGRAM_ADMIN_PASSWORD
-        )  # pragma: allowlist secret - Imported from test_credentials
-        schema = User.create_schema(
-            email=email,
-            first_name="Bob",
-            last_name="ProgramAdmin",
-            role="program_admin",
-            institution_id=institution_ids[0],  # MockU
-            password_hash=password_hash,
-            account_status="active",
-            program_ids=[program_ids[0]],  # CS program
-        )
-        schema["email_verified"] = True
+        try:
+            from tests import test_credentials
 
-        user_id = database_service.db.create_user(schema)
-        if user_id:
-            self.created["users"].append(user_id)
+            password_value = getattr(test_credentials, env_key, None)
+            if password_value:
+                password_hash = hash_password(password_value)
+        except ImportError:
+            # Gracefully handle missing test_credentials module - use default password hash
+            pass
 
-        return user_id
+        return password_hash
 
-    def create_sample_sections(
-        self, course_ids, term_ids, instructor_ids, institution_ids
-    ):
-        """Create sample sections for dashboard display tests"""
-        self.log("📝 Creating sample sections...")
+    def _resolve_user_program_ids(
+        self,
+        user_data: Dict[str, Any],
+        program_map: Optional[Dict[str, str]],
+        program_list: Optional[List[str]],
+    ) -> List[str]:
+        """Return program IDs based on manifest references."""
+        if "program_code" in user_data and program_map:
+            code = user_data["program_code"]
+            if code in program_map:
+                return [program_map[code]]
+        elif "program_idx" in user_data and program_list:
+            idx = user_data["program_idx"]
+            if 0 <= idx < len(program_list):
+                return [program_list[idx]]
+        return []
 
-        # Create course offerings first (required for sections)
+    def create_offerings_from_manifest(
+        self,
+        institution_id: str,
+        term_id_or_map: Union[str, Dict[str, str]],
+        offerings_data: List[Dict[str, Any]],
+        course_map: Dict[str, str],
+        instructor_ids: List[str],
+        assessment_due_date: str = "2025-12-15T23:59:59",
+    ) -> Dict[str, Any]:
+        """
+        Create offerings and sections from manifest data.
+
+        Args:
+            institution_id: The institution to create offerings for
+            term_id_or_map: Default term ID, or Dict mapping term codes to term IDs
+            offerings_data: List of offering dicts with 'course_code' and 'sections'
+            course_map: Dict mapping course codes to course IDs
+            instructor_ids: List of instructor IDs for assignment
+            assessment_due_date: Default due date for sections
+
+        Returns:
+            Dict with 'offering_ids' and 'section_count'
+        """
         offering_ids = []
-        for course_id in course_ids[:3]:  # First 3 courses
-            # Use Spring 2025 term (index 1)
-            term_id = term_ids[1] if len(term_ids) > 1 else term_ids[0]
-            schema = CourseOffering.create_schema(
-                course_id=course_id,
-                term_id=term_id,
-                institution_id=institution_ids[0],  # MockU
-                status="active",
-            )
-            offering_id = database_service.db.create_course_offering(schema)
-            if offering_id:
-                offering_ids.append(offering_id)
-
-        # Create sections
         section_count = 0
-        for i, offering_id in enumerate(offering_ids):
-            instructor_id = instructor_ids[
-                i % len(instructor_ids)
-            ]  # Rotate instructors
 
-            schema = CourseSection.create_schema(
-                offering_id=offering_id,
-                section_number=f"00{i+1}",
-                instructor_id=instructor_id,
-                enrollment=0,
-                status="assigned",
+        default_term_id = term_id_or_map if isinstance(term_id_or_map, str) else None
+        term_map = term_id_or_map if isinstance(term_id_or_map, dict) else {}
+
+        for offering_data in offerings_data:
+            course_id = self._resolve_course_id_from_manifest(offering_data, course_map)
+            if not course_id:
+                continue
+
+            term_id = self._resolve_term_id_from_manifest(
+                offering_data, default_term_id, term_map
             )
-            section_id = database_service.db.create_course_section(schema)
-            if section_id:
+            if not term_id:
+                self.log(
+                    f"   ⚠️  No term ID resolveable for offering {offering_data.get('course_code')}, skipping"
+                )
+                continue
+
+            offering_id = self._create_offering_with_sections(
+                institution_id,
+                course_id,
+                term_id,
+                offering_data,
+                instructor_ids,
+            )
+            if not offering_id:
+                continue
+
+            offering_ids.append(offering_id)
+            section_count += self._create_sections_for_offering(
+                offering_id, offering_data.get("sections", []), instructor_ids
+            )
+
+        return {"offering_ids": offering_ids, "section_count": section_count}
+
+    def _resolve_course_id_from_manifest(
+        self, offering_data: Dict[str, Any], course_map: Dict[str, str]
+    ) -> Optional[str]:
+        course_code = self._coerce_to_str(offering_data.get("course_code"))
+        if course_code:
+            course_id = course_map.get(course_code)
+            if course_id:
+                return course_id
+
+        course_id_from_manifest = self._coerce_to_str(offering_data.get("course_id"))
+        if course_id_from_manifest:
+            return course_id_from_manifest
+
+        if course_code is not None:
+            for code, cid in course_map.items():
+                if code == course_code:
+                    return cid
+        self.log(f"   ⚠️  Course code '{course_code}' not found, skipping offering")
+        return None
+
+    def _resolve_term_id_from_manifest(
+        self,
+        offering_data: Dict[str, Any],
+        default_term_id: Optional[str],
+        term_map: Dict[str, str],
+    ) -> Optional[str]:
+        if "_term_id" in offering_data:
+            return offering_data["_term_id"]
+        if "term_code" in offering_data and term_map:
+            return term_map.get(offering_data["term_code"])
+        if default_term_id:
+            return default_term_id
+        if term_map:
+            return next(iter(term_map.values()), None)
+
+        return None
+
+    def _create_offering_with_sections(
+        self,
+        institution_id: str,
+        course_id: str,
+        term_id: str,
+        offering_data: Dict[str, Any],
+        instructor_ids: List[str],
+    ) -> Optional[str]:
+        schema = CourseOffering.create_schema(
+            course_id=course_id,
+            term_id=term_id,
+            institution_id=institution_id,
+        )
+
+        offering_id = database_service.db.create_course_offering(schema)
+        return offering_id
+
+    def _create_sections_for_offering(
+        self,
+        offering_id: str,
+        sections: List[Dict[str, Any]],
+        instructor_ids: List[str],
+    ) -> int:
+        section_count = 0
+        for section in sections:
+            section_schema = self._build_section_schema(
+                offering_id, section, instructor_ids
+            )
+            if database_service.db.create_course_section(section_schema):
                 section_count += 1
+        return section_count
 
-        self.log(f"   ✓ Created {section_count} sections")
+    def _build_section_schema(
+        self,
+        offering_id: str,
+        section_data: Dict[str, Any],
+        instructor_ids: List[str],
+    ) -> Dict[str, Any]:
+        """Return CourseSection schema using manifest section definition."""
+        instructor_id = self._resolve_section_instructor(section_data, instructor_ids)
+        return CourseSection.create_schema(
+            offering_id=offering_id,
+            section_number=section_data.get("section_number", "001"),
+            instructor_id=instructor_id,
+            enrollment=section_data.get("enrollment", 0),
+            status=section_data.get("status", "assigned"),
+        )
 
-    def print_summary(self):
+    def _resolve_section_instructor(
+        self, section_data: Dict[str, Any], instructor_ids: List[str]
+    ) -> Optional[str]:
+        """Map instructor index to ID if provided."""
+        idx = section_data.get("instructor_idx")
+        if isinstance(idx, int) and 0 <= idx < len(instructor_ids):
+            return instructor_ids[idx]
+        return None
+
+    def create_clos_from_manifest(
+        self, course_ids: List[str], manifest_data: Dict[str, Any]
+    ) -> int:
+        """
+        Create CLOs from manifest templates and specific CLO definitions.
+
+        Args:
+            course_ids: List of course IDs to apply templates to
+            manifest_data: Full manifest dict containing 'clo_templates' and 'clos'
+
+        Returns:
+            Number of CLOs created
+        """
+        course_map = self._build_course_lookup(course_ids)
+        clo_count = self._create_clo_templates(
+            course_map, manifest_data.get("clo_templates", {})
+        )
+        clo_count += self._create_specific_clos(
+            course_ids, course_map, manifest_data.get("clos", [])
+        )
+        return clo_count
+
+    def _build_course_lookup(self, course_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+        """Build course lookup mapping by ID and course number."""
+        course_map: Dict[str, Dict[str, Any]] = {}
+        for cid in course_ids:
+            course = database_service.db.get_course_by_id(cid)
+            if not course:
+                continue
+            course_map[cid] = course
+            course_number = self._coerce_to_str(course.get("course_number"))
+            if course_number:
+                course_map[course_number] = course
+        return course_map
+
+    def _create_clo_templates(
+        self,
+        course_map: Dict[str, Dict[str, Any]],
+        clo_templates: Dict[str, List[Dict[str, Any]]],
+    ) -> int:
+        from src.models.models import CourseOutcome
+        from src.utils.constants import CLOStatus
+
+        clo_count = 0
+        for course in course_map.values():
+            course_num = self._coerce_to_str(course.get("course_number")) or ""
+            prefix = course_num.split("-")[0] if "-" in course_num else ""
+            templates = clo_templates.get(prefix, [])
+            if not templates:
+                continue
+            course_id = self._coerce_to_str(course.get("id") or course.get("course_id"))
+            if not course_id:
+                continue
+            existing = database_service.db.get_course_outcomes(course_id)
+            existing_numbers = {str(c.get("clo_number")) for c in existing or []}
+            for template in templates:
+                template_num = str(template["num"])
+                if template_num in existing_numbers:
+                    continue
+                schema = CourseOutcome.create_schema(
+                    course_id=course_id,
+                    clo_number=template_num,
+                    description=template["desc"],
+                    assessment_method=template["method"],
+                )
+                schema["status"] = CLOStatus.ASSIGNED
+                schema["active"] = True
+                if database_service.db.create_course_outcome(schema):
+                    clo_count += 1
+        return clo_count
+
+    def _create_specific_clos(
+        self,
+        course_ids: List[str],
+        course_map: Dict[str, Dict[str, Any]],
+        specific_clos: List[Dict[str, Any]],
+    ) -> int:
+        from src.utils.constants import CLOApprovalStatus, CLOStatus
+
+        clo_count = 0
+        status_lookup = self._status_lookup()
+        for clo_data in specific_clos:
+            target_course = self._resolve_target_course(
+                clo_data, course_ids, course_map
+            )
+            if not target_course:
+                self.log(
+                    f"   ⚠️  Target course not found for CLO #{clo_data.get('clo_number')}"
+                )
+                continue
+            target_id = self._coerce_to_str(
+                target_course.get("id") or target_course.get("course_id")
+            )
+            if not target_id:
+                self.log(
+                    f"   ⚠️  Missing course ID for CLO #{clo_data.get('clo_number')}, skipping"
+                )
+                continue
+            status_str = clo_data.get("status", "assigned")
+            status_enum, approval_status = status_lookup.get(
+                status_str, (CLOStatus.ASSIGNED, None)
+            )
+            submitted_at = self._parse_submitted_at(
+                status_str, clo_data.get("submitted_at")
+            )
+            students_took = clo_data.get("students_took")
+            students_passed = clo_data.get("students_passed")
+            assessment_tool = clo_data.get("assessment_tool")
+            updates = self._build_clo_updates(
+                status_enum,
+                approval_status,
+                submitted_at,
+                students_took,
+                students_passed,
+                assessment_tool,
+            )
+            existing = database_service.db.get_course_outcomes(target_id)
+            existing_clo = next(
+                (
+                    c
+                    for c in existing or []
+                    if str(c.get("clo_number")) == str(clo_data.get("clo_number"))
+                ),
+                None,
+            )
+            if existing_clo:
+                if updates:
+                    database_service.db.update_course_outcome(
+                        existing_clo["outcome_id"], updates
+                    )
+                continue
+            schema = self._build_clo_schema(
+                target_id,
+                clo_data,
+                status_enum,
+                approval_status,
+                submitted_at,
+                students_took,
+                students_passed,
+                assessment_tool,
+            )
+            if database_service.db.create_course_outcome(schema):
+                clo_count += 1
+                self.log(
+                    f"   ✓ Created specific CLO #{clo_data.get('clo_number')} for {clo_data.get('course_code')}"
+                )
+        return clo_count
+
+    @staticmethod
+    def _parse_submitted_at(
+        status_str: str, submitted_value: Optional[str]
+    ) -> Optional[datetime]:
+        """Parse submitted_at when applicable."""
+        if status_str not in {"approved", "awaiting_approval"} or not submitted_value:
+            return None
+        try:
+            return datetime.fromisoformat(submitted_value)
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _status_lookup() -> Dict[str, Tuple[Any, Optional[str]]]:
+        from src.utils.constants import CLOApprovalStatus, CLOStatus
+
+        return {
+            "unassigned": (CLOStatus.UNASSIGNED, None),
+            "approved": (CLOStatus.APPROVED, CLOApprovalStatus.APPROVED),
+            "completed": (CLOStatus.COMPLETED, None),
+            "needs_rework": (
+                CLOStatus.AWAITING_APPROVAL,
+                CLOApprovalStatus.NEEDS_REWORK,
+            ),
+            "never_coming_in": (
+                CLOStatus.NEVER_COMING_IN,
+                CLOApprovalStatus.NEVER_COMING_IN,
+            ),
+            "awaiting_approval": (
+                CLOStatus.AWAITING_APPROVAL,
+                CLOApprovalStatus.PENDING,
+            ),
+        }
+
+    def _resolve_target_course(
+        self,
+        clo_data: Dict[str, Any],
+        course_ids: List[str],
+        course_map: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+        course_code = self._coerce_to_str(clo_data.get("course_code"))
+        target_course = course_map.get(course_code) if course_code else None
+        if not target_course and "course_idx" in clo_data:
+            idx = clo_data["course_idx"]
+            if 0 <= idx < len(course_ids):
+                target_course = course_map.get(course_ids[idx])
+        return target_course
+
+    def _build_clo_updates(
+        self,
+        status_enum: Any,
+        approval_status: Optional[str],
+        submitted_at: Optional[datetime],
+        students_took: Optional[int],
+        students_passed: Optional[int],
+        assessment_tool: Optional[str],
+    ) -> Dict[str, Any]:
+        updates: Dict[str, Any] = {}
+        status_name = status_enum.name if hasattr(status_enum, "name") else status_enum
+        if status_enum and status_name != "ASSIGNED":
+            updates["status"] = status_enum
+        if approval_status:
+            updates["approval_status"] = approval_status
+        if submitted_at:
+            updates["submitted_at"] = submitted_at
+        if students_took is not None:
+            updates["students_took"] = students_took
+        if students_passed is not None:
+            updates["students_passed"] = students_passed
+        if assessment_tool:
+            updates["assessment_tool"] = assessment_tool
+        if students_took is not None and students_passed is not None:
+            updates["percentage_meeting"] = (
+                round((students_passed / students_took) * 100, 2)
+                if students_took > 0
+                else None
+            )
+        return updates
+
+    def _build_clo_schema(
+        self,
+        course_id: str,
+        clo_data: Dict[str, Any],
+        status_enum: Any,
+        approval_status: Optional[str],
+        submitted_at: Optional[datetime],
+        students_took: Optional[int],
+        students_passed: Optional[int],
+        assessment_tool: Optional[str],
+    ) -> Dict[str, Any]:
+        description = self._coerce_to_str(clo_data.get("description")) or ""
+        assessment_method = self._coerce_to_str(clo_data.get("assessment_method")) or ""
+        schema = CourseOutcome.create_schema(
+            course_id=course_id,
+            clo_number=str(clo_data.get("clo_number")),
+            description=description,
+            assessment_method=assessment_method,
+        )
+        schema["status"] = status_enum
+        if approval_status:
+            schema["approval_status"] = approval_status
+        if submitted_at:
+            schema["submitted_at"] = submitted_at
+        if students_took is not None:
+            schema["students_took"] = students_took
+        if students_passed is not None:
+            schema["students_passed"] = students_passed
+        if assessment_tool:
+            schema["assessment_tool"] = assessment_tool
+        schema["percentage_meeting"] = (
+            round((students_passed / students_took) * 100, 2)
+            if students_took and students_passed is not None and students_took > 0
+            else None
+        )
+        schema["active"] = True
+        return schema
+
+    @abstractmethod
+    def seed(self) -> bool:
+        """Implement seeding logic in subclasses"""
+        pass
+
+
+class BaselineTestSeeder(BaselineSeeder):
+    """
+    Seeds baseline test infrastructure for E2E/integration tests.
+
+    Uses tests/fixtures/baseline_test_manifest.json for all data.
+    All data must come from manifest - no hardcoded fallbacks.
+    """
+
+    DEFAULT_MANIFEST_PATH = "tests/fixtures/baseline_test_manifest.json"
+
+    def __init__(self, manifest_path: Optional[str] = None) -> None:
+        super().__init__()
+        self.manifest_path = manifest_path
+
+    def seed(self) -> bool:
+        """Implementation of abstract seed method"""
+        return self.seed_baseline()
+
+    def _get_manifest_path(self) -> str:
+        """Get the manifest path, relative to project root"""
+        if self.manifest_path:
+            return self.manifest_path
+
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(script_dir)
+        return os.path.join(project_root, self.DEFAULT_MANIFEST_PATH)
+
+    def seed_baseline(self, manifest_data: Optional[Dict[str, Any]] = None) -> bool:
+        """Seed baseline data from manifest - REQUIRED"""
+        self.log("🌱 Seeding baseline E2E infrastructure...")
+
+        # Load manifest - REQUIRED
+        if manifest_data is None:
+            manifest_path = self._get_manifest_path()
+            manifest_data = self.load_manifest(manifest_path)
+
+        if not manifest_data:
+            self.log("❌ Manifest is required for baseline seeding")
+            return False
+
+        # Validate required sections
+        required_sections = [
+            "institutions",
+            "programs",
+            "terms",
+            "courses",
+            "users",
+            "offerings",
+        ]
+        for section in required_sections:
+            if section not in manifest_data:
+                self.log(f"❌ '{section}' required in manifest")
+                return False
+
+        # Create institutions
+        self.log("🏢 Creating test institutions...")
+        inst_ids = self.create_institutions_from_manifest(manifest_data["institutions"])
+
+        # Create programs
+        self.log("📚 Creating academic programs...")
+        prog_ids = self.create_programs_from_manifest(
+            inst_ids, manifest_data["programs"]
+        )
+
+        # Create terms
+        self.log("📅 Creating academic terms...")
+        term_ids = self.create_terms_from_manifest(inst_ids, manifest_data["terms"])
+
+        # Create courses
+        self.log("📖 Creating sample courses...")
+        course_ids = self.create_courses_from_manifest(
+            inst_ids, manifest_data["courses"], prog_ids
+        )
+
+        # Build course_map by index for offerings
+        course_map = {str(i): cid for i, cid in enumerate(course_ids)}
+
+        # Create users (site_admin, instructors, program admins, institution admins)
+        self.log("👥 Creating users...")
+        from tests.test_credentials import INSTITUTION_ADMIN_PASSWORD
+
+        default_hash = hash_password(INSTITUTION_ADMIN_PASSWORD)
+        user_ids = self.create_users_from_manifest(
+            inst_ids, manifest_data["users"], prog_ids, default_hash
+        )
+
+        # Filter instructor IDs for section assignment
+        instructor_ids: List[str] = []
+        for i, user_data in enumerate(manifest_data["users"]):
+            if (
+                user_data.get("role") == "instructor"
+                and i < len(user_ids)
+                and user_ids[i] is not None
+            ):
+                user_id = user_ids[i]
+                if user_id is not None:  # Type narrowing for mypy
+                    instructor_ids.append(user_id)
+
+        # Create offerings and sections
+        self.log("📝 Creating course offerings and sections...")
+        # Convert index-based offerings to code-based format for base class method
+        offerings_data = manifest_data["offerings"]
+        for offering in offerings_data:
+            # Add course_code from course_idx
+            course_idx = offering.get("course_idx", 0)
+            offering["course_code"] = str(course_idx)
+            # Add term handling
+            term_idx = offering.get("term_idx", 0)
+            if term_idx < len(term_ids):
+                offering["_term_id"] = term_ids[term_idx]
+
+        # Use first term as default
+        default_term_id = term_ids[1] if len(term_ids) > 1 else term_ids[0]
+
+        result = self.create_offerings_from_manifest(
+            institution_id=inst_ids[0],
+            term_id_or_map=default_term_id,
+            offerings_data=offerings_data,
+            course_map=course_map,
+            instructor_ids=instructor_ids,
+        )
+        self.log(
+            f"   ✓ Created {len(result['offering_ids'])} offerings and {result['section_count']} sections"
+        )
+
+        self.log("✅ Baseline seeding completed!")
+        self.print_summary()
+        return True
+
+    def print_summary(self) -> None:
         """Print seeding summary"""
         self.log("")
         self.log("📊 Summary:")
@@ -655,12 +1068,7 @@ class BaselineTestSeeder(BaselineSeeder):
         self.log(f"   Terms: {len(self.created['terms'])} created")
         self.log(f"   Courses: {len(self.created['courses'])} created")
         self.log("")
-        self.log("🔑 Bootstrap Accounts:")
-        self.log("   Site Admin: siteadmin@system.local / SiteAdmin123!")
-        self.log("")
-        self.log("   Institution Admins:")
-        self.log("      (See console output for created generic admins)")
-        self.log("      Default Password: InstitutionAdmin123!")
+        self.log("🔑 Test Accounts: (see manifest for credentials)")
 
 
 class DatabaseSeeder:
@@ -671,824 +1079,190 @@ class DatabaseSeeder:
     to BaselineTestSeeder.seed_baseline() for E2E tests. This provides backward compatibility.
     """
 
-    def __init__(self, verbose=True):
+    def __init__(self, verbose: bool = True) -> None:
         self.seeder = BaselineTestSeeder()
         self.verbose = verbose
 
-    def seed_full_dataset(self):
+    def seed_full_dataset(self) -> bool:
         """Seed the full baseline dataset (compatibility method)"""
         return self.seeder.seed_baseline()
 
 
-class DemoSeeder(BaselineTestSeeder):
+class DemoSeeder(BaselineSeeder):
     """
     Complete seeding for product demonstrations (2025).
 
-    TODO (Future - Phase 2): Move demo-specific data to demos/full_semester_manifest.json
-    This class extends BaselineTestSeeder and adds demo-specific scenarios,
-    users, and CLO workflows. All hardcoded data should eventually be in manifest.
-    See SEED_DB_REFACTOR_PLAN.md for migration strategy.
+    Uses demos/full_semester_manifest.json for all data configuration.
+    Extends BaselineSeeder and uses its generic manifest methods.
     """
 
-    def __init__(self, manifest_path=None):
+    DEFAULT_MANIFEST_PATH = "demos/full_semester_manifest.json"
+
+    def __init__(self, manifest_path: Optional[str] = None, env: str = "dev") -> None:
         super().__init__()
         self.manifest_path = manifest_path
+        self.env = env
+        self._manifest_cache: Optional[Dict[str, Any]] = None
 
-    def seed(self):
+    def seed(self) -> bool:
         """Implementation of abstract seed method - calls seed_demo()"""
         return self.seed_demo()
 
-    def log(self, message: str):
+    def log(self, message: str) -> None:
         """Log with [SEED] prefix"""
         print(f"[SEED] {message}")
 
-    def load_demo_manifest(self):
-        """Load demo data from external JSON"""
+    def load_demo_manifest(self) -> Dict[str, Any]:
+        """Load demo data from external JSON (cached)"""
+        if self._manifest_cache is not None:
+            return self._manifest_cache
+
         try:
-            # Use provided path or fallback to default relative to script
             if self.manifest_path:
                 manifest_path = os.path.abspath(self.manifest_path)
             else:
                 script_dir = os.path.dirname(os.path.abspath(__file__))
                 manifest_path = os.path.join(
-                    script_dir, "..", "demos", "full_semester_manifest.json"
+                    script_dir, "..", self.DEFAULT_MANIFEST_PATH
                 )
 
             if os.path.exists(manifest_path):
                 self.log(f"📋 Loading demo data from {manifest_path}")
                 with open(manifest_path, "r") as f:
-                    return json.load(f)
+                    self._manifest_cache = json.load(f)
+                    return self._manifest_cache
             else:
                 self.log(f"⚠️  Manifest not found at {manifest_path}, using defaults")
+                self._manifest_cache = {}
                 return {}
         except Exception as e:
             self.log(f"⚠️  Failed to load manifest: {e}")
+            self._manifest_cache = {}
             return {}
 
-    def create_demo_institution(self, manifest_institutions=None):
-        """Create demo institution"""
-        self.log("🏢 Creating Demo University...")
+    def seed_demo(self) -> bool:
+        """Seed complete data for product demo - manifest required."""
+        self.log("🎬 Seeding demo environment...")
 
-        existing = database_service.db.get_institution_by_short_name("DEMO2025")
-        if existing:
-            return existing["institution_id"]
+        # Load manifest - REQUIRED
+        manifest = self.load_demo_manifest()
+        if not manifest:
+            self.log("❌ Manifest is required for demo seeding")
+            return False
 
-        # Base institution data
-        inst_data = {
-            "name": "Demo University",
-            "short_name": "DEMO2025",
-            "admin_email": "demo2025.admin@example.com",
-            "website_url": "https://demo.example.com",
-            "created_by": "system",
-        }
+        # Validate required sections
+        required = [
+            "institutions",
+            "programs",
+            "terms",
+            "courses",
+            "users",
+            "offerings",
+        ]
+        for section in required:
+            if not manifest.get(section):
+                self.log(f"❌ '{section}' required in manifest")
+                return False
 
-        # Apply logo_path from manifest if provided
-        if manifest_institutions:
-            for manifest_inst in manifest_institutions:
-                if manifest_inst.get("short_name") == "DEMO2025":
-                    logo_path = manifest_inst.get("logo_path")
-                    if logo_path:
-                        inst_data["logo_path"] = logo_path
-                        self.log(f"   ✓ Using logo from manifest: {logo_path}")
-                    break
+        # 1. Create Institutions
+        self.log("🏢 Creating demo institution(s)...")
+        inst_ids = self.create_institutions_from_manifest(manifest["institutions"])
+        if not inst_ids:
+            return False
 
-        schema = Institution.create_schema(**inst_data)
-
-        inst_id = database_service.db.create_institution(schema)
-        if inst_id:
-            self.created["institutions"].append(inst_id)
-        return inst_id
-
-    def create_admin_account(self, institution_id):
-        """Create demo admin account"""
-        self.log("👩‍💼 Creating Demo Admin (Institution Admin)...")
-
-        from tests.test_credentials import DEMO_PASSWORD
-
-        email = "demo2025.admin@example.com"
-        password = (
-            DEMO_PASSWORD  # pragma: allowlist secret - Imported from test_credentials
-        )
-
-        existing = database_service.db.get_user_by_email(email)
-        if existing:
-            return existing["user_id"]
-
-        password_hash = hash_password(password)
-        schema = User.create_schema(
-            email=email,
-            first_name="Demo",
-            last_name="Admin",
-            role="institution_admin",
-            institution_id=institution_id,
-            password_hash=password_hash,
-            account_status="active",
-        )
-        schema["email_verified"] = True
-
-        user_id = database_service.db.create_user(schema)
-        if user_id:
-            self.created["users"].append(user_id)
-        return user_id
-
-    def create_demo_programs(self, institution_id):
-        """Create sample programs for CEI"""
+        # 2. Create Programs
         self.log("📚 Creating demo programs...")
+        prog_ids = self.create_programs_from_manifest(inst_ids, manifest["programs"])
 
-        programs_data = [
-            {"name": "Biological Sciences", "code": "BIOL"},
-            {"name": "Zoology", "code": "ZOOL"},
-        ]
+        # Build map
+        program_map = {}
+        for i, prog in enumerate(manifest["programs"]):
+            if i < len(prog_ids):
+                program_map[prog.get("code", "")] = prog_ids[i]
 
-        program_ids = []
-        for prog_data in programs_data:
-            schema = Program.create_schema(
-                name=prog_data["name"],
-                short_name=prog_data["code"],
-                institution_id=institution_id,
-                description=PROGRAM_DEFAULT_DESCRIPTION,
-                created_by="system",
-            )
+        # 3. Create Terms
+        self.log("📅 Creating terms...")
+        term_ids = self.create_terms_from_manifest(inst_ids, manifest["terms"])
+        term_map = {}
+        for i, term in enumerate(manifest["terms"]):
+            if i < len(term_ids):
+                term_map[term.get("term_code") or term.get("code")] = term_ids[i]
 
-            prog_id = database_service.db.create_program(schema)
-            if prog_id:
-                program_ids.append(prog_id)
-                self.created["programs"].append(prog_id)
-
-        return program_ids
-
-    def create_demo_courses(self, institution_id, program_ids):
-        """Create demo courses for Biology and Zoology programs"""
+        # 4. Create Courses
         self.log("📖 Creating demo courses...")
-
-        # Map: [program_idx, course_number, course_title, credits]
-        courses_data = [
-            # Biological Sciences courses
-            {
-                "program_idx": 0,
-                "code": "BIOL-101",
-                "name": "Introduction to Biology",
-                "credits": 4,
-            },
-            {
-                "program_idx": 0,
-                "code": "BIOL-201",
-                "name": "Cellular Biology",
-                "credits": 4,
-            },
-            {"program_idx": 0, "code": "BIOL-301", "name": "Genetics", "credits": 3},
-            # Zoology courses
-            {
-                "program_idx": 1,
-                "code": "ZOOL-101",
-                "name": "Animal Diversity",
-                "credits": 4,
-            },
-            {
-                "program_idx": 1,
-                "code": "ZOOL-205",
-                "name": "Vertebrate Anatomy",
-                "credits": 4,
-            },
-            {
-                "program_idx": 1,
-                "code": "ZOOL-310",
-                "name": "Animal Behavior",
-                "credits": 3,
-            },
-        ]
-
-        course_ids = []
-        for course_data in courses_data:
-            program_id = program_ids[course_data["program_idx"]]
-            _program = database_service.db.get_program_by_id(program_id)  # noqa: F841
-
-            schema = Course.create_schema(
-                course_number=course_data["code"],
-                course_title=course_data["name"],
-                department=course_data["code"].split("-")[0],
-                institution_id=institution_id,
-                credit_hours=course_data["credits"],
-                program_ids=[program_id],
-                active=True,
-            )
-
-            course_id = database_service.db.create_course(schema)
-            if course_id:
-                course_ids.append(course_id)
-                self.created["courses"].append(course_id)
-
-        return course_ids
-
-    def create_demo_faculty(self, institution_id, program_ids):
-        """Create demo faculty members"""
-        self.log("👨‍🏫 Creating demo faculty...")
-
-        faculty_data = [
-            {
-                "email": "dr.morgan@demo.example.com",
-                "first_name": "Alex",
-                "last_name": "Morgan",
-                "program_idx": 0,
-            },
-            {
-                "email": "prof.chen@demo.example.com",
-                "first_name": "Sarah",
-                "last_name": "Chen",
-                "program_idx": 0,
-            },
-            {
-                "email": "dr.patel@demo.example.com",
-                "first_name": "Raj",
-                "last_name": "Patel",
-                "program_idx": 1,
-            },
-        ]
-
-        instructor_ids = []
-        from tests.test_credentials import INSTRUCTOR_PASSWORD
-
-        password_hash = hash_password(
-            INSTRUCTOR_PASSWORD
-        )  # pragma: allowlist secret - Imported from test_credentials
-
-        for fac_data in faculty_data:
-            existing = database_service.db.get_user_by_email(fac_data["email"])
-            if existing:
-                instructor_ids.append(existing["user_id"])
-                continue
-
-            schema = User.create_schema(
-                email=fac_data["email"],
-                first_name=fac_data["first_name"],
-                last_name=fac_data["last_name"],
-                role="instructor",
-                institution_id=institution_id,
-                password_hash=password_hash,
-                account_status="active",
-                program_ids=[program_ids[fac_data["program_idx"]]],
-            )
-            schema["email_verified"] = True
-
-            user_id = database_service.db.create_user(schema)
-            if user_id:
-                instructor_ids.append(user_id)
-                self.created["users"].append(user_id)
-
-        return instructor_ids
-
-    def create_demo_term(self, institution_id):
-        """Create Fall 2025 term"""
-        self.log("📅 Creating Fall 2025 term...")
-
-        base_date = datetime.now(timezone.utc)
-        start_date = base_date - timedelta(days=90)
-        end_date = base_date + timedelta(days=30)
-
-        schema = Term.create_schema(
-            name="Fall 2025",
-            start_date=start_date.isoformat(),
-            end_date=end_date.isoformat(),
-            assessment_due_date=end_date.isoformat(),
-            active=True,
+        course_ids = self.create_courses_from_manifest(
+            inst_ids, manifest["courses"], program_map
         )
-        schema["term_name"] = "Fall 2025"
-        schema["term_code"] = "FA2025"
-        schema["institution_id"] = institution_id
+        course_map = {}
+        for i, course in enumerate(manifest["courses"]):
+            target_code = course.get("code") or course.get("course_number")
+            if i < len(course_ids):
+                course_map[target_code] = course_ids[i]
 
-        term_id = database_service.db.create_term(schema)
-        if term_id:
-            self.created["terms"].append(term_id)
-        return term_id
-
-    def create_demo_offerings_and_sections(
-        self, institution_id, course_ids, term_id, instructor_ids
-    ):
-        """Create course offerings and sections for demo"""
-        self.log("📋 Creating demo offerings and sections...")
-
-        # Create offerings for all courses
-        offering_ids = []
-        for course_id in course_ids:
-            schema = CourseOffering.create_schema(
-                course_id=course_id,
-                term_id=term_id,
-                institution_id=institution_id,
-                status="active",
-            )
-            offering_id = database_service.db.create_course_offering(schema)
-            if offering_id:
-                offering_ids.append(offering_id)
-
-        # Create sections
-        section_count = 0
-        for i, offering_id in enumerate(offering_ids):
-            # Use cyclic instructor assignment for default selection
-            instructor_id = instructor_ids[i % len(instructor_ids)]
-
-            if i == 0:
-                # Biology 101 handling: 4 sections with specific enrollments
-                # Section 1: 25 students
-                s1_schema = CourseSection.create_schema(
-                    offering_id=offering_id,
-                    section_number="001",
-                    instructor_id=instructor_id,
-                    enrollment=25,
-                    status="assigned",
-                    assessment_due_date="2025-12-15T23:59:59",
-                )
-                if database_service.db.create_course_section(s1_schema):
-                    section_count += 1
-
-                # Section 2: 25 students, next instructor
-                s2_schema = CourseSection.create_schema(
-                    offering_id=offering_id,
-                    section_number="002",
-                    instructor_id=instructor_ids[(i + 1) % len(instructor_ids)],
-                    enrollment=25,
-                    status="assigned",
-                    assessment_due_date="2025-12-15T23:59:59",
-                )
-                if database_service.db.create_course_section(s2_schema):
-                    section_count += 1
-
-                # Section 3: 13 students, next instructor
-                s3_schema = CourseSection.create_schema(
-                    offering_id=offering_id,
-                    section_number="003",
-                    instructor_id=instructor_ids[(i + 2) % len(instructor_ids)],
-                    enrollment=13,
-                    status="assigned",
-                    assessment_due_date="2025-12-15T23:59:59",
-                )
-                if database_service.db.create_course_section(s3_schema):
-                    section_count += 1
-
-                # Section 4: Unassigned, 0 students
-                s4_schema = CourseSection.create_schema(
-                    offering_id=offering_id,
-                    section_number="004",
-                    instructor_id=None,
-                    enrollment=0,
-                    status="unassigned",
-                    assessment_due_date="2025-12-15T23:59:59",
-                )
-                if database_service.db.create_course_section(s4_schema):
-                    section_count += 1
-                    self.log(
-                        "   ✓ Created specialized sections for Biology 101 (25, 25, 13, 0)"
-                    )
-
-            else:
-                # Standard Logic for other courses
-                schema = CourseSection.create_schema(
-                    offering_id=offering_id,
-                    section_number="001",
-                    instructor_id=instructor_id,
-                    enrollment=random.randint(15, 35),  # nosec B311
-                    status="assigned",
-                    assessment_due_date="2025-12-15T23:59:59",
-                )
-                section_id = database_service.db.create_course_section(schema)
-                if section_id:
-                    section_count += 1
-
-        self.log(
-            f"   ✅ Created {len(offering_ids)} offerings and {section_count} sections"
-        )
-
-    def create_demo_clos(self, course_ids):
-        """Create Course Learning Outcomes (CLOs) for demo courses"""
+        # 5. Create CLOs
         self.log("🎯 Creating Course Learning Outcomes...")
-
-        from src.models.models import CourseOutcome
-        from src.utils.constants import CLOStatus
-
-        # Get course info to match CLOs to courses
-        courses = []
-        for cid in course_ids:
-            course = database_service.db.get_course_by_id(cid)
-            if course:
-                courses.append(course)
-
-        # CLO templates by course prefix
-        clo_templates = {
-            "BIOL": [
-                {
-                    "num": 1,
-                    "desc": "Apply scientific method to biological questions",
-                    "method": "Lab Report",
-                },
-                {
-                    "num": 2,
-                    "desc": "Analyze cellular and molecular processes",
-                    "method": "Written Exam",
-                },
-                {
-                    "num": 3,
-                    "desc": "Evaluate biological systems and interactions",
-                    "method": "Research Paper",
-                },
-            ],
-            "ZOOL": [
-                {
-                    "num": 1,
-                    "desc": "Identify and classify animal species",
-                    "method": "Field Observation",
-                },
-                {
-                    "num": 2,
-                    "desc": "Analyze animal behavior patterns",
-                    "method": "Lab Report",
-                },
-                {
-                    "num": 3,
-                    "desc": "Evaluate ecological relationships",
-                    "method": "Final Exam",
-                },
-            ],
-        }
-
-        clo_count = 0
-        for course in courses:
-            course_num = course.get("course_number", "")
-            prefix = course_num.split("-")[0] if "-" in course_num else ""
-
-            templates = clo_templates.get(prefix, [])
-            course_id = course.get("id") or course.get("course_id")
-
-            for template in templates:
-                # Check if CLO already exists
-                existing = database_service.db.get_course_outcomes(course_id)
-                already_exists = any(
-                    str(clo.get("clo_number")) == str(template["num"])
-                    for clo in (existing or [])
-                )
-
-                if already_exists:
-                    continue
-
-                schema = CourseOutcome.create_schema(
-                    course_id=course_id,
-                    clo_number=str(template["num"]),
-                    description=template["desc"],
-                    assessment_method=template["method"],
-                )
-                schema["status"] = CLOStatus.ASSIGNED
-                schema["active"] = True
-
-                outcome_id = database_service.db.create_course_outcome(schema)
-                if outcome_id:
-                    clo_count += 1
-
+        clo_count = self.create_clos_from_manifest(course_ids, manifest)
         self.log(f"   ✅ Created {clo_count} CLOs across demo courses")
 
-        # Create one UNASSIGNED CLO for testing audit
-        if course_ids:
-            target_course_id = course_ids[0]
-            schema = CourseOutcome.create_schema(
-                course_id=target_course_id,
-                clo_number="99",
-                description="Bonus unassigned learning outcome",
-                assessment_method="Project",
-            )
-            schema["status"] = CLOStatus.UNASSIGNED
-            schema["active"] = True
+        # 6. Create Users
+        self.log("👥 Creating demo faculty/staff...")
+        from tests.test_credentials import DEMO_PASSWORD
 
-            if database_service.db.create_course_outcome(schema):
-                self.log("   ✓ Created unassigned CLO #99")
+        default_hash = hash_password(DEMO_PASSWORD)
 
-    def create_scenario_specific_clos(self, course_ids, instructor_ids):
-        """Create specific CLO scenarios for the narrative (Rework, NCI)"""
-        self.log("🎭 Creating narrative-specific CLO scenarios...")
-
-        manifest = self.load_demo_manifest()
-        scenarios = manifest.get("demo_scenarios", {})
-
-        from src.models.models import CourseOutcome
-        from src.utils.constants import CLOStatus
-
-        # Helper to map string status to Enum if needed
-        def get_status(status_str):
-            if status_str == "submitted":
-                return CLOStatus.AWAITING_APPROVAL
-            if status_str == "awaiting_approval":
-                return CLOStatus.AWAITING_APPROVAL
-            return CLOStatus.ASSIGNED
-
-        # 1. "Needs Rework" Scenario
-        rework_data = scenarios.get("needs_rework")
-        if rework_data:
-            course_num = rework_data.get("course_number")
-            # Find course ID
-            course_id = None
-            for cid in course_ids:
-                c = database_service.db.get_course_by_id(cid)
-                if c and c.get("course_number") == course_num:
-                    course_id = cid
-                    break
-
-            if course_id:
-                schema = CourseOutcome.create_schema(
-                    course_id=course_id,
-                    clo_number=rework_data.get("clo_number"),
-                    description=rework_data.get("description"),
-                    assessment_method=rework_data.get("assessment_method"),
-                )
-                schema["status"] = get_status(rework_data.get("status"))
-                schema["active"] = True
-
-                if database_service.db.create_course_outcome(schema):
-                    self.log(
-                        f"   ✓ Created 'Needs Rework' scenario (CLO #{rework_data.get('clo_number')})"
-                    )
-
-        # 2. "NCI" Scenario
-        nci_data = scenarios.get("nci")
-        if nci_data:
-            course_num = nci_data.get("course_number")
-            # Find course ID
-            course_id = None
-            for cid in course_ids:
-                c = database_service.db.get_course_by_id(cid)
-                if c and c.get("course_number") == course_num:
-                    course_id = cid
-                    break
-
-            if course_id:
-                schema = CourseOutcome.create_schema(
-                    course_id=course_id,
-                    clo_number=nci_data.get("clo_number"),
-                    description=nci_data.get("description"),
-                    assessment_method=nci_data.get("assessment_method"),
-                )
-                schema["status"] = get_status(nci_data.get("status"))
-                schema["active"] = True
-
-                if database_service.db.create_course_outcome(schema):
-                    self.log(
-                        f"   ✓ Created 'NCI' scenario (CLO #{nci_data.get('clo_number')})"
-                    )
-
-    def set_admin_date_override(self):
-        """Set system date override for the demo admin"""
-        self.log("⏰ Setting initial date override for admin...")
-
-        manifest = self.load_demo_manifest()
-        date_str = manifest.get("system_settings", {}).get("admin_date_override")
-
-        if not date_str:
-            self.log("   Info: No date override found in manifest system_settings")
-            return
-
-        admin_email = "demo2025.admin@example.com"
-        user = database_service.db.get_user_by_email(admin_email)
-
-        if user:
-            try:
-                override_date = datetime.fromisoformat(date_str)
-                database_service.db.update_user(
-                    user["user_id"], {"system_date_override": override_date}
-                )
-                self.log(f"   ✓ Set {admin_email} date to {date_str}")
-            except ValueError:
-                self.log(f"   ⚠️ Invalid date format in manifest: {date_str}")
-        else:
-            self.log(f"   ⚠️ Could not find {admin_email} to set date override")
-
-    def link_courses_to_programs(self, institution_id):
-        """Link courses to programs based on course prefixes"""
-        self.log("🔗 Linking courses to programs...")
-
-        # Get all courses and programs
-        courses = database_service.db.get_all_courses(institution_id)
-        programs = database_service.db.get_programs_by_institution(institution_id)
-
-        if not courses or not programs:
-            self.log("   ⚠️  No courses or programs found to link")
-            return
-
-        # Build program lookup by name
-        program_lookup = {
-            p.get("name"): (p.get("program_id") or p.get("id")) for p in programs
-        }
-
-        # Course prefix to program mapping
-        course_mappings = {
-            "BIOL": "Biological Sciences",
-            "BSN": "Biological Sciences",
-            "ZOOL": "Zoology",
-            "CEI": "CEI Default Program",
-        }
-
-        linked_count = 0
-        for course in courses:
-            # Extract prefix from course number (e.g., "BIOL-228" -> "BIOL")
-            course_number = course["course_number"]
-            prefix = course_number.split("-")[0] if "-" in course_number else None
-
-            if prefix and prefix in course_mappings:
-                program_name = course_mappings[prefix]
-                program_id = program_lookup.get(program_name)
-
-                if program_id:
-                    try:
-                        database_service.db.add_course_to_program(
-                            course["id"], program_id
-                        )
-                        linked_count += 1
-                        self.log(f"   ✓ Linked {course_number} to {program_name}")
-                    except Exception:  # nosec B110 - might already be linked
-                        pass
-
-        if linked_count > 0:
-            self.log(f"   ✅ Linked {linked_count} courses to programs")
-        else:
-            self.log("   ℹ️  No new course-program links created")
-
-    def seed_demo(self):
-        """Seed complete data for product demo - ready to showcase features!"""
-        self.log("🎬 Seeding 2025 demo environment...")
-
-        # Load manifest
-        manifest = self.load_demo_manifest()
-
-        # Ensure Site Admin exists
-        self.create_site_admin()
-
-        manifest_institutions = manifest.get("institutions") if manifest else None
-        inst_id = self.create_demo_institution(manifest_institutions)
-        if not inst_id:
-            return False
-
-        admin_id = self.create_admin_account(inst_id)
-        if not admin_id:
-            return False
-
-        program_ids = self.create_demo_programs(inst_id)
-        term_id = self.create_demo_term(inst_id)
-
-        # Create complete demo data for showcasing features
-        course_ids = self.create_demo_courses(inst_id, program_ids)
-        self.link_courses_to_programs(inst_id)  # Explicitly link programs
-        instructor_ids = self.create_demo_faculty(inst_id, program_ids)
-        self.create_demo_offerings_and_sections(
-            inst_id, course_ids, term_id, instructor_ids
+        user_ids = self.create_users_from_manifest(
+            inst_ids, manifest["users"], program_map, default_hash
         )
-        self.create_demo_clos(course_ids)
 
-        # Create narrative-specific scenarios (Rework, NCI)
-        self.create_scenario_specific_clos(course_ids, instructor_ids)
+        # 7. Create Offerings
+        self.log("📋 Creating demo offerings and sections...")
 
-        # Set initial date override for admin to start the story in Oct 2025
-        self.set_admin_date_override()
-
-        self.create_historical_data(
-            inst_id, program_ids, manifest.get("historical_data")
+        # Use generic method which handles instructor verification
+        # Filter out None values for instructor assignment
+        valid_instructor_ids = [uid for uid in user_ids if uid is not None]
+        result = self.create_offerings_from_manifest(
+            institution_id=inst_ids[0],
+            term_id_or_map=term_map,
+            offerings_data=manifest["offerings"],
+            course_map=course_map,
+            instructor_ids=valid_instructor_ids,
+        )
+        self.log(
+            f"   ✅ Created {len(result['offering_ids'])} offerings and {result['section_count']} sections"
         )
 
         self.log("✅ Demo seeding completed!")
         self.print_summary()
         return True
 
-    def create_historical_data(self, institution_id, program_ids, historical_data=None):
-        """Create historical data from manifest"""
-        self.log("📜 Creating historical data...")
-
-        if not historical_data:
-            self.log("   ⏭️  No historical data in manifest, skipping.")
-            return
-
-        from datetime import datetime, timedelta
-
-        from src.models.models import Course, CourseOffering, CourseSection, Term
-
-        # 1. Create Term from data
-        term_data = historical_data.get("term", {})
-        if not term_data:
-            return
-
-        schema_term = Term.create_schema(
-            name=term_data.get("name", "Historical Term"),
-            start_date=term_data.get("start_date", "2025-01-01"),
-            end_date=term_data.get("end_date", "2025-05-01"),
-            assessment_due_date=term_data.get("end_date", "2025-05-01"),
-            active=term_data.get("active", False),
-        )
-        schema_term["term_name"] = term_data.get("name")
-        schema_term["term_code"] = "HIST2025"
-        schema_term["institution_id"] = institution_id
-
-        existing = database_service.db.get_term_by_name(
-            term_data.get("name"), institution_id
-        )
-        if existing:
-            term_id = existing.get("id") or existing.get("term_id")
-        else:
-            term_id = database_service.db.create_term(schema_term)
-            if term_id:
-                self.created["terms"].append(term_id)
-
-        if not term_id:
-            return
-
-        # 2. Basic Historical Course (Hardcoded structure for now, but triggered by data)
-        # Using first program
-        program_id = program_ids[0] if program_ids else None
-
-        # (Simplified for brevity - can expand to fully usage `historical_data['offerings']` later)
-        # This clears the hardcoded Spring 2025 block.
-
-        # 2. Create a specific historical course
-        # Let's verify if we have programs; use first one
-        program_id = program_ids[0] if program_ids else None
-
-        schema_course = Course.create_schema(
-            course_title="History of Science",
-            course_number="HIST-101",
-            department="History",
-            institution_id=institution_id,
-            credit_hours=3,
-            program_ids=[],
-        )
-
-        hist_course_id = database_service.db.create_course(schema_course)
-        if hist_course_id:
-            self.created["courses"].append(hist_course_id)
-            if program_id:
-                try:
-                    database_service.db.add_course_to_program(
-                        hist_course_id, program_id
-                    )
-                except Exception:  # nosec
-                    pass
-
-            # 3. Create Offering for Spring 2025
-            schema_off = CourseOffering.create_schema(
-                course_id=hist_course_id,
-                term_id=term_id,
-                institution_id=institution_id,
-                status="archived",  # or inactive
-            )
-            off_id = database_service.db.create_course_offering(schema_off)
-
-            # 4. Create Section with enrollment
-            if off_id:
-                # Find an instructor (demo faculty created earlier)
-                # We need to fetch them or assume from self.created['users']
-                # Just pick one if available, or leave unassigned if none?
-                # The seed_demo created faculty.
-                # Let's retry getting them from DB to be safe or just create a new one?
-                # Better to reuse.
-                # Just create section with no instructor if ID not handy, or quickly lookup.
-                # I'll create one unassigned or assigned if I can grab an ID.
-                # For simplicity, assign to the admin or first user found?
-                # I'll just leave instructor_id None for historical unless I query.
-
-                schema_sec = CourseSection.create_schema(
-                    offering_id=off_id,
-                    section_number="001",
-                    instructor_id=None,
-                    enrollment=42,
-                    status="completed",
-                )
-                database_service.db.create_course_section(schema_sec)
-
-            # 5. Create CLOs for this course
-            from src.models.models import CourseOutcome
-
-            schema_clo = CourseOutcome.create_schema(
-                course_id=hist_course_id,
-                clo_number="1",
-                description="Analyze historical scientific events",
-                assessment_method="Essay",
-            )
-            schema_clo["active"] = True
-            database_service.db.create_course_outcome(schema_clo)
-
-            self.log("   ✓ Created 'Spring 2025' term with HIST-101 course and data")
-
-    def print_summary(self):
+    def print_summary(self) -> None:
         """Print demo seeding summary"""
+        # Environment-aware configuration
+        env_config = {
+            "dev": {"port": 3001, "env_name": "dev"},
+            "e2e": {"port": 3002, "env_name": "e2e"},
+            "smoke": {"port": 3003, "env_name": "smoke"},
+            "ci": {"port": 3001, "env_name": "ci"},
+            "prod": {"port": 3001, "env_name": "prod"},
+        }
+
+        config = env_config.get(self.env, {"port": 3001, "env_name": "dev"})
+        port = config["port"]
+        env_name = config["env_name"]
+
         self.log("")
-        self.log("📊 Demo Environment Ready (2025):")
-        self.log("   Institution: Demo University")
-        self.log(f"   Programs: {len(self.created['programs'])} created")
+        self.log("📊 Demo Environment Ready:")
+        self.log(f"   Institutions: {len(self.created['institutions'])} created")
+        self.log(f"   Users: {len(self.created['users'])} created")
         self.log(f"   Terms: {len(self.created['terms'])} created")
         self.log(f"   Courses: {len(self.created['courses'])} created")
-        self.log(f"   Users: {len(self.created['users'])} created")
-        self.log("")
-        self.log("🔑 Demo Account Credentials:")
-        self.log("   Email:    demo2025.admin@example.com")
-        self.log("   Password: Demo2025!")
-        self.log("")
         self.log("🎬 Next Steps:")
-        self.log("   1. Start server: ./restart_server.sh dev")
-        self.log("   2. Navigate to: http://localhost:3001")
+        self.log(f"   1. Start server: ./restart_server.sh {env_name}")
+        self.log(f"   2. Navigate to: http://localhost:{port}")
         self.log("   3. Login with the credentials above")
 
 
-def main():
+def main() -> None:
     """Main seeding entry point"""
     parser = argparse.ArgumentParser(
         description="Seed baseline E2E test data",
@@ -1506,9 +1280,9 @@ def main():
     )
     parser.add_argument(
         "--env",
-        choices=["dev", "e2e", "ci", "prod"],
+        choices=["dev", "e2e", "smoke", "ci", "prod"],
         default="prod",
-        help="Environment to seed (dev, e2e, ci, or prod). Determines which database file to use.",
+        help="Environment to seed (dev, e2e, smoke, ci, or prod). Determines which database file to use.",
     )
     parser.add_argument(
         "--manifest",
@@ -1530,6 +1304,7 @@ def main():
     db_mapping = {
         "dev": "sqlite:///course_records_dev.db",
         "e2e": "sqlite:///course_records_e2e.db",
+        "smoke": "sqlite:///course_records_smoke.db",
         "ci": "sqlite:///course_records_ci.db",
         "prod": "sqlite:///course_records.db",
     }
@@ -1565,21 +1340,21 @@ def main():
     globals()["hash_password"] = hash_password
 
     if args.demo:
-        seeder = DemoSeeder(manifest_path=args.manifest)
+        demo_seeder = DemoSeeder(manifest_path=args.manifest, env=args.env)
 
         if args.clear:
-            seeder.log("🧹 Clearing database...")
+            demo_seeder.log("🧹 Clearing database...")
             from src.database.database_service import reset_database
 
             reset_database()
 
-        success = seeder.seed_demo()
+        success = demo_seeder.seed_demo()
         sys.exit(0 if success else 1)
     else:
-        seeder = BaselineTestSeeder()
+        baseline_seeder = BaselineTestSeeder()
 
         if args.clear:
-            seeder.log("🧹 Clearing database...")
+            baseline_seeder.log("🧹 Clearing database...")
             from src.database.database_service import reset_database
 
             reset_database()
@@ -1590,12 +1365,12 @@ def main():
             try:
                 with open(args.manifest, "r") as f:
                     manifest_data = json.load(f)
-                seeder.log(f"📄 Loaded custom manifest: {args.manifest}")
+                baseline_seeder.log(f"📄 Loaded custom manifest: {args.manifest}")
             except Exception as e:
                 print(f"❌ Failed to load manifest: {e}")
                 sys.exit(1)
 
-        success = seeder.seed_baseline(manifest_data)
+        success = baseline_seeder.seed_baseline(manifest_data)
         sys.exit(0 if success else 1)
 
 

@@ -146,6 +146,7 @@ class TestInvitationServiceEmail:
         # Setup
         mock_db.get_institution_by_id.return_value = {"name": "Test Institution"}
         mock_email_service.send_invitation_email.return_value = True
+        mock_email_service.pop_last_error_message.return_value = None
         mock_db.update_invitation.return_value = True
 
         invitation_data = {
@@ -159,10 +160,11 @@ class TestInvitationServiceEmail:
         }
 
         # Execute
-        result = InvitationService.send_invitation(invitation_data)
+        success, email_error = InvitationService.send_invitation(invitation_data)
 
         # Verify
-        assert result is True
+        assert success is True
+        assert email_error is None
         mock_email_service.send_invitation_email.assert_called_once()
         mock_db.update_invitation.assert_called_once()
 
@@ -191,13 +193,15 @@ class TestInvitationServiceEmail:
 
         # Mock email service to succeed
         mock_email_service.send_invitation_email.return_value = True
+        mock_email_service.pop_last_error_message.return_value = None
 
         # Execute - should succeed despite institution not found
         # (send_invitation doesn't validate institution existence)
-        result = InvitationService.send_invitation(invitation_data)
+        success, email_error = InvitationService.send_invitation(invitation_data)
 
         # Verify email was sent
-        assert result is True
+        assert success is True
+        assert email_error is None
         mock_email_service.send_invitation_email.assert_called_once()
 
     @patch("src.services.invitation_service.EmailService")
@@ -219,10 +223,11 @@ class TestInvitationServiceEmail:
         }
 
         # Execute
-        result = InvitationService.send_invitation(invitation_data)
+        success, email_error = InvitationService.send_invitation(invitation_data)
 
         # Verify
-        assert result is False
+        assert success is False
+        assert email_error is not None
         mock_email_service.send_invitation_email.assert_called_once()
         mock_db.update_invitation.assert_not_called()
 
@@ -463,13 +468,15 @@ class TestInvitationServiceManagement:
         mock_db.get_invitation_by_id.return_value = invitation
 
         with patch.object(
-            InvitationService, "send_invitation", return_value=True
+            InvitationService, "send_invitation", return_value=(True, None)
         ) as mock_send:
             # Execute
             result = InvitationService.resend_invitation("inv-123")
 
             # Verify
-            assert result is True
+            success, email_error = result
+            assert success is True
+            assert email_error is None
             mock_send.assert_called_once_with(invitation)
 
     @patch("src.services.invitation_service.db")
@@ -512,12 +519,16 @@ class TestInvitationServiceManagement:
         mock_db.get_invitation_by_id.return_value = invitation
         mock_db.update_invitation.return_value = True
 
-        with patch.object(InvitationService, "send_invitation", return_value=True):
+        with patch.object(
+            InvitationService, "send_invitation", return_value=(True, None)
+        ):
             # Execute
             result = InvitationService.resend_invitation("inv-123")
 
             # Verify
-            assert result is True
+            success, email_error = result
+            assert success is True
+            assert email_error is None
             mock_db.update_invitation.assert_called_once()
             update_call = mock_db.update_invitation.call_args[0][1]
             new_expires_at = datetime.fromisoformat(update_call["expires_at"])
@@ -648,6 +659,7 @@ class TestInvitationServiceIntegration:
         mock_db.create_invitation.return_value = "inv-123"
         mock_db.get_institution_by_id.return_value = {"name": "Test Institution"}
         mock_email_service.send_invitation_email.return_value = True
+        mock_email_service.pop_last_error_message.return_value = None
         mock_db.update_invitation.return_value = True
 
         # Step 1: Create invitation
@@ -662,8 +674,9 @@ class TestInvitationServiceIntegration:
         assert invitation["id"] == "inv-123"
 
         # Step 2: Send invitation
-        email_sent = InvitationService.send_invitation(invitation)
-        assert email_sent is True
+        success, email_error = InvitationService.send_invitation(invitation)
+        assert success is True
+        assert email_error is None
 
         # Step 3: Accept invitation
         future_date = datetime.now(timezone.utc) + timedelta(days=1)

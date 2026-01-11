@@ -288,7 +288,7 @@ class TestEmailTemplates:
         assert "Jane Smith" in text
         assert "http://localhost:5000/verify/token456" in text
         assert "jane@example.com" in text
-        assert "Course Record Updater" in text
+        assert "LoopCloser" in text
 
     def test_password_reset_email_templates(self, app_context):
         """Test password reset email templates"""
@@ -441,7 +441,7 @@ class TestEmailLogging:
         contents = log_path.read_text(encoding="utf-8")
         assert "Email SENT" in contents
         assert "test@example.com" in contents
-        assert "Verify your Course Record Updater account" in contents
+        assert "Verify your LoopCloser account" in contents
 
     def test_logs_blocked_email_preview(self, tmp_path, app_context):
         """Ensure blocked emails are still recorded for storytelling/demo purposes."""

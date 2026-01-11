@@ -1,5 +1,5 @@
 """
-Audit Logging Service for Course Record Updater
+Audit Logging Service for LoopCloser
 
 Provides comprehensive audit logging for all CRUD operations with:
 - Full change tracking (before/after states)

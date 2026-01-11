@@ -25,6 +25,9 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
+# Ensure Python can import project modules when spawned from subdirectories
+export PYTHONPATH="${PROJECT_ROOT}:${PYTHONPATH:-}"
+
 # Constants
 readonly MODE_HEADED="headed"
 readonly MODE_HEADLESS="headless"
@@ -119,7 +122,7 @@ fi
 # Header
 echo ""
 echo -e "${BLUE}============================================${NC}"
-echo -e "${BLUE}  Course Record Updater - UAT Runner${NC}"
+echo -e "${BLUE}  LoopCloser - UAT Runner${NC}"
 echo -e "${BLUE}============================================${NC}"
 echo ""
 
@@ -149,6 +152,7 @@ fi
 
 # Set ENV to "test" so email factory automatically selects Ethereal
 export ENV="test"
+export FLASK_ENV="e2e"
 
 # Disable CSRF for E2E tests to avoid token validation issues
 # E2E tests focus on functional workflows, not CSRF security
@@ -347,4 +351,3 @@ else
     
     exit $EXIT_CODE
 fi
-

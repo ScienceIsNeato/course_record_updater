@@ -16,6 +16,7 @@ Usage:
 import argparse
 import os
 import sys
+from typing import Optional
 
 # Add parent directory to path
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,7 +26,9 @@ if parent_dir not in sys.path:
 from scripts.ship_it import reply_to_pr_comment
 
 
-def validate_arguments(args, parser):
+def validate_arguments(
+    args: argparse.Namespace, parser: argparse.ArgumentParser
+) -> None:
     """Validate command-line arguments."""
     if not args.thread_id and not args.comment_id:
         parser.error("Must provide either --thread-id or --comment-id")
@@ -34,7 +37,7 @@ def validate_arguments(args, parser):
         parser.error("Cannot provide both --thread-id and --comment-id")
 
 
-def get_body_text(args):
+def get_body_text(args: argparse.Namespace) -> Optional[str]:
     """Extract body text from arguments or file."""
     body = args.body
     if args.body_file:
@@ -51,7 +54,7 @@ def get_body_text(args):
     return body
 
 
-def handle_reply(args, body):
+def handle_reply(args: argparse.Namespace, body: str) -> int:
     """Send reply and return success status."""
     resolve_thread = not args.no_resolve if args.thread_id else False
 
@@ -73,7 +76,7 @@ def handle_reply(args, body):
     return 1
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(
         description="Reply to PR comments and optionally auto-resolve threads",
         formatter_class=argparse.RawDescriptionHelpFormatter,

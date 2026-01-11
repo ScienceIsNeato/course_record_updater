@@ -71,11 +71,70 @@ function setEmptyState(containerId, message) {
   container.appendChild(wrapper);
 }
 
+function parseDateInput(raw) {
+  if (!raw) return null;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function deriveTimelineStatus(startDate, endDate, referenceDate = new Date()) {
+  const start = parseDateInput(startDate);
+  const end = parseDateInput(endDate);
+  const ref = parseDateInput(referenceDate) || new Date();
+
+  if (!start || !end) {
+    return "UNKNOWN";
+  }
+
+  if (ref < start) {
+    return "SCHEDULED";
+  }
+  if (ref > end) {
+    return "PASSED";
+  }
+  return "ACTIVE";
+}
+
+function resolveTimelineStatus(record, options = {}) {
+  if (!record) return "UNKNOWN";
+
+  const {
+    startKeys = ["start_date", "term_start_date"],
+    endKeys = ["end_date", "term_end_date"],
+    referenceDate = new Date(),
+  } = options;
+
+  const directStatus =
+    record.status ||
+    record.timeline_status ||
+    record.term_status ||
+    (record.is_active || record.active ? "ACTIVE" : null);
+
+  if (directStatus) {
+    return String(directStatus).toUpperCase();
+  }
+
+  const startCandidate = startKeys.find(
+    (key) => record[key] !== undefined && record[key] !== null,
+  );
+  const endCandidate = endKeys.find(
+    (key) => record[key] !== undefined && record[key] !== null,
+  );
+
+  return deriveTimelineStatus(
+    startCandidate ? record[startCandidate] : undefined,
+    endCandidate ? record[endCandidate] : undefined,
+    referenceDate,
+  ).toUpperCase();
+}
+
 // Export for use in other dashboard modules (for testing)
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     setLoadingState,
     setErrorState,
     setEmptyState,
+    deriveTimelineStatus,
+    resolveTimelineStatus,
   };
 }

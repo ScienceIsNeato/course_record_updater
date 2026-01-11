@@ -18,7 +18,7 @@ import requests
 
 # Default configuration (can be overridden by environment)
 
-DEFAULT_PORT = os.getenv("TEST_PORT", "3001")  # Default to 3001 to match CI
+DEFAULT_PORT = os.getenv("TEST_PORT", "3003")  # Smoke tests run on port 3003
 DEFAULT_BASE_URL = f"http://localhost:{DEFAULT_PORT}"
 DEFAULT_ADMIN_EMAIL = "siteadmin@system.local"
 DEFAULT_ADMIN_PASSWORD = "SiteAdmin123!"

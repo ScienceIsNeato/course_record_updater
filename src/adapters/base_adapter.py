@@ -1,6 +1,6 @@
 # adapters/base_adapter.py
 
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from src.utils.term_utils import is_valid_term
 
@@ -68,7 +68,7 @@ class BaseAdapter:
             )
 
     def _validate_field_value(
-        self, field: str, processed_value: Any, validator
+        self, field: str, processed_value: Any, validator: Any
     ) -> Optional[str]:
         """Validate field value using validator function. Returns error message or None."""
         if not validator or processed_value is None:
@@ -172,7 +172,7 @@ class BaseAdapter:
 
         return errors
 
-    def parse_and_validate(self, form_data: dict):
+    def parse_and_validate(self, form_data: dict) -> Dict[str, Any]:
         """
         Parses and validates data from a form-like dictionary.
         Includes logic for grade distribution validation.

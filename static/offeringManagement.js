@@ -9,6 +9,68 @@
  * - API communication with CSRF protection
  */
 
+const OFFERING_STATUS_BADGES = {
+  ACTIVE: { label: "Active", className: "badge bg-success" },
+  SCHEDULED: { label: "Scheduled", className: "badge bg-info text-dark" },
+  PASSED: { label: "Passed", className: "badge bg-secondary" },
+  UNKNOWN: { label: "Unknown", className: "badge bg-dark" },
+};
+
+function renderOfferingStatusBadge(status) {
+  const normalized = (status || "UNKNOWN").toUpperCase();
+  const config =
+    OFFERING_STATUS_BADGES[normalized] || OFFERING_STATUS_BADGES.UNKNOWN;
+  return `<span class="${config.className}">${config.label}</span>`;
+}
+
+function deriveStatusFromDates(start, end) {
+  if (!start || !end) return "UNKNOWN";
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return "UNKNOWN";
+  }
+  const now = new Date();
+  if (now < startDate) return "SCHEDULED";
+  if (now > endDate) return "PASSED";
+  return "ACTIVE";
+}
+
+function resolveOfferingStatus(offering) {
+  if (typeof globalThis.resolveTimelineStatus === "function") {
+    return globalThis.resolveTimelineStatus(offering, {
+      startKeys: ["term_start_date", "start_date"],
+      endKeys: ["term_end_date", "end_date"],
+    });
+  }
+
+  const directStatus =
+    offering?.status ||
+    offering?.timeline_status ||
+    offering?.term_status ||
+    (offering?.is_active ? "ACTIVE" : offering?.active ? "ACTIVE" : null);
+
+  if (directStatus) {
+    return String(directStatus).toUpperCase();
+  }
+
+  const start =
+    offering?.term_start_date || offering?.start_date || offering?.term_start;
+  const end =
+    offering?.term_end_date || offering?.end_date || offering?.term_end;
+
+  return deriveStatusFromDates(start, end);
+}
+
+function publishOfferingMutation(action, metadata = {}) {
+  globalThis.DashboardEvents?.publishMutation({
+    entity: "offerings",
+    action,
+    metadata,
+    source: "offeringManagement",
+  });
+}
+
 function initOfferingManagement() {
   // Only initialize forms if they exist (handling both dashboard and full list page)
   const createForm = document.getElementById("createOfferingForm");
@@ -348,6 +410,7 @@ function initializeCreateOfferingModal() {
         form.reset();
 
         alert(result.message || "Offering created successfully!");
+        publishOfferingMutation("create", { offeringId: result.offering_id });
 
         // Reload offerings list if function exists
         if (typeof globalThis.loadOfferings === "function") {
@@ -417,6 +480,7 @@ function initializeEditOfferingModal() {
         }
 
         alert(result.message || "Offering updated successfully!");
+        publishOfferingMutation("update", { offeringId });
 
         // Reload offerings list
         if (typeof globalThis.loadOfferings === "function") {
@@ -455,21 +519,18 @@ function openEditOfferingModal(offeringId, offeringData) {
   // Helper to set value when options might be loaded async
   const setSelectValue = (select, value) => {
     if (!select) return;
-    if (select.options.length > 1) {
-      select.value = value;
-    } else {
-      // Retry if not populated yet
-      setTimeout(() => setSelectValue(select, value), 500);
-    }
+    const attemptSet = () => {
+      if (select.options.length > 1) {
+        select.value = value || "";
+      } else {
+        setTimeout(attemptSet, 300);
+      }
+    };
+    attemptSet();
   };
 
-  if (offeringData.program_id && programSelect) {
-    setSelectValue(programSelect, offeringData.program_id);
-  }
-
-  if (offeringData.term_id && termSelect) {
-    setSelectValue(termSelect, offeringData.term_id);
-  }
+  setSelectValue(programSelect, offeringData.program_id || "");
+  setSelectValue(termSelect, offeringData.term_id || "");
 
   const modal = new bootstrap.Modal(
     document.getElementById("editOfferingModal"),
@@ -523,6 +584,7 @@ async function deleteOffering(offeringId, courseName, termName) {
 
     if (response.ok) {
       alert(`Offering for ${courseName} in ${termName} deleted successfully.`);
+      publishOfferingMutation("delete", { offeringId });
 
       if (typeof globalThis.loadOfferings === "function") {
         globalThis.loadOfferings();
@@ -559,6 +621,11 @@ async function loadOfferings() {
       throw new Error("Failed to load offerings");
     }
     const data = await response.json();
+
+    // Populate filters if they exist
+    populateFilters().catch((err) =>
+      console.error("Failed to populate filters", err),
+    );
 
     // Look for the offerings list in multiple possible keys for robustness
     const offerings = data.offerings || data || [];
@@ -598,10 +665,12 @@ async function loadOfferings() {
         offering.course_number ||
         "Unknown Course";
       const termName = offering.term_name || offering.term || "Unknown Term";
-      const statusBadge =
-        offering.status === "active"
-          ? '<span class="badge bg-success">Active</span>'
-          : `<span class="badge bg-secondary">${offering.status}</span>`;
+      const statusValue = resolveOfferingStatus(offering);
+      const statusBadge = renderOfferingStatusBadge(statusValue);
+      const termId = offering.term_id || "";
+      // Support multiple programs - use program_ids array from API
+      const programIds = offering.program_ids || [];
+      const programIdsStr = programIds.join(",");
 
       // Safe JSON stringify for the edit button
       const offeringJson = JSON.stringify(offering)
@@ -609,14 +678,13 @@ async function loadOfferings() {
         .replace(/"/g, "&quot;");
 
       html += `
-          <tr>
+          <tr class="offering-row" data-term-id="${termId}" data-program-ids="${programIdsStr}">
             <td><strong>${courseName}</strong></td>
             <td>${offering.program_names && offering.program_names.length > 0 ? offering.program_names.join(", ") : "-"}</td>
             <td>${termName}</td>
             <td>${statusBadge}</td>
             <td>${offering.section_count || 0}</td>
             <td>${offering.total_enrollment || 0}</td>
-            <td>
             <td>
               <button class="btn btn-sm btn-outline-secondary" 
                       data-offering='${offeringJson}'
@@ -645,10 +713,114 @@ async function loadOfferings() {
   }
 }
 
+/**
+ * Populate Term and Program filters
+ */
+async function populateFilters() {
+  const termSelect = document.getElementById("filterTerm");
+  const programSelect = document.getElementById("filterProgram");
+
+  if (!termSelect || !programSelect) return;
+
+  // Only fetch if empty (except for placeholder)
+  if (termSelect.options.length > 1 && programSelect.options.length > 1) return;
+
+  try {
+    const [termsResponse, programsResponse] = await Promise.all([
+      fetch("/api/terms?all=true"),
+      fetch("/api/programs"),
+    ]);
+
+    if (termsResponse.ok) {
+      const termsData = await termsResponse.json();
+      const terms = termsData.terms || [];
+
+      // Preserve current selection if any
+      const currentTerm = termSelect.value;
+
+      // Clear except first
+      termSelect.innerHTML = '<option value="">All Terms</option>';
+
+      terms.forEach((term) => {
+        const option = document.createElement("option");
+        option.value = term.term_id;
+        option.textContent = term.name;
+        termSelect.appendChild(option);
+      });
+
+      if (currentTerm) termSelect.value = currentTerm;
+    }
+
+    if (programsResponse.ok) {
+      const programsData = await programsResponse.json();
+      const programs = programsData.programs || [];
+
+      const currentProgram = programSelect.value;
+
+      programSelect.innerHTML = '<option value="">All Programs</option>';
+
+      programs.forEach((program) => {
+        const option = document.createElement("option");
+        option.value = program.program_id || program.id;
+        option.textContent = program.name || program.program_name;
+        programSelect.appendChild(option);
+      });
+
+      if (currentProgram) programSelect.value = currentProgram;
+    }
+  } catch (error) {
+    console.error("Error populating filters", error);
+  }
+}
+
+/**
+ * Filter offerings table rows
+ * Supports filtering by term and program (including multi-program offerings)
+ * Supports both old data-program-id (single) and new data-program-ids (multiple) for backward compatibility
+ */
+function applyFilters() {
+  const termFilter = document.getElementById("filterTerm");
+  const programFilter = document.getElementById("filterProgram");
+  const termId = termFilter?.value;
+  const programId = programFilter?.value;
+
+  const rows = document.querySelectorAll(".offering-row");
+
+  rows.forEach((row) => {
+    const rowTermId = row.getAttribute("data-term-id");
+
+    // Support both old (single) and new (multiple) program attributes
+    const rowProgramIds = row.getAttribute("data-program-ids");
+    const rowProgramId = row.getAttribute("data-program-id");
+
+    // Term filter: simple exact match
+    const showTerm = !termId || rowTermId === termId;
+
+    // Program filter: check if selected program matches
+    let showProgram = !programId;
+    if (programId) {
+      // Try new format first (comma-separated list)
+      if (rowProgramIds !== null && rowProgramIds !== undefined) {
+        const programIdsArray = rowProgramIds
+          .split(",")
+          .filter((id) => id.trim());
+        showProgram = programIdsArray.includes(programId);
+      }
+      // Fall back to old format (single value)
+      else if (rowProgramId !== null && rowProgramId !== undefined) {
+        showProgram = rowProgramId === programId;
+      }
+    }
+
+    row.style.display = showTerm && showProgram ? "" : "none";
+  });
+}
+
 // Expose functions to window for inline onclick handlers and testing
 globalThis.openEditOfferingModal = openEditOfferingModal;
 globalThis.deleteOffering = deleteOffering;
 globalThis.loadOfferings = loadOfferings;
+globalThis.applyFilters = applyFilters;
 globalThis.openCreateOfferingModal = () => {
   if (typeof loadCoursesAndTermsForCreateDropdown === "function") {
     loadCoursesAndTermsForCreateDropdown();
@@ -674,6 +846,7 @@ if (typeof window !== "undefined") {
   window.handleEditOfferingClick = handleEditOfferingClick;
   window.deleteOffering = deleteOffering;
   window.loadOfferings = loadOfferings;
+  window.applyFilters = applyFilters;
 }
 
 // Export for testing
@@ -683,5 +856,9 @@ if (typeof module !== "undefined" && module.exports) {
     openEditOfferingModal,
     deleteOffering,
     loadOfferings,
+    resolveOfferingStatus,
+    deriveStatusFromDates,
+    applyFilters,
+    populateFilters,
   };
 }

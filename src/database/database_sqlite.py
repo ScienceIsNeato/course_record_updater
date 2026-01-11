@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import and_, func, select
@@ -35,6 +35,49 @@ logger = get_logger(__name__)
 
 def _ensure_uuid(value: Optional[str]) -> str:
     return value or str(uuid.uuid4())
+
+
+TERM_STATUS_FIELDS: Tuple[str, ...] = ("active", "is_active", "status")
+OFFERING_STATUS_FIELDS: Tuple[str, ...] = (
+    "status",
+    "term_status",
+    "timeline_status",
+    "is_active",
+    "active",
+)
+SECTION_DATETIME_FIELDS: Tuple[str, ...] = (
+    "due_date",
+    "assigned_date",
+    "completed_date",
+)
+
+
+def _remove_fields(payload: Dict[str, Any], keys: Tuple[str, ...]) -> None:
+    """Remove status-ish fields from payload dictionaries to avoid persistence."""
+    for key in keys:
+        payload.pop(key, None)
+
+
+def _normalize_section_datetime(value: Any) -> Any:
+    """Convert section datetime inputs into native datetime objects."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, date):
+        return datetime.combine(value, datetime.min.time())
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value)
+        except ValueError:
+            try:
+                parsed = datetime.strptime(value, "%Y-%m-%d")
+            except ValueError:
+                return value
+        if isinstance(parsed, date) and not isinstance(parsed, datetime):
+            parsed = datetime.combine(parsed, datetime.min.time())
+        return parsed
+    return value
 
 
 class SQLiteDatabase(DatabaseInterface):
@@ -151,13 +194,21 @@ class SQLiteDatabase(DatabaseInterface):
         return institution_id, user_id
 
     def create_new_institution_simple(
-        self, name: str, short_name: str, active: bool = True
+        self,
+        name: str,
+        short_name: str,
+        active: bool = True,
+        *,
+        website_url: Optional[str] = None,
+        logo_path: Optional[str] = None,
     ) -> Optional[str]:
         """Create a new institution without creating an admin user (site admin workflow)"""
         institution_data = {
             "name": name,
             "short_name": short_name,
             "active": active,
+            "website_url": website_url,
+            "logo_path": logo_path,
         }
         return self.create_institution(institution_data)
 
@@ -272,6 +323,7 @@ class SQLiteDatabase(DatabaseInterface):
             oauth_id=payload.get("oauth_id"),
             password_reset_token=payload.get("password_reset_token"),
             password_reset_expires_at=payload.get("password_reset_expires_at"),
+            system_date_override=payload.get("system_date_override"),
             extras={**payload, "user_id": user_id},
         )
 
@@ -570,6 +622,14 @@ class SQLiteDatabase(DatabaseInterface):
             "created_at",
             "last_modified",
             "updated_at",
+            # Workflow fields
+            "submitted_at",
+            "submitted_by_user_id",
+            "reviewed_at",
+            "reviewed_by_user_id",
+            "approval_status",
+            "feedback_comments",
+            "feedback_provided_at",
             # Deprecated fields (removed in CEI demo follow-ups) - explicitly exclude
             "assessment_data",
             "narrative",
@@ -591,6 +651,14 @@ class SQLiteDatabase(DatabaseInterface):
             students_took=payload.get("students_took"),
             students_passed=payload.get("students_passed"),
             assessment_tool=payload.get("assessment_tool"),
+            # Workflow fields
+            approval_status=payload.get("approval_status", "pending"),
+            submitted_at=payload.get("submitted_at"),
+            submitted_by_user_id=payload.get("submitted_by_user_id"),
+            reviewed_at=payload.get("reviewed_at"),
+            reviewed_by_user_id=payload.get("reviewed_by_user_id"),
+            feedback_comments=payload.get("feedback_comments"),
+            feedback_provided_at=payload.get("feedback_provided_at"),
             extras=extras_dict,
         )
 
@@ -678,6 +746,7 @@ class SQLiteDatabase(DatabaseInterface):
             query = (
                 select(CourseOutcome)
                 .join(Course, CourseOutcome.course_id == Course.id)
+                .options(selectinload(CourseOutcome.course))
                 .where(Course.institution_id == institution_id)
             )
 
@@ -817,6 +886,7 @@ class SQLiteDatabase(DatabaseInterface):
 
     def create_course_offering(self, offering_data: Dict[str, Any]) -> Optional[str]:
         payload = dict(offering_data)
+        _remove_fields(payload, OFFERING_STATUS_FIELDS)
         offering_id = _ensure_uuid(payload.pop("offering_id", None))
         offering = CourseOffering(
             id=offering_id,
@@ -824,7 +894,6 @@ class SQLiteDatabase(DatabaseInterface):
             term_id=payload.get("term_id"),
             institution_id=payload.get("institution_id"),
             program_id=payload.get("program_id"),
-            status=payload.get("status", "active"),
             total_enrollment=payload.get("total_enrollment", 0),
             section_count=payload.get("section_count", 0),
             extras={**payload, "offering_id": offering_id},
@@ -844,6 +913,8 @@ class SQLiteDatabase(DatabaseInterface):
                     return False
 
                 for key, value in offering_data.items():
+                    if key in OFFERING_STATUS_FIELDS:
+                        continue
                     if hasattr(offering, key) and key != "id":
                         setattr(offering, key, value)
 
@@ -868,7 +939,15 @@ class SQLiteDatabase(DatabaseInterface):
 
     def get_course_offering(self, offering_id: str) -> Optional[Dict[str, Any]]:
         with self.sqlite.session_scope() as session:
-            offering = session.get(CourseOffering, offering_id)
+            offering = (
+                session.execute(
+                    select(CourseOffering)
+                    .options(selectinload(CourseOffering.term))
+                    .where(CourseOffering.id == offering_id)
+                )
+                .scalars()
+                .first()
+            )
             return to_dict(offering) if offering else None
 
     def get_course_offering_by_course_and_term(
@@ -877,7 +956,9 @@ class SQLiteDatabase(DatabaseInterface):
         with self.sqlite.session_scope() as session:
             offering = (
                 session.execute(
-                    select(CourseOffering).where(
+                    select(CourseOffering)
+                    .options(selectinload(CourseOffering.term))
+                    .where(
                         and_(
                             CourseOffering.course_id == course_id,
                             CourseOffering.term_id == term_id,
@@ -893,20 +974,37 @@ class SQLiteDatabase(DatabaseInterface):
         with self.sqlite.session_scope() as session:
             offerings = (
                 session.execute(
-                    select(CourseOffering).where(
-                        CourseOffering.institution_id == institution_id
+                    select(CourseOffering)
+                    .options(
+                        selectinload(CourseOffering.term),
+                        selectinload(CourseOffering.course),
                     )
+                    .where(CourseOffering.institution_id == institution_id)
                 )
                 .scalars()
                 .all()
             )
-            return [to_dict(offering) for offering in offerings]
+
+            # Enrich with course details
+            result = []
+            for offering in offerings:
+                offering_dict = to_dict(offering)
+
+                # Add course_number and course_title from the course relationship
+                if offering.course:
+                    offering_dict["course_number"] = offering.course.course_number
+                    offering_dict["course_title"] = offering.course.course_title
+
+                result.append(offering_dict)
+
+            return result
 
     # ------------------------------------------------------------------
     # Term operations
     # ------------------------------------------------------------------
     def create_term(self, term_data: Dict[str, Any]) -> Optional[str]:
         payload = dict(term_data)
+        _remove_fields(payload, TERM_STATUS_FIELDS)
         term_id = _ensure_uuid(payload.pop("term_id", None))
         term_name = payload.get("term_name")
         if not term_name:
@@ -919,7 +1017,6 @@ class SQLiteDatabase(DatabaseInterface):
             start_date=payload.get("start_date"),
             end_date=payload.get("end_date"),
             assessment_due_date=payload.get("assessment_due_date"),
-            active=payload.get("active", True),
             institution_id=payload.get("institution_id"),
             extras={**payload, "term_id": term_id},
         )
@@ -936,6 +1033,8 @@ class SQLiteDatabase(DatabaseInterface):
                     return False
 
                 for key, value in term_data.items():
+                    if key in TERM_STATUS_FIELDS:
+                        continue
                     if hasattr(term, key) and key != "id":
                         setattr(term, key, value)
 
@@ -944,10 +1043,6 @@ class SQLiteDatabase(DatabaseInterface):
         except Exception as e:
             logger.error(f"Failed to update term: {e}")
             return False
-
-    def archive_term(self, term_id: str) -> bool:
-        """Archive term (soft delete - set active=False)."""
-        return self.update_term(term_id, {"active": False})
 
     def delete_term(self, term_id: str) -> bool:
         """Delete term (CASCADE deletes offerings and sections)."""
@@ -986,7 +1081,6 @@ class SQLiteDatabase(DatabaseInterface):
                     select(Term).where(
                         and_(
                             Term.institution_id == institution_id,
-                            Term.active.is_(True),
                             func.date(Term.start_date) <= current_date_str,
                             func.date(Term.end_date) >= current_date_str,
                         )
@@ -1054,9 +1148,9 @@ class SQLiteDatabase(DatabaseInterface):
             narrative_changes=payload.get("narrative_changes"),
             # Workflow fields
             status=payload.get("status", "assigned"),
-            due_date=payload.get("due_date"),
-            assigned_date=payload.get("assigned_date"),
-            completed_date=payload.get("completed_date"),
+            due_date=_normalize_section_datetime(payload.get("due_date")),
+            assigned_date=_normalize_section_datetime(payload.get("assigned_date")),
+            completed_date=_normalize_section_datetime(payload.get("completed_date")),
             extras={**payload, "section_id": section_id},
         )
         with self.sqlite.session_scope() as session:
@@ -1085,7 +1179,20 @@ class SQLiteDatabase(DatabaseInterface):
 
                     for template in templates:
                         instance = CourseSectionOutcome(
-                            section_id=section_id, outcome_id=template.id
+                            section_id=section_id,
+                            outcome_id=template.id,
+                            # Copy status and workflow data (useful for seeding)
+                            status=template.status,
+                            approval_status=template.approval_status,
+                            submitted_at=template.submitted_at,
+                            submitted_by=template.submitted_by_user_id,
+                            reviewed_at=template.reviewed_at,
+                            reviewed_by=template.reviewed_by_user_id,
+                            feedback_comments=template.feedback_comments,
+                            # Copy assessment data (useful for seeding)
+                            students_took=template.students_took,
+                            students_passed=template.students_passed,
+                            assessment_tool=template.assessment_tool,
                         )
                         session.add(instance)
 
@@ -1107,8 +1214,13 @@ class SQLiteDatabase(DatabaseInterface):
                     return False
 
                 for key, value in section_data.items():
+                    normalized_value = (
+                        _normalize_section_datetime(value)
+                        if key in SECTION_DATETIME_FIELDS
+                        else value
+                    )
                     if hasattr(section, key) and key != "id":
-                        setattr(section, key, value)
+                        setattr(section, key, normalized_value)
 
                 section.updated_at = get_current_time()
                 return True

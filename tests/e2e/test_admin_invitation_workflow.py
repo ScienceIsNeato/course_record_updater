@@ -449,7 +449,7 @@ class TestAdminInvitationsAndMultiRole:
 
         # Verify can see "Send Reminders" button (program admin privilege)
         # Program admins can send bulk reminders to their assigned programs
-        expect(page.locator('button:has-text("Send Reminders")').first).to_be_visible()
+        expect(page.locator("#bulkReminderLauncher")).to_be_visible()
 
         print("✅ Program admin privileges confirmed (Send Reminders button visible)")
 

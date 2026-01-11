@@ -19,6 +19,8 @@ describe('InstitutionDashboard', () => {
       <div id="programManagementContainer"></div>
       <div id="facultyOverviewContainer"></div>
       <div id="courseSectionContainer"></div>
+      <div id="courseManagementContainer"></div>
+      <div id="termManagementContainer"></div>
       <div id="assessmentProgressContainer"></div>
     `);
 
@@ -45,7 +47,7 @@ describe('InstitutionDashboard', () => {
   const sampleData = {
     summary: { programs: 2, courses: 5, faculty: 3, sections: 7 },
     institutions: [{ name: 'Example University' }],
-    terms: [{ name: 'Fall 2025', active: true }],
+    terms: [{ name: 'Fall 2025', status: 'ACTIVE' }],
     clos: [
       {
         id: 'clo1',
@@ -77,6 +79,111 @@ describe('InstitutionDashboard', () => {
     courses: [{ course_id: 'c1', course_title: 'Biology 101', course_number: 'BIO101' }],
     metadata: { last_updated: '2024-01-01T00:00:00Z' }
   };
+
+  describe('Timeline status helpers', () => {
+    const helpers = InstitutionDashboard.__testHelpers;
+
+    test('prefers explicit status metadata when available', () => {
+      const status = helpers.computeTimelineStatus({ status: 'scheduled' });
+      expect(status).toBe('SCHEDULED');
+    });
+
+    test('returns ACTIVE when reference date falls within range', () => {
+      const status = helpers.computeTimelineStatus(
+        {
+          start_date: '2024-12-01',
+          end_date: '2025-03-01'
+        },
+        { referenceDate: new Date('2025-01-15') }
+      );
+      expect(status).toBe('ACTIVE');
+    });
+
+    test('returns PASSED when reference date exceeds end date', () => {
+      const status = helpers.computeTimelineStatus(
+        {
+          start_date: '2024-01-01',
+          end_date: '2024-02-01'
+        },
+        { referenceDate: new Date('2024-03-01') }
+      );
+      expect(status).toBe('PASSED');
+    });
+
+    test('accepts reference date strings', () => {
+      const status = helpers.computeTimelineStatus(
+        {
+          start_date: '2025-01-01',
+          end_date: '2025-01-31'
+        },
+        { referenceDate: '2025-01-15' }
+      );
+      expect(status).toBe('ACTIVE');
+    });
+
+    test('fallback helper returns UNKNOWN when dates missing', () => {
+      expect(helpers.fallbackTimelineStatus({})).toBe('UNKNOWN');
+    });
+
+    test('escapeHtml strips unsafe markup', () => {
+      const sanitized = helpers.escapeHtml('<img src=x onerror=alert(1)>');
+      expect(sanitized).toContain('&lt;img');
+      expect(sanitized).not.toContain('<img');
+    });
+
+    test('renderSectionStatus falls back to unknown badge', () => {
+      const html = helpers.renderSectionStatus('does-not-exist');
+      expect(html).toContain('Unknown');
+    });
+
+    test('normalizeReferenceDate handles invalid input gracefully', () => {
+      const normalized = helpers.normalizeReferenceDate('not-a-date');
+      expect(normalized instanceof Date).toBe(true);
+    });
+  });
+
+  describe('Panel renderers', () => {
+    test('renderCourses builds a table when container exists', () => {
+      const container = document.getElementById('courseManagementContainer');
+      container.innerHTML = '';
+
+      InstitutionDashboard.renderCourses([
+        {
+          course_number: 'BIO101',
+          course_title: 'Intro Biology',
+          credit_hours: 3,
+          section_count: 2,
+          department: 'Biology'
+        }
+      ]);
+
+      expect(window.panelManager.createSortableTable).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'institution-courses-table' })
+      );
+      expect(container.querySelector('table')).not.toBeNull();
+    });
+
+    test('renderTerms builds a table with computed status', () => {
+      const container = document.getElementById('termManagementContainer');
+      container.innerHTML = '';
+
+      InstitutionDashboard.renderTerms([
+        {
+          name: 'Spring 2025',
+          start_date: '2025-01-01',
+          end_date: '2025-05-01',
+          program_count: 1,
+          course_count: 2,
+          section_count: 3
+        }
+      ]);
+
+      expect(window.panelManager.createSortableTable).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'institution-terms-table' })
+      );
+      expect(container.querySelector('table')).not.toBeNull();
+    });
+  });
 
   it('renders summary metrics and tables', () => {
     InstitutionDashboard.render(sampleData);
@@ -117,7 +224,7 @@ describe('InstitutionDashboard', () => {
           { program_name: 'CS', completed: 15, pending: 5, overdue: 2 }
         ],
         terms: [
-          { name: 'Fall 2024', active: true }
+          { name: 'Fall 2024', status: 'ACTIVE' }
         ],
         metadata: { last_updated: '2024-02-01T12:00:00Z' }
       };
@@ -193,7 +300,7 @@ describe('InstitutionDashboard', () => {
           { program_name: 'CS', completed: 10, pending: 2, overdue: 1 }
         ],
         terms: [
-          { name: 'Spring 2024', active: true }
+          { name: 'Spring 2024', status: 'ACTIVE' }
         ],
         metadata: { last_updated: '2024-02-01T12:00:00Z' }
       };
@@ -254,7 +361,7 @@ describe('InstitutionDashboard', () => {
           instructor_name: 'Dr. Smith',
           instructor_email: 'smith@test.edu',
           enrollment: 30,
-          status: 'active'
+          status: 'ACTIVE'
         }
       ];
 
@@ -310,6 +417,34 @@ describe('InstitutionDashboard', () => {
 
       // Actions column removed - panels are display-only
       expect(sectionData.status).toBeDefined();
+    });
+
+    it('renders section status as a badge', () => {
+      const sections = [
+        {
+          section_id: 's1',
+          status: 'assigned',
+          course_id: 'c1'
+        },
+        {
+          section_id: 's2',
+          status: 'unassigned',
+          course_id: 'c1'
+        }
+      ];
+
+      const courses = [{ course_id: 'c1' }];
+
+      InstitutionDashboard.renderSections(sections, courses);
+
+      const callArgs = window.panelManager.createSortableTable.mock.calls[0][0];
+      const section1 = callArgs.data[0];
+      const section2 = callArgs.data[1];
+
+      expect(section1.status).toContain('badge');
+      expect(section1.status).toContain('Assigned');
+      expect(section2.status).toContain('badge');
+      expect(section2.status).toContain('Unassigned');
     });
   });
 
@@ -548,7 +683,7 @@ describe('InstitutionDashboard', () => {
           term_id: 't1',
           sections: 2,
           enrollment: 50,
-          status: 'active'
+          status: 'ACTIVE'
         },
         {
           offering_id: 'off2',
@@ -628,7 +763,7 @@ describe('InstitutionDashboard', () => {
           name: 'Fall 2024',
           start_date: '2024-08-01',
           end_date: '2024-12-15',
-          active: true,
+          status: 'ACTIVE',
           offerings_count: 10
         },
         {
@@ -636,7 +771,7 @@ describe('InstitutionDashboard', () => {
           name: 'Spring 2025',
           start_date: '2025-01-15',
           end_date: '2025-05-15',
-          active: false,
+          status: 'SCHEDULED',
           offerings_count: 0
         }
       ];

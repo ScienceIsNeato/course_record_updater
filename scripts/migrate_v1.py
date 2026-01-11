@@ -3,7 +3,7 @@ import sqlite3
 import sys
 
 
-def migrate(db_path):
+def migrate(db_path: str) -> None:
     print(f"Migrating {db_path}...")
     if not os.path.exists(db_path):
         print(f"Database {db_path} not found.")

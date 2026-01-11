@@ -198,6 +198,14 @@ function initializeEditUserModal() {
     const firstName = document.getElementById("editFirstName").value;
     const lastName = document.getElementById("editLastName").value;
     const displayName = document.getElementById("editDisplayName")?.value;
+    const roleSelect = document.getElementById("editUserRole");
+    const newRole = roleSelect?.value;
+    const originalRole = roleSelect?.dataset.originalRole || newRole;
+    const currentUserRole =
+      globalThis.currentUser?.role || document.body.dataset.currentRole || "";
+    const canEditRoles =
+      currentUserRole === "institution_admin" ||
+      currentUserRole === "site_admin";
 
     const updateData = {
       first_name: firstName,
@@ -231,6 +239,28 @@ function initializeEditUserModal() {
 
       if (response.ok) {
         const result = await response.json();
+
+        if (roleSelect && canEditRoles && newRole && newRole !== originalRole) {
+          const roleResponse = await fetch(`/api/users/${userId}/role`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              ...(csrfToken && { "X-CSRFToken": csrfToken }),
+            },
+            body: JSON.stringify({ role: newRole }),
+          });
+
+          if (!roleResponse.ok) {
+            const roleError = await roleResponse.json();
+            showAlert(
+              "danger",
+              `Failed to update role: ${roleError.error || "Unknown error"}`,
+            );
+            throw new Error("Role update failed");
+          }
+
+          roleSelect.dataset.originalRole = newRole;
+        }
 
         // Success - close modal
         const modal = bootstrap.Modal.getInstance(
@@ -274,13 +304,40 @@ function initializeEditUserModal() {
  * Called from user list when Edit button is clicked
  */
 function openEditUserModal(userId, firstName, lastName, displayName) {
-  document.getElementById("editUserId").value = userId;
-  document.getElementById("editFirstName").value = firstName;
-  document.getElementById("editLastName").value = lastName;
+  const user =
+    userId && typeof userId === "object"
+      ? userId
+      : {
+          user_id: userId,
+          first_name: firstName,
+          last_name: lastName,
+          display_name: displayName,
+        };
+
+  document.getElementById("editUserId").value = user.user_id || "";
+  document.getElementById("editFirstName").value = user.first_name || "";
+  document.getElementById("editLastName").value = user.last_name || "";
+
+  const emailInput = document.getElementById("editUserEmail");
+  if (emailInput) {
+    emailInput.value = user.email || "";
+  }
 
   const displayNameInput = document.getElementById("editDisplayName");
   if (displayNameInput) {
-    displayNameInput.value = displayName || "";
+    displayNameInput.value = user.display_name || "";
+  }
+
+  const roleSelect = document.getElementById("editUserRole");
+  if (roleSelect) {
+    const roleValue = user.role || "instructor";
+    roleSelect.value = roleValue;
+    roleSelect.dataset.originalRole = roleValue;
+    const currentUserRole = globalThis.currentUser?.role || "instructor";
+    const canEditRoles =
+      currentUserRole === "institution_admin" ||
+      currentUserRole === "site_admin";
+    roleSelect.disabled = !canEditRoles;
   }
 
   const modal = new bootstrap.Modal(document.getElementById("editUserModal"));

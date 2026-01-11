@@ -1,5 +1,5 @@
 """
-Bulk Email Models package for Course Record Updater.
+Bulk Email Models package for LoopCloser.
 """
 
 from src.bulk_email_models.bulk_email_job import BulkEmailJob

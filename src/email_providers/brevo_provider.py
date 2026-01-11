@@ -53,7 +53,7 @@ class BrevoProvider(EmailProvider):
         self._api_key = config.get("api_key") or os.getenv("BREVO_API_KEY")
         self._sender_email = config.get("sender_email") or config.get("default_sender")
         self._sender_name = config.get("sender_name") or config.get(
-            "default_sender_name", "Course Record Updater"
+            "default_sender_name", "LoopCloser"
         )
 
         if not self._api_key:
@@ -146,12 +146,9 @@ class BrevoProvider(EmailProvider):
                     f"(Message ID: {message_id})"
                 )
                 return True
-            else:
-                logger.error(
-                    f"[Brevo Provider] Failed to send email: "
-                    f"HTTP {response.status_code} - {response.text}"
-                )
-                return False
+            raise RuntimeError(
+                f"Brevo returned HTTP {response.status_code}: {response.text}"
+            )
 
         except requests.exceptions.RequestException as e:
             logger.error(f"[Brevo Provider] API request failed: {e}")

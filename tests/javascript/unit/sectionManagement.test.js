@@ -1,3 +1,4 @@
+/** @jest-environment jsdom */
 /**
  * Unit Tests for Course Section Management UI
  *
@@ -20,6 +21,9 @@ describe('Section Management - Create Section Modal', () => {
     // Set up DOM
     document.body.innerHTML = `
       <form id="createSectionForm">
+        <select id="sectionTermId" name="term_id" required>
+          <option value="term-1">Fall 2024</option>
+        </select>
         <select id="sectionOfferingId" name="offering_id" required>
           <option value="">Select Offering</option>
           <option value="offering-1">CS101 - Fall 2024</option>
@@ -31,10 +35,10 @@ describe('Section Management - Create Section Modal', () => {
           <option value="instr-1">Dr. Smith</option>
           <option value="instr-2">Prof. Jones</option>
         </select>
-        <input type="number" id="sectionEnrollment" name="enrollment" min="0" placeholder="Optional" />
+        <input type="number" id="sectionCapacity" name="capacity" min="0" placeholder="Maximum students" />
         <select id="sectionStatus" name="status" required>
-          <option value="assigned" selected>Assigned</option>
-          <option value="pending">Pending</option>
+          <option value="open" selected>Open</option>
+          <option value="closed">Closed</option>
           <option value="cancelled">Cancelled</option>
         </select>
         <button type="submit" id="createSectionBtn">
@@ -96,9 +100,9 @@ describe('Section Management - Create Section Modal', () => {
       expect(sectionInput.value).toBe('001');
     });
 
-    test('should have status default to assigned', () => {
+    test('should have status default to open', () => {
       const statusSelect = document.getElementById('sectionStatus');
-      expect(statusSelect.value).toBe('assigned');
+      expect(statusSelect.value).toBe('open');
     });
 
     test('should allow instructor to be unassigned', () => {
@@ -124,8 +128,8 @@ describe('Section Management - Create Section Modal', () => {
       document.getElementById('sectionOfferingId').value = 'offering-1';
       document.getElementById('sectionNumber').value = '002';
       document.getElementById('sectionInstructorId').value = 'instr-1';
-      document.getElementById('sectionEnrollment').value = '25';
-      document.getElementById('sectionStatus').value = 'assigned';
+      document.getElementById('sectionCapacity').value = '';
+      document.getElementById('sectionStatus').value = 'open';
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(submitEvent);
@@ -155,8 +159,8 @@ describe('Section Management - Create Section Modal', () => {
       document.getElementById('sectionOfferingId').value = 'offering-2';
       document.getElementById('sectionNumber').value = '003';
       document.getElementById('sectionInstructorId').value = 'instr-2';
-      document.getElementById('sectionEnrollment').value = '30';
-      document.getElementById('sectionStatus').value = 'pending';
+      document.getElementById('sectionCapacity').value = '30';
+      document.getElementById('sectionStatus').value = 'closed';
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(submitEvent);
@@ -170,8 +174,8 @@ describe('Section Management - Create Section Modal', () => {
         offering_id: 'offering-2',
         section_number: '003',
         instructor_id: 'instr-2',
-        enrollment: 30,
-        status: 'pending'
+        capacity: 30,
+        status: 'closed'
       });
     });
 
@@ -185,7 +189,7 @@ describe('Section Management - Create Section Modal', () => {
       document.getElementById('sectionOfferingId').value = 'offering-1';
       document.getElementById('sectionNumber').value = '001';
       document.getElementById('sectionInstructorId').value = '';
-      document.getElementById('sectionEnrollment').value = '';
+      document.getElementById('sectionCapacity').value = '';
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(submitEvent);
@@ -196,7 +200,7 @@ describe('Section Management - Create Section Modal', () => {
       const body = JSON.parse(callArgs[1].body);
 
       expect(body.instructor_id).toBeNull();
-      expect(body.enrollment).toBeNull();
+      expect(body.capacity).toBeUndefined();
     });
 
     test('should show loading state during API call', async () => {

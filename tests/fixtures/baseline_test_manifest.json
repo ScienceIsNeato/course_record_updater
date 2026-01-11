@@ -1,0 +1,223 @@
+{
+    "institutions": [
+        {
+            "name": "Mock University",
+            "short_name": "MOCKU",
+            "admin_email": "admin@mocku.test",
+            "website_url": "https://mocku.test"
+        },
+        {
+            "name": "Riverside Community College",
+            "short_name": "RCC",
+            "admin_email": "admin@riverside.edu",
+            "website_url": "https://riverside.edu"
+        },
+        {
+            "name": "Pacific Technical University",
+            "short_name": "PTU",
+            "admin_email": "admin@pactech.edu",
+            "website_url": "https://pactech.edu"
+        }
+    ],
+    "programs": [
+        {
+            "name": "Computer Science",
+            "code": "CS",
+            "institution_idx": 0
+        },
+        {
+            "name": "Electrical Engineering",
+            "code": "EE",
+            "institution_idx": 0
+        },
+        {
+            "name": "Business Administration",
+            "code": "BUS",
+            "institution_idx": 0
+        },
+        {
+            "name": "Liberal Arts",
+            "code": "LA",
+            "institution_idx": 1
+        },
+        {
+            "name": "Nursing",
+            "code": "NURS",
+            "institution_idx": 1
+        },
+        {
+            "name": "Mechanical Engineering",
+            "code": "ME",
+            "institution_idx": 2
+        },
+        {
+            "name": "Computer Engineering",
+            "code": "CE",
+            "institution_idx": 2
+        },
+        {
+            "name": "Civil Engineering",
+            "code": "CIV",
+            "institution_idx": 2
+        }
+    ],
+    "terms": [
+        {
+            "name": "Fall 2025",
+            "code": "FA2025",
+            "start_offset_days": -90,
+            "end_offset_days": -1
+        },
+        {
+            "name": "Spring 2026",
+            "code": "SP2026",
+            "start_offset_days": 0,
+            "end_offset_days": 120
+        },
+        {
+            "name": "Summer 2026",
+            "code": "SU2026",
+            "start_offset_days": 121,
+            "end_offset_days": 180
+        },
+        {
+            "name": "Fall 2026",
+            "code": "FA2026",
+            "start_offset_days": 181,
+            "end_offset_days": 300
+        },
+        {
+            "name": "Spring 2027",
+            "code": "SP2027",
+            "start_offset_days": 301,
+            "end_offset_days": 420
+        }
+    ],
+    "courses": [
+        {
+            "name": "Introduction to Programming",
+            "code": "CS-101",
+            "credits": 3,
+            "program_idx": 0
+        },
+        {
+            "name": "Data Structures",
+            "code": "CS-201",
+            "credits": 4,
+            "program_idx": 0
+        },
+        {
+            "name": "Circuit Analysis",
+            "code": "EE-101",
+            "credits": 4,
+            "program_idx": 1
+        },
+        {
+            "name": "English Composition",
+            "code": "ENG-101",
+            "credits": 3,
+            "program_idx": 3
+        },
+        {
+            "name": "Thermodynamics",
+            "code": "ME-201",
+            "credits": 3,
+            "program_idx": 5
+        }
+    ],
+    "users": [
+        {
+            "email_env_var": "SITE_ADMIN_EMAIL",
+            "first_name": "Site",
+            "last_name": "Administrator",
+            "role": "site_admin",
+            "password_env_var": "SITE_ADMIN_PASSWORD"
+        },
+        {
+            "email_env_var": "INSTRUCTOR_EMAIL",
+            "first_name": "John",
+            "last_name": "Smith",
+            "role": "instructor",
+            "institution_idx": 0,
+            "program_idx": 0
+        },
+        {
+            "email": "jane.instructor@mocku.test",
+            "first_name": "Jane",
+            "last_name": "Doe",
+            "role": "instructor",
+            "institution_idx": 0,
+            "program_idx": 1
+        },
+        {
+            "email_env_var": "PROGRAM_ADMIN_EMAIL",
+            "first_name": "Bob",
+            "last_name": "ProgramAdmin",
+            "role": "program_admin",
+            "institution_idx": 0,
+            "program_idx": 0
+        },
+        {
+            "email_env_var": "INSTITUTION_ADMIN_EMAIL",
+            "first_name": "Sarah",
+            "last_name": "Admin",
+            "role": "institution_admin",
+            "institution_idx": 0,
+            "password_env_var": "INSTITUTION_ADMIN_PASSWORD"
+        },
+        {
+            "email": "admin@riverside.test",
+            "first_name": "Admin",
+            "last_name": "Riverside",
+            "role": "institution_admin",
+            "institution_idx": 1,
+            "password_env_var": "INSTITUTION_ADMIN_PASSWORD"
+        },
+        {
+            "email": "admin@pactech.test",
+            "first_name": "Admin",
+            "last_name": "PacTech",
+            "role": "institution_admin",
+            "institution_idx": 2,
+            "password_env_var": "INSTITUTION_ADMIN_PASSWORD"
+        }
+    ],
+    "offerings": [
+        {
+            "course_idx": 0,
+            "term_idx": 1,
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 0,
+                    "status": "assigned",
+                    "instructor_idx": 0
+                }
+            ]
+        },
+        {
+            "course_idx": 1,
+            "term_idx": 1,
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 0,
+                    "status": "assigned",
+                    "instructor_idx": 0
+                }
+            ]
+        },
+        {
+            "course_idx": 2,
+            "term_idx": 1,
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 0,
+                    "status": "assigned",
+                    "instructor_idx": 1
+                }
+            ]
+        }
+    ]
+}

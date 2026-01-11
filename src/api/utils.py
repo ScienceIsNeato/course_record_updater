@@ -5,7 +5,7 @@ This module contains common helper functions, error handlers, and utilities
 used across multiple API route modules.
 """
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from flask import jsonify, request
 
@@ -67,7 +67,7 @@ def resolve_institution_scope(
     institution_id = get_current_institution_id()
 
     if institution_id:
-        return current_user, [institution_id], False
+        return current_user or {}, [institution_id], False
 
     if current_user and current_user.get("role") == UserRole.SITE_ADMIN.value:
         institutions = get_all_institutions()
@@ -81,7 +81,7 @@ def resolve_institution_scope(
     if require:
         raise InstitutionContextMissingError()
 
-    return current_user, [], False
+    return current_user or {}, [], False
 
 
 def handle_api_error(
@@ -113,7 +113,9 @@ def handle_api_error(
     return jsonify({"success": False, "error": user_message}), status_code
 
 
-def validate_request_json(required_fields: List[str] = None) -> Dict[str, Any]:
+def validate_request_json(
+    required_fields: Optional[List[str]] = None,
+) -> Dict[str, Any]:
     """
     Validate that request contains JSON data and optionally check for required fields.
 

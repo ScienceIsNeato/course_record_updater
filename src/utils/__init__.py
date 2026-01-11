@@ -1,5 +1,5 @@
 """
-Utility modules for the Course Record Updater application.
+Utility modules for the LoopCloser application.
 """
 
 from .constants import *  # noqa: F401, F403

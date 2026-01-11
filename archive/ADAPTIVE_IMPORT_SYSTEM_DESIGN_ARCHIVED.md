@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Course Record Updater uses a flexible, institution-specific adapter system that allows each institution to import data in their unique formats without requiring system-wide changes. This document outlines the architecture, workflow, and implementation details of this adaptive import system.
+The LoopCloser uses a flexible, institution-specific adapter system that allows each institution to import data in their unique formats without requiring system-wide changes. This document outlines the architecture, workflow, and implementation details of this adaptive import system.
 
 ## Core Philosophy
 
@@ -537,4 +537,4 @@ python scripts/compare_import_export.py \
 
 ---
 
-This adaptive import system transforms the Course Record Updater from a one-size-fits-all solution into a truly flexible platform that can accommodate any institution's unique data formats while maintaining a consistent user experience and providing clear guidance when custom development is needed.
+This adaptive import system transforms the LoopCloser from a one-size-fits-all solution into a truly flexible platform that can accommodate any institution's unique data formats while maintaining a consistent user experience and providing clear guidance when custom development is needed.

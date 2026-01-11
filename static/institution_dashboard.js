@@ -25,13 +25,121 @@
     return div.innerHTML;
   }
 
+  const TERM_STATUS_BADGES = {
+    ACTIVE: { label: "Active", className: "badge bg-success" },
+    SCHEDULED: { label: "Scheduled", className: "badge bg-info text-dark" },
+    PASSED: { label: "Passed", className: "badge bg-secondary" },
+    UNKNOWN: { label: "Unknown", className: "badge bg-dark" },
+  };
+
+  function renderTermStatus(status) {
+    const normalized = (status || "UNKNOWN").toUpperCase();
+    const config = TERM_STATUS_BADGES[normalized] || TERM_STATUS_BADGES.UNKNOWN;
+    return `<span class="${config.className}">${config.label}</span>`;
+  }
+
+  const SECTION_STATUS_BADGES = {
+    ASSIGNED: { label: "Assigned", className: "badge bg-success" },
+    UNASSIGNED: {
+      label: "Unassigned",
+      className: "badge bg-warning text-dark",
+    },
+    SCHEDULED: { label: "Scheduled", className: "badge bg-info text-dark" },
+    ACTIVE: { label: "Active", className: "badge bg-success" },
+    COMPLETED: { label: "Completed", className: "badge bg-secondary" },
+    CANCELLED: { label: "Cancelled", className: "badge bg-danger" },
+    UNKNOWN: { label: "Unknown", className: "badge bg-dark" },
+  };
+
+  function renderSectionStatus(status) {
+    const normalized = (status || "UNKNOWN").toUpperCase();
+    const config =
+      SECTION_STATUS_BADGES[normalized] || SECTION_STATUS_BADGES.UNKNOWN;
+    return `<span class="${config.className}">${config.label}</span>`;
+  }
+
+  function normalizeReferenceDate(referenceDate) {
+    if (referenceDate instanceof Date) {
+      return Number.isNaN(referenceDate.getTime()) ? new Date() : referenceDate;
+    }
+
+    if (referenceDate !== undefined && referenceDate !== null) {
+      const parsed = new Date(referenceDate);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+
+    return new Date();
+  }
+
+  function fallbackTimelineStatus(
+    record,
+    startKeys = [],
+    endKeys = [],
+    referenceDate = null,
+  ) {
+    if (!record) return "UNKNOWN";
+
+    const direct =
+      record.status ||
+      record.timeline_status ||
+      record.term_status ||
+      (record.is_active || record.active ? "ACTIVE" : null);
+    if (direct) {
+      return String(direct).toUpperCase();
+    }
+
+    const candidates = (keys) =>
+      keys
+        .map((key) => record[key])
+        .filter((value) => value !== undefined && value !== null);
+
+    const startValue =
+      candidates(startKeys).find(Boolean) ||
+      record.start_date ||
+      record.term_start_date;
+    const endValue =
+      candidates(endKeys).find(Boolean) ||
+      record.end_date ||
+      record.term_end_date;
+    if (!startValue || !endValue) {
+      return "UNKNOWN";
+    }
+    const start = new Date(startValue);
+    const end = new Date(endValue);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return "UNKNOWN";
+    }
+    const now = normalizeReferenceDate(referenceDate);
+    if (now < start) return "SCHEDULED";
+    if (now > end) return "PASSED";
+    return "ACTIVE";
+  }
+
+  function computeTimelineStatus(record, options = {}) {
+    if (typeof globalThis.resolveTimelineStatus === "function") {
+      return globalThis.resolveTimelineStatus(record, options);
+    }
+    return fallbackTimelineStatus(
+      record,
+      options.startKeys || ["start_date", "term_start_date"],
+      options.endKeys || ["end_date", "term_end_date"],
+      options.referenceDate || null,
+    );
+  }
+
   const InstitutionDashboard = {
     cache: null,
     lastFetch: 0,
     refreshInterval: 5 * 60 * 1000,
     intervalId: null,
+    refreshDebounceMs: 400,
+    refreshTimeoutId: null,
+    mutationUnsubscribe: null,
 
     init() {
+      this.registerMutationListener();
       document.addEventListener("visibilitychange", () => {
         if (
           !document.hidden &&
@@ -107,6 +215,10 @@
       // Cleanup on page unload
       globalThis.addEventListener("beforeunload", () => this.cleanup());
       globalThis.addEventListener("pagehide", () => this.cleanup());
+      document.addEventListener("item-created", () => this.loadData());
+      document.addEventListener("item-updated", () => this.loadData());
+      document.addEventListener("item-deleted", () => this.loadData());
+      document.addEventListener("faculty-invited", () => this.loadData());
     },
 
     cleanup() {
@@ -114,10 +226,48 @@
         clearInterval(this.intervalId);
         this.intervalId = null;
       }
+      if (this.refreshTimeoutId) {
+        clearTimeout(this.refreshTimeoutId);
+        this.refreshTimeoutId = null;
+      }
+      if (typeof this.mutationUnsubscribe === "function") {
+        this.mutationUnsubscribe();
+        this.mutationUnsubscribe = null;
+      }
     },
 
     async refresh() {
       return this.loadData({ silent: false });
+    },
+
+    registerMutationListener() {
+      if (!globalThis.DashboardEvents?.subscribeToMutations) {
+        return;
+      }
+
+      if (this.mutationUnsubscribe) {
+        this.mutationUnsubscribe();
+      }
+
+      this.mutationUnsubscribe =
+        globalThis.DashboardEvents.subscribeToMutations((detail) => {
+          if (!detail) return;
+          this.scheduleRefresh({
+            silent: true,
+            reason: `${detail.entity || "unknown"}:${detail.action || "change"}`,
+          });
+        });
+    },
+
+    scheduleRefresh(options = {}) {
+      const { silent = true } = options;
+      if (this.refreshTimeoutId) {
+        clearTimeout(this.refreshTimeoutId);
+      }
+      this.refreshTimeoutId = setTimeout(() => {
+        this.refreshTimeoutId = null;
+        this.loadData({ silent });
+      }, this.refreshDebounceMs);
     },
 
     async loadData(options = {}) {
@@ -225,10 +375,14 @@
         institutionName || "Institution Overview";
 
       const term =
-        (data.terms || []).find((item) => item && item.active) ||
-        (data.terms || [])[0];
+        (data.terms || []).find(
+          (item) => item && computeTimelineStatus(item) === "ACTIVE",
+        ) || (data.terms || [])[0];
       const termName = term && term.name ? term.name : "--";
-      document.getElementById(SELECTORS.currentTerm).textContent = termName;
+      const termElement = document.getElementById(SELECTORS.currentTerm);
+      if (termElement) {
+        termElement.textContent = termName;
+      }
     },
 
     renderPrograms(programOverview, rawPrograms) {
@@ -252,11 +406,6 @@
             faculty_count: program.faculty_count || 0,
             student_count: program.student_count || 0,
             section_count: program.section_count || 0,
-            assessment_progress: program.assessment_progress || {
-              percent_complete: 0,
-              completed: 0,
-              total: 0,
-            },
           }));
 
       const table = globalThis.panelManager.createSortableTable({
@@ -267,16 +416,8 @@
           { key: "faculty", label: "Faculty", sortable: true },
           { key: "students", label: "Students", sortable: true },
           { key: "sections", label: "Sections", sortable: true },
-          { key: "progress", label: "Progress", sortable: true },
         ],
         data: programs.map((program) => {
-          const progress = program.assessment_progress || {};
-          const percent =
-            typeof progress.percent_complete === "number"
-              ? progress.percent_complete
-              : 0;
-          const completed = progress.completed ?? 0;
-          const total = progress.total ?? 0;
           const coursesLength =
             program.courses && program.courses.length
               ? program.courses.length
@@ -301,17 +442,31 @@
             students_sort: studentCount.toString(),
             sections: sectionCount.toString(),
             sections_sort: sectionCount.toString(),
-            progress: `<div class="progress">
-                <div class="progress-bar" role="progressbar" style="width: ${Math.min(percent, 100)}%">${percent}%</div>
-              </div>
-              <small class="text-muted">${completed}/${total} complete</small>`,
-            progress_sort: percent,
           };
         }),
       });
 
       container.innerHTML = "";
       container.appendChild(table);
+    },
+
+    normalizeProgressPercent(progress = {}) {
+      const percentRaw = progress.percent_complete;
+      const asNumber =
+        typeof percentRaw === "number" ? percentRaw : parseFloat(percentRaw);
+
+      if (!Number.isNaN(asNumber)) {
+        return asNumber;
+      }
+
+      const completed = Number(progress.completed ?? 0);
+      const total = Number(progress.total ?? 0);
+
+      if (total > 0) {
+        return Number(((completed / total) * 100).toFixed(1));
+      }
+
+      return 0;
     },
 
     renderFaculty(assignments, fallbackFaculty) {
@@ -331,6 +486,12 @@
             section_count: member.section_count || 0,
             enrollment: member.enrollment || 0,
             role: member.role || "instructor",
+            status:
+              member.account_status && member.account_status !== "undefined"
+                ? member.account_status
+                : member.status && member.status !== "undefined"
+                  ? member.status
+                  : "active",
           }));
 
       if (!facultyRecords.length) {
@@ -350,6 +511,7 @@
           { key: "sections", label: "Sections", sortable: true },
           { key: "students", label: "Students", sortable: true },
           { key: "role", label: "Role", sortable: true },
+          { key: "status", label: "Status", sortable: true },
         ],
         data: facultyRecords.map((record) => {
           const courseCount = Number(record.course_count ?? 0);
@@ -374,6 +536,18 @@
             students: studentCount.toString(),
             students_sort: studentCount.toString(),
             role: this.formatRole(record.role || "instructor"),
+            status: `<span class="badge ${
+              (record.status || "active").toLowerCase() === "active"
+                ? "bg-success"
+                : ["invited", "pending"].includes(
+                      (record.status || "").toLowerCase(),
+                    )
+                  ? "bg-warning text-dark"
+                  : "bg-secondary"
+            }">${
+              (record.status || "active").charAt(0).toUpperCase() +
+              (record.status || "active").slice(1)
+            }</span>`,
           };
         }),
       });
@@ -407,6 +581,7 @@
         columns: [
           { key: "course", label: "Course", sortable: true },
           { key: "section", label: "Section", sortable: true },
+          { key: "term", label: "Term", sortable: true },
           { key: "faculty", label: "Faculty", sortable: true },
           { key: "enrollment", label: "Enrollment", sortable: true },
           { key: "status", label: "Status", sortable: true },
@@ -422,15 +597,17 @@
           const instructor =
             section.instructor_name || section.instructor || "Unassigned";
           const enrollment = section.enrollment ?? 0;
-          const status = (section.status || "scheduled").replace(/_/g, " ");
+          const status = section.status || "scheduled";
+          const term = section.term_name || section.term || "—";
 
           return {
             course: number ? `${number} — ${title || ""}` : title || "Course",
             section: section.section_number || section.section_id || "—",
+            term: term,
             faculty: instructor,
             enrollment: enrollment.toString(),
             enrollment_sort: enrollment.toString(),
-            status: status.charAt(0).toUpperCase() + status.slice(1),
+            status: renderSectionStatus(status),
           };
         }),
       });
@@ -512,6 +689,7 @@
           const endDate = term.end_date
             ? new Date(term.end_date).toLocaleDateString()
             : "N/A";
+          const statusValue = computeTimelineStatus(term);
 
           return {
             name: term.name || term.term_name || "Unnamed Term",
@@ -526,11 +704,8 @@
             start_date_sort: term.start_date || "",
             end_date: endDate,
             end_date_sort: term.end_date || "",
-            status:
-              term.active || term.is_active
-                ? '<span class="badge bg-success">Active</span>'
-                : '<span class="badge bg-secondary">Inactive</span>',
-            status_sort: term.active || term.is_active ? "1" : "0",
+            status: renderTermStatus(statusValue),
+            status_sort: statusValue,
           };
         }),
       });
@@ -590,20 +765,23 @@
             offering.program_names || course.program_names || [];
           const programDisplay =
             programNames.length > 0 ? programNames.join(", ") : "-";
+          const statusValue = computeTimelineStatus(offering);
 
           return {
-            course: course.course_number || "Unknown Course",
+            course:
+              course.course_number && course.course_title
+                ? `${course.course_number} — ${course.course_title}`
+                : course.course_number ||
+                  course.course_title ||
+                  "Unknown Course",
             program: programDisplay,
             term: term.term_name || term.name || "Unknown Term",
             sections: sectionCount.toString(),
             sections_sort: sectionCount.toString(),
             enrollment: enrollmentCount.toString(),
             enrollment_sort: enrollmentCount.toString(),
-            status:
-              offering.status === "active"
-                ? '<span class="badge bg-success">Active</span>'
-                : '<span class="badge bg-secondary">Inactive</span>',
-            status_sort: offering.status === "active" ? "1" : "0",
+            status: renderTermStatus(statusValue),
+            status_sort: statusValue,
           };
         }),
       });
@@ -751,7 +929,7 @@
         data: programOverview.map((program) => {
           const progress = program.assessment_progress || {};
           const total = progress.total ?? 0;
-          const percent = progress.percent_complete ?? 0;
+          const percent = this.normalizeProgressPercent(progress);
           const sectionCount = program.section_count ?? 0;
           return {
             program: program.program_name || program.name || "Program",
@@ -879,6 +1057,15 @@
         alert("❌ Failed to send reminder. Please try again.");
       }
     },
+  };
+
+  InstitutionDashboard.__testHelpers = {
+    computeTimelineStatus,
+    fallbackTimelineStatus,
+    normalizeReferenceDate,
+    renderTermStatus,
+    renderSectionStatus,
+    escapeHtml,
   };
 
   // Expose InstitutionDashboard to window immediately so onclick handlers work

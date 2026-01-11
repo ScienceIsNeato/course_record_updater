@@ -1,4 +1,4 @@
-# Complete Email Flow Map - Course Record Updater
+# Complete Email Flow Map - LoopCloser
 
 ## 📧 All Email Touchpoints in the Application
 
@@ -27,7 +27,7 @@ User fills registration form → Submit
 1. **Verification Email** (`send_verification_email`)
    - **Trigger**: User submits registration form
    - **Recipient**: New user's email address
-   - **Subject**: "Verify your Course Record Updater account"
+   - **Subject**: "Verify your LoopCloser account"
    - **Content**: Welcome message, verification link with token
    - **Template**: HTML + plain text versions
    - **Action Link**: `{BASE_URL}/verify?token={token}`
@@ -36,7 +36,7 @@ User fills registration form → Submit
 2. **Welcome Email** (`send_welcome_email`) - *Optional/Future*
    - **Trigger**: User verifies account
    - **Recipient**: Newly verified user
-   - **Subject**: "Welcome to Course Record Updater!"
+   - **Subject**: "Welcome to LoopCloser!"
    - **Content**: Getting started guide, key features, support links
    - **Template**: HTML + plain text versions
    - **Test File**: `test_email_flows_registration.py::TestWelcomeEmailFlow`
@@ -64,7 +64,7 @@ User clicks "Forgot Password" → Enter email → Submit
 3. **Password Reset Email** (`send_password_reset_email`)
    - **Trigger**: User requests password reset
    - **Recipient**: User's registered email
-   - **Subject**: "Reset your Course Record Updater password"
+   - **Subject**: "Reset your LoopCloser password"
    - **Content**: Reset instructions, reset link with token
    - **Template**: HTML + plain text versions
    - **Action Link**: `{BASE_URL}/reset-password?token={token}`
@@ -106,7 +106,7 @@ Admin navigates to user management → Click "Invite User"
 5. **Invitation Email** (`send_invitation_email`)
    - **Trigger**: Admin invites user to join institution/program
    - **Recipient**: Invitee's email address
-   - **Subject**: "You're invited to join {institution_name} on Course Record Updater"
+   - **Subject**: "You're invited to join {institution_name} on LoopCloser"
    - **Content**: 
      - Inviter's name and role
      - Institution/program name
@@ -253,7 +253,7 @@ Never send emails to these domains in non-production:
 1. **Personalized greeting** (recipient's name)
 2. **Clear purpose** (why they're remockuving this email)
 3. **Call-to-action** (what they should do)
-4. **Branding** (Course Record Updater identity)
+4. **Branding** (LoopCloser identity)
 5. **Support contact** (help email/link)
 6. **HTML + plain text versions** (accessibility)
 

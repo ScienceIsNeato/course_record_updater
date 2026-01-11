@@ -257,7 +257,7 @@ Unknown Speaker  24:27
 something, something, something,
 
 Speaker 1  24:29  
-yeah, I have to call this something. But for a while it was the course record updater, and that's not, that's not a good name, that's kind of clunky. Yeah? Lassie, well, it's easy to refer to.
+yeah, I have to call this something. But for a while it was the LoopCloser, and that's not, that's not a good name, that's kind of clunky. Yeah? Lassie, well, it's easy to refer to.
 
 Unknown Speaker  24:42  
 Yeah, yeah, I get it

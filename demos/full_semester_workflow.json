@@ -1,14 +1,14 @@
 {
   "demo_name": "Full Semester Lifecycle Story",
   "demo_id": "full_semester_story",
-  "version": "2.0",
-  "description": "A story-driven walkthrough of a full semester lifecycle, featuring date travel, cross-departmental course duplication, faculty onboarding, and end-of-term audit workflows.",
-  "estimated_duration_minutes": 25,
+  "version": "3.0",
+  "description": "A structured walkthrough of the semester lifecycle: planning (creating terms/offerings), onboarding (inviting faculty), and auditing (reviewing outcomes).",
+  "estimated_duration_minutes": 20,
   "talking_points": [
     "System Date Override allows testing full semester cycles in minutes",
-    "Cross-departmental course duplication streamlines curriculum expansion",
-    "Closed-loop audit workflow ensures data quality before warehousing",
-    "Role-based dashboards focus users on immediate tasks"
+    "Streamlined faculty onboarding via email invitations",
+    "Closed-loop audit workflow ensures data quality",
+    "Real-time status updates across dashboards"
   ],
   "environment": {
     "working_directory": ".",
@@ -23,12 +23,12 @@
   "steps": [
     {
       "step_number": 1,
-      "phase": "Act 1: Planning (Oct 2025)",
+      "phase": "Act 1: Planning (Dec 2025)",
       "name": "Verify Environment & Date",
-      "purpose": "Confirm date override is active for the Fall 2025 planning phase",
+      "purpose": "Confirm the late-December override is active so the Fall semester and CLO closeout feel complete",
       "pre_commands": [],
       "instructions": {
-        "human": "The server has been seeded with the Institution Admin date set to Oct 15, 2025.\n\nLogin as 'demo2025.admin@example.com' (Password: Demo2025!).\nNotice the yellow 'System Date Override' banner.",
+        "human": "The server has been seeded with the Institution Admin date set to Dec 23, 2025 (right after classes ended and before CLO due dates).\n\nLogin as 'demo2025.admin@example.com' (Password: Demo2025!).\nNotice the yellow 'System Date Override' banner and the busy Fall 2025 summary.",
         "automated": {
           "action": "api_post",
           "endpoint": "/api/auth/login",
@@ -52,7 +52,7 @@
       },
       "expected_results": [
         "Dashboard loads",
-        "Banner shows: 'System Date Override Active: Oct 15, 2025'"
+        "Banner shows: 'System Date Override Active: Dec 23, 2025'"
       ],
       "post_commands": [],
       "verification": {
@@ -73,7 +73,7 @@
       "purpose": "Prepare for the upcoming semester",
       "pre_commands": [],
       "instructions": {
-        "human": "Navigate to 'Terms'.\nCreate a new term:\n- Name: Spring 2026\n- Code: SP2026\n- Start: Jan 15, 2026\n- End: May 15, 2026\n- Assessment Due: May 20, 2026",
+        "human": "Navigate to 'Terms' from the dashboard.\nClick 'Create New Term'.\n\nEnter Details:\n- Name: Spring 2026\n- Code: SP2026\n- Start: Jan 15, 2026\n- End: May 15, 2026\n- Assessment Due: May 20, 2026\n\nClick 'Create Term'.",
         "automated": {
           "action": "api_post",
           "endpoint": "/api/terms",
@@ -93,11 +93,11 @@
         "code": "SP2026"
       },
       "expected_results": [
-        "Spring 2026 term appears in list"
+        "Spring 2026 term appears in list with 'Upcoming' status"
       ],
       "post_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM terms WHERE name='Spring 2026' LIMIT 1\"",
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM terms WHERE code='SP2026' LIMIT 1\"",
           "purpose": "Capture SP2026 ID",
           "capture_output_as": "sp26_term_id"
         }
@@ -111,8 +111,8 @@
     {
       "step_number": 3,
       "phase": "Act 1: Planning (Oct 2025)",
-      "name": "Duplicate Biology for Zoology",
-      "purpose": "Create BIOL-101-Z tailored for Zoology program",
+      "name": "Create Course Offering",
+      "purpose": "Create offering for BIOL-101 in the new Spring 2026 term",
       "pre_commands": [
         {
           "command": "sqlite3 course_records_dev.db \"SELECT id FROM courses WHERE course_number='BIOL-101' LIMIT 1\"",
@@ -126,33 +126,42 @@
         }
       ],
       "instructions": {
-        "human": "Navigate to Courses.\nFind 'BIOL-101' and click Duplicate.\nUpdate details:\n- Number: BIOL-101-Z\n- Title: Biology for Zoologists\n- Credits: 2\n- Program: Zoology",
+        "human": "Navigate to 'Course Offerings'.\nClick 'Create New Course Offering'.\n\nSelect:\n- Course: BIOL-101\n- Term: Spring 2026\n- Program: Biology (or Zoology)\n\n(Sections: Use default '001')\n\nClick 'Create Offering'.",
         "automated": {
           "action": "api_post",
-          "endpoint": "/api/management/courses/{{biol101_id}}/duplicate",
+          "endpoint": "/api/offerings",
           "data": {
-            "new_course_number": "BIOL-101-Z",
-            "new_course_title": "Biology for Zoologists",
-            "credit_hours": 2,
-            "program_ids": [
-              "{{zool_program_id}}"
+            "course_id": "{{biol101_id}}",
+            "term_id": "{{sp26_term_id}}",
+            "program_id": "{{zool_program_id}}",
+            "sections": [
+              {
+                "section_number": "001"
+              }
             ]
           },
-          "description": "Duplicate BIOL-101 to BIOL-101-Z"
+          "description": "Create SP2026 offering for BIOL-101"
         }
       },
       "urls": [],
       "inputs": {
-        "course": "BIOL-101-Z"
+        "course": "BIOL-101",
+        "term": "SP2026"
       },
       "expected_results": [
-        "BIOL-101-Z course created"
+        "Course offering created for BIOL-101 in Spring 2026",
+        "Section 001 automatically created"
       ],
       "post_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM courses WHERE course_number='BIOL-101-Z' LIMIT 1\"",
-          "purpose": "Capture BIOL-101-Z ID",
-          "capture_output_as": "biol101z_id"
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM course_offerings WHERE course_id='{{biol101_id}}' AND term_id='{{sp26_term_id}}' LIMIT 1\"",
+          "purpose": "Capture offering ID",
+          "capture_output_as": "sp26_offering_id"
+        },
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM course_sections WHERE section_number='001' AND offering_id='{{sp26_offering_id}}' LIMIT 1\"",
+          "purpose": "Capture Section 001 ID",
+          "capture_output_as": "section_001_id"
         }
       ],
       "verification": {
@@ -163,88 +172,37 @@
     },
     {
       "step_number": 4,
-      "phase": "Act 1: Planning (Oct 2025)",
-      "name": "Create Offering & Assign Faculty",
-      "purpose": "Schedule the course and assign instructors",
-      "pre_commands": [
-        {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM users WHERE email='dr.morgan@demo.example.com' LIMIT 1\"",
-          "purpose": "Get Dr. Morgan ID",
-          "capture_output_as": "morgan_id"
-        }
-      ],
-      "instructions": {
-        "human": "Create Offering for BIOL-101-Z in SP2026.\nAdd 2 Sections:\n- 001: Assign Dr. Morgan (Existing)\n- 002: Click 'Invite' and send to 'dr.newguy@example.com'",
-        "automated": {
-          "action": "api_post",
-          "endpoint": "/api/offerings",
-          "data": {
-            "course_id": "{{biol101z_id}}",
-            "term_id": "{{sp26_term_id}}",
-            "sections": [
-              {
-                "section_number": "001",
-                "instructor_id": "{{morgan_id}}",
-                "capacity": 30
-              },
-              {
-                "section_number": "002",
-                "capacity": 30
-              }
-            ]
-          },
-          "description": "Create offering with sections"
-        }
-      },
-      "urls": [],
-      "inputs": {
-        "offering": "BIOL-101-Z SP26"
-      },
-      "expected_results": [
-        "Offering created"
-      ],
-      "post_commands": [
-        {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM course_sections WHERE section_number='002' AND offering_id=(SELECT id FROM course_offerings WHERE course_id='{{biol101z_id}}' AND term_id='{{sp26_term_id}}')\"",
-          "purpose": "Capture Section 002 ID",
-          "capture_output_as": "section_002_id"
-        }
-      ],
-      "verification": {
-        "type": "db_check"
-      },
-      "artifacts": {},
-      "pause_for_human": true
-    },
-    {
-      "step_number": 5,
-      "phase": "Act 1: Planning (Oct 2025)",
-      "name": "Invite Dr. Newguy",
-      "purpose": "Onboard new faculty member",
+      "phase": "Act 2: Onboarding (Oct 2025)",
+      "name": "Invite New Faculty",
+      "purpose": "Onboard new faculty member for the new section",
       "pre_commands": [],
       "instructions": {
-        "human": "In the Sections list for BIOL-101-Z:\nClick Invitation icon for Section 002.\nEmail: dr.newguy@example.com\nSend Invitation.",
+        "human": "Navigate to the 'Course Sections' panel (or page).\nFind 'BIOL-101 (Section 001)' for Spring 2026.\nClick the 'Invite Instructor' (user-plus) icon.\n\nIn the modal:\n- Email: dr.newguy@example.com\n- First Name: New\n- Last Name: Guy\n- Section: BIOL-101 - Section 001 (Should be pre-selected)\n\nClick 'Send Invitation'.",
         "automated": {
           "action": "api_post",
           "endpoint": "/api/invitations",
           "data": {
             "email": "dr.newguy@example.com",
-            "section_id": "{{section_002_id}}",
-            "role": "instructor"
+            "first_name": "New",
+            "last_name": "Guy",
+            "role": "instructor",
+            "section_id": "{{section_001_id}}"
           },
-          "description": "Invite Dr. Newguy"
+          "description": "Invite Dr. Newguy to Section 001"
         }
       },
       "urls": [],
       "inputs": {
-        "email": "dr.newguy@example.com"
+        "email": "dr.newguy@example.com",
+        "section": "001"
       },
       "expected_results": [
-        "Invitation sent"
+        "Invitation sent successfully",
+        "Section status updates to 'Assigned' (or pending)"
       ],
       "post_commands": [],
       "verification": {
-        "type": "log_check"
+        "type": "db_check"
       },
       "artifacts": {
         "logs": [
@@ -254,9 +212,9 @@
       "pause_for_human": true
     },
     {
-      "step_number": 6,
+      "step_number": 5,
       "phase": "Act 2: Onboarding (Oct 2025)",
-      "name": "Dr. Newguy Registration",
+      "name": "Faculty Registration",
       "purpose": "Simulate new faculty accepting invitation",
       "pre_commands": [
         {
@@ -266,45 +224,51 @@
         }
       ],
       "instructions": {
-        "human": "Logout as Admin.\n(Optional) Check email logs for invite link.\nSimulate clicking link: Register Dr. Newguy.\nLogin as Dr. Newguy and see assigned course.",
+        "human": "Logout as Admin.\n(In a real flow, checking email) -> Simulate clicking the invite link.\n\nSimulate Invite Acceptance:\n- Token: (hidden)\n- Password: Password123!\n- Display Name: Dr. New Guy\n\nLogin as 'dr.newguy@example.com' and verify visualization of the assigned course.",
         "automated": {
-          "action": "api_post",
-          "endpoint": "/api/auth/accept-invitation",
-          "data": {
-            "invitation_token": "{{invite_token}}",
-            "password": "Password123!",
-            "display_name": "New Guy"
-          },
-          "description": "Register Dr. Newguy"
+          "action": "sequence",
+          "steps": [
+            {
+              "action": "api_post",
+              "endpoint": "/api/auth/logout",
+              "data": {}
+            },
+            {
+              "action": "api_post",
+              "endpoint": "/api/auth/accept-invitation",
+              "data": {
+                "invitation_token": "{{invite_token}}",
+                "password": "Password123!",
+                "display_name": "Dr. New Guy"
+              }
+            }
+          ]
         }
       },
-      "urls": [
-        {
-          "label": "Logout",
-          "url": "http://localhost:3001/logout",
-          "clickable": true
-        }
-      ],
-      "inputs": {},
+      "urls": [],
+      "inputs": {
+        "email": "dr.newguy@example.com"
+      },
       "expected_results": [
-        "Registration successful",
-        "Dr. Newguy logged in"
+        "Account created",
+        "Logged in as Dr. New Guy",
+        "Dashboard shows BIOL-101 SP26"
       ],
       "post_commands": [],
       "verification": {
-        "type": "db_check"
+        "type": "ui_check"
       },
       "artifacts": {},
       "pause_for_human": true
     },
     {
-      "step_number": 7,
+      "step_number": 6,
       "phase": "Act 3: Semester End (Dec 2025)",
-      "name": "Time Jump: Dec 20, 2025",
-      "purpose": "Advance timeline to end of Fall semester (3 days post-deadline)",
+      "name": "Time Jump: Dec 23, 2025",
+      "purpose": "Advance timeline to the last stretch between the Fall 2025 end of classes and the CLO due date",
       "pre_commands": [],
       "instructions": {
-        "human": "Logout Dr. Newguy.\nLogin as Sarah Admin.\n\nUse the Date Override feature to jump to: December 20, 2025.\nThis puts us past the FA2025 deadline.",
+        "human": "Logout Dr. New Guy.\nLogin as 'demo2025.admin@example.com' (Demo2025!).\n\nUse the Date Override feature to jump to: December 23, 2025.\nThis simulates the busy window after final exams but before CLO due dates.",
         "automated": {
           "action": "sequence",
           "steps": [
@@ -325,7 +289,7 @@
               "action": "api_post",
               "endpoint": "/api/profile/system-date",
               "data": {
-                "system_date": "2025-12-20T09:00:00"
+            "system_date": "2025-12-23T09:00:00"
               }
             }
           ]
@@ -333,11 +297,12 @@
       },
       "urls": [],
       "inputs": {
-        "date": "2025-12-20"
+        "date": "2025-12-23"
       },
       "expected_results": [
-        "Date Banner: Dec 20, 2025",
-        "Dashboard context updated"
+        "Date Banner: Dec 23, 2025",
+        "Audit tasks become visible",
+        "CLO progress cards reflect ~85% completion"
       ],
       "post_commands": [],
       "verification": {
@@ -351,13 +316,13 @@
       "pause_for_human": true
     },
     {
-      "step_number": 8,
+      "step_number": 7,
       "phase": "Act 3: Semester End (Dec 2025)",
       "name": "Audit Queue Review",
-      "purpose": "Review submissions and identify issues",
+      "purpose": "Review submissions from Fall 2025",
       "pre_commands": [],
       "instructions": {
-        "human": "Navigate to 'Audit CLO'.\nObserve:\n- Dr. Morgan's BIOL-101 submission (Needs Rework - seeded error)\n- Dr. Newguy's SP26 course (Assigned, future)\n- ZOOL-101 (NCI - seeded)\n\nFilter by 'Submitted'.",
+        "human": "Navigate to 'Audit CLO' page.\nReview the list:\n- Identify the submission for BIOL-101 (Seeded with 'Rework Needed' status/content).\n- Identify the missing submission for ZOOL-101.",
         "automated": {
           "action": "none",
           "url": "/audit-clo"
@@ -366,7 +331,8 @@
       "urls": [],
       "inputs": {},
       "expected_results": [
-        "Audit table loaded"
+        "Audit table loaded",
+        "Progress summary shows ~85% of CLOs completed"
       ],
       "post_commands": [],
       "verification": {
@@ -376,10 +342,10 @@
       "pause_for_human": true
     },
     {
-      "step_number": 9,
+      "step_number": 8,
       "phase": "Act 3: Semester End (Dec 2025)",
-      "name": "Request Rework on BIOL-101",
-      "purpose": "Demonstrate feedback loop for incorrect submissions",
+      "name": "Request Rework",
+      "purpose": "Flag incorrect data for correction",
       "pre_commands": [
         {
           "command": "sqlite3 course_records_dev.db \"SELECT id FROM course_outcomes WHERE clo_number='4' AND description LIKE '%basket%' LIMIT 1\"",
@@ -388,7 +354,7 @@
         }
       ],
       "instructions": {
-        "human": "Find the BIOL-101 CLO #4 with 'Basket Weaving' description.\nClick 'Request Rework'.\nComment: 'Description mismatch. Please correct copy/paste error.'",
+        "human": "Click 'Request Rework' on the BIOL-101 CLO #4.\nComment: 'Description mismatch. Please correct copy/paste error.'\nConfirm.",
         "automated": {
           "action": "api_post",
           "endpoint": "/api/outcomes/{{bad_clo_id}}/request-rework",
@@ -413,13 +379,13 @@
       "pause_for_human": true
     },
     {
-      "step_number": 10,
+      "step_number": 9,
       "phase": "Act 4: Correction (Dec 2025)",
       "name": "Faculty Fixes Rework",
-      "purpose": "Show faculty addressing admin feedback",
+      "purpose": "Faculty member correcting their submission",
       "pre_commands": [],
       "instructions": {
-        "human": "Logout Admin.\nLogin as Dr. Morgan (Instructor123!).\nSee 'Needs Rework' badge.\nEdit CLO #4: Change 'Basket Weaving' to 'Scientific Method'.\nResubmit.",
+        "human": "Logout Admin.\nLogin as 'dr.morgan@demo.example.com' (Instructor123!).\n\nNotice the 'Needs Rework' badge.\nEdit CLO #4: Change 'Basket Weaving' -> 'Scientific Method'.\nResubmit.",
         "automated": {
           "action": "sequence",
           "steps": [
@@ -462,13 +428,13 @@
       "pause_for_human": true
     },
     {
-      "step_number": 11,
-      "phase": "Act 5: Closeout (Jan 2026)",
-      "name": "Time Jump: Jan 25, 2026",
-      "purpose": "Finalize previous semester data",
+      "step_number": 10,
+      "phase": "Act 5: Follow-up (Feb 2026)",
+      "name": "Time Jump: Feb 10, 2026",
+      "purpose": "Return to the new year when Spring 2026 prep and CLO closeout wrap up",
       "pre_commands": [],
       "instructions": {
-        "human": "Logout Dr. Morgan.\nLogin as Sarah Admin.\n\nUpdate Date Override: Jan 25, 2026.\nNow we are in SP2026 term context.",
+        "human": "Logout the instructor session.\nLogin as 'demo2025.admin@example.com'.\n\nUse the Date Override feature to jump to: February 10, 2026.\nThis puts us into the term reset where the new offering should be visible and the audit queue readies for final decisions.",
         "automated": {
           "action": "sequence",
           "steps": [
@@ -489,7 +455,7 @@
               "action": "api_post",
               "endpoint": "/api/profile/system-date",
               "data": {
-                "system_date": "2026-01-25T09:00:00"
+                "system_date": "2026-02-10T09:00:00"
               }
             }
           ]
@@ -497,10 +463,12 @@
       },
       "urls": [],
       "inputs": {
-        "date": "2026-01-25"
+        "date": "2026-02-10"
       },
       "expected_results": [
-        "Date Banner: Jan 25, 2026"
+        "Date Banner: Feb 10, 2026",
+        "Spring 2026 offering is now visible in the dashboard summaries",
+        "Audit queue still shows the outstanding Needs Rework/NCI items from December"
       ],
       "post_commands": [],
       "verification": {
@@ -508,16 +476,16 @@
       },
       "artifacts": {
         "screenshots": [
-          "03_act5_date_jump.png"
+          "05_act5_date_jump.png"
         ]
       },
       "pause_for_human": true
     },
     {
-      "step_number": 12,
-      "phase": "Act 5: Closeout (Jan 2026)",
-      "name": "Approve Fix & Mark NCI",
-      "purpose": "Close out all FA2025 items",
+      "step_number": 11,
+      "phase": "Act 5: Follow-up (Feb 2026)",
+      "name": "Final Approvals & Follow-up",
+      "purpose": "Admin ties up the December audit thread, sends a follow-up invitation, and confirms Spring 2026 is ready",
       "pre_commands": [
         {
           "command": "sqlite3 course_records_dev.db \"SELECT id FROM course_outcomes WHERE clo_number='5' AND description LIKE '%unicorns%' LIMIT 1\"",
@@ -526,10 +494,23 @@
         }
       ],
       "instructions": {
-        "human": "Navigate to Audit.\n1. Approve Dr. Morgan's fixed CLO #4.\n2. Locate ZOOL-101 CLO #5 (Unicorns).\n3. Click 'Mark NCI' (Never Coming In) - Faculty unreachable.\n\nDashboard should now be clean for FA2025.",
+        "human": "Logout Dr. Morgan.\nLogin as 'demo2025.admin@example.com'.\n\nNavigate to 'Course Sections' and verify the Spring 2026 offering now shows (feel free to reopen that section's row).\nClick the green 'Invite' button on BIOL-101 Section 001 to reopen the unified invite modal and send Dr. New Guy a follow-up message.\nThen go to the Audit page.\n1. Verify CLO #4 is fixed. Click 'Approve'.\n2. Locate ZOOL-101 CLO #5. Click 'Mark NCI' (Never Coming In). Comment: 'Faculty unreachable'.\n\nAudit queue should be empty and Spring 2026 prep is complete.",
         "automated": {
           "action": "sequence",
           "steps": [
+            {
+              "action": "api_post",
+              "endpoint": "/api/auth/logout",
+              "data": {}
+            },
+            {
+              "action": "api_post",
+              "endpoint": "/api/auth/login",
+              "data": {
+                "email": "demo2025.admin@example.com",
+                "password": "Demo2025!"
+              }
+            },
             {
               "action": "api_post",
               "endpoint": "/api/management/audit/{{bad_clo_id}}/approve",
@@ -540,7 +521,7 @@
               "action": "api_post",
               "endpoint": "/api/management/audit/{{nci_clo_id}}/nci",
               "data": {
-                "admin_comment": "Faculty unreachable after 3 attempts."
+                "admin_comment": "Faculty unreachable."
               },
               "description": "Mark CLO #5 as NCI"
             }
@@ -550,9 +531,9 @@
       "urls": [],
       "inputs": {},
       "expected_results": [
-        "CLO #4 Approved",
-        "CLO #5 NCI",
-        "Audit queue clear"
+        "Items removed from queue",
+        "Spring 2026 checklist looks ready and the follow-up email was sent",
+        "Fall 2025 closeout and straggler NCI/approval decisions are reflected in the audit summary"
       ],
       "post_commands": [],
       "verification": {
@@ -566,13 +547,13 @@
       "pause_for_human": true
     },
     {
-      "step_number": 13,
+      "step_number": 12,
       "phase": "Completion",
       "name": "Demo Complete",
-      "purpose": "Wrap up",
+      "purpose": "Wrap up the multi-beat story that traveled from late Dec 2025 through Feb 2026",
       "pre_commands": [],
       "instructions": {
-        "human": "Demo successfully completed. \nShown: Date travel, Duplication, Invitations, Registration, Rework Loops, and Audit Closeout.",
+        "human": "Demo successfully completed.\nShown: Planning (SP26), Onboarding (Invite/Register), the December audit loop, plus the February follow-up finishing Spring 2026 prep.",
         "automated": {
           "action": "none"
         }

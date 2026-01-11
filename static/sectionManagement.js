@@ -8,11 +8,150 @@
  * - API communication with CSRF protection
  */
 
-// Initialize when DOM is ready
-document.addEventListener("DOMContentLoaded", () => {
-  initializeCreateSectionModal();
-  initializeEditSectionModal();
-});
+const SECTION_API = "/api/sections";
+const TERMS_API = "/api/terms?all=true";
+const OFFERINGS_API = "/api/offerings";
+const INSTRUCTORS_API = "/api/users?role=instructor";
+
+function publishSectionMutation(action, metadata = {}) {
+  globalThis.DashboardEvents?.publishMutation({
+    entity: "sections",
+    action,
+    metadata,
+    source: "sectionManagement",
+  });
+}
+
+function populateSelectOptions(
+  selectEl,
+  items,
+  placeholder,
+  getValue,
+  getLabel,
+) {
+  if (!selectEl) return;
+  selectEl.innerHTML = "";
+  const placeholderOpt = document.createElement("option");
+  placeholderOpt.value = "";
+  placeholderOpt.textContent = placeholder;
+  selectEl.appendChild(placeholderOpt);
+
+  items.forEach((item) => {
+    const opt = document.createElement("option");
+    opt.value = getValue(item);
+    opt.textContent = getLabel(item);
+    selectEl.appendChild(opt);
+  });
+}
+
+async function fetchJson(url) {
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error || `Failed to fetch ${url}`);
+  }
+  return resp.json();
+}
+
+async function loadTerms(termSelect) {
+  if (!termSelect) return { terms: [], selected: null };
+  termSelect.innerHTML = '<option value="">Loading terms...</option>'; // nosemgrep
+  try {
+    const data = await fetchJson(TERMS_API);
+    const terms = data.terms || [];
+    populateSelectOptions(
+      termSelect,
+      terms,
+      "Select Term",
+      (t) => t.term_id || t.id,
+      (t) => t.name || t.term_name || "Unnamed Term",
+    );
+    const active =
+      terms.find(
+        (t) =>
+          (t.status && t.status.toLowerCase() === "active") ||
+          (t.timeline_status && t.timeline_status.toLowerCase() === "active") ||
+          (t.term_status && t.term_status.toLowerCase() === "active"),
+      ) || terms[0];
+    if (active) {
+      const activeId = active.term_id || active.id;
+      termSelect.value = activeId || "";
+      return { terms, selected: activeId };
+    }
+    return { terms, selected: null };
+  } catch (err) {
+    termSelect.innerHTML = '<option value="">Error loading terms</option>'; // nosemgrep
+    console.error("Failed to load terms:", err); // eslint-disable-line no-console
+    return { terms: [], selected: null };
+  }
+}
+
+async function loadOfferings(offeringSelect, termId) {
+  if (!offeringSelect) return;
+  offeringSelect.innerHTML = '<option value="">Loading offerings...</option>'; // nosemgrep
+  try {
+    const url = termId
+      ? `${OFFERINGS_API}?term_id=${encodeURIComponent(termId)}`
+      : OFFERINGS_API;
+    const data = await fetchJson(url);
+    const offerings = data.offerings || [];
+    populateSelectOptions(
+      offeringSelect,
+      offerings,
+      "Select offering...",
+      (o) => o.offering_id || o.id,
+      (o) => {
+        const courseNum = o.course_number || "";
+        const courseTitle = o.course_title || o.course_name || "Course";
+        const termName = o.term_name || "Term";
+        const status = o.status || o.timeline_status || "";
+        const statusTag = status ? ` (${status})` : "";
+        return `${courseNum ? `${courseNum} - ` : ""}${courseTitle} (${termName})${statusTag}`;
+      },
+    );
+  } catch (err) {
+    offeringSelect.innerHTML =
+      '<option value="">Error loading offerings</option>'; // nosemgrep
+    console.error("Failed to load offerings:", err); // eslint-disable-line no-console
+  }
+}
+
+async function loadInstructors(instructorSelect) {
+  if (!instructorSelect) return;
+  instructorSelect.innerHTML = '<option value="">Unassigned</option>'; // nosemgrep
+  try {
+    const data = await fetchJson(INSTRUCTORS_API);
+    const instructors = data.users || data.data || [];
+    instructors.forEach((instructor) => {
+      const option = document.createElement("option");
+      option.value = instructor.user_id || instructor.id;
+      option.textContent = `${instructor.first_name} ${instructor.last_name} (${instructor.email})`;
+      instructorSelect.appendChild(option);
+    });
+  } catch (err) {
+    console.error("Failed to load instructors:", err); // eslint-disable-line no-console
+  }
+}
+
+// Initialize when DOM is ready (guard for non-browser test environments)
+if (typeof document !== "undefined") {
+  document.addEventListener("DOMContentLoaded", () => {
+    initializeCreateSectionModal();
+    initializeEditSectionModal();
+  });
+}
+
+const sectionTestExports = {
+  loadTerms,
+  loadOfferings,
+  loadInstructors,
+  populateSelectOptions,
+  fetchJson,
+};
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = sectionTestExports;
+}
 
 /**
  * Initialize Create Section Modal
@@ -25,21 +164,47 @@ function initializeCreateSectionModal() {
     return; // Form not on this page
   }
 
+  const modalEl = document.getElementById("createSectionModal");
+  const termSelect = document.getElementById("sectionTermId");
+  const offeringSelect = document.getElementById("sectionOfferingId");
+  const instructorSelect = document.getElementById("sectionInstructorId");
+
+  // Load dropdowns when modal opens
+  if (modalEl) {
+    modalEl.addEventListener("show.bs.modal", async () => {
+      const { selected } = await loadTerms(termSelect);
+      await loadOfferings(offeringSelect, selected);
+      await loadInstructors(instructorSelect);
+    });
+  }
+
+  // Reload offerings when term changes
+  if (termSelect) {
+    termSelect.addEventListener("change", async (e) => {
+      await loadOfferings(offeringSelect, e.target.value);
+    });
+  }
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const instructorValue = document.getElementById(
-      "sectionInstructorId",
-    ).value;
-    const enrollmentValue = document.getElementById("sectionEnrollment").value;
+    const instructorValue = instructorSelect?.value || "";
+    const capacityValue = document.getElementById("sectionCapacity")?.value;
+    const dueDateValue = document.getElementById("sectionDueDate")?.value;
 
     const sectionData = {
-      offering_id: document.getElementById("sectionOfferingId").value,
+      offering_id: offeringSelect?.value,
       section_number: document.getElementById("sectionNumber").value,
       instructor_id: instructorValue || null,
-      enrollment: enrollmentValue ? Number.parseInt(enrollmentValue) : null,
+      enrollment: null,
       status: document.getElementById("sectionStatus").value,
     };
+    if (capacityValue !== undefined && capacityValue !== "") {
+      sectionData.capacity = Number.parseInt(capacityValue, 10);
+    }
+    if (dueDateValue) {
+      sectionData.due_date = dueDateValue;
+    }
 
     const createBtn = document.getElementById("createSectionBtn");
     const btnText = createBtn.querySelector(".btn-text");
@@ -54,7 +219,7 @@ function initializeCreateSectionModal() {
       const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
       const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
-      const response = await fetch("/api/sections", {
+      const response = await fetch(SECTION_API, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -75,8 +240,19 @@ function initializeCreateSectionModal() {
         }
 
         form.reset();
+        if (termSelect && termSelect.options.length > 0) {
+          termSelect.selectedIndex = 0;
+        }
+        if (offeringSelect && offeringSelect.options.length > 0) {
+          offeringSelect.selectedIndex = 0;
+        }
+        const sectionNumberInput = document.getElementById("sectionNumber");
+        if (sectionNumberInput) {
+          sectionNumberInput.value = "001";
+        }
 
         alert(result.message || "Section created successfully!");
+        publishSectionMutation("create", { sectionId: result.section_id });
 
         // Reload sections list if function exists
         if (typeof globalThis.loadSections === "function") {
@@ -128,6 +304,14 @@ function initializeEditSectionModal() {
       enrollment: enrollmentValue ? Number.parseInt(enrollmentValue) : null,
       status: document.getElementById("editSectionStatus").value,
     };
+    const capacityInput = document.getElementById("editSectionCapacity");
+    if (capacityInput && capacityInput.value !== "") {
+      updateData.capacity = Number.parseInt(capacityInput.value) || 0;
+    }
+    const dueDateInput = document.getElementById("editSectionDueDate");
+    if (dueDateInput && dueDateInput.value) {
+      updateData.due_date = dueDateInput.value;
+    }
 
     const saveBtn = this.querySelector('button[type="submit"]');
     const btnText = saveBtn.querySelector(".btn-text");
@@ -163,6 +347,7 @@ function initializeEditSectionModal() {
         }
 
         alert(result.message || "Section updated successfully!");
+        publishSectionMutation("update", { sectionId });
 
         // Reload sections list
         if (typeof globalThis.loadSections === "function") {
@@ -197,7 +382,24 @@ async function openEditSectionModal(sectionId, sectionData) {
   document.getElementById("editSectionEnrollment").value =
     sectionData.enrollment || "";
   document.getElementById("editSectionStatus").value =
-    sectionData.status || "assigned";
+    sectionData.status || "scheduled";
+  const capacityInput = document.getElementById("editSectionCapacity");
+  if (capacityInput) {
+    const capacity =
+      sectionData.capacity ??
+      sectionData.enrollment_capacity ??
+      sectionData.capacity_limit;
+    capacityInput.value =
+      typeof capacity === "number" && !Number.isNaN(capacity) ? capacity : "";
+  }
+  const dueDateInput = document.getElementById("editSectionDueDate");
+  if (dueDateInput) {
+    const dueValue =
+      sectionData.due_date ||
+      sectionData.assessment_due_date ||
+      sectionData.assessmentDueDate;
+    dueDateInput.value = dueValue ? dueValue.split("T")[0] : "";
+  }
 
   // Populate instructor dropdown
   const instructorSelect = document.getElementById("editSectionInstructorId");
@@ -260,6 +462,7 @@ async function deleteSection(sectionId, courseName, sectionNumber) {
 
     if (response.ok) {
       alert(`Section ${sectionNumber} of ${courseName} deleted successfully.`);
+      publishSectionMutation("delete", { sectionId });
 
       if (typeof globalThis.loadSections === "function") {
         globalThis.loadSections();

@@ -1,0 +1,136 @@
+{% extends "dashboard/base_dashboard.html" %}
+
+{% block title %}Course Learning Outcomes - Loopcloser{% endblock %}
+
+{% block page_header %}{% endblock %}
+
+{% block page_title %}🎯 Course Learning Outcomes{% endblock %}
+{% block page_subtitle %}Manage learning outcomes for all courses{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">🎯</span>
+            Course Outcomes
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-primary" onclick="createOutcome()">
+                <i class="fas fa-plus"></i> Add Outcome
+            </button>
+        </div>
+    </div>
+        <div class="panel-content">
+        <div class="row mb-3 g-2">
+            <div class="col-md-3">
+                <select id="filterProgram" class="form-select form-select-sm" onchange="loadOutcomes()">
+                    <option value="">All Programs</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select id="filterCourse" class="form-select form-select-sm" onchange="loadOutcomes()">
+                    <option value="">All Courses</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select id="filterStatus" class="form-select form-select-sm" onchange="loadOutcomes()">
+                    <option value="">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="archived">Archived</option>
+                </select>
+            </div>
+        </div>
+        <div id="outcomesTableContainer">
+            <!-- Table populated by JS -->
+            <div class="d-flex justify-content-center p-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include Outcome Modals -->
+{% include "_outcome_modals.html" %}
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Load necessary scripts -->
+<script src="{{ url_for('static', filename='outcomeManagement.js') }}"></script>
+<script>
+    // Expose user context to JS
+    window.userContext = {
+        institutionId: '{{ user.institution_id }}',
+        role: '{{ user.role }}'
+    };
+
+    // Helper to open create modal (wrapper for dashboard consistency)
+    function createOutcome() {
+        const modal = new bootstrap.Modal(document.getElementById('createOutcomeModal'));
+        modal.show();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialize filters (load programs/courses)
+        initializeFilters();
+
+        // Initial load
+        if (typeof loadOutcomes === 'function') {
+            loadOutcomes();
+        }
+    });
+
+    async function initializeFilters() {
+        try {
+            // Load Programs
+            const progResp = await fetch('/api/programs');
+            if (progResp.ok) {
+                const data = await progResp.json();
+                const select = document.getElementById('filterProgram');
+                (data.programs || []).forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.program_id;
+                    opt.textContent = p.name;
+                    select.appendChild(opt);
+                });
+            }
+
+            // Load Courses
+            const courseResp = await fetch('/api/courses');
+            if (courseResp.ok) {
+                const data = await courseResp.json();
+                const select = document.getElementById('filterCourse');
+                (data.courses || []).forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.course_id;
+                    opt.textContent = `${c.course_number} - ${c.course_title}`;
+                    select.appendChild(opt);
+                });
+
+                // Also populate the modal course select
+                const modalSelect = document.getElementById('outcomeCourseId');
+                if (modalSelect) {
+                    // Clear existing except default
+                    while (modalSelect.options.length > 1) {
+                        modalSelect.remove(1);
+                    }
+                    (data.courses || []).forEach(c => {
+                        const opt = document.createElement('option');
+                        opt.value = c.course_id;
+                        opt.textContent = `${c.course_number} - ${c.course_title}`;
+                        modalSelect.appendChild(opt);
+                    });
+                }
+            }
+        } catch (e) {
+            console.error("Error initializing filters:", e);
+        }
+    }
+</script>
+{% endblock %}

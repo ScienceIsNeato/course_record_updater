@@ -10,6 +10,85 @@
 
 let currentTerms = []; // Global state to store terms for edit access
 
+const TERM_STATUS_BADGE_MAP = {
+  ACTIVE: { label: "Active", className: "bg-success" },
+  SCHEDULED: { label: "Scheduled", className: "bg-info text-dark" },
+  PASSED: { label: "Passed", className: "bg-secondary" },
+  UNKNOWN: { label: "Unknown", className: "bg-dark" },
+};
+
+function renderTermStatusBadge(status) {
+  const normalized = (status || "UNKNOWN").toUpperCase();
+  const config =
+    TERM_STATUS_BADGE_MAP[normalized] || TERM_STATUS_BADGE_MAP.UNKNOWN;
+  return `<span class="badge ${config.className}">${config.label}</span>`;
+}
+
+function normalizeReferenceDate(referenceDate) {
+  if (referenceDate instanceof Date) {
+    return Number.isNaN(referenceDate.getTime()) ? new Date() : referenceDate;
+  }
+  if (referenceDate !== undefined && referenceDate !== null) {
+    const parsed = new Date(referenceDate);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+  return new Date();
+}
+
+function resolveTermStatus(term, referenceDate = null) {
+  if (typeof globalThis.resolveTimelineStatus === "function") {
+    return globalThis.resolveTimelineStatus(term, {
+      referenceDate,
+    });
+  }
+
+  if (!term) return "UNKNOWN";
+  const direct =
+    term.status || (term.is_active || term.active ? "ACTIVE" : null);
+  if (direct) {
+    return String(direct).toUpperCase();
+  }
+
+  const { start_date: start, end_date: end } = term;
+  if (!start || !end) {
+    return "UNKNOWN";
+  }
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return "UNKNOWN";
+  }
+  const now = normalizeReferenceDate(referenceDate);
+  if (now < startDate) return "SCHEDULED";
+  if (now > endDate) return "PASSED";
+  return "ACTIVE";
+}
+
+globalThis.termManagementTestHelpers = {
+  resolveTermStatus,
+};
+
+function publishTermMutation(action, metadata = {}) {
+  globalThis.DashboardEvents?.publishMutation({
+    entity: "terms",
+    action,
+    metadata,
+    source: "termManagement",
+  });
+}
+
+async function refreshTermsTableIfPresent() {
+  const container = document.getElementById("termsTableContainer");
+  if (!container) {
+    return false;
+  }
+
+  await renderTermsTable();
+  return true;
+}
+
 // Initialize when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
   initializeCreateTermModal();
@@ -110,6 +189,7 @@ function initializeCreateTermModal() {
 
     const termData = {
       name,
+      term_name: name,
       start_date: startDate,
       end_date: endDate,
     };
@@ -156,15 +236,8 @@ function initializeCreateTermModal() {
 
         alert(result.message || "Term created successfully!");
 
-        // Reload terms list if function exists
-        // Reload terms list if function exists
-        if (typeof globalThis.loadTerms === "function") {
-          console.log("Reloading terms after creation...");
-          globalThis.loadTerms();
-        } else {
-          console.warn("loadTerms function not found on globalThis");
-          setTimeout(() => location.reload(), 1000); // Fallback to full reload
-        }
+        await refreshTermsTableIfPresent();
+        publishTermMutation("create", { termId: result.term_id });
       } else {
         const error = await response.json();
         alert(`Failed to create term: ${error.error || "Unknown error"}`);
@@ -211,6 +284,7 @@ function initializeEditTermModal() {
 
     const updateData = {
       name,
+      term_name: name,
       start_date: startDate,
       end_date: endDate,
     };
@@ -256,9 +330,8 @@ function initializeEditTermModal() {
         alert(result.message || "Term updated successfully!");
 
         // Reload terms list
-        if (typeof globalThis.loadTerms === "function") {
-          globalThis.loadTerms();
-        }
+        await refreshTermsTableIfPresent();
+        publishTermMutation("update", { termId });
       } else {
         const error = await response.json();
         alert(`Failed to update term: ${error.error || "Unknown error"}`);
@@ -339,9 +412,8 @@ async function deleteTerm(termId, termName) {
     if (response.ok) {
       alert(`${termName} deleted successfully.`);
 
-      if (typeof globalThis.loadTerms === "function") {
-        globalThis.loadTerms();
-      }
+      await refreshTermsTableIfPresent();
+      publishTermMutation("delete", { termId });
     } else {
       const error = await response.json();
       alert(`Failed to delete term: ${error.error || "Unknown error"}`);
@@ -355,8 +427,11 @@ async function deleteTerm(termId, termName) {
 /**
  * Load and display all terms in a table
  */
-async function loadTerms() {
+async function renderTermsTable() {
   const container = document.getElementById("termsTableContainer");
+  if (!container) {
+    return;
+  }
   // nosemgrep
   container.innerHTML = `
     <output class="d-flex justify-content-center align-items-center" style="min-height: 200px;" aria-live="polite">
@@ -413,9 +488,8 @@ async function loadTerms() {
     `;
 
     currentTerms.forEach((term) => {
-      const statusBadge = term.active
-        ? '<span class="badge bg-success">Active</span>'
-        : '<span class="badge bg-secondary">Inactive</span>';
+      const statusValue = resolveTermStatus(term);
+      const statusBadge = renderTermStatusBadge(statusValue);
       const offeringsCount = term.offerings_count || 0;
       const termId = term.term_id || term.id;
       const termName = escapeHtml(term.term_name || term.name || "-");
@@ -503,9 +577,9 @@ globalThis.openCreateTermModal = openCreateTermModal;
 // This prevents clobbering the dashboard's refresh function
 if (!globalThis.loadTerms) {
   // No existing loadTerms function - use our table loader
-  globalThis.loadTerms = loadTerms;
+  globalThis.loadTerms = renderTermsTable;
 } else {
   // Dashboard or other page already set up loadTerms - preserve it
   // Store our table loader under a different name for direct access if needed
-  globalThis.loadTermsTable = loadTerms;
+  globalThis.loadTermsTable = renderTermsTable;
 }

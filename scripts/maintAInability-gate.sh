@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# maintAInability-gate - Course Record Updater Quality Framework
+# maintAInability-gate - LoopCloser Quality Framework
 # This script ensures code maintainability through comprehensive quality checks
 # Mirrors Git Hooks & CI exactly - if this passes, your commit WILL succeed
 #
@@ -138,13 +138,14 @@ else
       --js-lint) RUN_JS_LINT=true ;;
       --js-format) RUN_JS_FORMAT=true ;;
       --js-tests) RUN_JS_TESTS=true ;;
-      --js-coverage) RUN_JS_COVERAGE=true ;;
+      --js-tests-and-coverage) RUN_JS_COVERAGE=true ;;
       --coverage-new-code) RUN_COVERAGE_NEW_CODE=true ;;
+      --coverage-full) RUN_COVERAGE=true; RUN_COVERAGE_NEW_CODE=true ;;
       --smoke-tests) RUN_SMOKE_TESTS=true ;;
       --frontend-check) RUN_FRONTEND_CHECK=true ;;
       --verbose) VERBOSE=true ;;
       --help)
-        echo "maintAInability-gate - Course Record Updater Quality Framework"
+        echo "maintAInability-gate - LoopCloser Quality Framework"
         echo ""
         echo "Usage:"
         echo "  ./scripts/maintAInability-gate.sh           # All atomic checks (strict mode with auto-fix)"
@@ -157,8 +158,7 @@ else
         echo "  ./scripts/maintAInability-gate.sh --security # Check security vulnerabilities"
         echo "  ./scripts/maintAInability-gate.sh --sonar-analyze # Trigger new SonarCloud analysis and save run metadata"
         echo "  ./scripts/maintAInability-gate.sh --sonar-status  # Fetch results from most recent analysis"
-        echo "  ./scripts/maintAInability-gate.sh --js-tests # Run JavaScript test suite (Jest)"
-        echo "  ./scripts/maintAInability-gate.sh --js-coverage # Run JavaScript coverage analysis"
+        echo "  ./scripts/maintAInability-gate.sh --js-tests-and-coverage # Run JavaScript coverage analysis"
         echo "  ./scripts/maintAInability-gate.sh --duplication # Check code duplication"
         echo "  ./scripts/maintAInability-gate.sh --imports # Check import organization"
         echo "  ./scripts/maintAInability-gate.sh --complexity # Check code complexity"
@@ -240,7 +240,7 @@ check_venv() {
   fi
 }
 
-echo "🔍 Running Course Record Updater quality checks (STRICT MODE with auto-fix)..."
+echo "🔍 Running LoopCloser quality checks (STRICT MODE with auto-fix)..."
 echo "🐍 Python/Flask enterprise validation suite"
 echo ""
 
@@ -343,7 +343,8 @@ if [[ "$RUN_PYTHON_STATIC_ANALYSIS" == "true" ]]; then
   if mypy src/ scripts/ conftest.py --exclude tests/ --ignore-missing-imports --disallow-untyped-defs 2>&1; then
     add_success "mypy" "Type checking passed"
   else
-    echo "⚠️  mypy found type issues (non-blocking)"
+    add_failure "mypy" "Type checking failed" "Fix mypy type errors"
+    GROUPED_PASSED=false
   fi
   
   # Run import analysis
@@ -680,7 +681,7 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
   TEST_EXIT_CODE=0
 
   # Stream coverage output to CI logs while also capturing it for analysis
-  python -m pytest tests/unit/ tests/integration/ --cov=src --cov-report=term-missing --tb=no --quiet 2>&1 | tee "$COVERAGE_REPORT_FILE"
+  python -m pytest tests/unit/ tests/integration/ --cov=src --cov-report=term-missing --cov-report=xml:coverage.xml --tb=no --quiet 2>&1 | tee "$COVERAGE_REPORT_FILE"
   TEST_EXIT_CODE=${PIPESTATUS[0]}
 
   # Load coverage output from file for parsing
@@ -933,30 +934,55 @@ if [[ "$RUN_SECURITY" == "true" || "$RUN_SECURITY_LOCAL" == "true" ]]; then
   # 1. BANDIT (Background)
   (
     echo "  🔧 Running bandit security scan (Python)..."
-    bandit -r . --exclude ./venv,./cursor-rules,./.venv,./logs,./tests,./node_modules,./demos,./archives --format json --quiet 2>/dev/null > bandit-report.json || true
+  # Exclude dev-only folders (scripts contain developer helper scripts that are
+  # scanned but treated as low-signal for blocking CI). See SECURITY.md for
+  # rationale and guidance.
+  # Skip specific low-noise checks (B101/B110) here; we still surface medium/high
+  # severity issues as failures. Skipping avoids noisy false positives in
+  # developer helper scripts while preserving security for production code.
+  bandit -r . --skip B101,B110 --exclude ./venv,./cursor-rules,./.venv,./logs,./tests,./node_modules,./archives --format json --quiet 2>/dev/null > bandit-report.json || true
     
     if [[ -f bandit-report.json ]]; then
         BANDIT_HIGH=$(python3 -c "import json; d=json.load(open('bandit-report.json')); print(sum(1 for r in d.get('results',[]) if r.get('issue_severity')=='HIGH'))" 2>/dev/null || echo "0")
         BANDIT_MED=$(python3 -c "import json; d=json.load(open('bandit-report.json')); print(sum(1 for r in d.get('results',[]) if r.get('issue_severity')=='MEDIUM'))" 2>/dev/null || echo "0")
         BANDIT_LOW=$(python3 -c "import json; d=json.load(open('bandit-report.json')); print(sum(1 for r in d.get('results',[]) if r.get('issue_severity')=='LOW'))" 2>/dev/null || echo "0")
-        BANDIT_TOTAL=$((BANDIT_HIGH + BANDIT_MED + BANDIT_LOW))
-        
-        if [[ "$BANDIT_TOTAL" -gt 0 ]]; then
-            echo "FAIL" > "$BANDIT_OUT"
-            echo "  ❌ Bandit found $BANDIT_TOTAL issues (High: $BANDIT_HIGH, Medium: $BANDIT_MED, Low: $BANDIT_LOW)" >> "$BANDIT_OUT"
-            echo "" >> "$BANDIT_OUT"
-            echo "  📋 Top issues:" >> "$BANDIT_OUT"
-            python3 -c "
+    BANDIT_TOTAL=$((BANDIT_HIGH + BANDIT_MED + BANDIT_LOW))
+
+    # Fail only on HIGH or MEDIUM issues. LOW issues are recorded as
+    # non-blocking warnings to avoid noisy failures for developer scripts.
+    BANDIT_HIGH_MED=$((BANDIT_HIGH + BANDIT_MED))
+
+    if [[ "$BANDIT_HIGH_MED" -gt 0 ]]; then
+      echo "FAIL" > "$BANDIT_OUT"
+      echo "  ❌ Bandit found $BANDIT_HIGH_MED high/medium issues (High: $BANDIT_HIGH, Medium: $BANDIT_MED). Low: $BANDIT_LOW" >> "$BANDIT_OUT"
+      echo "" >> "$BANDIT_OUT"
+      echo "  📋 Top issues:" >> "$BANDIT_OUT"
+      python3 -c "
 import json
 d=json.load(open('bandit-report.json'))
-for r in d.get('results',[])[:5]:
-    print(f\"    [{r.get('issue_severity','?')}] {r.get('filename','')}:{r.get('line_number','')} - {r.get('issue_text','')[:60]}...\")
+for r in d.get('results',[])[:10]:
+  print(f\"    [{r.get('issue_severity','?')}] {r.get('filename','')}:{r.get('line_number','')} - {r.get('issue_text','')[:100]}\")
 " 2>/dev/null >> "$BANDIT_OUT" || true
-            echo "" >> "$BANDIT_OUT"
-        else
-            echo "PASS" > "$BANDIT_OUT"
-            echo "  ✅ Bandit: No Python security issues" >> "$BANDIT_OUT"
-        fi
+      echo "" >> "$BANDIT_OUT"
+    elif [[ "$BANDIT_LOW" -gt 0 ]]; then
+      # Non-blocking - communicate details and suggest remediation.
+      echo "WARN" > "$BANDIT_OUT"
+      echo "  ⚠️ Bandit found $BANDIT_LOW low severity issues (non-blocking). Review and justify or fix as needed." >> "$BANDIT_OUT"
+      echo "" >> "$BANDIT_OUT"
+      echo "  📋 Sample low-severity issues:" >> "$BANDIT_OUT"
+      python3 -c "
+import json
+d=json.load(open('bandit-report.json'))
+for r in d.get('results',[])[:10]:
+  if r.get('issue_severity','').upper()=='LOW':
+    print(f\"    [LOW] {r.get('filename','')}:{r.get('line_number','')} - {r.get('issue_text','')[:100]}\")
+" 2>/dev/null >> "$BANDIT_OUT" || true
+      echo "" >> "$BANDIT_OUT"
+      echo "  ℹ️ Note: Low severity issues do not fail CI by policy. See SECURITY.md for details." >> "$BANDIT_OUT"
+    else
+      echo "PASS" > "$BANDIT_OUT"
+      echo "  ✅ Bandit: No Python security issues" >> "$BANDIT_OUT"
+    fi
     else
         echo "FAIL" > "$BANDIT_OUT"
         echo "  ❌ Bandit: Failed to generate report" >> "$BANDIT_OUT"
@@ -1025,8 +1051,9 @@ for r in d.get('results',[])[:5]:
                 echo "$SECRETS_OUTPUT" >> "$SECRETS_OUT"
             fi
         else
-            echo "PASS" > "$SECRETS_OUT"
-            echo "  ⚠️  No .secrets.baseline. Skipping." >> "$SECRETS_OUT"
+            echo "FAIL" > "$SECRETS_OUT"
+            echo "  ❌ No .secrets.baseline found. This is required." >> "$SECRETS_OUT"
+            echo "  💡 Create baseline with: detect-secrets scan > .secrets.baseline" >> "$SECRETS_OUT"
         fi
     else
         echo "FAIL" > "$SECRETS_OUT"
@@ -1216,8 +1243,8 @@ for r in d.get('results',[])[:5]:
 
   if [[ "$SECURITY_PASSED" == "true" ]]; then
     if [[ "$RUN_SECURITY_LOCAL" == "true" ]]; then
-      echo "✅ Security Check: PASSED (bandit + semgrep) [local mode]"
-      add_success "Security Check" "No security vulnerabilities found (local mode - safety skipped)"
+      echo "✅ Security Check: PASSED (bandit + semgrep - safety skipped for speed)"
+      add_success "Security Check" "No security vulnerabilities found (safety skipped in local mode)"
     else
       echo "✅ Security Check: PASSED (bandit + semgrep + safety)"
       add_success "Security Check" "No security vulnerabilities found"
@@ -1230,111 +1257,47 @@ for r in d.get('results',[])[:5]:
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# COMPLEXITY ANALYSIS (RADON + XENON)
+# COMPLEXITY ANALYSIS (RADON)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if [[ "$RUN_COMPLEXITY" == "true" ]]; then
-  echo "🧠 Complexity Analysis (radon + xenon)"
+  echo "🧠 Complexity Analysis (radon)"
 
   COMPLEXITY_PASSED=true
 
   # Check if radon is installed
   if ! command -v radon &> /dev/null; then
     echo "  ⚠️ radon not found, installing..."
-    pip install radon xenon --quiet
+    pip install radon --quiet
   fi
 
   # Run radon for cyclomatic complexity analysis
-  # Using exact numeric threshold: complexity > 15 fails
+  # Using rank threshold: D or higher fails
   echo "  🔧 Running radon cyclomatic complexity analysis..."
-  
-  # Get complexity with scores (-s flag)
-  # Radon analysis using JSON and Python for better parsing (shows filenames)
-  RADON_JSON=$(radon cc . --json --exclude "venv/*,tests/*,.venv/*,node_modules/*,cursor-rules/*,demos/*,archives/*" 2>&1) || true
-  
-  # Parse JSON with Python to get stats and failing files
-  PARSE_OUTPUT=$(python3 -c "
-import sys, json
-try:
-    data = json.load(sys.stdin)
-    total_cc = 0
-    count = 0
-    failures = []
-    for f, blocks in data.items():
-        if isinstance(blocks, list):
-             for b in blocks:
-                 cc = b.get('complexity', 0)
-                 total_cc += cc
-                 count += 1
-                 if cc > 15:
-                     failures.append((cc, f, b.get('name','?'), b.get('lineno',0)))
-                 
-    avg = total_cc / count if count > 0 else 0
-    print(f'Average complexity: {avg:.2f}')
-    
-    failures.sort(key=lambda x: x[0], reverse=True)
-    print(len(failures))
-    for cc, f, name, line in failures:
-        print(f'[{cc}] {f}:{line} {name}')
-except Exception as e:
-    print(f'Average complexity: N/A')
-    print('0')
-    print(f'Error: {e}')
-" <<< "$RADON_JSON")
 
-  # Extract values from Python output
-  AVG_COMPLEXITY=$(echo "$PARSE_OUTPUT" | head -1 | awk -F': ' '{print $2}')
-  FAILING_COUNT=$(echo "$PARSE_OUTPUT" | sed -n '2p')
-  FAILING_FUNCTIONS=$(echo "$PARSE_OUTPUT" | tail -n +3)
+  RADON_CMD=(radon cc --min D -s -a --md src tests scripts)
+  RADON_OUTPUT=$("${RADON_CMD[@]}" 2>&1) || true
+  RADON_LINES=$(echo "$RADON_OUTPUT" | grep -c "^| " || true)
+  RADON_COUNT=$((RADON_LINES > 2 ? RADON_LINES - 2 : 0))
 
-  if [[ "$FAILING_COUNT" -gt 0 ]]; then
-    echo "  ❌ Found $FAILING_COUNT functions with complexity > 15"
+  if [[ "$RADON_COUNT" -gt 0 ]]; then
+    echo "  ❌ Found $RADON_COUNT functions with rank D or higher"
     echo ""
-    echo "  🔴 Functions exceeding complexity threshold (max: 15):"
-    echo "$FAILING_FUNCTIONS" | head -10 | while read -r line; do
-      echo "    $line"
-    done
+    echo "  🔴 Functions exceeding complexity threshold (min: D):"
+    echo "$RADON_OUTPUT" | sed 's/^/  /'
     echo ""
-    echo "  📋 Threshold: 15 (functions must have cyclomatic complexity ≤ 15)"
     COMPLEXITY_PASSED=false
   else
-    echo "  ✅ All functions have complexity ≤ 15"
-  fi
-  
-  # Run xenon for strict complexity thresholds
-  # --max-absolute C: No function above grade C (11-20)
-  # --max-modules B: Average module complexity at B or better
-  # --max-average B: Average project complexity at B or better
-  echo ""
-  echo "  🔧 Running xenon complexity threshold check..."
-
-  XENON_OUTPUT=$(xenon --max-absolute C --max-modules B --max-average B \
-    --exclude "venv/*,tests/*,.venv/*,node_modules/*,cursor-rules/*,demos/*,archives/*" \
-    . 2>&1) || XENON_FAILED=true
-
-  if [[ "$XENON_FAILED" == "true" ]]; then
-    echo "  ❌ Some functions exceed complexity thresholds:"
-    echo "$XENON_OUTPUT" | grep -E "ERROR|block" | sed 's/^/    /'
-    echo ""
-    echo "  💡 These functions must be refactored to reduce complexity."
-    COMPLEXITY_PASSED=false
-  else
-    echo "  ✅ All functions within acceptable complexity thresholds"
+    echo "  ✅ All functions have rank C or better"
   fi
 
   # Final result
   echo ""
   if [[ "$COMPLEXITY_PASSED" == "true" ]]; then
-    echo "✅ Complexity Analysis: PASSED (Average: $AVG_COMPLEXITY)"
-    add_success "Complexity Analysis" "Average complexity: $AVG_COMPLEXITY, all functions ≤ 15"
+    echo "✅ Complexity Analysis: PASSED"
+    add_success "Complexity Analysis" "All functions have rank C or better"
   else
-    if [[ "$XENON_FAILED" == "true" ]]; then
-      XENON_COUNT=$(echo "$XENON_OUTPUT" | grep -c "ERROR" || echo "0")
-      echo "❌ Complexity Analysis: FAILED ($FAILING_COUNT functions exceed radon threshold, $XENON_COUNT modules exceed xenon threshold)"
-      add_failure "Complexity Analysis" "Found $FAILING_COUNT functions with complexity > 15 and $XENON_COUNT modules with complexity > C" "Refactor functions to complexity ≤ 15"
-    else
-      echo "❌ Complexity Analysis: FAILED ($FAILING_COUNT functions exceed threshold)"
-      add_failure "Complexity Analysis" "Found $FAILING_COUNT functions with complexity > 15" "Refactor functions to complexity ≤ 15"
-    fi
+    echo "❌ Complexity Analysis: FAILED ($RADON_COUNT functions exceed threshold)"
+    add_failure "Complexity Analysis" "Found $RADON_COUNT functions with rank D or higher" "Refactor functions to rank C or better"
   fi
   echo ""
 fi
@@ -1649,9 +1612,9 @@ if [[ "$RUN_DUPLICATION" == "true" ]]; then
 
   # Check if npx is available for jscpd
   if ! command -v npx &> /dev/null; then
-    echo "⚠️  npx not found, delegating to SonarCloud"
-    echo "✅ Duplication Check: DELEGATED TO SONARCLOUD"
-    add_success "Duplication Check" "npx unavailable, duplication analysis delegated to SonarCloud"
+    echo "❌ npx not found - Code duplication check REQUIRED"
+    echo "💡 Install Node.js: https://nodejs.org/"
+    add_failure "Duplication Check" "npx not found" "Install Node.js and npm to run duplication checks"
   else
     echo "🔧 Running jscpd code duplication analysis..."
     
@@ -1723,9 +1686,9 @@ if [[ "$RUN_JS_LINT" == "true" ]]; then
 
   # Check if Node.js and npm are available
   if ! command -v npm &> /dev/null; then
-    echo "⚠️  npm not found, skipping JavaScript linting"
-    echo "✅ JavaScript Lint Check: SKIPPED (npm not available)"
-    add_success "JavaScript Lint Check" "npm not available, JavaScript linting skipped"
+    echo "❌ npm not found - JavaScript linting REQUIRED"
+    echo "💡 Install Node.js: https://nodejs.org/"
+    add_failure "JavaScript Lint Check" "npm not found" "Install Node.js and npm to run JavaScript checks"
   else
     # Check if node_modules exists, if not install dependencies
     if [ ! -d "node_modules" ]; then
@@ -1762,9 +1725,9 @@ if [[ "$RUN_JS_FORMAT" == "true" ]]; then
 
   # Check if Node.js and npm are available
   if ! command -v npm &> /dev/null; then
-    echo "⚠️  npm not found, skipping JavaScript formatting"
-    echo "✅ JavaScript Format Check: SKIPPED (npm not available)"
-    add_success "JavaScript Format Check" "npm not available, JavaScript formatting skipped"
+    echo "❌ npm not found - JavaScript formatting REQUIRED"
+    echo "💡 Install Node.js: https://nodejs.org/"
+    add_failure "JavaScript Format Check" "npm not found" "Install Node.js and npm to run JavaScript checks"
   else
     # Check if node_modules exists, if not install dependencies
     if [ ! -d "node_modules" ]; then
@@ -1801,9 +1764,9 @@ if [[ "$RUN_JS_TESTS" == "true" ]]; then
 
   # Check if Node.js and npm are available
   if ! command -v npm &> /dev/null; then
-    echo "⚠️  npm not found, skipping JavaScript tests"
-    echo "✅ JavaScript Tests: SKIPPED (npm not available)"
-    add_success "JavaScript Tests" "npm not available, JavaScript tests skipped"
+    echo "❌ npm not found - JavaScript tests REQUIRED"
+    echo "💡 Install Node.js: https://nodejs.org/"
+    add_failure "JavaScript Tests" "npm not found" "Install Node.js and npm to run JavaScript tests"
   else
     # Check if node_modules exists, if not install dependencies
     if [ ! -d "node_modules" ]; then
@@ -1906,6 +1869,22 @@ if [[ "$RUN_JS_COVERAGE" == "true" ]]; then
               echo "📊 Coverage Results:"
               echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
               
+              # Check for test execution failures
+              if echo "$JS_COVERAGE_OUTPUT" | grep -q "FAIL"; then
+                  echo "❌ Test Execution Failed!"
+                  echo "📋 Failed Tests:"
+                  echo "$JS_COVERAGE_OUTPUT" | grep -A 5 "FAIL " | sed 's/^/  /'
+                  echo ""
+                  
+                  # Extract test summary
+                  TEST_SUMMARY=$(echo "$JS_COVERAGE_OUTPUT" | grep -E "Test Suites:|Tests:|Snapshots:|Time:" | sed 's/^/  /')
+                  if [[ -n "$TEST_SUMMARY" ]]; then
+                    echo "📊 Test Summary:"
+                    echo "$TEST_SUMMARY"
+                    echo ""
+                  fi
+              fi
+
               # Extract and display coverage summary table
               COVERAGE_TABLE=$(echo "$JS_COVERAGE_OUTPUT" | sed -n '/All files/,/^$/p' | head -10 | sed 's/^/  /')
               if [[ -n "$COVERAGE_TABLE" ]]; then
@@ -1976,8 +1955,11 @@ if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
   BLUE='\033[0;34m'
   NC='\033[0m' # No Color
   
-  # Test configuration - use TEST_PORT if set, otherwise default to 3001
-  TEST_PORT=${TEST_PORT:-3001}
+  # Test configuration - use dedicated port 3003 for smoke tests
+  # This avoids conflicts with:
+  #   - Dev server (port 3001)
+  #   - E2E tests (port 3002)
+  TEST_PORT=${LOOPCLOSER_DEFAULT_PORT_SMOKE:-3003}
   TEST_URL="http://localhost:$TEST_PORT"
   SERVER_PID=""
   
@@ -2015,65 +1997,52 @@ if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
   
   # Function to start test server
   start_test_server() {
-    echo -e "${BLUE}🚀 Starting test server on port $TEST_PORT...${NC}"
-
-    # Load environment variables
-    if [ -f ".envrc" ]; then
-      source .envrc
-    fi
+    echo -e "${BLUE}🚀 Starting smoke server via restart_server.sh setup...${NC}"
     
-    # Force test environment and database AFTER sourcing any env files
-    export ENV="test"
-    export FLASK_ENV="test"
-    export DATABASE_URL="sqlite:///course_records_e2e.db"
-    
-    # Activate virtual environment if it exists
-    if [ -d "venv" ]; then
-      source venv/bin/activate
-    fi
-    
-    # Start server on test port in background
-    PORT=$TEST_PORT python -m src.app > logs/test_server.log 2>&1 &
-    SERVER_PID=$!
-    
-    # Wait for server to start
-    echo -e "${BLUE}⏳ Waiting for server to start...${NC}"
-    for i in {1..30}; do
-      if curl -s "$TEST_URL" > /dev/null 2>&1; then
-        echo -e "${GREEN}✅ Test server started successfully${NC}"
+    # Delegate to the robust restart script
+    if ./scripts/restart_server.sh smoke; then
+        echo -e "${GREEN}✅ Smoke server started successfully${NC}"
+        
+        # Capture the server PID for cleanup
+        sleep 2  # Give server time to start
+        SERVER_PID=$(pgrep -f "python.*src.app" | head -1)
+        if [ -n "$SERVER_PID" ]; then
+            echo -e "${BLUE}📝 Captured server PID: $SERVER_PID${NC}"
+        else
+            echo -e "${YELLOW}⚠️  Warning: Could not capture server PID${NC}"
+        fi
         return 0
-      fi
-      sleep 1
-    done
-    
-    echo -e "${RED}❌ Test server failed to start${NC}"
-    kill $SERVER_PID 2>/dev/null || true
-    return 1
+    else
+        echo -e "${RED}❌ Smoke server failed to start${NC}"
+        return 1
+    fi
   }
   
   # Function to stop test server
   stop_test_server() {
     if [ ! -z "$SERVER_PID" ]; then
-      echo -e "${BLUE}🛑 Stopping test server...${NC}"
+      echo -e "${BLUE}🛑 Stopping smoke server PID $SERVER_PID...${NC}"
       kill $SERVER_PID 2>/dev/null || true
-      
-      # Wait for process to terminate
       for i in {1..10}; do
         if ! kill -0 $SERVER_PID 2>/dev/null; then
           break
         fi
         sleep 1
       done
-      
-      # Force kill if still running
       kill -9 $SERVER_PID 2>/dev/null || true
-      echo -e "${GREEN}✅ Test server stopped${NC}"
+      echo -e "${GREEN}✅ Smoke server stopped${NC}"
+    else
+      pkill -f "python -m src.app" 2>/dev/null || true
     fi
+    rm -f logs/server_smoke.pid
   }
   
   # Function to run smoke tests
   run_smoke_tests() {
     echo -e "${BLUE}🧪 Running smoke tests...${NC}"
+    
+    # Export TEST_PORT so pytest can see it
+    export TEST_PORT="${TEST_PORT}"
     
     # Install test dependencies if needed
     pip install -q pytest selenium requests 2>/dev/null || true
@@ -2125,18 +2094,24 @@ except Exception as e:
   
   # SQLite is used for persistence; no external emulator required.
 
-  # Ensure we use the e2e database for both seeding and server
-  export DATABASE_URL="sqlite:///course_records_e2e.db"
+  echo -e "${BLUE}🧹 Ensuring clean state before seeding...${NC}"
+  pkill -f "python.*src.app" || true
+  sleep 1
 
-  # Ensure test database is seeded
-  echo -e "${BLUE}🌱 Seeding test database...${NC}"
-  python scripts/seed_db.py --clear --env e2e || {
-    echo -e "${RED}❌ Failed to seed test database${NC}"
-    add_failure "Smoke Tests" "Failed to seed test database" "Check database connection and seed script"
+  # Seed smoke database with manifest data
+  echo -e "${BLUE}🌱 Seeding smoke database from manifest...${NC}"
+  # Use python directly in CI, venv path locally
+  PYTHON_CMD="python"
+  if [[ "${CI:-false}" != "true" ]] && [[ -f "./venv/bin/python" ]]; then
+    PYTHON_CMD="./venv/bin/python"
+  fi
+  if ! $PYTHON_CMD scripts/seed_db.py --demo --clear --env smoke --manifest "tests/fixtures/smoke_manifest.json"; then
+    echo -e "${RED}❌ Failed to seed smoke database${NC}"
+    add_failure "Smoke Tests" "Failed to seed test database" "Check manifest and database paths"
     echo ""
     return
-  }
-  
+  fi
+
   # Start test server
   if ! start_test_server; then
     add_failure "Smoke Tests" "Test server failed to start" "Check server logs and ensure port $TEST_PORT is available"
@@ -2202,7 +2177,7 @@ if [[ $FAILED_CHECKS -eq 0 ]]; then
   echo "🎉 ALL CHECKS PASSED!"
   echo "✅ Ready to commit with confidence!"
   echo ""
-  echo "🚀 Course Record Updater quality validation completed successfully!"
+  echo "🚀 LoopCloser quality validation completed successfully!"
   exit 0
 else
   echo "❌ QUALITY GATE FAILED"

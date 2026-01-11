@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 # Import password service for secure password handling
 from src.services.password_service import hash_password, validate_password_strength
+from src.utils.term_utils import get_term_status
 
 # NOTE: User roles and permissions are now managed in auth_service.py
 # This provides centralized role-based access control with the UserRole enum
@@ -120,7 +121,7 @@ class DataModel:
         return str(uuid.uuid4())
 
     @staticmethod
-    def current_timestamp():
+    def current_timestamp() -> datetime:
         """Get current timestamp for persistence operations"""
         return datetime.now(timezone.utc)
 
@@ -493,7 +494,6 @@ class Term(DataModel):
         start_date: str,  # YYYY-MM-DD format
         end_date: str,  # YYYY-MM-DD format
         assessment_due_date: str,  # YYYY-MM-DD format
-        active: bool = True,
     ) -> Dict[str, Any]:
         """Create a new term record schema"""
 
@@ -503,10 +503,23 @@ class Term(DataModel):
             "start_date": start_date,
             "end_date": end_date,
             "assessment_due_date": assessment_due_date,
-            "active": active,
             "created_at": Term.current_timestamp(),
             "last_modified": Term.current_timestamp(),
         }
+
+    @staticmethod
+    def get_status(
+        start_date: str,
+        end_date: str,
+        reference_date: Optional[datetime] = None,
+    ) -> str:
+        """
+        Compute the status for a term using its start/end dates.
+
+        Returns:
+            PASSED | ACTIVE | SCHEDULED | UNKNOWN
+        """
+        return get_term_status(start_date, end_date, reference_date)
 
 
 class CourseOffering(DataModel):
@@ -517,7 +530,7 @@ class CourseOffering(DataModel):
         course_id: str,
         term_id: str,
         institution_id: str,
-        status: str = "active",
+        program_id: Optional[str] = None,
         capacity: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Create a new course offering record schema"""
@@ -527,7 +540,7 @@ class CourseOffering(DataModel):
             "course_id": course_id,
             "term_id": term_id,
             "institution_id": institution_id,
-            "status": status,
+            "program_id": program_id,
             "capacity": capacity,
             "total_enrollment": 0,  # Will be calculated from sections
             "section_count": 0,  # Will be calculated from sections

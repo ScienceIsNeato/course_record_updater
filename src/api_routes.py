@@ -12,7 +12,7 @@ import tempfile
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from flask import (
     Blueprint,
@@ -25,11 +25,12 @@ from flask import (
     session,
     url_for,
 )
+from flask.typing import ResponseReturnValue
+from werkzeug.datastructures import FileStorage
 
 import src.database.database_service as database_service
 from src.database.database_service import (
     add_course_to_program,
-    archive_term,
     assign_course_to_default_program,
     assign_instructor,
     bulk_add_courses_to_program,
@@ -53,6 +54,7 @@ from src.database.database_service import (
     delete_user,
     duplicate_course_record,
     get_active_terms,
+    get_all_course_offerings,
     get_all_courses,
     get_all_institutions,
     get_all_instructors,
@@ -118,6 +120,37 @@ from src.services.registration_service import (
     resend_verification_email,
     verify_email,
 )
+
+
+# HELPER: Safe access to current user for type checking
+def _get_current_user_safe() -> Dict[str, Any]:
+    """Get current user and ensure it is not None (for type safety in protected routes)."""
+    user = get_current_user()
+    if user is None:
+        # In a real request this should have been caught by @login_required
+        # but for type safety we must handle the None case.
+        return {}
+    return user
+
+
+def _get_current_user_id_safe() -> str:
+    """Get current user's ID and ensure it is not None."""
+    user = _get_current_user_safe()
+    user_id = user.get("user_id")
+    if not user_id:
+        return "unknown"
+    return str(user_id)
+
+
+def _get_current_institution_id_safe() -> str:
+    """Get current institution ID and ensure it is not None."""
+    inst_id = get_current_institution_id()
+    if not inst_id:
+        # For type safety, though in practice this should be caught by decorators
+        return ""
+    return inst_id
+
+
 from src.utils.constants import (
     COURSE_NOT_FOUND_MSG,
     COURSE_OFFERING_NOT_FOUND_MSG,
@@ -142,6 +175,7 @@ from src.utils.constants import (
     USER_NOT_FOUND_MSG,
 )
 from src.utils.logging_config import get_logger
+from src.utils.term_utils import TERM_STATUS_ACTIVE, get_term_status
 
 # Create API blueprint
 api = Blueprint("api", __name__, url_prefix="/api")
@@ -178,11 +212,13 @@ class InstitutionContextMissingError(Exception):
     """Raised when a request requires institution scope but none is set."""
 
 
-def _resolve_institution_scope(require: bool = True):
+def _resolve_institution_scope(
+    require: bool = True,
+) -> Tuple[Dict[str, Any], List[str], bool]:
     """Return the current user, accessible institution ids, and whether scope is global."""
 
-    current_user = get_current_user()
-    institution_id = get_current_institution_id()
+    current_user = _get_current_user_safe()
+    institution_id = _get_current_institution_id_safe()
 
     if institution_id:
         return current_user, [institution_id], False
@@ -232,27 +268,28 @@ def _should_skip_context_validation(endpoint: str) -> bool:
 
 
 @api.before_request
-def validate_context():
+def validate_context() -> Optional[ResponseReturnValue]:
     """Validate institution and program context for API requests"""
     # Skip validation for certain endpoints and methods
-    if _should_skip_context_validation(request.endpoint):
-        return
+    endpoint = request.endpoint
+    if not endpoint or _should_skip_context_validation(endpoint):
+        return None
 
     # Skip validation for OPTIONS requests (CORS preflight)
     if request.method == "OPTIONS":
-        return
+        return None
 
     try:
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         if not current_user:
-            return  # Let the auth decorators handle authentication
+            return None  # Let the auth decorators handle authentication
 
         # Site admins don't need context validation
         if current_user.get("role") == UserRole.SITE_ADMIN.value:
-            return
+            return None
 
         # Validate institution context for non-site-admin users
-        institution_id = get_current_institution_id()
+        institution_id = _get_current_institution_id_safe()
         if not institution_id:
             logger.warning(
                 f"Missing institution context for user {current_user.get('user_id')} on endpoint {request.endpoint}"
@@ -277,12 +314,14 @@ def validate_context():
     except Exception as e:
         logger.error(f"Context validation error: {e}")
         # Don't block requests on validation errors, let them proceed
-        return
+        return None
+
+    return None
 
 
 @api.route("/dashboard/data", methods=["GET"])
 @login_required
-def get_dashboard_data_route():
+def get_dashboard_data_route() -> ResponseReturnValue:
     """Return aggregated dashboard data for the current user."""
     try:
         service = DashboardService()
@@ -298,8 +337,11 @@ def get_dashboard_data_route():
 
 
 def handle_api_error(
-    e, operation_name="API operation", user_message="An error occurred", status_code=500
-):
+    e: Exception,
+    operation_name: str = "API operation",
+    user_message: str = "An error occurred",
+    status_code: int = 500,
+) -> Tuple[Any, int]:
     """
     Securely handle API errors by logging full details while returning sanitized responses.
 
@@ -333,7 +375,7 @@ def handle_api_error(
 
 @api.route("/institutions", methods=["GET"])
 @permission_required("manage_institutions")
-def list_institutions():
+def list_institutions() -> ResponseReturnValue:
     """Get list of all institutions (site admin only)"""
     try:
         institutions = get_all_institutions()
@@ -356,10 +398,10 @@ def list_institutions():
 
 @api.route("/institutions", methods=["POST"])
 @permission_required("manage_institutions")
-def create_institution_admin():
+def create_institution_admin() -> ResponseReturnValue:
     """Site admin creates a new institution (without initial user)"""
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -410,10 +452,10 @@ def create_institution_admin():
 
 
 @api.route("/institutions/register", methods=["POST"])
-def create_institution_public():
+def create_institution_public() -> ResponseReturnValue:
     """Create a new institution with its first admin user (public endpoint for registration)"""
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
 
         # Validate required fields
         required_institution_fields = ["name", "short_name", "domain"]
@@ -472,10 +514,10 @@ def create_institution_public():
 
 @api.route("/institutions/<institution_id>", methods=["GET"])
 @permission_required("view_institution_data", context_keys=["institution_id"])
-def get_institution_details(institution_id: str):
+def get_institution_details(institution_id: str) -> ResponseReturnValue:
     """Get institution details (users can only view their own institution)"""
     try:
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
 
         # Users can only view their own institution unless they're site admin
         if (
@@ -501,14 +543,14 @@ def get_institution_details(institution_id: str):
 
 @api.route("/institutions/<institution_id>", methods=["PUT"])
 @permission_required("manage_institutions")
-def update_institution_endpoint(institution_id: str):
+def update_institution_endpoint(institution_id: str) -> ResponseReturnValue:
     """
     Update institution details (site admin or institution admin only)
 
     Allows updating name, short_name, settings, contact information, etc.
     """
     try:
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
 
         # Only site admin or own institution admin can update
         if (
@@ -517,7 +559,7 @@ def update_institution_endpoint(institution_id: str):
         ):
             return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
 
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -552,7 +594,7 @@ def update_institution_endpoint(institution_id: str):
 
 @api.route("/institutions/<institution_id>", methods=["DELETE"])
 @permission_required("manage_institutions")
-def delete_institution_endpoint(institution_id: str):
+def delete_institution_endpoint(institution_id: str) -> ResponseReturnValue:
     """
     Delete institution (site admin only - CASCADE deletes ALL related data)
 
@@ -568,7 +610,7 @@ def delete_institution_endpoint(institution_id: str):
     Requires confirmation query parameter: ?confirm=i know what I'm doing
     """
     try:
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
 
         # Only site admin can delete institutions
         if current_user.get("role") != UserRole.SITE_ADMIN.value:
@@ -621,10 +663,10 @@ def delete_institution_endpoint(institution_id: str):
 
 @api.route("/context/program", methods=["GET"])
 @login_required
-def get_program_context():
+def get_program_context() -> ResponseReturnValue:
     """Get current user's program context and accessible programs"""
     try:
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         current_program_id = get_current_program_id()
         accessible_programs = current_user.get("program_ids", [])
 
@@ -652,10 +694,10 @@ def get_program_context():
 
 @api.route("/context/program/<program_id>", methods=["POST"])
 @login_required
-def switch_program_context(program_id: str):
+def switch_program_context(program_id: str) -> ResponseReturnValue:
     """Switch user's active program context"""
     try:
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
 
         # Verify user has access to this program
         accessible_programs = current_user.get("program_ids", [])
@@ -693,7 +735,7 @@ def switch_program_context(program_id: str):
 
 @api.route("/context/program", methods=["DELETE"])
 @login_required
-def clear_program_context():
+def clear_program_context() -> ResponseReturnValue:
     """Clear user's active program context (return to institution-wide view)"""
     try:
         if clear_current_program_id():
@@ -722,14 +764,14 @@ def clear_program_context():
 
 
 @api.route("/me", methods=["GET"])
-def get_current_user_info():
+def get_current_user_info() -> ResponseReturnValue:
     """
     Get current authenticated user's information
 
     Returns full user object including program_ids for RBAC validation
     """
     try:
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         if not current_user:
             return jsonify({"success": False, "error": "Not authenticated"}), 401
 
@@ -756,14 +798,14 @@ def get_current_user_info():
 
 
 @api.route("/profile/system-date", methods=["GET"])
-def get_system_date():
+def get_system_date() -> ResponseReturnValue:
     """
     Get current system date override status.
 
     Only available to institution_admin and site_admin roles.
     """
     try:
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         if not current_user:
             return jsonify({"success": False, "error": "Not authenticated"}), 401
 
@@ -785,7 +827,7 @@ def get_system_date():
 
 
 @api.route("/profile/system-date", methods=["POST"])
-def set_system_date():
+def set_system_date() -> ResponseReturnValue:
     """
     Set system date override.
 
@@ -795,7 +837,7 @@ def set_system_date():
     from dateutil import parser as date_parser
 
     try:
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         if not current_user:
             return jsonify({"success": False, "error": "Not authenticated"}), 401
 
@@ -814,8 +856,9 @@ def set_system_date():
             return jsonify({"success": False, "error": "Invalid date format"}), 400
 
         # Update user record with override
-        user_id = current_user.get("user_id") or current_user.get("id")
-        update_user(user_id, {"system_date_override": override_date})
+        user_id = _get_current_user_id_safe()
+        if user_id:
+            update_user(user_id, {"system_date_override": override_date})
 
         # Update session immediately so validation middleware picks it up
         session["system_date_override"] = override_date.isoformat()
@@ -832,14 +875,14 @@ def set_system_date():
 
 
 @api.route("/profile/system-date", methods=["DELETE"])
-def clear_system_date():
+def clear_system_date() -> ResponseReturnValue:
     """
     Clear system date override (return to real time).
 
     Only available to institution_admin and site_admin roles.
     """
     try:
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         if not current_user:
             return jsonify({"success": False, "error": "Not authenticated"}), 401
 
@@ -849,7 +892,7 @@ def clear_system_date():
             return jsonify({"success": False, "error": "Admin access required"}), 403
 
         # Clear override
-        user_id = current_user.get("user_id") or current_user.get("id")
+        user_id = _get_current_user_id_safe()
         update_user(user_id, {"system_date_override": None})
 
         # Update session immediately
@@ -868,7 +911,7 @@ def clear_system_date():
 
 @api.route("/users", methods=["GET"])
 @permission_required("view_institution_data")  # Read-only access for viewing users
-def list_users():
+def list_users() -> ResponseReturnValue:
     """
     Get list of users, optionally filtered by role (read-only)
 
@@ -902,7 +945,7 @@ def list_users():
         return handle_api_error(e, "Get users", "Failed to retrieve users")
 
 
-def _resolve_users_scope():
+def _resolve_users_scope() -> Tuple[Dict[str, Any], List[str], bool]:
     """Resolve institution scope for user listing."""
     try:
         return _resolve_institution_scope()
@@ -910,7 +953,9 @@ def _resolve_users_scope():
         raise ValueError(INSTITUTION_CONTEXT_REQUIRED_MSG)
 
 
-def _get_users_by_scope(is_global: bool, institution_ids: list, role_filter: str):
+def _get_users_by_scope(
+    is_global: bool, institution_ids: List[str], role_filter: Optional[str]
+) -> List[Dict[str, Any]]:
     """Get users based on scope (global vs institution) and role filter."""
     if is_global:
         return _get_global_users(institution_ids, role_filter)
@@ -918,7 +963,9 @@ def _get_users_by_scope(is_global: bool, institution_ids: list, role_filter: str
         return _get_institution_users(institution_ids[0], role_filter)
 
 
-def _get_global_users(institution_ids: list, role_filter: str):
+def _get_global_users(
+    institution_ids: List[str], role_filter: Optional[str]
+) -> List[Dict[str, Any]]:
     """Get users for global scope with optional role filtering."""
     if role_filter:
         users = get_users_by_role(role_filter)
@@ -939,7 +986,9 @@ def _get_global_users(institution_ids: list, role_filter: str):
         return users
 
 
-def _get_institution_users(institution_id: str, role_filter: str):
+def _get_institution_users(
+    institution_id: str, role_filter: Optional[str]
+) -> List[Dict[str, Any]]:
     """Get users for single institution scope with optional role filtering."""
     if role_filter:
         # Filter users by role and institution
@@ -953,7 +1002,9 @@ def _get_institution_users(institution_id: str, role_filter: str):
         return get_all_users(institution_id)
 
 
-def _validate_user_creation_permissions(current_user, data):
+def _validate_user_creation_permissions(
+    current_user: Dict[str, Any], data: Dict[str, Any]
+) -> Tuple[bool, Optional[Tuple[Any, int]]]:
     """
     Validate that current user can create target user role.
 
@@ -1011,7 +1062,7 @@ def _validate_user_creation_permissions(current_user, data):
 
 @api.route("/users", methods=["POST"])
 @permission_required("manage_users")
-def create_user():
+def create_user() -> ResponseReturnValue:
     """
     Create a new user
 
@@ -1028,7 +1079,7 @@ def create_user():
     - Program admin: Can only create instructors at their institution
     """
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
@@ -1062,11 +1113,11 @@ def create_user():
             )
 
         # Role-based validation
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         is_valid, error_response = _validate_user_creation_permissions(
             current_user, data
         )
-        if not is_valid:
+        if not is_valid and error_response:
             return error_response
 
         # Create user via database service
@@ -1117,14 +1168,14 @@ def create_user():
 
 @api.route("/users/<user_id>", methods=["GET"])
 @login_required
-def get_user_api(user_id: str):
+def get_user_api(user_id: str) -> ResponseReturnValue:
     """
     Get user details by ID
 
     Users can only view their own details unless they have manage_users permission
     """
     try:
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
 
         # Check permissions - users can view their own info, admins can view any
         if user_id != current_user["user_id"] and not has_permission("manage_users"):
@@ -1143,7 +1194,7 @@ def get_user_api(user_id: str):
 
 @api.route("/users/<user_id>", methods=["PUT"])
 @permission_required("manage_users")
-def update_user_api(user_id: str):
+def update_user_api(user_id: str) -> ResponseReturnValue:
     """
     Update user details
 
@@ -1154,7 +1205,7 @@ def update_user_api(user_id: str):
     - account_status: User's account status
     """
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
@@ -1199,7 +1250,7 @@ def update_user_api(user_id: str):
 
 @api.route("/users/<user_id>/profile", methods=["PATCH"])
 @login_required
-def update_user_profile_endpoint(user_id: str):
+def update_user_profile_endpoint(user_id: str) -> ResponseReturnValue:
     """
     Update user profile (self-service or admin)
 
@@ -1207,13 +1258,13 @@ def update_user_profile_endpoint(user_id: str):
     Admins with manage_users permission can update any user's profile.
     """
     try:
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
 
         # Check if user is updating their own profile OR has manage_users permission
         if current_user["user_id"] != user_id and not has_permission("manage_users"):
             return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
 
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -1256,7 +1307,7 @@ def update_user_profile_endpoint(user_id: str):
 
 @api.route("/users/<user_id>/role", methods=["PATCH"])
 @permission_required("manage_users")
-def update_user_role_endpoint(user_id: str):
+def update_user_role_endpoint(user_id: str) -> ResponseReturnValue:
     """
     Update a user's role (admin only)
 
@@ -1268,7 +1319,7 @@ def update_user_role_endpoint(user_id: str):
     }
     """
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data or "role" not in data:
             return jsonify({"success": False, "error": "Role is required"}), 400
 
@@ -1292,7 +1343,7 @@ def update_user_role_endpoint(user_id: str):
             return jsonify({"success": False, "error": "User not found"}), 404
 
         # Verify same institution
-        current_institution_id = get_current_institution_id()
+        current_institution_id = _get_current_institution_id_safe()
         if user.get("institution_id") != current_institution_id:
             return jsonify({"success": False, "error": "User not found"}), 404
 
@@ -1320,7 +1371,7 @@ def update_user_role_endpoint(user_id: str):
 
 @api.route("/users/<user_id>/deactivate", methods=["POST"])
 @permission_required("manage_users")
-def deactivate_user_endpoint(user_id: str):
+def deactivate_user_endpoint(user_id: str) -> ResponseReturnValue:
     """
     Deactivate (soft delete) a user account
 
@@ -1352,7 +1403,7 @@ def deactivate_user_endpoint(user_id: str):
 
 @api.route("/users/<user_id>", methods=["DELETE"])
 @permission_required("manage_users")
-def delete_user_endpoint(user_id: str):
+def delete_user_endpoint(user_id: str) -> ResponseReturnValue:
     """
     Delete user (hard delete - permanent removal)
 
@@ -1360,7 +1411,7 @@ def delete_user_endpoint(user_id: str):
     Consider using deactivate endpoint instead for soft delete.
     """
     try:
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
 
         # Prevent self-deletion
         if current_user["user_id"] == user_id:
@@ -1395,7 +1446,7 @@ def delete_user_endpoint(user_id: str):
 
 @api.route("/audit/recent", methods=["GET"])
 @permission_required("manage_institution_users")
-def get_recent_audit_logs_endpoint():
+def get_recent_audit_logs_endpoint() -> ResponseReturnValue:
     """
     Get recent audit logs for the current institution.
 
@@ -1431,7 +1482,7 @@ def get_recent_audit_logs_endpoint():
 
 @api.route("/audit/search", methods=["GET"])
 @permission_required("manage_institution_users")
-def search_audit_logs_endpoint():
+def search_audit_logs_endpoint() -> ResponseReturnValue:
     """
     Search and filter audit logs.
 
@@ -1482,7 +1533,7 @@ def search_audit_logs_endpoint():
 
 @api.route("/courses", methods=["GET"])
 @permission_required("view_program_data")
-def list_courses():
+def list_courses() -> ResponseReturnValue:
     """
     Get list of courses, optionally filtered by department and program context
 
@@ -1519,7 +1570,7 @@ def list_courses():
         return handle_api_error(e, "Get courses", "Failed to retrieve courses")
 
 
-def _resolve_courses_scope():
+def _resolve_courses_scope() -> Tuple[Dict[str, Any], List[str], bool]:
     """Resolve institution scope for courses listing."""
     try:
         return _resolve_institution_scope()
@@ -1527,7 +1578,7 @@ def _resolve_courses_scope():
         raise ValueError(INSTITUTION_CONTEXT_REQUIRED_MSG)
 
 
-def _resolve_program_override(current_user):
+def _resolve_program_override(current_user: Dict[str, Any]) -> Optional[str]:
     """Resolve program ID override with permission validation."""
     program_id_override = request.args.get("program_id")
     current_program_id = get_current_program_id()
@@ -1542,7 +1593,7 @@ def _resolve_program_override(current_user):
         raise PermissionError("Access denied to specified program")
 
 
-def _user_can_access_program(current_user, program_id):
+def _user_can_access_program(current_user: Dict[str, Any], program_id: str) -> bool:
     """Check if user can access the specified program."""
     if not current_user:
         return False
@@ -1557,8 +1608,11 @@ def _user_can_access_program(current_user, program_id):
 
 
 def _get_courses_by_scope(
-    is_global, institution_ids, current_program_id, department_filter
-):
+    is_global: bool,
+    institution_ids: List[str],
+    current_program_id: Optional[str],
+    department_filter: Optional[str],
+) -> Tuple[List[Dict[str, Any]], str]:
     """Get courses and context info based on scope and filters."""
     if is_global:
         return _get_global_courses(institution_ids, department_filter)
@@ -1568,7 +1622,9 @@ def _get_courses_by_scope(
         )
 
 
-def _get_global_courses(institution_ids, department_filter):
+def _get_global_courses(
+    institution_ids: List[str], department_filter: Optional[str]
+) -> Tuple[List[Dict[str, Any]], str]:
     """Get courses across all institutions with optional department filter."""
     courses: List[Dict[str, Any]] = []
     for inst_id in institution_ids:
@@ -1583,7 +1639,11 @@ def _get_global_courses(institution_ids, department_filter):
     return courses, context_info
 
 
-def _get_institution_courses(institution_id, current_program_id, department_filter):
+def _get_institution_courses(
+    institution_id: str,
+    current_program_id: Optional[str],
+    department_filter: Optional[str],
+) -> Tuple[List[Dict[str, Any]], str]:
     """Get courses for a specific institution with optional program/department filters."""
     if current_program_id:
         return _get_program_courses(current_program_id, department_filter)
@@ -1597,7 +1657,7 @@ def _get_institution_courses(institution_id, current_program_id, department_filt
         context_info = f"institution {institution_id}"
 
         # RBAC: Program admins can only see courses in their assigned programs
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         if current_user and current_user.get("role") == UserRole.PROGRAM_ADMIN.value:
             user_program_ids = current_user.get("program_ids", [])
             if user_program_ids:
@@ -1612,7 +1672,9 @@ def _get_institution_courses(institution_id, current_program_id, department_filt
         return courses, context_info
 
 
-def _get_program_courses(program_id, department_filter):
+def _get_program_courses(
+    program_id: str, department_filter: Optional[str]
+) -> Tuple[List[Dict[str, Any]], str]:
     """Get courses for a specific program with optional department filter."""
     courses = get_courses_by_program(program_id)
     context_info = f"program {program_id}"
@@ -1625,7 +1687,7 @@ def _get_program_courses(program_id, department_filter):
 
 @api.route("/courses", methods=["POST"])
 @permission_required("manage_courses")
-def create_course_api():
+def create_course_api() -> ResponseReturnValue:
     """
     Create a new course
 
@@ -1636,7 +1698,7 @@ def create_course_api():
     - credit_hours: Number of credit hours (optional, default 3)
     """
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
@@ -1657,7 +1719,7 @@ def create_course_api():
             )
 
         # Add institutional context - all courses must be associated with an institution
-        institution_id = get_current_institution_id()
+        institution_id = _get_current_institution_id_safe()
         if not institution_id:
             return (
                 jsonify(
@@ -1694,7 +1756,7 @@ def create_course_api():
 
 @api.route("/courses/<course_number>", methods=["GET"])
 @permission_required("view_program_data")
-def get_course(course_number: str):
+def get_course(course_number: str) -> ResponseReturnValue:
     """Get course details by course number"""
     try:
         course = get_course_by_number(course_number)
@@ -1710,7 +1772,7 @@ def get_course(course_number: str):
 
 @api.route("/courses/unassigned", methods=["GET"])
 @permission_required("manage_courses")
-def list_unassigned_courses():
+def list_unassigned_courses() -> ResponseReturnValue:
     """Get list of courses not assigned to any program"""
     try:
         try:
@@ -1748,16 +1810,18 @@ def list_unassigned_courses():
 
 @api.route("/courses/<course_id>/assign-default", methods=["POST"])
 @permission_required("manage_courses")
-def assign_course_to_default(course_id: str):
+def assign_course_to_default(course_id: str) -> ResponseReturnValue:
     """Assign a course to the default 'General' program"""
     try:
-        institution_id = get_current_institution_id()
+        institution_id = _get_current_institution_id_safe()
         if not institution_id:
-            current_user = get_current_user()
+            current_user = _get_current_user_safe()
             if current_user and current_user.get("role") == UserRole.SITE_ADMIN.value:
                 payload = request.get_json(silent=True) or {}
-                institution_id = payload.get("institution_id") or request.args.get(
-                    "institution_id"
+                institution_id = str(
+                    payload.get("institution_id")
+                    or request.args.get("institution_id")
+                    or ""
                 )
             if not institution_id:
                 return (
@@ -1795,7 +1859,7 @@ def assign_course_to_default(course_id: str):
 
 @api.route("/courses/by-id/<course_id>", methods=["GET"])
 @permission_required("view_program_data")
-def get_course_by_id_endpoint(course_id: str):
+def get_course_by_id_endpoint(course_id: str) -> ResponseReturnValue:
     """Get course details by course ID"""
     try:
         course = get_course_by_id(course_id)
@@ -1811,14 +1875,14 @@ def get_course_by_id_endpoint(course_id: str):
 
 @api.route("/courses/<course_id>", methods=["PUT"])
 @permission_required("manage_courses")
-def update_course_endpoint(course_id: str):
+def update_course_endpoint(course_id: str) -> ResponseReturnValue:
     """
     Update course details
 
     Allows updating course_title, department, credit_hours, description, etc.
     """
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -1828,7 +1892,7 @@ def update_course_endpoint(course_id: str):
             return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
 
         # Verify institution access
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         if current_user.get("role") != UserRole.SITE_ADMIN.value and current_user.get(
             "institution_id"
         ) != course.get("institution_id"):
@@ -1862,7 +1926,7 @@ def update_course_endpoint(course_id: str):
 
 @api.route("/courses/<course_id>/duplicate", methods=["POST"])
 @permission_required("manage_courses")
-def duplicate_course_endpoint(course_id: str):
+def duplicate_course_endpoint(course_id: str) -> ResponseReturnValue:
     """
     Duplicate an existing course for the current institution.
 
@@ -1880,7 +1944,7 @@ def duplicate_course_endpoint(course_id: str):
         if not source_course:
             return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
 
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         if current_user.get("role") != UserRole.SITE_ADMIN.value and current_user.get(
             "institution_id"
         ) != source_course.get("institution_id"):
@@ -1917,6 +1981,14 @@ def duplicate_course_endpoint(course_id: str):
             )
 
         new_course = get_course_by_id(new_course_id)
+        if not new_course:
+            return (
+                jsonify(
+                    {"success": False, "error": "Failed to retrieve duplicated course"}
+                ),
+                500,
+            )
+
         return (
             jsonify(
                 {
@@ -1934,7 +2006,7 @@ def duplicate_course_endpoint(course_id: str):
 
 @api.route("/courses/<course_id>", methods=["DELETE"])
 @permission_required("manage_courses")
-def delete_course_endpoint(course_id: str):
+def delete_course_endpoint(course_id: str) -> ResponseReturnValue:
     """
     Delete course (CASCADE deletes offerings and sections)
 
@@ -1950,7 +2022,7 @@ def delete_course_endpoint(course_id: str):
             return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
 
         # Verify institution access
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         if current_user.get("role") != UserRole.SITE_ADMIN.value and current_user.get(
             "institution_id"
         ) != course.get("institution_id"):
@@ -1982,7 +2054,7 @@ def delete_course_endpoint(course_id: str):
 
 @api.route("/instructors", methods=["GET"])
 @permission_required("view_program_data")
-def list_instructors():
+def list_instructors() -> ResponseReturnValue:
     """
     Get list of all instructors.
 
@@ -2006,7 +2078,7 @@ def list_instructors():
             instructors = get_all_instructors(institution_ids[0])
 
         # Filter instructors by program for program admins
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         if current_user and current_user.get("role") == UserRole.PROGRAM_ADMIN.value:
             user_program_ids = current_user.get("program_ids", [])
             if user_program_ids:
@@ -2035,7 +2107,7 @@ def list_instructors():
 
 @api.route("/terms", methods=["GET"])
 @permission_required("view_program_data")
-def list_terms():
+def list_terms() -> ResponseReturnValue:
     """Get list of terms. Use ?all=true to get all terms, otherwise returns only active terms."""
     try:
         try:
@@ -2070,7 +2142,7 @@ def list_terms():
 
 @api.route("/terms", methods=["POST"])
 @permission_required("manage_terms")
-def create_term_api():
+def create_term_api() -> ResponseReturnValue:
     """
     Create a new academic term
 
@@ -2081,7 +2153,7 @@ def create_term_api():
     - assessment_due_date: Assessment due date (YYYY-MM-DD)
     """
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
@@ -2102,7 +2174,7 @@ def create_term_api():
             )
 
         # Ensure institution context is included
-        institution_id = get_current_institution_id()
+        institution_id = _get_current_institution_id_safe()
         if not institution_id:
             return (
                 jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
@@ -2115,6 +2187,7 @@ def create_term_api():
 
         # Attach institution_id to payload
         data["institution_id"] = institution_id
+        _strip_term_status_fields(data)
 
         term_id = create_term(data)
 
@@ -2138,7 +2211,7 @@ def create_term_api():
 
 @api.route("/terms/<term_id>", methods=["GET"])
 @permission_required("view_program_data")
-def get_term_by_id_endpoint(term_id: str):
+def get_term_by_id_endpoint(term_id: str) -> ResponseReturnValue:
     """Get term details by term ID"""
     try:
         term = get_term_by_id(term_id)
@@ -2147,7 +2220,7 @@ def get_term_by_id_endpoint(term_id: str):
             return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
 
         # Verify institution access
-        institution_id = get_current_institution_id()
+        institution_id = _get_current_institution_id_safe()
         if term.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
 
@@ -2159,14 +2232,14 @@ def get_term_by_id_endpoint(term_id: str):
 
 @api.route("/terms/<term_id>", methods=["PUT"])
 @permission_required("manage_terms")
-def update_term_endpoint(term_id: str):
+def update_term_endpoint(term_id: str) -> ResponseReturnValue:
     """
     Update term details
 
     Allows updating name, dates, active status, etc.
     """
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -2176,7 +2249,7 @@ def update_term_endpoint(term_id: str):
         if not term:
             return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
 
-        institution_id = get_current_institution_id()
+        institution_id = _get_current_institution_id_safe()
         if term.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
 
@@ -2196,6 +2269,7 @@ def update_term_endpoint(term_id: str):
                     400,
                 )
 
+        _strip_term_status_fields(data)
         success = update_term(term_id, data)
 
         if success:
@@ -2218,42 +2292,9 @@ def update_term_endpoint(term_id: str):
         return handle_api_error(e, "Update term", "Failed to update term")
 
 
-@api.route("/terms/<term_id>/archive", methods=["POST"])
-@permission_required("manage_terms")
-def archive_term_endpoint(term_id: str):
-    """
-    Archive a term (soft delete - sets active=False)
-
-    Preserves term data but marks it as inactive.
-    """
-    try:
-        # Verify term exists and institution access
-        term = get_term_by_id(term_id)
-
-        if not term:
-            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
-
-        institution_id = get_current_institution_id()
-        if term.get("institution_id") != institution_id:
-            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
-
-        success = archive_term(term_id)
-
-        if success:
-            return (
-                jsonify({"success": True, "message": "Term archived successfully"}),
-                200,
-            )
-        else:
-            return jsonify({"success": False, "error": "Failed to archive term"}), 500
-
-    except Exception as e:
-        return handle_api_error(e, "Archive term", "Failed to archive term")
-
-
 @api.route("/terms/<term_id>", methods=["DELETE"])
 @permission_required("manage_terms")
-def delete_term_endpoint(term_id: str):
+def delete_term_endpoint(term_id: str) -> ResponseReturnValue:
     """
     Delete term (hard delete - CASCADE deletes offerings and sections)
 
@@ -2268,7 +2309,7 @@ def delete_term_endpoint(term_id: str):
         if not term:
             return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
 
-        institution_id = get_current_institution_id()
+        institution_id = _get_current_institution_id_safe()
         if term.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
 
@@ -2298,7 +2339,7 @@ def delete_term_endpoint(term_id: str):
 
 @api.route("/programs", methods=["GET"])
 @permission_required("view_program_data")
-def list_programs():
+def list_programs() -> ResponseReturnValue:
     """Get programs for the current institution (or all programs for site admins)."""
     try:
         try:
@@ -2325,10 +2366,10 @@ def list_programs():
 
 @api.route("/programs", methods=["POST"])
 @permission_required("manage_programs")
-def create_program_api():
+def create_program_api() -> ResponseReturnValue:
     """Create a new program"""
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -2343,16 +2384,18 @@ def create_program_api():
                     400,
                 )
 
-        institution_id = get_current_institution_id()
-        current_user = get_current_user()
+        institution_id = _get_current_institution_id_safe()
+        current_user = _get_current_user_safe()
 
         if not current_user:
             return jsonify({"success": False, "error": USER_NOT_FOUND_MSG}), 400
 
         if not institution_id:
             if current_user.get("role") == UserRole.SITE_ADMIN.value:
-                institution_id = data.get("institution_id") or request.args.get(
-                    "institution_id"
+                institution_id = str(
+                    data.get("institution_id")
+                    or request.args.get("institution_id")
+                    or ""
                 )
             if not institution_id:
                 return (
@@ -2370,7 +2413,7 @@ def create_program_api():
             name=data["name"],
             short_name=data["short_name"],
             institution_id=institution_id,
-            created_by=current_user.get("user_id", "unknown"),
+            created_by=_get_current_user_id_safe(),
             description=data.get("description"),
             is_default=data.get("is_default", False),
             program_admins=data.get("program_admins", []),
@@ -2399,7 +2442,7 @@ def create_program_api():
 
 @api.route("/programs/<program_id>", methods=["GET"])
 @permission_required("view_program_data", context_keys=["program_id"])
-def get_program(program_id: str):
+def get_program(program_id: str) -> ResponseReturnValue:
     """Get program details by ID"""
     try:
         program = get_program_by_id(program_id)
@@ -2415,10 +2458,10 @@ def get_program(program_id: str):
 
 @api.route("/programs/<program_id>", methods=["PUT"])
 @permission_required("manage_programs")
-def update_program_api(program_id: str):
+def update_program_api(program_id: str) -> ResponseReturnValue:
     """Update an existing program"""
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -2441,7 +2484,7 @@ def update_program_api(program_id: str):
 
 @api.route("/programs/<program_id>", methods=["DELETE"])
 @permission_required("manage_programs")
-def delete_program_api(program_id: str):
+def delete_program_api(program_id: str) -> ResponseReturnValue:
     """Delete a program (with course reassignment to default)"""
     try:
         # Validate program exists and user has permission
@@ -2540,7 +2583,7 @@ def delete_program_api(program_id: str):
 
 @api.route("/programs/<program_id>/courses", methods=["GET"])
 @permission_required("view_program_data", context_keys=["program_id"])
-def get_program_courses(program_id: str):
+def get_program_courses(program_id: str) -> ResponseReturnValue:
     """Get all courses associated with a program"""
     try:
         # Validate program exists and user has access
@@ -2568,10 +2611,10 @@ def get_program_courses(program_id: str):
 
 @api.route("/programs/<program_id>/courses", methods=["POST"])
 @permission_required("manage_programs")
-def add_course_to_program_api(program_id: str):
+def add_course_to_program_api(program_id: str) -> ResponseReturnValue:
     """Add a course to a program"""
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -2620,7 +2663,9 @@ def add_course_to_program_api(program_id: str):
 
 @api.route("/programs/<program_id>/courses/<course_id>", methods=["DELETE"])
 @permission_required("manage_programs")
-def remove_course_from_program_api(program_id: str, course_id: str):
+def remove_course_from_program_api(
+    program_id: str, course_id: str
+) -> ResponseReturnValue:
     """Remove a course from a program"""
     try:
         # Validate program exists and get institution context
@@ -2645,17 +2690,17 @@ def remove_course_from_program_api(program_id: str, course_id: str):
         )
 
 
-def _validate_program_for_removal(program_id: str):
+def _validate_program_for_removal(program_id: str) -> Tuple[Dict[str, Any], str]:
     """Validate program exists and return program with institution ID."""
     program = get_program_by_id(program_id)
     if not program:
         raise ValueError(PROGRAM_NOT_FOUND_MSG)
 
-    institution_id = program.get("institution_id")
+    institution_id = str(program.get("institution_id") or "")
     return program, institution_id
 
 
-def _get_default_program_id(institution_id: str):
+def _get_default_program_id(institution_id: str) -> Optional[str]:
     """Get the default program ID for the institution."""
     if not institution_id:
         return None
@@ -2670,7 +2715,10 @@ def _get_default_program_id(institution_id: str):
 
 
 def _remove_course_with_orphan_handling(
-    course_id: str, program_id: str, institution_id: str, default_program_id: str
+    course_id: str,
+    program_id: str,
+    institution_id: str,
+    default_program_id: Optional[str],
 ) -> bool:
     """Remove course from program and handle orphan prevention."""
     # Remove course from program
@@ -2683,7 +2731,9 @@ def _remove_course_with_orphan_handling(
     return success
 
 
-def _build_removal_response(success: bool, course_id: str, program: dict):
+def _build_removal_response(
+    success: bool, course_id: str, program: Dict[str, Any]
+) -> ResponseReturnValue:
     """Build the appropriate response for course removal."""
     if success:
         return jsonify(
@@ -2703,7 +2753,7 @@ def _build_removal_response(success: bool, course_id: str, program: dict):
 
 @api.route("/programs/<program_id>/courses/bulk", methods=["POST"])
 @permission_required("manage_programs")
-def bulk_manage_program_courses(program_id: str):
+def bulk_manage_program_courses(program_id: str) -> ResponseReturnValue:
     """Bulk add or remove courses from a program"""
     try:
         # Validate request data
@@ -2711,7 +2761,7 @@ def bulk_manage_program_courses(program_id: str):
         if validation_response:
             return validation_response
 
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         action = data.get("action")
         course_ids = data.get("course_ids", [])
 
@@ -2734,9 +2784,9 @@ def bulk_manage_program_courses(program_id: str):
         )
 
 
-def _validate_bulk_manage_request():
+def _validate_bulk_manage_request() -> Optional[ResponseReturnValue]:
     """Validate bulk manage request data."""
-    data = request.get_json(silent=True)
+    data = request.get_json(silent=True) or {}
     if not data:
         return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -2763,23 +2813,25 @@ def _validate_bulk_manage_request():
     return None
 
 
-def _execute_bulk_add(course_ids: list, program_id: str):
+def _execute_bulk_add(course_ids: list, program_id: str) -> Tuple[Dict[str, Any], str]:
     """Execute bulk add operation."""
     result = bulk_add_courses_to_program(course_ids, program_id)
     message = f"Bulk add operation completed: {result['success_count']} added"
     return result, message
 
 
-def _execute_bulk_remove(course_ids: list, program_id: str):
+def _execute_bulk_remove(
+    course_ids: list, program_id: str
+) -> Tuple[Dict[str, Any], str]:
     """Execute bulk remove operation with orphan handling."""
     # Get default program for orphan handling
-    institution_id = get_current_institution_id()
+    institution_id = _get_current_institution_id_safe()
     default_program_id = _get_default_program_id(institution_id)
 
     result = bulk_remove_courses_from_program(course_ids, program_id)
 
     # Assign successfully removed courses to default program to prevent orphaning
-    if result.get("removed", 0) > 0 and default_program_id:
+    if result.get("removed", 0) > 0 and default_program_id and institution_id:
         for course_id in course_ids:
             assign_course_to_default_program(course_id, institution_id)
 
@@ -2789,7 +2841,7 @@ def _execute_bulk_remove(course_ids: list, program_id: str):
 
 @api.route("/courses/<course_id>/programs", methods=["GET"])
 @permission_required("view_program_data")
-def get_course_programs(course_id: str):
+def get_course_programs(course_id: str) -> ResponseReturnValue:
     """Get all programs associated with a course"""
     try:
         # Get course to validate it exists
@@ -2831,7 +2883,7 @@ def get_course_programs(course_id: str):
 
 @api.route("/offerings", methods=["POST"])
 @permission_required("manage_courses")
-def create_course_offering_endpoint():
+def create_course_offering_endpoint() -> ResponseReturnValue:
     """
     Create a new course offering
 
@@ -2841,7 +2893,7 @@ def create_course_offering_endpoint():
     - capacity: Maximum enrollment
     """
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -2866,7 +2918,6 @@ def create_course_offering_endpoint():
             "term_id": data["term_id"],
             "program_id": data.get("program_id"),
             "institution_id": get_current_institution_id(),
-            "status": data.get("status", "active"),
         }
 
         # Calculate section count
@@ -2913,7 +2964,9 @@ def create_course_offering_endpoint():
         )
 
 
-def _filter_sections_by_params(sections, term_id, course_id):
+def _filter_sections_by_params(
+    sections: List[Dict[str, Any]], term_id: Optional[str], course_id: Optional[str]
+) -> List[Dict[str, Any]]:
     """Filter sections by term_id and course_id if specified"""
     if term_id:
         sections = [s for s in sections if s.get("term_id") == term_id]
@@ -2922,82 +2975,187 @@ def _filter_sections_by_params(sections, term_id, course_id):
     return sections
 
 
-def _aggregate_offerings_from_sections(sections):
-    """Extract unique offerings from sections and aggregate enrollment data"""
-    offerings_dict = {}
+def _aggregate_offerings_from_sections(
+    sections: List[Dict[str, Any]],
+) -> Dict[str, Dict[str, int]]:
+    """Compute section/enrollment stats per offering."""
+    stats: Dict[str, Dict[str, int]] = {}
     for section in sections:
         offering_id = section.get("offering_id")
         if not offering_id:
             continue
 
-        if offering_id not in offerings_dict:
-            offerings_dict[offering_id] = {
-                "offering_id": offering_id,
-                "course_id": section.get("course_id"),
-                "term_id": section.get("term_id"),
-                "status": section.get("status", "active"),
-                "course_number": section.get("course_number"),
-                "course_title": section.get("course_title"),
-                "term_name": section.get("term_name"),
-                "section_count": 0,
-                "total_enrollment": 0,
-            }
-
-        offerings_dict[offering_id]["section_count"] += 1
-        offerings_dict[offering_id]["total_enrollment"] += (
-            section.get("enrollment") or 0
+        entry = stats.setdefault(
+            offering_id, {"section_count": 0, "total_enrollment": 0}
         )
+        entry["section_count"] += 1
+        entry["total_enrollment"] += section.get("enrollment") or 0
 
-    return offerings_dict
+    return stats
 
 
-def _build_course_program_map(courses, program_map):
-    """Build mapping of course_id to list of program names"""
+def _build_course_program_map(
+    courses: List[Dict[str, Any]], program_map: Dict[str, str]
+) -> Dict[str, Dict[str, List[Any]]]:
+    """Build mapping of course_id to list of program names and IDs"""
     course_program_map = {}
     for course in courses:
         p_ids = course.get("program_ids") or []
         p_names = [program_map[pid] for pid in p_ids if pid in program_map]
         course_id = course.get("course_id") or course.get("id")
-        course_program_map[course_id] = p_names
+        if course_id:
+            course_program_map[str(course_id)] = {"names": p_names, "ids": p_ids}
     return course_program_map
 
 
-def _enrich_offerings_with_programs(offerings, course_program_map):
-    """Add program_names to each offering based on course_id"""
+def _enrich_offerings_with_programs(
+    offerings: List[Dict[str, Any]],
+    course_program_map: Dict[str, Dict[str, List[Any]]],
+    program_map: Dict[str, str],
+) -> None:
+    """Add program_names and program_ids to each offering based on explicit selection or course defaults."""
     for offering in offerings:
-        c_id = offering.get("course_id")
-        offering["program_names"] = course_program_map.get(c_id, []) if c_id else []
+        names: List[str] = []
+        ids: List[str] = []
+        program_id = offering.get("program_id")
+        if program_id and program_id in program_map:
+            names = [program_map[program_id]]
+            ids = [program_id]
+        elif offering.get("course_id"):
+            course_data = course_program_map.get(
+                offering["course_id"], {"names": [], "ids": []}
+            )
+            names = course_data.get("names", [])
+            ids = course_data.get("ids", [])
+        offering["program_names"] = names
+        offering["program_ids"] = ids
+
+
+def _strip_term_status_fields(payload: Dict[str, Any]) -> None:
+    """Remove unsupported status toggles from term payloads."""
+    for key in ("status", "active", "is_active"):
+        payload.pop(key, None)
+
+
+def _resolve_term_dates(
+    term: Optional[Dict[str, Any]], fallback: Dict[str, Any]
+) -> tuple[Optional[str], Optional[str]]:
+    """Resolve term start/end dates from the term record or offering fallback."""
+    if term:
+        return term.get("start_date"), term.get("end_date")
+    return fallback.get("term_start_date"), fallback.get("term_end_date")
+
+
+def _annotate_offering_status(
+    offering: Dict[str, Any], term: Optional[Dict[str, Any]]
+) -> None:
+    """Ensure offerings always expose a deterministic status."""
+    start_date, end_date = _resolve_term_dates(term, offering)
+    if start_date:
+        offering["term_start_date"] = start_date
+    if end_date:
+        offering["term_end_date"] = end_date
+
+    status = get_term_status(start_date, end_date)
+    offering["status"] = status
+    offering["term_status"] = status
+    offering["timeline_status"] = status
+    offering["is_active"] = status == TERM_STATUS_ACTIVE
+
+
+def _build_term_lookup(terms: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    lookup: Dict[str, Dict[str, Any]] = {}
+    for term in terms:
+        tid = term.get("term_id") or term.get("id")
+        if tid:
+            lookup[tid] = term
+    return lookup
+
+
+def _filter_offerings_by_term(
+    offerings: List[Dict[str, Any]], term_id: Optional[str]
+) -> List[Dict[str, Any]]:
+    if not term_id:
+        return offerings
+    return [o for o in offerings if o.get("term_id") == term_id]
+
+
+def _filter_offerings_by_course(
+    offerings: List[Dict[str, Any]], course_id: Optional[str]
+) -> List[Dict[str, Any]]:
+    if not course_id:
+        return offerings
+    return [o for o in offerings if o.get("course_id") == course_id]
+
+
+def _populate_offering_metadata(
+    offering: Dict[str, Any],
+    section_stats: Dict[str, Dict[str, int]],
+    course_lookup: Dict[str, Dict[str, Any]],
+    term_lookup: Dict[str, Dict[str, Any]],
+) -> None:
+    offering_id = str(offering.get("offering_id") or "")
+    stats = section_stats.get(
+        offering_id,
+        {"section_count": 0, "total_enrollment": 0},
+    )
+    offering["section_count"] = stats["section_count"]
+    offering["total_enrollment"] = stats["total_enrollment"]
+
+    course_id = str(offering.get("course_id") or "")
+    course = course_lookup.get(course_id)
+    if course:
+        offering["course_number"] = course.get("course_number")
+        offering["course_title"] = course.get("course_title")
+        offering["course_name"] = course.get("course_title") or course.get(
+            "course_number"
+        )
+        offering["department"] = course.get("department")
+    else:
+        offering.setdefault("course_name", "Unknown Course")
+
+    term_id = str(offering.get("term_id") or "")
+    term = term_lookup.get(term_id)
+    if term:
+        offering["term_name"] = (
+            term.get("name")
+            or term.get("term_name")
+            or offering.get("term_name")
+            or "Unknown Term"
+        )
+    else:
+        offering["term_name"] = offering.get("term_name") or "Unknown Term"
+
+    _annotate_offering_status(offering, term)
 
 
 @api.route("/offerings", methods=["GET"])
 @permission_required("view_program_data")
-def list_course_offerings():
+def list_course_offerings() -> ResponseReturnValue:
     """Get list of course offerings, optionally filtered by term or course"""
     try:
         term_id = request.args.get("term_id")
         course_id = request.args.get("course_id")
-        institution_id = get_current_institution_id()
+        institution_id = _get_current_institution_id_safe()
 
-        # Get all sections and filter by parameters
-        sections = get_all_sections(institution_id)
-        sections = _filter_sections_by_params(sections, term_id, course_id)
+        (
+            section_stats,
+            course_lookup,
+            term_lookup,
+            course_program_map,
+            program_map,
+        ) = _build_offering_context(institution_id, term_id, course_id)
 
-        # Aggregate sections into offerings
-        offerings_dict = _aggregate_offerings_from_sections(sections)
+        offerings = _get_filtered_offerings(institution_id, term_id, course_id)
+        logger.info(f"[/api/offerings] After filtering: {len(offerings)} offerings")
 
-        # Build program mapping
-        programs = get_programs_by_institution(institution_id) or []
-        program_map = {
-            p.get("program_id") or p.get("id"): p.get("name") for p in programs
-        }
+        for offering in offerings:
+            _populate_offering_metadata(
+                offering, section_stats, course_lookup, term_lookup
+            )
 
-        # Build course-to-program mapping
-        courses = get_all_courses(institution_id) or []
-        course_program_map = _build_course_program_map(courses, program_map)
-
-        # Convert to list and enrich with program names
-        offerings = list(offerings_dict.values())
-        _enrich_offerings_with_programs(offerings, course_program_map)
+        _enrich_offerings_with_programs(offerings, course_program_map, program_map)
+        _log_offering_program_enrichment(offerings)
 
         return (
             jsonify({"success": True, "offerings": offerings, "count": len(offerings)}),
@@ -3010,9 +3168,64 @@ def list_course_offerings():
         )
 
 
+def _build_offering_context(
+    institution_id: str, term_id: Optional[str], course_id: Optional[str]
+) -> Tuple[
+    Dict[str, Dict[str, int]],
+    Dict[str, Dict[str, Any]],
+    Dict[str, Dict[str, Any]],
+    Dict[str, Dict[str, List[Any]]],
+    Dict[str, str],
+]:
+    sections = get_all_sections(institution_id) or []
+    section_stats = _aggregate_offerings_from_sections(
+        _filter_sections_by_params(sections, term_id, course_id)
+    )
+    courses = get_all_courses(institution_id) or []
+    programs = get_programs_by_institution(institution_id) or []
+    program_map: Dict[str, str] = {}
+    for program in programs:
+        program_key = program.get("program_id") or program.get("id")
+        if not program_key:
+            continue
+        program_name = program.get("name") or program.get("program_name") or ""
+        program_map[str(program_key)] = program_name
+    course_program_map = _build_course_program_map(courses, program_map)
+    course_lookup: Dict[str, Dict[str, Any]] = {}
+    for course in courses:
+        course_key = course.get("course_id") or course.get("id")
+        if course_key:
+            course_lookup[str(course_key)] = course
+    term_lookup = _build_term_lookup(get_all_terms(institution_id) or [])
+    return section_stats, course_lookup, term_lookup, course_program_map, program_map
+
+
+def _get_filtered_offerings(
+    institution_id: str, term_id: Optional[str], course_id: Optional[str]
+) -> List[Dict[str, Any]]:
+    offerings = get_all_course_offerings(institution_id) or []
+    if term_id:
+        offerings = _filter_offerings_by_term(offerings, term_id)
+    if course_id:
+        offerings = _filter_offerings_by_course(offerings, course_id)
+    return offerings
+
+
+def _log_offering_program_enrichment(offerings: List[Dict[str, Any]]) -> None:
+    offerings_with_programs = [o for o in offerings if o.get("program_ids")]
+    offerings_without_programs = [o for o in offerings if not o.get("program_ids")]
+    logger.info(
+        f"[/api/offerings] After enrichment: {len(offerings_with_programs)} with programs, {len(offerings_without_programs)} without programs"
+    )
+    if offerings_without_programs:
+        logger.warning(
+            f"[/api/offerings] Offerings without programs: {[o.get('course_name', 'Unknown') for o in offerings_without_programs]}"
+        )
+
+
 @api.route("/offerings/<offering_id>", methods=["GET"])
 @permission_required("view_program_data")
-def get_course_offering_endpoint(offering_id: str):
+def get_course_offering_endpoint(offering_id: str) -> ResponseReturnValue:
     """Get course offering details by ID"""
     try:
         offering = get_course_offering(offering_id)
@@ -3033,14 +3246,14 @@ def get_course_offering_endpoint(offering_id: str):
 
 @api.route("/offerings/<offering_id>", methods=["PUT"])
 @permission_required("manage_courses")
-def update_course_offering_endpoint(offering_id: str):
+def update_course_offering_endpoint(offering_id: str) -> ResponseReturnValue:
     """
     Update course offering details
 
-    Allows updating capacity, total_enrollment, status, etc.
+    Allows updating capacity and enrollment counts.
     """
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -3052,6 +3265,14 @@ def update_course_offering_endpoint(offering_id: str):
                 404,
             )
 
+        for field in (
+            "status",
+            "term_status",
+            "timeline_status",
+            "is_active",
+            "active",
+        ):
+            data.pop(field, None)
         success = update_course_offering(offering_id, data)
 
         if success:
@@ -3082,7 +3303,7 @@ def update_course_offering_endpoint(offering_id: str):
 
 @api.route("/offerings/<offering_id>", methods=["DELETE"])
 @permission_required("manage_courses")
-def delete_course_offering_endpoint(offering_id: str):
+def delete_course_offering_endpoint(offering_id: str) -> ResponseReturnValue:
     """
     Delete course offering (CASCADE deletes sections)
 
@@ -3125,7 +3346,9 @@ def delete_course_offering_endpoint(offering_id: str):
 # ========================================
 
 
-def _determine_section_filters(current_user, instructor_id, term_id):
+def _determine_section_filters(
+    current_user: Dict[str, Any], instructor_id: Optional[str], term_id: Optional[str]
+) -> Tuple[Optional[str], Optional[str]]:
     """Determine section filters based on user role and query parameters."""
     if not instructor_id and not term_id:
         if current_user["role"] == UserRole.INSTRUCTOR.value:
@@ -3134,15 +3357,17 @@ def _determine_section_filters(current_user, instructor_id, term_id):
     return instructor_id, term_id
 
 
-def _fetch_sections_by_filter(instructor_id, term_id):
+def _fetch_sections_by_filter(
+    instructor_id: Optional[str], term_id: Optional[str]
+) -> Tuple[Optional[List[Dict[str, Any]]], Optional[Tuple[Any, int]]]:
     """Fetch sections based on provided filters."""
     if instructor_id:
-        return get_sections_by_instructor(instructor_id)
+        return get_sections_by_instructor(instructor_id), None
     if term_id:
-        return get_sections_by_term(term_id)
+        return get_sections_by_term(term_id), None
 
     # No filters - get all sections for institution
-    institution_id = get_current_institution_id()
+    institution_id = _get_current_institution_id_safe()
     if not institution_id:
         return None, (
             jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
@@ -3151,7 +3376,9 @@ def _fetch_sections_by_filter(instructor_id, term_id):
     return get_all_sections(institution_id), None
 
 
-def _filter_sections_by_permission(sections, current_user):
+def _filter_sections_by_permission(
+    sections: List[Dict[str, Any]], current_user: Dict[str, Any]
+) -> List[Dict[str, Any]]:
     """Filter sections based on user permissions."""
     if current_user["role"] == UserRole.INSTRUCTOR.value and not has_permission(
         "view_all_sections"
@@ -3165,7 +3392,7 @@ def _filter_sections_by_permission(sections, current_user):
 
 @api.route("/sections", methods=["GET"])
 @permission_required("view_section_data")
-def list_sections():
+def list_sections() -> ResponseReturnValue:
     """
     Get list of course sections
 
@@ -3176,7 +3403,7 @@ def list_sections():
     try:
         instructor_id = request.args.get("instructor_id")
         term_id = request.args.get("term_id")
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
 
         # Determine filters based on role
         instructor_id, term_id = _determine_section_filters(
@@ -3184,13 +3411,12 @@ def list_sections():
         )
 
         # Fetch sections
-        result = _fetch_sections_by_filter(instructor_id, term_id)
-        if isinstance(result, tuple):
-            sections, error_response = result
-            if error_response:
-                return error_response
-        else:
-            sections = result
+        sections, error_response = _fetch_sections_by_filter(instructor_id, term_id)
+        if error_response:
+            return error_response
+
+        if sections is None:
+            sections = []
 
         # Apply permission-based filtering
         sections = _filter_sections_by_permission(sections, current_user)
@@ -3203,7 +3429,7 @@ def list_sections():
 
 @api.route("/sections", methods=["POST"])
 @permission_required("manage_sections")
-def create_section():
+def create_section() -> ResponseReturnValue:
     """
     Create a new course section
 
@@ -3216,7 +3442,7 @@ def create_section():
     - status: Section status (optional, default "open")
     """
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
@@ -3277,7 +3503,7 @@ def create_section():
 
 @api.route("/sections/<section_id>", methods=["GET"])
 @permission_required("view_section_data")
-def get_section_by_id_endpoint(section_id: str):
+def get_section_by_id_endpoint(section_id: str) -> ResponseReturnValue:
     """Get section details by section ID"""
     try:
         section = get_section_by_id(section_id)
@@ -3286,8 +3512,11 @@ def get_section_by_id_endpoint(section_id: str):
             return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
 
         # Verify institution access
-        institution_id = get_current_institution_id()
-        offering = get_course_offering(section.get("offering_id"))
+        institution_id = _get_current_institution_id_safe()
+        offering_id = section.get("offering_id")
+        if not offering_id:
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
+        offering = get_course_offering(str(offering_id))
         if not offering or offering.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
 
@@ -3299,7 +3528,7 @@ def get_section_by_id_endpoint(section_id: str):
 
 @api.route("/sections/<section_id>", methods=["PUT"])
 @permission_required("manage_sections")
-def update_section_endpoint(section_id: str):
+def update_section_endpoint(section_id: str) -> ResponseReturnValue:
     """
     Update section details (supports new course-level assessment fields from CEI demo feedback)
 
@@ -3310,7 +3539,7 @@ def update_section_endpoint(section_id: str):
     - narrative_celebrations, narrative_challenges, narrative_changes (course reflections)
     """
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -3321,8 +3550,11 @@ def update_section_endpoint(section_id: str):
             return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
 
         # Verify institution access
-        institution_id = get_current_institution_id()
-        offering = get_course_offering(section.get("offering_id"))
+        institution_id = _get_current_institution_id_safe()
+        offering_id = section.get("offering_id")
+        if not offering_id:
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
+        offering = get_course_offering(str(offering_id))
         if not offering or offering.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
 
@@ -3367,7 +3599,7 @@ def update_section_endpoint(section_id: str):
 
 @api.route("/sections/<section_id>/instructor", methods=["PATCH"])
 @permission_required("manage_courses")
-def assign_instructor_to_section_endpoint(section_id: str):
+def assign_instructor_to_section_endpoint(section_id: str) -> ResponseReturnValue:
     """
     Assign an instructor to a section
 
@@ -3375,7 +3607,7 @@ def assign_instructor_to_section_endpoint(section_id: str):
     - instructor_id: Instructor user ID
     """
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data or "instructor_id" not in data:
             return (
                 jsonify({"success": False, "error": "instructor_id is required"}),
@@ -3391,8 +3623,11 @@ def assign_instructor_to_section_endpoint(section_id: str):
             return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
 
         # Verify institution access
-        institution_id = get_current_institution_id()
-        offering = get_course_offering(section.get("offering_id"))
+        institution_id = _get_current_institution_id_safe()
+        offering_id = section.get("offering_id")
+        if not offering_id:
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
+        offering = get_course_offering(str(offering_id))
         if not offering or offering.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
 
@@ -3422,7 +3657,7 @@ def assign_instructor_to_section_endpoint(section_id: str):
 
 @api.route("/sections/<section_id>", methods=["DELETE"])
 @permission_required("manage_sections")
-def delete_section_endpoint(section_id: str):
+def delete_section_endpoint(section_id: str) -> ResponseReturnValue:
     """
     Delete section
 
@@ -3436,8 +3671,11 @@ def delete_section_endpoint(section_id: str):
             return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
 
         # Verify institution access
-        institution_id = get_current_institution_id()
-        offering = get_course_offering(section.get("offering_id"))
+        institution_id = _get_current_institution_id_safe()
+        offering_id = section.get("offering_id")
+        if not offering_id:
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
+        offering = get_course_offering(str(offering_id))
         if not offering or offering.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
 
@@ -3460,9 +3698,102 @@ def delete_section_endpoint(section_id: str):
 # ========================================
 
 
+@api.route("/outcomes", methods=["GET"])
+@permission_required("view_program_data")
+def list_all_outcomes_endpoint() -> ResponseReturnValue:
+    """
+    Get all outcomes for the institution, optionally filtered.
+    """
+    institution_id = _get_current_institution_id_safe()
+    program_id = request.args.get("program_id")
+    course_id = request.args.get("course_id")
+    status = request.args.get("status") or None  # Allow 'active', 'archived', etc.
+
+    try:
+        # If course_id is provided, just use the existing helper logic?
+        # But we want a generic filter.
+        # Use get_outcomes_by_status which supports filtering
+
+        # If filtering by course_id, we need a way to filter by course.
+        # get_outcomes_by_status filters by program_id and status, and term?
+        # It handles term via offering checks. It does NOT seem to directly handle course_id
+        # unless we modify it or filter in memory.
+
+        # Let's check get_outcomes_by_status implementation again.
+        # It joins with Course.
+
+        # If we need course filtering, likely best to fetch for course if course_id is present.
+        if course_id:
+            outcomes = get_course_outcomes(course_id)
+            # Filter by status if needed
+            if status:
+                outcomes = [
+                    o
+                    for o in outcomes
+                    if o.get("status") == status
+                    or (status == "active" and o.get("active") == True)
+                ]
+        else:
+            # Use the bulk fetcher
+            outcomes = database_service.get_outcomes_by_status(
+                institution_id, status, program_id=program_id
+            )
+
+        return (
+            jsonify({"success": True, "outcomes": outcomes, "count": len(outcomes)}),
+            200,
+        )
+
+    except Exception as e:
+        return handle_api_error(e, "List outcomes", "Failed to list outcomes")
+
+
+@api.route("/outcomes", methods=["POST"])
+@permission_required("manage_courses")
+def create_outcome_endpoint() -> ResponseReturnValue:
+    """
+    Create a new course outcome (generic endpoint).
+    Requires course_id in body.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        if not data or "course_id" not in data:
+            return jsonify({"success": False, "error": "course_id is required"}), 400
+        if "description" not in data:
+            return jsonify({"success": False, "error": "description is required"}), 400
+
+        # Verify course access
+        course = get_course_by_id(data["course_id"])
+        institution_id = _get_current_institution_id_safe()
+        if not course or course.get("institution_id") != institution_id:
+            return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
+
+        outcome_id = database_service.create_course_outcome(data)
+
+        if outcome_id:
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "outcome_id": outcome_id,
+                        "message": "Course outcome created successfully",
+                    }
+                ),
+                201,
+            )
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to create course outcome"}),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(e, "Create outcome", "Failed to create outcome")
+
+
 @api.route("/courses/<course_id>/outcomes", methods=["GET"])
 @permission_required("view_program_data")
-def list_course_outcomes_endpoint(course_id: str):
+def list_course_outcomes_endpoint(course_id: str) -> ResponseReturnValue:
     """
     Get list of outcomes for a course
 
@@ -3495,7 +3826,7 @@ def list_course_outcomes_endpoint(course_id: str):
 
 @api.route("/courses/<course_id>/outcomes", methods=["POST"])
 @permission_required("manage_courses")
-def create_course_outcome_endpoint(course_id: str):
+def create_course_outcome_endpoint(course_id: str) -> ResponseReturnValue:
     """
     Create a new course outcome
 
@@ -3504,7 +3835,7 @@ def create_course_outcome_endpoint(course_id: str):
     - target_percentage: Target achievement percentage (optional)
     """
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data or "description" not in data:
             return jsonify({"success": False, "error": "description is required"}), 400
 
@@ -3542,7 +3873,7 @@ def create_course_outcome_endpoint(course_id: str):
 
 @api.route("/courses/<course_id>/submit", methods=["POST"])
 @login_required
-def submit_course_for_approval_endpoint(course_id: str):
+def submit_course_for_approval_endpoint(course_id: str) -> ResponseReturnValue:
     """
     Submit all CLOs for a course for approval.
 
@@ -3566,7 +3897,7 @@ def submit_course_for_approval_endpoint(course_id: str):
             return jsonify({"success": False, "error": "User not authenticated"}), 401
 
         # Get optional section_id from request body
-        data = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True) or {} or {}
         section_id = data.get("section_id")
 
         # Submit course (validates first)
@@ -3587,7 +3918,7 @@ def submit_course_for_approval_endpoint(course_id: str):
 
 @api.route("/outcomes/<outcome_id>", methods=["GET"])
 @permission_required("view_program_data")
-def get_course_outcome_by_id_endpoint(outcome_id: str):
+def get_course_outcome_by_id_endpoint(outcome_id: str) -> ResponseReturnValue:
     """Get course outcome details by outcome ID"""
     try:
         outcome = get_course_outcome(outcome_id)
@@ -3596,8 +3927,11 @@ def get_course_outcome_by_id_endpoint(outcome_id: str):
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         # Verify institution access
-        institution_id = get_current_institution_id()
-        course = get_course_by_id(outcome.get("course_id"))
+        institution_id = _get_current_institution_id_safe()
+        course_id = outcome.get("course_id")
+        if not course_id:
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
+        course = get_course_by_id(str(course_id))
         if not course or course.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
@@ -3611,14 +3945,14 @@ def get_course_outcome_by_id_endpoint(outcome_id: str):
 
 @api.route("/outcomes/<outcome_id>", methods=["PUT"])
 @permission_required("manage_courses")
-def update_course_outcome_endpoint(outcome_id: str):
+def update_course_outcome_endpoint(outcome_id: str) -> ResponseReturnValue:
     """
     Update course outcome details
 
     Allows updating description, target_percentage, etc.
     """
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -3628,8 +3962,11 @@ def update_course_outcome_endpoint(outcome_id: str):
         if not outcome:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
-        institution_id = get_current_institution_id()
-        course = get_course_by_id(outcome.get("course_id"))
+        institution_id = _get_current_institution_id_safe()
+        course_id = outcome.get("course_id")
+        if not course_id:
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
+        course = get_course_by_id(str(course_id))
         if not course or course.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
@@ -3656,7 +3993,7 @@ def update_course_outcome_endpoint(outcome_id: str):
 
 @api.route("/outcomes/<outcome_id>/assessment", methods=["PUT"])
 @permission_required("submit_assessments")
-def update_outcome_assessment_endpoint(outcome_id: str):
+def update_outcome_assessment_endpoint(outcome_id: str) -> ResponseReturnValue:
     """
     Update course outcome assessment data (corrected field names from CEI demo feedback)
 
@@ -3666,7 +4003,7 @@ def update_outcome_assessment_endpoint(outcome_id: str):
     - assessment_tool: Brief description (40-50 chars) like "Test #3", "Lab 2"
     """
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return (
                 jsonify({"success": False, "error": "Request body is required"}),
@@ -3691,7 +4028,7 @@ def update_outcome_assessment_endpoint(outcome_id: str):
             )
 
         # Verify the outcome exists
-        institution_id = get_current_institution_id()
+        institution_id = _get_current_institution_id_safe()
         courses = get_all_courses(institution_id)
 
         found = False
@@ -3716,7 +4053,9 @@ def update_outcome_assessment_endpoint(outcome_id: str):
             from src.services.clo_workflow_service import CLOWorkflowService
 
             user = get_current_user()
-            CLOWorkflowService.auto_mark_in_progress(outcome_id, user.get("user_id"))
+            user_id = user.get("user_id") if user else None
+            if user_id and isinstance(user_id, str):
+                CLOWorkflowService.auto_mark_in_progress(outcome_id, user_id)
 
             return (
                 jsonify(
@@ -3743,7 +4082,7 @@ def update_outcome_assessment_endpoint(outcome_id: str):
 
 @api.route("/outcomes/<outcome_id>", methods=["DELETE"])
 @permission_required("manage_courses")
-def delete_course_outcome_endpoint(outcome_id: str):
+def delete_course_outcome_endpoint(outcome_id: str) -> ResponseReturnValue:
     """
     Delete course outcome
 
@@ -3756,8 +4095,11 @@ def delete_course_outcome_endpoint(outcome_id: str):
         if not outcome:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
-        institution_id = get_current_institution_id()
-        course = get_course_by_id(outcome.get("course_id"))
+        institution_id = _get_current_institution_id_safe()
+        course_id = outcome.get("course_id")
+        if not course_id:
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
+        course = get_course_by_id(str(course_id))
         if not course or course.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
@@ -3811,7 +4153,7 @@ def create_progress_tracker() -> str:
     return progress_id
 
 
-def update_progress(progress_id: str, **kwargs):
+def update_progress(progress_id: str, **kwargs: Any) -> None:
     """Update progress information"""
     with _progress_lock:
         if progress_id in _progress_store:
@@ -3824,14 +4166,14 @@ def get_progress(progress_id: str) -> Dict[str, Any]:
         return _progress_store.get(progress_id, {})
 
 
-def cleanup_progress(progress_id: str):
+def cleanup_progress(progress_id: str) -> None:
     """Remove progress tracker after completion"""
     with _progress_lock:
         _progress_store.pop(progress_id, None)
 
 
 @api.route("/import/progress/<progress_id>", methods=["GET"])
-def get_import_progress(progress_id: str):
+def get_import_progress(progress_id: str) -> ResponseReturnValue:
     """Get the current progress of an import operation"""
     progress = get_progress(progress_id)
     if not progress:
@@ -3842,7 +4184,7 @@ def get_import_progress(progress_id: str):
 
 @api.route("/import/validate", methods=["POST"])
 @permission_required("import_data")
-def validate_import_file():
+def validate_import_file() -> ResponseReturnValue:
     """
     Validate Excel file format without importing
 
@@ -3877,7 +4219,7 @@ def validate_import_file():
 
         try:
             # Perform dry run validation
-            institution_id = get_current_institution_id()
+            institution_id = _get_current_institution_id_safe()
             if not institution_id:
                 raise ValueError("Unable to determine current institution ID")
 
@@ -3918,7 +4260,7 @@ def validate_import_file():
 
 
 @api.route("/health", methods=["GET"])
-def health_check():
+def health_check() -> ResponseReturnValue:
     """API health check endpoint"""
     return jsonify(
         {
@@ -3937,13 +4279,13 @@ def health_check():
 
 
 @api.errorhandler(404)
-def api_not_found(error):
+def api_not_found(error: Any) -> Tuple[Any, int]:
     """Handle 404 errors for API routes"""
     return jsonify({"success": False, "error": "Endpoint not found"}), 404
 
 
 @api.errorhandler(500)
-def api_internal_error(error):
+def api_internal_error(error: Any) -> Tuple[Any, int]:
     """Handle 500 errors for API routes"""
     return jsonify({"success": False, "error": "Internal server error"}), 500
 
@@ -3954,7 +4296,7 @@ def api_internal_error(error):
 
 
 @api.route("/auth/register", methods=["POST"])
-def register_institution_admin_api():
+def register_institution_admin_api() -> ResponseReturnValue:
     """
     Register a new institution administrator
 
@@ -3977,7 +4319,7 @@ def register_institution_admin_api():
     }
     """
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
 
         # Validate required fields
         required_fields = [
@@ -4051,7 +4393,7 @@ def register_institution_admin_api():
 
 
 @api.route("/auth/verify-email/<token>", methods=["GET"])
-def verify_email_api(token):
+def verify_email_api(token: str) -> ResponseReturnValue:
     """
     Verify user's email address using verification token.
     Redirects to login page with success/error message.
@@ -4094,7 +4436,7 @@ def verify_email_api(token):
 
 
 @api.route("/auth/resend-verification", methods=["POST"])
-def resend_verification_email_api():
+def resend_verification_email_api() -> ResponseReturnValue:
     """
     Resend verification email for pending user
 
@@ -4111,7 +4453,7 @@ def resend_verification_email_api():
     }
     """
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
 
         # Validate email
         email = data.get("email", "").strip().lower()
@@ -4152,7 +4494,7 @@ def resend_verification_email_api():
 
 
 @api.route("/auth/registration-status/<email>", methods=["GET"])
-def get_registration_status_api(email):
+def get_registration_status_api(email: str) -> ResponseReturnValue:
     """
     Get registration status for an email address
 
@@ -4206,7 +4548,7 @@ def get_registration_status_api(email):
 
 @api.route("/auth/invite", methods=["POST"])
 @permission_required("manage_institution_users")
-def create_invitation_api():
+def create_invitation_api() -> ResponseReturnValue:
     """
     Create and send a user invitation
 
@@ -4233,7 +4575,7 @@ def create_invitation_api():
         from src.services.invitation_service import InvitationService
 
         # Get request data (silent=True prevents 415 exception, returns None instead)
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -4249,11 +4591,11 @@ def create_invitation_api():
                 )
 
         # Get current user and institution
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         if not current_user:
             return jsonify({"success": False, "error": USER_NOT_AUTHENTICATED_MSG}), 401
 
-        institution_id = get_current_institution_id()
+        institution_id = _get_current_institution_id_safe()
         if not institution_id:
             return (
                 jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
@@ -4269,25 +4611,28 @@ def create_invitation_api():
             institution_id=institution_id,
             program_ids=data.get("program_ids", []),
             personal_message=data.get("personal_message"),
+            first_name=data.get("first_name"),
+            last_name=data.get("last_name"),
+            section_id=data.get("section_id"),
+            replace_existing=data.get("replace_existing", False),
         )
 
         # Send invitation email
-        email_sent = InvitationService.send_invitation(invitation)
+        email_sent, email_error = InvitationService.send_invitation(invitation)
 
-        return (
-            jsonify(
-                {
-                    "success": True,
-                    "invitation_id": invitation["id"],
-                    "message": (
-                        INVITATION_CREATED_AND_SENT_MSG
-                        if email_sent
-                        else INVITATION_CREATED_EMAIL_FAILED_MSG
-                    ),
-                }
+        response_body = {
+            "success": True,
+            "invitation_id": invitation["id"],
+            "message": (
+                INVITATION_CREATED_AND_SENT_MSG
+                if email_sent and not email_error
+                else INVITATION_CREATED_EMAIL_FAILED_MSG
             ),
-            201,
-        )
+        }
+        if email_error:
+            response_body["email_error"] = email_error
+
+        return jsonify(response_body), 201
 
     except Exception as e:
         logger.error(f"Error creating invitation: {e}")
@@ -4303,7 +4648,7 @@ def create_invitation_api():
 
 
 @api.route("/auth/accept-invitation", methods=["POST"])
-def accept_invitation_api():
+def accept_invitation_api() -> ResponseReturnValue:
     """
     Accept an invitation and create user account
 
@@ -4324,7 +4669,7 @@ def accept_invitation_api():
         from src.services.invitation_service import InvitationService
 
         # Get request data
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -4373,7 +4718,7 @@ def accept_invitation_api():
 
 
 @api.route("/auth/invitation-status/<invitation_token>", methods=["GET"])
-def get_invitation_status_api(invitation_token):
+def get_invitation_status_api(invitation_token: str) -> ResponseReturnValue:
     """
     Get invitation status by token
 
@@ -4405,7 +4750,7 @@ def get_invitation_status_api(invitation_token):
 
 @api.route("/auth/resend-invitation/<invitation_id>", methods=["POST"])
 @permission_required("manage_institution_users")
-def resend_invitation_api(invitation_id):
+def resend_invitation_api(invitation_id: str) -> ResponseReturnValue:
     """
     Resend an existing invitation
 
@@ -4421,18 +4766,32 @@ def resend_invitation_api(invitation_id):
         from src.services.invitation_service import InvitationService
 
         # Resend invitation
-        success = InvitationService.resend_invitation(invitation_id)
+        success, email_error = InvitationService.resend_invitation(invitation_id)
+
+        response_body = {
+            "success": True,
+            "message": "Invitation resent successfully",
+        }
+        if email_error:
+            response_body.update(
+                {
+                    "message": INVITATION_CREATED_EMAIL_FAILED_MSG,
+                    "email_error": email_error,
+                }
+            )
 
         if success:
-            return (
-                jsonify({"success": True, "message": "Invitation resent successfully"}),
-                200,
-            )
-        else:
-            return (
-                jsonify({"success": False, "error": "Failed to resend invitation"}),
-                500,
-            )
+            return jsonify(response_body), 200
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Failed to resend invitation",
+                    "email_error": email_error,
+                }
+            ),
+            500,
+        )
 
     except Exception as e:
         logger.error(f"Error resending invitation: {e}")
@@ -4449,7 +4808,7 @@ def resend_invitation_api(invitation_id):
 
 @api.route("/auth/invitations", methods=["GET"])
 @permission_required("manage_institution_users")
-def list_invitations_api():
+def list_invitations_api() -> ResponseReturnValue:
     """
     List invitations for current user's institution
 
@@ -4468,7 +4827,7 @@ def list_invitations_api():
         from src.services.invitation_service import InvitationService
 
         # Get institution context
-        institution_id = get_current_institution_id()
+        institution_id = _get_current_institution_id_safe()
         if not institution_id:
             return (
                 jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
@@ -4505,7 +4864,7 @@ def list_invitations_api():
 
 @api.route("/auth/cancel-invitation/<invitation_id>", methods=["DELETE"])
 @permission_required("manage_institution_users")
-def cancel_invitation_api(invitation_id):
+def cancel_invitation_api(invitation_id: str) -> ResponseReturnValue:
     """
     Cancel a pending invitation
 
@@ -4553,7 +4912,7 @@ def cancel_invitation_api(invitation_id):
 
 
 @api.route("/auth/login", methods=["POST"])
-def login_api():
+def login_api() -> ResponseReturnValue:
     """
     Authenticate user and create session
 
@@ -4576,7 +4935,7 @@ def login_api():
         from src.services.password_service import AccountLockedError
 
         # Get request data
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -4629,7 +4988,7 @@ def login_api():
 
 
 @api.route("/auth/logout", methods=["POST"])
-def logout_api():
+def logout_api() -> ResponseReturnValue:
     """
     Logout current user and destroy session
 
@@ -4651,7 +5010,7 @@ def logout_api():
 
 
 @api.route("/auth/status", methods=["GET"])
-def login_status_api():
+def login_status_api() -> ResponseReturnValue:
     """
     Get current login status
 
@@ -4673,7 +5032,7 @@ def login_status_api():
 
 
 @api.route("/auth/refresh", methods=["POST"])
-def refresh_session_api():
+def refresh_session_api() -> ResponseReturnValue:
     """
     Refresh current user session
 
@@ -4702,7 +5061,7 @@ def refresh_session_api():
 
 
 @api.route("/auth/lockout-status/<email>", methods=["GET"])
-def check_lockout_status_api(email):
+def check_lockout_status_api(email: str) -> ResponseReturnValue:
     """
     Check account lockout status for an email
 
@@ -4730,7 +5089,7 @@ def check_lockout_status_api(email):
 
 @api.route("/invitations", methods=["POST"])
 @permission_required("manage_institution_users")
-def create_invitation_public_api():
+def create_invitation_public_api() -> ResponseReturnValue:
     """
     Create and send a user invitation via /api/invitations.
 
@@ -4774,11 +5133,11 @@ def create_invitation_public_api():
                 400,
             )
 
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         if not current_user:
             return jsonify({"success": False, "error": USER_NOT_AUTHENTICATED_MSG}), 401
 
-        institution_id = get_current_institution_id()
+        institution_id = _get_current_institution_id_safe()
         if not institution_id:
             return (
                 jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
@@ -4800,7 +5159,7 @@ def create_invitation_public_api():
             replace_existing=replace_existing,
         )
 
-        email_sent = InvitationService.send_invitation(invitation)
+        email_sent, email_error = InvitationService.send_invitation(invitation)
 
         return (
             jsonify(
@@ -4809,9 +5168,10 @@ def create_invitation_public_api():
                     "invitation_id": invitation["id"],
                     "message": (
                         INVITATION_CREATED_AND_SENT_MSG
-                        if email_sent
+                        if email_sent and not email_error
                         else INVITATION_CREATED_EMAIL_FAILED_MSG
                     ),
+                    **({"email_error": email_error} if email_error else {}),
                 }
             ),
             201,
@@ -4825,7 +5185,7 @@ def create_invitation_public_api():
 
 @api.route("/auth/unlock-account", methods=["POST"])
 @login_required
-def unlock_account_api():
+def unlock_account_api() -> ResponseReturnValue:
     """
     Manually unlock a locked account (admin function)
 
@@ -4845,7 +5205,7 @@ def unlock_account_api():
         from src.services.login_service import LoginService
 
         # Get request data
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -4856,7 +5216,7 @@ def unlock_account_api():
             )
 
         # Get current user (admin check would go here)
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         if not current_user:
             return jsonify({"success": False, "error": "Authentication required"}), 401
 
@@ -4878,7 +5238,7 @@ def unlock_account_api():
 
 @api.route("/auth/profile", methods=["PATCH"])
 @login_required
-def update_profile_api():
+def update_profile_api() -> ResponseReturnValue:
     """
     Update current user's profile information
 
@@ -4900,12 +5260,12 @@ def update_profile_api():
         from src.services.auth_service import get_current_user
 
         # Get current user
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         if not current_user:
             return jsonify({"success": False, "error": "Authentication required"}), 401
 
         # Get request data
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": "No JSON data provided"}), 400
 
@@ -4920,7 +5280,7 @@ def update_profile_api():
             )
 
         # Update profile
-        user_id = current_user.get("user_id") or current_user.get("id")
+        user_id = _get_current_user_id_safe()
         success = update_user_profile(user_id, profile_data)
 
         if success:
@@ -4950,7 +5310,7 @@ def update_profile_api():
 
 @api.route("/auth/change-password", methods=["POST"])
 @login_required
-def change_password_api():
+def change_password_api() -> ResponseReturnValue:
     """
     Change current user's password (requires current password verification)
 
@@ -4975,12 +5335,12 @@ def change_password_api():
         )
 
         # Get current user
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         if not current_user:
             return jsonify({"success": False, "error": "Authentication required"}), 401
 
         # Get request data
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": "No JSON data provided"}), 400
 
@@ -5004,7 +5364,7 @@ def change_password_api():
             )
 
         # Get user with password hash
-        user_id = current_user.get("user_id") or current_user.get("id")
+        user_id = _get_current_user_id_safe()
         user = get_user_by_id(user_id)
         if not user:
             return jsonify({"success": False, "error": USER_NOT_FOUND_MSG}), 404
@@ -5046,7 +5406,7 @@ def change_password_api():
 
 
 @api.route("/auth/forgot-password", methods=["POST"])
-def forgot_password_api():
+def forgot_password_api() -> ResponseReturnValue:
     """
     Request password reset email
 
@@ -5065,7 +5425,7 @@ def forgot_password_api():
         from src.services.password_reset_service import PasswordResetService
 
         # Get request data
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -5094,7 +5454,7 @@ def forgot_password_api():
 
 
 @api.route("/auth/reset-password", methods=["POST"])
-def reset_password_api():
+def reset_password_api() -> ResponseReturnValue:
     """
     Complete password reset with new password
 
@@ -5113,7 +5473,7 @@ def reset_password_api():
         from src.services.password_reset_service import PasswordResetService
 
         # Get request data
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -5146,7 +5506,7 @@ def reset_password_api():
 
 
 @api.route("/auth/validate-reset-token/<reset_token>", methods=["GET"])
-def validate_reset_token_api(reset_token):
+def validate_reset_token_api(reset_token: str) -> ResponseReturnValue:
     """
     Validate a password reset token
 
@@ -5173,7 +5533,7 @@ def validate_reset_token_api(reset_token):
 
 
 @api.route("/auth/reset-status/<email>", methods=["GET"])
-def reset_status_api(email):
+def reset_status_api(email: str) -> ResponseReturnValue:
     """
     Get password reset status for an email
 
@@ -5203,7 +5563,7 @@ def reset_status_api(email):
 
 @api.route("/import/excel", methods=["POST"])
 @login_required
-def excel_import_api():
+def excel_import_api() -> ResponseReturnValue:
     """
     Import data from Excel file
 
@@ -5257,7 +5617,7 @@ def excel_import_api():
         )
 
 
-def _validate_excel_import_request():
+def _validate_excel_import_request() -> Tuple[Any, Dict[str, Any]]:
     """Validate the Excel import request and extract parameters."""
     # Debug: Log request information
     logger.info("Excel import request received")
@@ -5267,7 +5627,7 @@ def _validate_excel_import_request():
     file = _get_excel_file_from_request()
 
     # Get form parameters (need adapter_id for validation)
-    import_params = {
+    import_params: Dict[str, Any] = {
         "adapter_id": request.form.get("import_adapter", "cei_excel_format_v1"),
         "conflict_strategy": request.form.get("conflict_strategy", "use_theirs"),
         "dry_run": request.form.get("dry_run", "false").lower() == "true",
@@ -5279,23 +5639,23 @@ def _validate_excel_import_request():
     from src.adapters.adapter_registry import AdapterRegistry
 
     registry = AdapterRegistry()
-    adapter = registry.get_adapter_by_id(import_params["adapter_id"])
+    adapter_id_value = import_params["adapter_id"]
+    adapter_id = (
+        str(adapter_id_value) if adapter_id_value is not None else "cei_excel_format_v1"
+    )
+    adapter = registry.get_adapter_by_id(adapter_id)
 
     if not adapter:
-        raise ValueError(f"Adapter not found: {import_params['adapter_id']}")
+        raise ValueError(f"Adapter not found: {adapter_id}")
 
     # Get supported extensions
     adapter_info = adapter.get_adapter_info()
     if not adapter_info:
-        raise ValueError(
-            f"Adapter info not available for: {import_params['adapter_id']}"
-        )
+        raise ValueError(f"Adapter info not available for: {adapter_id}")
 
     supported_formats = adapter_info.get("supported_formats", [])
     if not supported_formats:
-        raise ValueError(
-            f"No supported formats defined for adapter: {import_params['adapter_id']}"
-        )
+        raise ValueError(f"No supported formats defined for adapter: {adapter_id}")
 
     # Validate file extension
     file_ext = Path(file.filename).suffix.lower()
@@ -5304,13 +5664,11 @@ def _validate_excel_import_request():
 
     if file_ext not in supported_formats:
         raise ValueError(
-            f"Invalid file format {file_ext} for adapter {import_params['adapter_id']}. "
+            f"Invalid file format {file_ext} for adapter {adapter_id}. "
             f"Supported formats: {', '.join(supported_formats)}"
         )
 
-    logger.info(
-        f"File extension {file_ext} validated for adapter {import_params['adapter_id']}"
-    )
+    logger.info(f"File extension {file_ext} validated for adapter {adapter_id}")
 
     return file, import_params
 
@@ -5318,7 +5676,7 @@ def _validate_excel_import_request():
 ALLOWED_DEMO_FILE_PREFIXES = ("demos/", "test_data/", "tests/e2e/fixtures/")
 
 
-def _validate_demo_file_path(demo_file_path: str):
+def _validate_demo_file_path(demo_file_path: str) -> str:
     """Validate demo file path to prevent traversal and enforce allowed directories."""
     normalized_path = os.path.normpath(demo_file_path)
     if ".." in normalized_path or normalized_path.startswith("/"):
@@ -5340,7 +5698,7 @@ def _validate_demo_file_path(demo_file_path: str):
     return normalized_path
 
 
-def _get_excel_file_from_request():
+def _get_excel_file_from_request() -> Any:
     """
     Extract the Excel file from the request.
 
@@ -5375,26 +5733,33 @@ def _get_excel_file_from_request():
     return file
 
 
-def _check_excel_import_permissions(import_data_type):
+def _check_excel_import_permissions(
+    import_data_type: str,
+) -> Tuple[Dict[str, Any], str]:
     """Check user permissions for Excel import."""
     # Get current user and check authentication
-    current_user = get_current_user()
+    current_user = _get_current_user_safe()
     if not current_user:
         raise PermissionError("Authentication required")
 
-    user_role = current_user.get("role")
-    user_institution_id = current_user.get("institution_id")
+    user_role_value = current_user.get("role")
+    if not isinstance(user_role_value, str):
+        raise PermissionError("Invalid user role")
+    user_institution_id_value = current_user.get("institution_id")
+    user_institution_id = (
+        str(user_institution_id_value) if user_institution_id_value else None
+    )
 
     # Determine institution_id based on user role and adapter
     institution_id = _determine_target_institution(user_institution_id)
 
     # Check role-based permissions
-    _validate_import_permissions(user_role, import_data_type)
+    _validate_import_permissions(user_role_value, import_data_type)
 
     return current_user, institution_id
 
 
-def _determine_target_institution(user_institution_id):
+def _determine_target_institution(user_institution_id: Optional[str]) -> str:
     """Determine the target institution for the import."""
     # SECURITY & DESIGN: All users (including site admins) import into their own institution
     # This enforces multi-tenant isolation and prevents cross-institution data injection
@@ -5404,7 +5769,7 @@ def _determine_target_institution(user_institution_id):
     return user_institution_id
 
 
-def _validate_import_permissions(user_role, import_data_type):
+def _validate_import_permissions(user_role: str, import_data_type: str) -> None:
     """Validate that the user role can import the specified data type."""
     allowed_data_types = {
         UserRole.SITE_ADMIN.value: ["institutions", "programs", "courses", "users"],
@@ -5427,7 +5792,12 @@ def _validate_import_permissions(user_role, import_data_type):
         )
 
 
-def _process_excel_import(file, current_user, institution_id, import_params):
+def _process_excel_import(
+    file: Any,
+    current_user: Dict[str, Any],
+    institution_id: str,
+    import_params: Dict[str, Any],
+) -> Tuple[Any, int]:
     """Process the Excel import with the validated parameters."""
     import os
     import re
@@ -5511,7 +5881,7 @@ def _process_excel_import(file, current_user, institution_id, import_params):
 
 @api.route("/adapters", methods=["GET"])
 @login_required
-def get_available_adapters():
+def get_available_adapters() -> ResponseReturnValue:
     """
     Get available adapters for the current user based on their role and institution scope.
 
@@ -5521,13 +5891,17 @@ def get_available_adapters():
     try:
         from src.adapters.adapter_registry import get_adapter_registry
 
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         if not current_user:
             return jsonify({"success": False, "error": USER_NOT_AUTHENTICATED_MSG}), 401
 
         registry = get_adapter_registry()
         user_role = current_user.get("role")
+        if not user_role or not isinstance(user_role, str):
+            return jsonify({"success": False, "error": "User role missing"}), 401
         user_institution_id = current_user.get("institution_id")
+        if not user_institution_id or not isinstance(user_institution_id, str):
+            return jsonify({"success": False, "error": "Institution ID missing"}), 401
         adapters = registry.get_adapters_for_user(user_role, user_institution_id)
 
         # Format adapters for frontend consumption
@@ -5565,7 +5939,7 @@ def get_available_adapters():
 
 @api.route("/export/data", methods=["GET"])
 @login_required
-def export_data():
+def export_data() -> ResponseReturnValue:
     """
     Export data using institution-specific adapter.
 
@@ -5587,7 +5961,7 @@ def export_data():
                            └── [institution export files]
     """
     try:
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         if not current_user:
             logger.error("[EXPORT] User not authenticated")
             return jsonify({"success": False, "error": "Not authenticated"}), 401
@@ -5725,7 +6099,7 @@ def export_data():
         return jsonify({"success": False, "error": f"Export failed: {str(e)}"}), 500
 
 
-def _sanitize_export_params():
+def _sanitize_export_params() -> Tuple[str, str, bool]:
     """Extract and sanitize export parameters from request."""
     data_type_raw = request.args.get("export_data_type", "courses")
     adapter_id_raw = request.args.get("export_adapter", "generic_csv_v1")
@@ -5738,7 +6112,7 @@ def _sanitize_export_params():
     return data_type, adapter_id, include_metadata
 
 
-def _get_adapter_file_extension(export_service, adapter_id: str) -> str:
+def _get_adapter_file_extension(export_service: Any, adapter_id: str) -> str:
     """Get file extension from adapter, with fallback to default."""
     try:
         adapter = export_service.registry.get_adapter_by_id(adapter_id)
@@ -5756,8 +6130,8 @@ def _get_adapter_file_extension(export_service, adapter_id: str) -> str:
 
 
 def _export_institution(
-    export_service,
-    inst: Dict,
+    export_service: Any,
+    inst: Dict[str, Any],
     system_export_dir: Path,
     adapter_id: str,
     include_metadata: bool,
@@ -5765,10 +6139,10 @@ def _export_institution(
     data_type: str,
     timestamp: str,
     file_extension: str,
-) -> Dict:
+) -> Dict[str, Any]:
     """Export a single institution to its subdirectory."""
-    inst_id = inst.get("institution_id")
-    inst_short_name = inst.get("short_name", inst_id)
+    inst_id = inst.get("institution_id") or "unknown"
+    inst_short_name = inst.get("short_name") or inst_id
 
     # Create subdirectory for this institution
     inst_dir = system_export_dir / inst_short_name
@@ -5804,7 +6178,9 @@ def _export_institution(
     }
 
 
-def _create_system_export_zip(system_export_dir, temp_base, timestamp, unique_id):
+def _create_system_export_zip(
+    system_export_dir: Path, temp_base: Path, timestamp: str, unique_id: str
+) -> Path:
     """Create ZIP file from system export directory, excluding system files."""
     import zipfile
 
@@ -5823,8 +6199,13 @@ def _create_system_export_zip(system_export_dir, temp_base, timestamp, unique_id
 
 
 def _create_system_manifest(
-    current_user, timestamp, adapter_id, data_type, institutions, institution_results
-):
+    current_user: Dict[str, Any],
+    timestamp: str,
+    adapter_id: str,
+    data_type: str,
+    institutions: List[Dict[str, Any]],
+    institution_results: List[Dict[str, Any]],
+) -> Dict[str, Any]:
     """Create system-level export manifest with export metadata."""
     return {
         "format_version": "1.0",
@@ -5840,7 +6221,7 @@ def _create_system_manifest(
     }
 
 
-def _export_all_institutions(current_user: Dict[str, Any]):
+def _export_all_institutions(current_user: Dict[str, Any]) -> ResponseReturnValue:
     """
     Export all institutions for Site Admin as a zip of folders.
 
@@ -5961,7 +6342,7 @@ def _export_all_institutions(current_user: Dict[str, Any]):
 @api.route("/send-course-reminder", methods=["POST"])
 @login_required
 @permission_required("manage_programs")
-def send_course_reminder_api():
+def send_course_reminder_api() -> ResponseReturnValue:
     """
     Send a course-specific assessment reminder to an instructor.
 
@@ -5981,7 +6362,7 @@ def send_course_reminder_api():
         from src.services.email_service import EmailService
 
         # Get request data
-        data = request.get_json(silent=True)
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({"success": False, "error": "No JSON data provided"}), 400
 
@@ -6021,7 +6402,7 @@ def send_course_reminder_api():
             )
 
         # Get current user (admin sending the reminder)
-        current_user = get_current_user()
+        current_user = _get_current_user_safe()
         admin_name = f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip()
         if not admin_name:
             admin_name = current_user.get("email", "Your program administrator")

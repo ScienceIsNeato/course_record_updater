@@ -20,9 +20,10 @@ import os
 import subprocess  # nosec B404
 import sys
 from pathlib import Path
+from typing import List, Optional
 
 
-def get_pr_number():
+def get_pr_number() -> Optional[int]:
     """Get current PR number from git context."""
     try:
         result = subprocess.run(  # nosec
@@ -35,11 +36,11 @@ def get_pr_number():
 
         pr_data = json.loads(result.stdout)
         return pr_data.get("number")
-    except:
+    except Exception:
         return None
 
 
-def get_current_commit():
+def get_current_commit() -> Optional[str]:
     """Get current commit SHA."""
     try:
         result = subprocess.run(  # nosec
@@ -49,11 +50,13 @@ def get_current_commit():
             check=True,
         )
         return result.stdout.strip()[:8]
-    except:
+    except Exception:
         return None
 
 
-def find_error_log(check_flag, pr_number=None, commit_sha=None):
+def find_error_log(
+    check_flag: str, pr_number: Optional[int] = None, commit_sha: Optional[str] = None
+) -> Optional[str]:
     """Find error log file for a check."""
     if not pr_number:
         pr_number = get_pr_number()
@@ -79,7 +82,7 @@ def find_error_log(check_flag, pr_number=None, commit_sha=None):
     return None
 
 
-def list_all_error_logs(pr_number=None):
+def list_all_error_logs(pr_number: Optional[int] = None) -> List[str]:
     """List all error log files for current PR."""
     if not pr_number:
         pr_number = get_pr_number()
@@ -92,7 +95,7 @@ def list_all_error_logs(pr_number=None):
     return sorted(glob.glob(pattern), reverse=True)
 
 
-def view_error_log(log_file):
+def view_error_log(log_file: str) -> bool:
     """Display error log file."""
     if not os.path.exists(log_file):
         print(f"❌ Error log not found: {log_file}")
@@ -109,7 +112,7 @@ def view_error_log(log_file):
     return True
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(
         description="View full error output for failed quality checks",
         formatter_class=argparse.RawDescriptionHelpFormatter,

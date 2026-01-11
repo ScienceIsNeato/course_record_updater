@@ -117,17 +117,6 @@
                         Preparing export... This may take a moment.
                     </div>
                 </div>
-                {% if user.role in ['program_admin', 'institution_admin', 'site_admin'] %}
-                <hr class="my-4">
-                <div class="d-grid gap-2">
-                    <button type="button" class="btn btn-warning btn-lg" data-bs-toggle="modal" data-bs-target="#bulkReminderModal">
-                        <i class="fas fa-bell me-2"></i>Send Reminders
-                    </button>
-                    <p class="text-muted small mb-0">
-                        Reach out to instructors who still need to submit their course updates. Customize reminders before sending.
-                    </p>
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>

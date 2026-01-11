@@ -1,7 +1,8 @@
-"""SQLAlchemy models for Course Record Updater SQLite backend."""
+"""SQLAlchemy models for LoopCloser SQLite backend."""
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime
 from typing import Any, Dict
@@ -20,9 +21,13 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import declarative_base, relationship
 
+from src.utils.term_utils import TERM_STATUS_ACTIVE, get_term_status
 from src.utils.time_utils import get_current_time
 
 Base = declarative_base()  # type: ignore[valid-type,misc]
+
+# Module logger
+logger = logging.getLogger(__name__)
 
 # Constants for foreign key references
 COURSES_ID = "courses.id"
@@ -227,7 +232,6 @@ class Term(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     start_date = Column(String)
     end_date = Column(String)
     assessment_due_date = Column(String)
-    active = Column(Boolean, default=True)
     institution_id = Column(String, ForeignKey(INSTITUTIONS_ID))
     extras = Column(PickleType, default=dict)
 
@@ -237,6 +241,13 @@ class Term(Base, TimestampMixin):  # type: ignore[valid-type,misc]
         back_populates="term",
         cascade=CASCADE_OPTIONS,
     )
+
+    def get_status(self, reference_date: datetime | None = None) -> str:
+        """Return computed status for this term."""
+        # Cast Column types to their runtime values for type checker
+        start = str(self.start_date) if self.start_date else None
+        end = str(self.end_date) if self.end_date else None
+        return get_term_status(start, end, reference_date)
 
 
 class CourseOffering(Base, TimestampMixin):  # type: ignore[valid-type,misc]
@@ -251,7 +262,6 @@ class CourseOffering(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     program_id = Column(
         String, ForeignKey(PROGRAMS_ID), nullable=True
     )  # Link to specific program context
-    status = Column(String, default="active")
     total_enrollment = Column(Integer, default=0)
     section_count = Column(Integer, default=0)
     extras = Column(PickleType, default=dict)
@@ -579,6 +589,7 @@ def _course_to_dict(model: Course) -> Dict[str, Any]:
 
 def _term_to_dict(model: Term) -> Dict[str, Any]:
     """Convert Term model to dictionary."""
+    status = model.get_status()
     return {
         "term_id": model.id,
         "term_name": model.term_name,
@@ -586,21 +597,40 @@ def _term_to_dict(model: Term) -> Dict[str, Any]:
         "start_date": model.start_date,
         "end_date": model.end_date,
         "assessment_due_date": model.assessment_due_date,
-        "active": model.active,
+        "status": status,
+        "is_active": status == TERM_STATUS_ACTIVE,
         "institution_id": model.institution_id,
         "created_at": model.created_at,
         "last_modified": model.updated_at,
+        "offerings_count": len(model.offerings) if model.offerings else 0,
     }
 
 
 def _course_offering_to_dict(model: CourseOffering) -> Dict[str, Any]:
     """Convert CourseOffering model to dictionary."""
+    term = getattr(model, "term", None)
+    term_start = None
+    term_end = None
+    if term:
+        term_start = term.start_date
+        term_end = term.end_date
+    elif hasattr(model, "extras") and model.extras:
+        term_start = model.extras.get("term_start_date")
+        term_end = model.extras.get("term_end_date")
+
+    status = get_term_status(term_start, term_end)
     return {
         "offering_id": model.id,
         "course_id": model.course_id,
         "term_id": model.term_id,
         "institution_id": model.institution_id,
-        "status": model.status,
+        "program_id": model.program_id,
+        "status": status,
+        "term_status": status,
+        "timeline_status": status,
+        "is_active": status == TERM_STATUS_ACTIVE,
+        "term_start_date": term_start,
+        "term_end_date": term_end,
         "total_enrollment": model.total_enrollment,
         "section_count": model.section_count,
         "created_at": model.created_at,
@@ -639,7 +669,7 @@ def _course_section_to_dict(model: CourseSection) -> Dict[str, Any]:
 
 def _course_outcome_to_dict(model: CourseOutcome) -> Dict[str, Any]:
     """Convert CourseOutcome model to dictionary."""
-    return {
+    base_dict = {
         "outcome_id": model.id,
         "course_id": model.course_id,
         "clo_number": model.clo_number,
@@ -662,6 +692,30 @@ def _course_outcome_to_dict(model: CourseOutcome) -> Dict[str, Any]:
         "feedback_comments": model.feedback_comments,
         "feedback_provided_at": model.feedback_provided_at,
     }
+
+    # Add course info if relationship satisfies (is loaded)
+    # Note: simple check 'if model.course' might trigger lazy load which fails if detached.
+    # But since we use selectinload, it should be available.
+    # Safe approach: check dict or inspect.
+    # For now, we wrap in try/except or rely on explicit loading.
+    try:
+        if model.course:
+            base_dict.update(
+                {
+                    "course_number": model.course.course_number,
+                    "course_title": model.course.course_title,
+                    "course": {
+                        "course_number": model.course.course_number,
+                        "course_title": model.course.course_title,
+                    },
+                }
+            )
+    except Exception as e:
+        # Relationship not loaded or detached; log at debug level so it can be
+        # investigated without failing normal operations.
+        logger.debug("Course relationship not available for model: %s", e)
+
+    return base_dict
 
 
 def _user_invitation_to_dict(model: UserInvitation) -> Dict[str, Any]:

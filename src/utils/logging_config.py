@@ -1,5 +1,5 @@
 """
-Centralized Logging Configuration for Course Record Updater
+Centralized Logging Configuration for LoopCloser
 
 This module provides consistent logging setup across all modules in the project.
 It ensures uniform formatting, levels, and handler configuration.
@@ -54,7 +54,7 @@ class SecureLogger(logging.Logger):
 
 def setup_logger(name: str, level: int = logging.INFO) -> SecureLogger:
     """
-    Create a standardized logger for the Course Record Updater project.
+    Create a standardized logger for the LoopCloser project.
 
     Args:
         name: Logger name (typically __name__ or module-specific name)

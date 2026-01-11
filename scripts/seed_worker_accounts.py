@@ -23,6 +23,7 @@ import argparse
 import os
 import sys
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Tuple
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -44,7 +45,7 @@ from tests.e2e.e2e_test_data_contract import (
 )
 
 
-def _validate_base_data():
+def _validate_base_data() -> bool:
     """Validate that base data exists according to contract."""
     print(f"\n🔍 Validating base data meets contract requirements...")
     errors = validate_seeded_data(db)
@@ -58,7 +59,7 @@ def _validate_base_data():
     return True
 
 
-def _reset_section_assignments():
+def _reset_section_assignments() -> None:
     """Reset section assignments so they can be distributed to workers."""
     print(f"\n🔄 Resetting section assignments for worker allocation...")
     try:
@@ -75,7 +76,7 @@ def _reset_section_assignments():
         print(f"   ⚠️  Failed to reset sections: {e}")
 
 
-def _get_base_accounts():
+def _get_base_accounts() -> List[Dict[str, str]]:
     """Return list of base accounts to clone."""
     return [
         # Site admins
@@ -121,17 +122,19 @@ def _get_base_accounts():
     ]
 
 
-def _get_institution_ids():
+def _get_institution_ids() -> Dict[str, str]:
     """Fetch institution IDs."""
     institutions = {}
     mocku = db.get_institution_by_short_name("MockU")
     if mocku:
-        institutions["mocku"] = mocku["institution_id"]
-    institutions["system"] = SITE_ADMIN_INSTITUTION_ID
+        institutions["mocku"] = str(mocku["institution_id"])
+    institutions["system"] = str(SITE_ADMIN_INSTITUTION_ID)
     return institutions
 
 
-def _create_account_for_worker(account, worker_id, institutions):
+def _create_account_for_worker(
+    account: Dict[str, Any], worker_id: int, institutions: Dict[str, str]
+) -> bool:
     """Create a single account for a specific worker."""
     # Generate worker-specific email
     email_parts = account["email"].rsplit("@", 1)
@@ -191,7 +194,7 @@ def _create_account_for_worker(account, worker_id, institutions):
         return False
 
 
-def create_worker_accounts(num_workers: int = 4):
+def create_worker_accounts(num_workers: int = 4) -> None:
     """Create worker-specific accounts for parallel test execution"""
 
     print(f"🔧 Creating worker-specific accounts for {num_workers} workers...")
@@ -226,7 +229,7 @@ def create_worker_accounts(num_workers: int = 4):
 
 def assign_sections_to_instructor(
     instructor_id: str, institution_id: str, worker_id: int
-):
+) -> None:
     """
     Assign sections to worker-specific instructor.
     Fetches fresh section list to see what's already assigned by previous workers.
@@ -241,11 +244,11 @@ def assign_sections_to_instructor(
 
         # Find unassigned sections (sections without an instructor)
         # This prevents workers from overwriting each other's assignments
-        unassigned_sections = [
-            s
-            for s in sections
-            if not s.get("instructor_id") or not s.get("instructor_id").strip()
-        ]
+        def is_unassigned(s: Dict[str, Any]) -> bool:
+            instructor_id = s.get("instructor_id")
+            return not instructor_id or not instructor_id.strip()
+
+        unassigned_sections = [s for s in sections if is_unassigned(s)]
 
         # If no unassigned sections, create duplicates by reassigning existing ones
         # (This is acceptable for test data - multiple instructors can "teach" the same section in parallel tests)
@@ -286,7 +289,7 @@ def assign_sections_to_instructor(
         print(f"      ⚠️  Failed to assign sections: {e}")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Create worker-specific test accounts for parallel E2E execution"
     )

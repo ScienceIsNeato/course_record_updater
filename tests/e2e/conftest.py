@@ -84,193 +84,169 @@ TEST_DATA_DIR = Path(__file__).parent / "fixtures"
 TEST_FILE = TEST_DATA_DIR / "generic_test_data.zip"
 
 
+def _clean_stale_db(db_path):
+    """Remove stale database files."""
+    for ext in ["", "-shm", "-wal"]:
+        f = "{}{}".format(db_path, ext)
+        if os.path.exists(f):
+            try:
+                os.remove(f)
+            except Exception as e:
+                print(f"   ⚠️  Could not remove {f}: {e}")
+
+
+def _seed_database():
+    """Run database seeding script."""
+    import subprocess
+
+    seed_cmd = [
+        sys.executable,
+        "scripts/seed_db.py",
+        "--env",
+        "e2e",
+        "--manifest",
+        "tests/fixtures/e2e_seed_manifest.json",
+    ]
+    seed_result = subprocess.run(
+        seed_cmd, capture_output=True, text=True, cwd=os.getcwd()
+    )
+    if seed_result.returncode != 0:
+        print(f"   ❌ Database seeding failed: {seed_result.stderr}")
+        raise RuntimeError("E2E database seeding failed")
+    print(f"   ✓ Baseline data seeded")
+
+
+def _start_e2e_server(worker_port, db_path, env_overrides, log_file=None):
+    """Start Flask server in subprocess."""
+    import urllib.error
+    import urllib.request
+
+    env = os.environ.copy()
+    db_abs_path = os.path.abspath(db_path)
+    env["DATABASE_URL"] = f"sqlite:///{db_abs_path}"
+    env["DATABASE_TYPE"] = "sqlite"
+    env["PORT"] = str(worker_port)
+    env["BASE_URL"] = f"http://localhost:{worker_port}"
+
+    # Common overrides
+    env.pop("EMAIL_PROVIDER", None)
+    env["EMAIL_WHITELIST"] = (
+        "*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,"
+        "*@test.local,*@example.com,*@loopclosertests.mailtrap.io,*@system.local"
+    )
+
+    # Apply specific overrides
+    env.update(env_overrides)
+
+    stdout_dest = subprocess.DEVNULL
+    stderr_dest = subprocess.DEVNULL
+
+    if log_file:
+        stdout_dest = open(log_file, "w")
+        stderr_dest = subprocess.STDOUT
+
+    server_process = subprocess.Popen(
+        [sys.executable, "-m", "src.app"],
+        env=env,
+        stdout=stdout_dest,
+        stderr=stderr_dest,
+        cwd=os.getcwd(),
+    )
+
+    # Wait for server
+    max_attempts = 30
+    for attempt in range(max_attempts):
+        if server_process.poll() is not None:
+            raise RuntimeError(
+                f"Server process died immediately (RC: {server_process.returncode}). "
+                f"Port {worker_port} might be in use."
+            )
+        try:
+            urllib.request.urlopen(f"http://localhost:{worker_port}/login", timeout=1)
+            print(
+                f"   ✓ Server ready on port {worker_port} (PID: {server_process.pid})"
+            )
+            return server_process
+        except (urllib.error.URLError, ConnectionRefusedError, OSError):
+            if attempt == max_attempts - 1:
+                print(f"   ❌ Server failed to start on port {worker_port}")
+                server_process.kill()
+                raise RuntimeError("E2E server failed to start")
+            time.sleep(0.5)
+    return server_process
+
+
+def _setup_serial_environment(worker_port):
+    """Setup logic for serial execution."""
+    print(f"\n🔧 E2E Setup: Configuring test environment on port {worker_port}")
+    worker_db = "course_records_e2e.db"
+
+    _clean_stale_db(worker_db)
+    _seed_database()
+
+    env_overrides = {
+        "ENV": "e2e",
+        "FLASK_ENV": "e2e",
+        "WTF_CSRF_ENABLED": "false",
+    }
+
+    proc = _start_e2e_server(
+        worker_port, worker_db, env_overrides, log_file="server.log"
+    )
+    return proc, worker_db
+
+
+def _setup_parallel_environment(worker_id, worker_port):
+    """Setup logic for parallel execution."""
+    base_db = "course_records_e2e.db"
+    worker_db = f"course_records_e2e_worker{worker_id}.db"
+    print(f"\n🔧 Worker {worker_id}: Setting up environment on port {worker_port}")
+
+    if not os.path.exists(base_db):
+        print(f"   ❌ Base database {base_db} not found - run seed_db.py first")
+        raise RuntimeError(f"Base E2E database not found: {base_db}")
+
+    # Copy database
+    for ext in ["", "-wal", "-shm"]:
+        src = f"{base_db}{ext}"
+        dst = f"{worker_db}{ext}"
+        if os.path.exists(src):
+            shutil.copy2(src, dst)
+            print(f"   ✓ Database copied: {dst}")
+
+    env_overrides = {
+        "ENV": "test",
+        "WTF_CSRF_ENABLED": "true",
+    }
+
+    proc = _start_e2e_server(worker_port, worker_db, env_overrides, log_file=None)
+    return proc, worker_db
+
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_worker_environment(tmp_path_factory):
     """
     Setup E2E environment with proper database isolation and server management.
-
-    For SERIAL execution (no pytest-xdist):
-    - Creates fresh E2E database
-    - Seeds baseline test data
-    - Starts dedicated Flask server
-    - Cleans up after session
-
-    For PARALLEL execution (pytest-xdist workers):
-    - Each worker gets isolated database copy
-    - Each worker gets dedicated Flask server on unique port
     """
     worker_id = get_worker_id()
-    server_process = None
-    worker_db = None
     worker_port = get_worker_port()
 
-    # Import seeding utilities early
-    import urllib.error
-    import urllib.request
+    server_process = None
+    worker_db = None
 
     if worker_id is None:
-        # ==============================================
-        # SERIAL EXECUTION - Full setup required
-        # ==============================================
-        print(f"\n🔧 E2E Setup: Configuring test environment on port {worker_port}")
-
-        worker_db = "course_records_e2e.db"
-
-        # Step 1: Create fresh database (remove stale state)
-        for db_file in [worker_db, f"{worker_db}-shm", f"{worker_db}-wal"]:
-            if os.path.exists(db_file):
-                try:
-                    os.remove(db_file)
-                except Exception as e:
-                    print(f"   ⚠️  Could not remove {db_file}: {e}")
-        print(f"   ✓ Fresh database: {worker_db}")
-
-        # Step 2: Seed baseline data
-        # Run seed_db.py as subprocess to ensure clean import state
-        seed_cmd = [
-            sys.executable,
-            "scripts/seed_db.py",
-            "--env",
-            "e2e",
-            "--manifest",
-            "tests/fixtures/e2e_seed_manifest.json",
-        ]
-
-        seed_result = subprocess.run(
-            seed_cmd,
-            capture_output=True,
-            text=True,
-            cwd=os.getcwd(),
-        )
-        if seed_result.returncode != 0:
-            print(f"   ❌ Database seeding failed: {seed_result.stderr}")
-            raise RuntimeError("E2E database seeding failed")
-        print(f"   ✓ Baseline data seeded")
-
-        # Step 3: Start Flask server
-        env = os.environ.copy()
-        # Use absolute path to avoid CWD ambiguity between server and test processes
-        db_abs_path = os.path.abspath(worker_db)
-        env["DATABASE_URL"] = f"sqlite:///{db_abs_path}"
-        env["DATABASE_TYPE"] = "sqlite"
-        env["PORT"] = str(worker_port)
-        env["BASE_URL"] = f"http://localhost:{worker_port}"
-        env["ENV"] = "e2e"
-        env["FLASK_ENV"] = "e2e"  # Prevents account lockout in PasswordService
-        env["WTF_CSRF_ENABLED"] = "false"  # Disable CSRF for E2E tests
-        env.pop("EMAIL_PROVIDER", None)  # Use Ethereal for E2E
-        env["EMAIL_WHITELIST"] = (
-            "*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@loopclosertests.mailtrap.io,*@system.local"
-        )
-
-        server_log = open("server.log", "w")
-        server_process = subprocess.Popen(
-            [sys.executable, "-m", "src.app"],
-            env=env,
-            stdout=server_log,
-            stderr=subprocess.STDOUT,
-            cwd=os.getcwd(),
-        )
-
-        # Wait for server to be ready
-        max_attempts = 30
-        for attempt in range(max_attempts):
-            # Check if process died
-            if server_process.poll() is not None:
-                # Process exited early
-                raise RuntimeError(
-                    f"Server process died immediately (Return Code: {server_process.returncode}). "
-                    f"Port {worker_port} might be in use by a stale process. Check server.log."
-                )
-
-            try:
-                urllib.request.urlopen(
-                    f"http://localhost:{worker_port}/login", timeout=1
-                )
-                print(
-                    f"   ✓ Server ready on port {worker_port} (PID: {server_process.pid})"
-                )
-                break
-            except (urllib.error.URLError, ConnectionRefusedError, OSError):
-                if attempt == max_attempts - 1:
-                    print(f"   ❌ Server failed to start on port {worker_port}")
-                    if server_process:
-                        server_process.kill()
-                    raise RuntimeError("E2E server failed to start")
-                time.sleep(0.5)
-
+        server_process, worker_db = _setup_serial_environment(worker_port)
     else:
-        # ==============================================
-        # PARALLEL EXECUTION - Worker-specific setup
-        # ==============================================
-        base_db = "course_records_e2e.db"
-        worker_db = f"course_records_e2e_worker{worker_id}.db"
-
-        print(f"\n🔧 Worker {worker_id}: Setting up environment on port {worker_port}")
-
-        # Copy base E2E database to worker-specific copy
-        # Copy base E2E database to worker-specific copy
-        # CRITICAL: Must copy WAL/SHM files if they exist to capture all transactions
-        if os.path.exists(base_db):
-            for ext in ["", "-wal", "-shm"]:
-                src_file = f"{base_db}{ext}"
-                dst_file = f"{worker_db}{ext}"
-                if os.path.exists(src_file):
-                    shutil.copy2(src_file, dst_file)
-                    print(f"   ✓ Database copied: {dst_file}")
-
-            env = os.environ.copy()
-            env["DATABASE_URL"] = f"sqlite:///{worker_db}"
-            env["DATABASE_TYPE"] = "sqlite"
-            env["PORT"] = str(worker_port)
-            env["BASE_URL"] = f"http://localhost:{worker_port}"
-            env["ENV"] = "test"
-            env["WTF_CSRF_ENABLED"] = "true"
-            env.pop("EMAIL_PROVIDER", None)
-            env["EMAIL_WHITELIST"] = (
-                "*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@loopclosertests.mailtrap.io,*@system.local"
-            )
-
-            server_process = subprocess.Popen(
-                [sys.executable, "-m", "src.app"],
-                env=env,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                cwd=os.getcwd(),
-            )
-
-            max_attempts = 30
-            for attempt in range(max_attempts):
-                try:
-                    urllib.request.urlopen(
-                        f"http://localhost:{worker_port}/login", timeout=1
-                    )
-                    print(
-                        f"   ✓ Server ready on port {worker_port} (PID: {server_process.pid})"
-                    )
-                    break
-                except (urllib.error.URLError, ConnectionRefusedError, OSError):
-                    if attempt == max_attempts - 1:
-                        print(f"   ❌ Server failed to start on port {worker_port}")
-                        if server_process:
-                            server_process.kill()
-                        raise RuntimeError(f"Worker {worker_id} server failed to start")
-                    time.sleep(0.5)
-        else:
-            print(f"   ❌ Base database {base_db} not found - run seed_db.py first")
-            raise RuntimeError(f"Base E2E database not found: {base_db}")
+        server_process, worker_db = _setup_parallel_environment(worker_id, worker_port)
 
     yield
 
-    # ==============================================
-    # CLEANUP
-    # ==============================================
+    # Cleanup
     if worker_id is None:
         print(f"\n🧹 E2E Cleanup: Stopping server...")
     else:
         print(f"\n🧹 Worker {worker_id}: Cleaning up...")
 
-    # Stop server
     if server_process:
         try:
             server_process.terminate()
@@ -280,7 +256,6 @@ def setup_worker_environment(tmp_path_factory):
             server_process.kill()
             print(f"   ⚠️  Server force-killed")
 
-    # Remove worker database (parallel mode only - keeps base for debugging)
     if worker_id is not None and worker_db and os.path.exists(worker_db):
         try:
             os.remove(worker_db)

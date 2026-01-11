@@ -43,6 +43,7 @@
             "role": "program_admin",
             "institution_short_name": "MockU",
             "program_code": "CS",
+            "program_idx": 0,
             "password_env_var": "DEFAULT_PASSWORD"
         },
         {
@@ -52,6 +53,7 @@
             "role": "instructor",
             "institution_short_name": "MockU",
             "program_code": "CS",
+            "program_idx": 0,
             "password_env_var": "DEFAULT_PASSWORD"
         },
         {
@@ -61,24 +63,112 @@
             "role": "instructor",
             "institution_short_name": "MockU",
             "program_code": "EE",
+            "program_idx": 1,
             "password_env_var": "DEFAULT_PASSWORD"
+        },
+        {
+            "email": "alex.mentor@mocku.test",
+            "first_name": "Alex",
+            "last_name": "Mentor",
+            "role": "instructor",
+            "institution_short_name": "MockU",
+            "program_code": "BA",
+            "program_idx": 2,
+            "password_env_var": "DEFAULT_PASSWORD"
+        },
+        {
+            "email": "siteadmin@system.local",
+            "first_name": "Site",
+            "last_name": "Admin",
+            "role": "site_admin",
+            "institution_short_name": "MockU",
+            "password_env_var": "SITE_ADMIN_PASSWORD"
         }
     ],
     "programs": [
         {
             "name": "Computer Science",
             "short_name": "CS",
+            "code": "CS",
             "institution_short_name": "MockU"
         },
         {
             "name": "Electrical Engineering",
             "short_name": "EE",
+            "code": "EE",
             "institution_short_name": "MockU"
         },
         {
             "name": "Business Administration",
             "short_name": "BA",
+            "code": "BA",
             "institution_short_name": "MockU"
+        }
+    ],
+    "courses": [
+        {
+            "code": "CS-101",
+            "name": "Introduction to Computer Science",
+            "program_code": "CS",
+            "program_idx": 0,
+            "credits": 3
+        },
+        {
+            "code": "EE-101",
+            "name": "Intro to Electrical Systems",
+            "program_code": "EE",
+            "program_idx": 1,
+            "credits": 3
+        },
+        {
+            "code": "BA-201",
+            "name": "Business Finance",
+            "program_code": "BA",
+            "program_idx": 2,
+            "credits": 3
+        }
+    ],
+    "offerings": [
+        {
+            "course_idx": 0,
+            "term_idx": 0,
+            "sections": [
+                {
+                    "section_number": "001",
+                    "instructor_idx": 3,
+                    "enrollment": 25
+                }
+            ]
+        },
+        {
+            "course_idx": 1,
+            "term_idx": 0,
+            "sections": [
+                {
+                    "section_number": "001",
+                    "instructor_idx": 4,
+                    "enrollment": 20
+                }
+            ]
+        },
+        {
+            "course_idx": 2,
+            "term_idx": 0,
+            "sections": [
+                {
+                    "section_number": "001",
+                    "instructor_idx": 5,
+                    "enrollment": 18
+                }
+            ]
+        }
+    ],
+    "terms": [
+        {
+            "name": "Fall 2025",
+            "start_date": "2025-08-25",
+            "end_date": "2025-12-15",
+            "is_active": true
         }
     ]
 }

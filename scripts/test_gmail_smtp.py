@@ -18,7 +18,7 @@ from flask import Flask
 from src.services.email_service import EmailService
 
 
-def test_gmail_smtp():
+def test_gmail_smtp() -> bool:
     """Test Gmail SMTP by sending verification email"""
 
     print("\n🔍 Testing Gmail SMTP Configuration...")
@@ -65,7 +65,7 @@ def test_gmail_smtp():
     test_recipient = "lassie.tests.instructor1.test@gmail.com"
 
     print(f"\n📨 Sending test email to: {test_recipient}")
-    print("   Subject: Verify your Course Record Updater account")
+    print("   Subject: Verify your LoopCloser account")
     print("   Type: Email verification")
 
     try:
@@ -79,8 +79,8 @@ def test_gmail_smtp():
         if success:
             print("\n✅ SUCCESS! Test email sent successfully!")
             print(f"\n📬 Check the inbox: {test_recipient}")
-            print("   Look for: 'Verify your Course Record Updater account'")
-            print("   From: Course Record Updater (Test)")
+            print("   Look for: 'Verify your LoopCloser account'")
+            print("   From: LoopCloser (Test)")
             return True
         else:
             print("\n❌ FAILED: Email provider reported failure")

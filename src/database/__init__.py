@@ -1,5 +1,5 @@
 """
-Database layer for the Course Record Updater application.
+Database layer for the LoopCloser application.
 
 Database modules should be imported directly, not through this __init__.py.
 Example: from src.database.database_service import db

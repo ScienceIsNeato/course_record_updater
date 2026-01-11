@@ -459,11 +459,218 @@ function renderCLODetails(clo) {
   return container;
 }
 
+// Global variables
+let allCLOs = [];
+// Expose for testing
+if (typeof globalThis !== "undefined") {
+  globalThis._getAllCLOs = () => allCLOs;
+}
+
 // Assign to globalThis IMMEDIATELY for browser use (not inside DOMContentLoaded)
 // This ensures functions are available even if DOM is already loaded
 // Note: globalThis is preferred over window for ES2020 cross-environment compatibility
+// Register global functions
 globalThis.approveCLO = approveCLO;
 globalThis.markAsNCI = markAsNCI;
+globalThis.approveOutcome = approveOutcome;
+globalThis.assignOutcome = assignOutcome;
+globalThis.reopenOutcome = reopenOutcome;
+globalThis.remindOutcome = remindOutcome;
+
+/**
+ * Direct Approve from Table
+ */
+async function approveOutcome(outcomeId) {
+  if (!confirm("Are you sure you want to approve this outcome?")) return;
+  try {
+    const csrfToken = document.querySelector(
+      'meta[name="csrf-token"]',
+    )?.content;
+    const res = await fetch(`/api/outcomes/${outcomeId}/approve`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrfToken,
+      },
+    });
+    if (res.ok) {
+      // alert("Approved successfully!"); // Optional
+      await globalThis.loadCLOs();
+    } else {
+      const err = await res.json();
+      alert("Failed to approve: " + (err.error || "Unknown error"));
+    }
+  } catch (e) {
+    alert("Error approving outcome: " + e.message);
+  }
+}
+
+/**
+ * Assign Instructor (Native Modal)
+ */
+let currentAssignSectionId = null;
+
+async function assignOutcome(outcomeId) {
+  const clo = allCLOs.find((c) => (c.outcome_id || c.id) === outcomeId);
+  if (!clo) return;
+
+  // Ensure form is bound
+  const form = document.getElementById("assignInstructorForm");
+  if (form) form.onsubmit = handleAssignSubmit;
+
+  // Use section_id derived from backend
+  if (!clo.section_id) {
+    alert("Cannot identify section for assignment. Please contact support.");
+    return;
+  }
+
+  currentAssignSectionId = clo.section_id;
+
+  const modalEl = document.getElementById("assignInstructorModal");
+  const modal = new bootstrap.Modal(modalEl);
+  modal.show();
+
+  await loadInstructors();
+}
+
+async function loadInstructors() {
+  const select = document.getElementById("assignInstructorSelect");
+  if (!select || select.dataset.loaded === "true") return;
+
+  try {
+    const res = await fetch("/api/instructors");
+    const data = await res.json();
+
+    if (data.success) {
+      select.innerHTML = '<option value="">Select Instructor...</option>';
+      data.instructors.forEach((inst) => {
+        const opt = document.createElement("option");
+        opt.value = inst.user_id || inst.id;
+        opt.textContent = `${inst.last_name}, ${inst.first_name} (${inst.email})`;
+        select.appendChild(opt);
+      });
+      select.dataset.loaded = "true";
+    } else {
+      select.innerHTML = "<option>Error loading instructors</option>";
+    }
+  } catch (e) {
+    console.error(e);
+    select.innerHTML = "<option>Error loading instructors</option>";
+  }
+}
+
+async function handleAssignSubmit(e) {
+  e.preventDefault();
+  const select = document.getElementById("assignInstructorSelect");
+  const instructorId = select.value;
+
+  if (!instructorId) {
+    alert("Please select an instructor");
+    return;
+  }
+
+  try {
+    const csrfToken = document.querySelector(
+      'meta[name="csrf-token"]',
+    )?.content;
+    const res = await fetch(
+      `/api/sections/${currentAssignSectionId}/instructor`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify({ instructor_id: instructorId }),
+      },
+    );
+
+    if (res.ok) {
+      const modalEl = document.getElementById("assignInstructorModal");
+      bootstrap.Modal.getInstance(modalEl).hide();
+      await globalThis.loadCLOs();
+      alert("Instructor assigned successfully.");
+    } else {
+      const json = await res.json();
+      alert("Failed to assign: " + (json.error || "Unknown"));
+    }
+  } catch (err) {
+    alert("Error: " + err.message);
+  }
+}
+
+/**
+ * Reopen Outcome (Set status to in_progress)
+ */
+async function reopenOutcome(outcomeId) {
+  if (
+    !confirm(
+      "Are you sure you want to reopen this outcome? Status will be set to 'In Progress'.",
+    )
+  )
+    return;
+  try {
+    const csrfToken = document.querySelector(
+      'meta[name="csrf-token"]',
+    )?.content;
+    const res = await fetch(`/api/outcomes/${outcomeId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrfToken,
+      },
+      body: JSON.stringify({
+        status: "in_progress",
+        approval_status: "pending",
+      }),
+    });
+    if (res.ok) {
+      await globalThis.loadCLOs();
+    } else {
+      const err = await res.json();
+      alert("Failed to reopen: " + (err.error || "Unknown error"));
+    }
+  } catch (e) {
+    alert("Error reopening outcome: " + e.message);
+  }
+}
+
+/**
+ * Send Reminder
+ */
+async function remindOutcome(outcomeId, instructorId, courseId) {
+  if (!instructorId || !courseId) {
+    alert("Missing instructor or course information for this outcome.");
+    return;
+  }
+  if (!confirm("Send reminder email to instructor?")) return;
+
+  try {
+    const csrfToken = document.querySelector(
+      'meta[name="csrf-token"]',
+    )?.content;
+    const res = await fetch("/api/send-course-reminder", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrfToken,
+      },
+      body: JSON.stringify({
+        instructor_id: instructorId,
+        course_id: courseId,
+      }),
+    });
+
+    if (res.ok) {
+      alert("Reminder sent successfully.");
+    } else {
+      const err = await res.json();
+      alert("Failed to send reminder: " + (err.error || "Unknown error"));
+    }
+  } catch (e) {
+    alert("Error sending reminder: " + e.message);
+  }
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   // DOM elements
@@ -553,18 +760,17 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       // Load terms
-      const termResponse = await fetch("/api/terms");
+      const termResponse = await fetch("/api/terms?all=true");
       if (termResponse.ok) {
         const data = await termResponse.json();
         const terms = data.terms || [];
         if (termFilter) {
-          // Sort terms by start date descending (newest first)
           terms.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
 
           terms.forEach((term) => {
             const option = document.createElement("option");
-            option.value = term.term_id;
-            option.textContent = term.term_name;
+            option.value = term.term_id || term.id || "";
+            option.textContent = term.term_name || term.name || "Term";
             termFilter.appendChild(option);
           });
         }
@@ -584,6 +790,7 @@ document.addEventListener("DOMContentLoaded", () => {
    * Load CLOs from API
    */
   async function loadCLOs() {
+    globalThis.loadCLOs = loadCLOs;
     try {
       // nosemgrep
       // nosemgrep
@@ -610,12 +817,13 @@ document.addEventListener("DOMContentLoaded", () => {
         ? `/api/outcomes/audit?${queryString}`
         : "/api/outcomes/audit";
 
-      const response = await fetch(url);
+      const response = await globalThis.fetch(url);
       if (!response.ok) {
         throw new Error("Failed to load CLOs");
       }
 
       const data = await response.json();
+      console.log("DEBUG: loadCLOs data:", JSON.stringify(data));
       allCLOs = data.outcomes || [];
 
       // Update stats
@@ -763,10 +971,12 @@ document.addEventListener("DOMContentLoaded", () => {
     // Body
     const tbody = document.createElement("tbody");
     sorted.forEach((clo) => {
+      const outcomeId =
+        clo.outcome_id || clo.id || clo.OutcomeId || clo.outcomeId || "";
       const tr = document.createElement("tr");
       tr.className = "clo-row";
       tr.style.cursor = "pointer";
-      tr.dataset.outcomeId = clo.outcome_id;
+      tr.dataset.outcomeId = outcomeId;
 
       // Status
       const tdStatus = document.createElement("td");
@@ -807,18 +1017,69 @@ document.addEventListener("DOMContentLoaded", () => {
       // Actions
       const tdActions = document.createElement("td");
       tdActions.className = "clo-actions";
+
       const btnGroup = document.createElement("div");
       btnGroup.className = "btn-group btn-group-sm";
-      const btn = document.createElement("button");
-      btn.className = "btn btn-outline-primary";
-      btn.dataset.outcomeId = clo.outcome_id;
-      // Using innerHTML for static icon markup is generally accepted by semgrep
-      // but we could also use font-awesome class on an 'i' element
-      const icon = document.createElement("i");
-      icon.className = "fas fa-eye";
-      btn.appendChild(icon);
-      btn.appendChild(document.createTextNode(" View"));
-      btnGroup.appendChild(btn);
+
+      let actionBtn = null;
+
+      if (clo.status === "awaiting_approval") {
+        const btn = document.createElement("button");
+        btn.className = "btn btn-success text-white";
+        btn.title = "Approve Outcome";
+        btn.innerHTML = '<i class="fas fa-check"></i> Approve';
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          approveOutcome(clo.outcome_id);
+        };
+        actionBtn = btn;
+      } else if (clo.status === "unassigned") {
+        const btn = document.createElement("button");
+        btn.className = "btn btn-primary text-white";
+        btn.title = "Assign Instructor";
+        btn.innerHTML = '<i class="fas fa-user-plus"></i> Assign';
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          assignOutcome(clo.outcome_id);
+        };
+        actionBtn = btn;
+      } else if (["approved", "never_coming_in"].includes(clo.status)) {
+        const btn = document.createElement("button");
+        btn.className = "btn btn-warning text-dark";
+        btn.title = "Reopen Outcome";
+        btn.innerHTML = '<i class="fas fa-undo"></i> Reopen';
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          reopenOutcome(clo.outcome_id);
+        };
+        actionBtn = btn;
+      } else if (
+        ["in_progress", "approval_pending", "assigned"].includes(clo.status)
+      ) {
+        const btn = document.createElement("button");
+        btn.className = "btn btn-info text-white";
+        btn.title = "Send Reminder";
+        btn.innerHTML = '<i class="fas fa-bell"></i> Remind';
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          remindOutcome(clo.outcome_id, clo.instructor_id, clo.course_id);
+        };
+        actionBtn = btn;
+      } else {
+        // Fallback View
+        const btn = document.createElement("button");
+        btn.className = "btn btn-outline-secondary";
+        btn.dataset.outcomeId = clo.outcome_id;
+        btn.title = "View Details";
+        btn.innerHTML = '<i class="fas fa-eye"></i> View';
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          globalThis.showCLODetails(clo.outcome_id);
+        };
+        actionBtn = btn;
+      }
+
+      if (actionBtn) btnGroup.appendChild(actionBtn);
       tdActions.appendChild(btnGroup);
       tr.appendChild(tdActions);
 
@@ -1016,5 +1277,19 @@ if (typeof module !== "undefined" && module.exports) {
     escapeForCsv,
     calculateSuccessRate,
     exportCurrentViewToCsv,
+    // DOM interaction functions (for unit testing)
+    approveOutcome,
+    assignOutcome,
+    loadInstructors,
+    handleAssignSubmit,
+    reopenOutcome,
+    remindOutcome,
+    // Note: sortCLOs and submitReworkRequest are inside DOMContentLoaded
+    // and cannot be exported (they depend on DOM element references)
+    // Expose internal state accessor for testing
+    _getAllCLOs: () => allCLOs,
+    _setAllCLOs: (clos) => {
+      allCLOs = clos;
+    },
   };
 }

@@ -31,10 +31,6 @@ describe('Term Management - Create Term Modal', () => {
         <input type="date" id="termStartDate" name="start_date" required />
         <input type="date" id="termEndDate" name="end_date" required />
         <input type="date" id="termAssessmentDueDate" name="assessment_due_date" required />
-        <div class="form-check">
-          <input type="checkbox" id="termActive" name="active" checked />
-          <label for="termActive">Active</label>
-        </div>
         <button type="submit" id="createTermBtn">
           <span class="btn-text">Create Term</span>
           <span class="btn-spinner d-none">Creating...</span>
@@ -43,6 +39,11 @@ describe('Term Management - Create Term Modal', () => {
       <div class="modal" id="createTermModal"></div>
       <meta name="csrf-token" content="test-csrf-token">
     `;
+
+    global.DashboardEvents = {
+      publishMutation: jest.fn(),
+      subscribeToMutations: jest.fn(),
+    };
 
     // Mock fetch
     mockFetch = jest.fn();
@@ -116,10 +117,6 @@ describe('Term Management - Create Term Modal', () => {
       expect(assessmentInput.validity.valid).toBe(true);
     });
 
-    test('should have active checkbox checked by default', () => {
-      const activeCheckbox = document.getElementById('termActive');
-      expect(activeCheckbox.checked).toBe(true);
-    });
   });
 
   describe('Form Submission - API Call', () => {
@@ -337,7 +334,6 @@ describe('Term Management - Create Term Modal', () => {
       document.getElementById('termStartDate').value = '2024-08-01';
       document.getElementById('termEndDate').value = '2024-12-15';
       document.getElementById('termAssessmentDueDate').value = '2024-12-20';
-      document.getElementById('termActive').checked = true;
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(submitEvent);
@@ -454,7 +450,14 @@ describe('Term Management - Create Term Modal', () => {
 
       // Form should be reset
       expect(nameInput.value).toBe('');
-      expect(global.loadTerms).toHaveBeenCalled();
+      expect(global.DashboardEvents.publishMutation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entity: 'terms',
+          action: 'create',
+          metadata: { termId: 'term-123' },
+          source: 'termManagement'
+        })
+      );
     });
 
     test('should display error message on API failure', async () => {
@@ -585,6 +588,42 @@ describe('Term Management - Create Term Modal', () => {
   });
 });
 
+describe('resolveTermStatus helper', () => {
+  const { resolveTermStatus } = global.termManagementTestHelpers;
+  const referenceDate = new Date('2025-01-15T00:00:00Z');
+
+  test('returns direct status when present on term record', () => {
+    expect(resolveTermStatus({ status: 'passed' })).toBe('PASSED');
+  });
+
+  test('returns UNKNOWN when start/end dates missing', () => {
+    expect(resolveTermStatus({})).toBe('UNKNOWN');
+  });
+
+  test('computes ACTIVE/SCHEDULED/PASSED based on dates', () => {
+    expect(
+      resolveTermStatus({
+        start_date: '2024-12-01',
+        end_date: '2025-02-01'
+      }, referenceDate)
+    ).toBe('ACTIVE');
+
+    expect(
+      resolveTermStatus({
+        start_date: '2025-03-01',
+        end_date: '2025-04-01'
+      }, referenceDate)
+    ).toBe('SCHEDULED');
+
+    expect(
+      resolveTermStatus({
+        start_date: '2024-01-01',
+        end_date: '2024-05-01'
+      }, referenceDate)
+    ).toBe('PASSED');
+  });
+});
+
 describe('Term Management - Edit Term Modal', () => {
   let mockFetch;
 
@@ -608,6 +647,11 @@ describe('Term Management - Edit Term Modal', () => {
       <div class="modal" id="editTermModal"></div>
       <meta name="csrf-token" content="test-csrf-token">
     `;
+
+    global.DashboardEvents = {
+      publishMutation: jest.fn(),
+      subscribeToMutations: jest.fn(),
+    };
 
     mockFetch = jest.fn();
     global.fetch = mockFetch;
@@ -687,7 +731,14 @@ describe('Term Management - Edit Term Modal', () => {
     const body = JSON.parse(callArgs[1].body);
     expect(body.end_date).toBe('2025-05-20');
     expect(body.name).toBe('Spring 2025');
-    expect(global.loadTerms).toHaveBeenCalled();
+    expect(global.DashboardEvents.publishMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entity: 'terms',
+        action: 'update',
+        metadata: { termId: 'term-123' },
+        source: 'termManagement'
+      })
+    );
   });
 });
 
@@ -703,6 +754,10 @@ describe('Term Management - Delete Term', () => {
     confirmSpy = jest.spyOn(window, 'confirm');
     alertSpy = jest.spyOn(window, 'alert').mockImplementation();
     global.loadTerms = jest.fn();
+    global.DashboardEvents = {
+      publishMutation: jest.fn(),
+      subscribeToMutations: jest.fn(),
+    };
   });
 
   afterEach(() => {
@@ -733,7 +788,14 @@ describe('Term Management - Delete Term', () => {
     expect(alertSpy).toHaveBeenCalledWith(
       expect.stringContaining('deleted successfully')
     );
-    expect(global.loadTerms).toHaveBeenCalled();
+    expect(global.DashboardEvents.publishMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entity: 'terms',
+        action: 'delete',
+        metadata: { termId: 'term-123' },
+        source: 'termManagement'
+      })
+    );
   });
 
   test('should not delete if user cancels confirmation', async () => {
@@ -768,4 +830,3 @@ describe('Term Management - Delete Term', () => {
     expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('try again'));
   });
 });
-

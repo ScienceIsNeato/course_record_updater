@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This plan establishes comprehensive JavaScript testing coverage for the Course Record Updater project, moving from 0% to enterprise-grade frontend test coverage. We'll implement a systematic approach that ensures all user-facing functionality is properly tested and maintainable.
+This plan establishes comprehensive JavaScript testing coverage for the LoopCloser project, moving from 0% to enterprise-grade frontend test coverage. We'll implement a systematic approach that ensures all user-facing functionality is properly tested and maintainable.
 
 ## Current State Analysis
 
@@ -292,15 +292,14 @@ JavaScript tests are now fully integrated into the existing `ship_it.py` quality
    ```python
    available_checks = {
        # ... existing checks ...
-       "js-tests": check_javascript_tests,
-       "js-coverage": check_javascript_coverage,
+       "js-tests-and-coverage": check_javascript_coverage,
    }
    ```
 
 4. **Update Default Check Groups**
    ```python
    # Add to default quality gate pipeline
-   default_checks = ["black", "isort", "lint", "mypy", "tests", "js-tests", "js-coverage", "coverage"]
+   default_checks = ["black", "isort", "lint", "mypy", "tests", "js-tests-and-coverage", "coverage"]
    ```
 
 ### GitHub Actions Integration ⏳ **PENDING**
@@ -434,7 +433,7 @@ The foundation is solid and the integration is complete. Codex can now focus pur
 
 ## Conclusion
 
-This implementation successfully establishes enterprise-grade JavaScript testing infrastructure for the Course Record Updater. The systematic approach has delivered:
+This implementation successfully establishes enterprise-grade JavaScript testing infrastructure for the LoopCloser. The systematic approach has delivered:
 
 1. **Complete test infrastructure** with Jest, coverage reporting, and quality gate integration
 2. **Solid foundation** with 45 passing tests and clear patterns for expansion  

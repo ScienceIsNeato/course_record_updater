@@ -7,8 +7,10 @@ Site admin only.
 
 from datetime import datetime
 from io import BytesIO
+from typing import Any, Union
 
 from flask import Blueprint, jsonify, request, send_file
+from werkzeug.wrappers import Response
 
 from src.api.utils import handle_api_error
 from src.services.audit_service import AuditService, EntityType
@@ -26,7 +28,7 @@ logger = get_logger(__name__)
 
 @audit_bp.route("/recent", methods=["GET"])
 @permission_required("manage_users")  # Site admin only
-def get_recent_logs():
+def get_recent_logs() -> tuple[Any, int]:
     """
     Get recent audit logs with basic filtering.
 
@@ -83,7 +85,7 @@ def get_recent_logs():
 
 @audit_bp.route("/entity/<entity_type>/<entity_id>", methods=["GET"])
 @permission_required("manage_users")  # Site admin only
-def get_entity_history(entity_type: str, entity_id: str):
+def get_entity_history(entity_type: str, entity_id: str) -> tuple[Any, int]:
     """
     Get complete audit history for a specific entity.
 
@@ -141,7 +143,7 @@ def get_entity_history(entity_type: str, entity_id: str):
 
 @audit_bp.route("/user/<user_id>", methods=["GET"])
 @permission_required("manage_users")  # Site admin only
-def get_user_activity(user_id: str):
+def get_user_activity(user_id: str) -> tuple[Any, int]:
     """
     Get all audit logs for actions performed by a specific user.
 
@@ -221,7 +223,7 @@ def get_user_activity(user_id: str):
 
 @audit_bp.route("/export", methods=["POST"])
 @permission_required("manage_users")  # Site admin only
-def export_logs():
+def export_logs() -> Union[Response, tuple[Any, int]]:
     """
     Export audit logs in CSV or JSON format.
 

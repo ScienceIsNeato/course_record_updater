@@ -59,7 +59,7 @@ class BulkEmailJob(Base):  # type: ignore[misc,valid-type]
     failed_recipients = Column(JSON, nullable=True)  # List of {email, error}
     error_message = Column(Text, nullable=True)  # Overall error if job failed
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"<BulkEmailJob(id={self.id}, type={self.job_type}, "
             f"status={self.status}, sent={self.emails_sent}/{self.recipient_count})>"

@@ -2,7 +2,7 @@
 Password Management Service
 
 Provides secure password hashing, validation, and reset token functionality
-for the Course Record Updater authentication system.
+for the LoopCloser authentication system.
 
 Features:
 - bcrypt password hashing with cost factor 12
@@ -393,7 +393,7 @@ class PasswordService:
         """
         is_locked, locked_until = PasswordService.is_account_locked(email)
 
-        if is_locked:
+        if is_locked and locked_until:
             minutes_remaining = int(
                 (locked_until - get_current_time()).total_seconds() / 60
             )

@@ -477,7 +477,7 @@ class TestInvitationEndpoints:
             "invitee_role": "instructor",
             "status": "sent",
         }
-        mock_invitation_service.send_invitation.return_value = True
+        mock_invitation_service.send_invitation.return_value = (True, None)
 
         response = self.client.post(
             "/api/auth/invite",
@@ -610,7 +610,7 @@ class TestInvitationEndpoints:
             "invitee_role": "program_admin",
             "status": "sent",
         }
-        mock_invitation_service.send_invitation.return_value = True
+        mock_invitation_service.send_invitation.return_value = (True, None)
 
         response = self.client.post(
             "/api/auth/invite",
@@ -641,7 +641,7 @@ class TestInvitationEndpoints:
             "invitee_role": "instructor",
             "status": "sent",
         }
-        mock_invitation_service.send_invitation.return_value = True
+        mock_invitation_service.send_invitation.return_value = (True, None)
 
         # Use alias fields email/role
         response = self.client.post(
@@ -1038,12 +1038,10 @@ class TestResendVerificationEndpoints:
         with app.test_client() as client:
             response = client.post("/api/auth/resend-verification")
 
-            assert (
-                response.status_code == 500
-            )  # Flask returns 500 for UnsupportedMediaType
+            assert response.status_code == 400
             data = json.loads(response.data)
             assert data["success"] is False
-            assert "Failed to resend verification email" in data["error"]
+            assert "Email address is required" in data["error"]
 
     def test_resend_verification_missing_email(self):
         """Test resend verification with missing email."""

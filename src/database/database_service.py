@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import logging
-from contextlib import nullcontext
+from contextlib import AbstractContextManager, nullcontext
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.database.database_factory import get_database_service, refresh_database_service
+from src.database.database_interface import DatabaseInterface
 from src.models.models_sql import Base
 from src.utils.constants import (
     COURSE_OFFERINGS_COLLECTION,
@@ -20,6 +21,7 @@ from src.utils.constants import (
     TERMS_COLLECTION,
     USERS_COLLECTION,
 )
+from src.utils.term_utils import TERM_STATUS_ACTIVE, get_term_status
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +32,7 @@ _db_service = get_database_service()
 db = _db_service
 
 
-def refresh_connection():
+def refresh_connection() -> DatabaseInterface:
     """Reinitialize the database service (primarily for tests)."""
     global _db_service, db
     _db_service = refresh_database_service()
@@ -49,7 +51,13 @@ def reset_database() -> bool:
     return False
 
 
-def db_operation_timeout():
+def close_connection() -> None:
+    """Close the underlying database connection."""
+    if hasattr(_db_service, "sqlite"):
+        _db_service.sqlite.close()
+
+
+def db_operation_timeout() -> AbstractContextManager[Any]:
     """
     Legacy no-op helper retained for API compatibility.
 
@@ -86,6 +94,27 @@ def sanitize_for_logging(value: Any, max_length: int = 100) -> str:
         char if ord(char) >= 32 or char == "\t" else f"\\x{ord(char):02x}"
         for char in sanitized
     )
+
+
+def _with_term_status(term: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Attach computed status metadata to a term record."""
+    if not term:
+        return None
+
+    enriched = deepcopy(term)
+    status = get_term_status(enriched.get("start_date"), enriched.get("end_date"))
+    enriched["status"] = status
+    enriched["is_active"] = status == TERM_STATUS_ACTIVE
+    return enriched
+
+
+def _with_term_status_list(
+    terms: Optional[List[Dict[str, Any]]],
+) -> List[Dict[str, Any]]:
+    """Vectorized helper for term lists."""
+    if not terms:
+        return []
+    return [t for t in (_with_term_status(term) for term in terms) if t]
 
 
 # ---------------------------------------------------------------------------
@@ -192,7 +221,7 @@ def update_user_profile(user_id: str, profile_data: Dict[str, Any]) -> bool:
 
 
 def update_user_role(
-    user_id: str, new_role: str, program_ids: List[str] = None
+    user_id: str, new_role: str, program_ids: Optional[List[str]] = None
 ) -> bool:
     return _db_service.update_user_role(user_id, new_role, program_ids)
 
@@ -496,10 +525,6 @@ def update_term(term_id: str, term_data: Dict[str, Any]) -> bool:
     return _db_service.update_term(term_id, term_data)
 
 
-def archive_term(term_id: str) -> bool:
-    return _db_service.archive_term(term_id)
-
-
 def delete_term(term_id: str) -> bool:
     return _db_service.delete_term(term_id)
 
@@ -507,19 +532,19 @@ def delete_term(term_id: str) -> bool:
 def get_term_by_name(
     name: str, institution_id: Optional[str] = None
 ) -> Optional[Dict[str, Any]]:
-    return _db_service.get_term_by_name(name, institution_id)
+    return _with_term_status(_db_service.get_term_by_name(name, institution_id))
 
 
 def get_active_terms(institution_id: str) -> List[Dict[str, Any]]:
-    return _db_service.get_active_terms(institution_id)
+    return _with_term_status_list(_db_service.get_active_terms(institution_id))
 
 
 def get_all_terms(institution_id: str) -> List[Dict[str, Any]]:
-    return _db_service.get_all_terms(institution_id)
+    return _with_term_status_list(_db_service.get_all_terms(institution_id))
 
 
 def get_term_by_id(term_id: str) -> Optional[Dict[str, Any]]:
-    return _db_service.get_term_by_id(term_id)
+    return _with_term_status(_db_service.get_term_by_id(term_id))
 
 
 def get_sections_by_term(term_id: str) -> List[Dict[str, Any]]:
@@ -654,7 +679,7 @@ def list_invitations(
 
 def get_outcomes_by_status(
     institution_id: str,
-    status: str,
+    status: Optional[str],
     program_id: Optional[str] = None,
     term_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
@@ -663,7 +688,7 @@ def get_outcomes_by_status(
 
     Args:
         institution_id: Institution ID to filter by
-        status: CLO status to filter by
+        status: CLO status to filter by (None for all statuses)
         program_id: Optional program ID to further filter results
         term_id: Optional term ID to further filter results
 

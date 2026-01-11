@@ -170,6 +170,12 @@ class EtherealProvider(EmailProvider):
     def _connect_to_imap(self) -> Optional[imaplib.IMAP4_SSL]:
         """Connect to IMAP server and select INBOX"""
         try:
+            if not self._imap_host or self._imap_port is None:
+                logger.error("[Ethereal Provider] IMAP host/port not configured")
+                return None
+            if not self._username or not self._password:
+                logger.error("[Ethereal Provider] IMAP credentials not configured")
+                return None
             # Add 10s timeout to prevent infinite hang on connection issues
             mail = imaplib.IMAP4_SSL(self._imap_host, self._imap_port, timeout=10)
             mail.login(self._username, self._password)

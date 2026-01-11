@@ -1,5 +1,5 @@
 """
-Data models for the Course Record Updater application.
+Data models for the LoopCloser application.
 
 Models should be imported directly from their modules, not through this __init__.py.
 Example: from src.models.models import User

@@ -2,8 +2,13 @@
 
 // Constants for input types to avoid hard-coded strings
 const INPUT_TYPES = {
-  PASSWORD: "password",
+  PASSWORD: "password", // pragma: allowlist secret
   TEXT: "text",
+};
+
+const CONFIRM_PASSWORD_TARGETS = {
+  confirmPassword: "password", // pragma: allowlist secret
+  confirmNewPassword: "newPassword",
 };
 
 // CSRF Token Helper
@@ -609,8 +614,15 @@ function validateForm(form) {
       fieldValid = validateEmail.call(input);
     } else if (input.type === "password" && input.id === "password") {
       fieldValid = validatePassword.call(input);
-    } else if (input.type === "password" && input.id.includes("confirm")) {
-      fieldValid = validatePasswordMatch();
+    } else if (
+      input.type === "password" &&
+      input.id.toLowerCase().includes("confirm")
+    ) {
+      const primaryId =
+        CONFIRM_PASSWORD_TARGETS[input.id] ||
+        input.dataset.primaryPassword ||
+        "password";
+      fieldValid = validatePasswordMatch(primaryId, input.id);
     } else if (input.type === "url") {
       fieldValid = validateUrl.call(input);
     } else if (input.type === "checkbox") {

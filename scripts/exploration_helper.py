@@ -57,24 +57,24 @@ class ExplorationTracker:
             "unknown": [],
         }
 
-    def save_progress(self):
+    def save_progress(self) -> None:
         """Save progress to file."""
         with open(self.progress_file, "w") as f:
             json.dump(self.progress, f, indent=2)
 
-    def save_findings(self):
+    def save_findings(self) -> None:
         """Save findings to file."""
         with open(self.findings_file, "w") as f:
             json.dump(self.findings, f, indent=2)
 
-    def mark_page_tested(self, page_path: str, role: str):
+    def mark_page_tested(self, page_path: str, role: str) -> None:
         """Mark a page as tested."""
         key = f"{page_path}:{role}"
         if key not in self.progress["pages_tested"]:
             self.progress["pages_tested"].append(key)
         self.save_progress()
 
-    def add_finding(self, category: str, finding: Dict):
+    def add_finding(self, category: str, finding: Dict[str, str]) -> None:
         """Add a finding to the appropriate category."""
         if category in self.findings:
             self.findings[category].append(finding)
@@ -150,7 +150,7 @@ def generate_test_report(tracker: ExplorationTracker) -> str:
     return report
 
 
-def main():
+def main() -> None:
     """Main entry point for exploration helper."""
     import argparse
 

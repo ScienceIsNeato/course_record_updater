@@ -436,28 +436,6 @@ class TestTermsCRUD:
         data = response.get_json()
         assert data["success"] is True
 
-    @patch("src.api_routes.archive_term")
-    @patch("src.api_routes.get_current_institution_id")
-    @patch("src.api_routes.get_term_by_id")
-    def test_archive_term_success(
-        self, mock_get_term, mock_get_inst_id, mock_archive, client
-    ):
-        """Test POST /api/terms/<id>/archive - success"""
-        create_site_admin_session(client)
-        mock_get_inst_id.return_value = "inst-1"
-        mock_get_term.return_value = {"term_id": "term-123", "institution_id": "inst-1"}
-        mock_archive.return_value = True
-
-        response = client.post(
-            "/api/terms/term-123/archive",
-            headers={"X-CSRFToken": get_csrf_token(client)},
-        )
-
-        assert response.status_code == 200
-        data = response.get_json()
-        assert data["success"] is True
-        assert "archived successfully" in data["message"]
-
     @patch("src.api_routes.delete_term")
     @patch("src.api_routes.get_current_institution_id")
     @patch("src.api_routes.get_term_by_id")

@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Course Record Updater - Environment Configuration Template
+# LoopCloser - Environment Configuration Template
 # =============================================================================
 # 
 # This template provides default configuration values for the application.
@@ -79,6 +79,7 @@ export PRODUCTION="false"  # Set to "true" only in production
 export DATABASE_TYPE="sqlite"
 export DATABASE_URL_DEV="sqlite:///course_records_dev.db"
 export DATABASE_URL_E2E="sqlite:///course_records_e2e.db"
+export DATABASE_URL_SMOKE="sqlite:///course_records_smoke.db"
 
 # Automatically set DATABASE_URL based on ENV
 case "${ENV}" in
@@ -87,6 +88,9 @@ case "${ENV}" in
         ;;
     test)
         export DATABASE_URL="${DATABASE_URL_E2E}"
+        ;;
+    smoke)
+        export DATABASE_URL="${DATABASE_URL_SMOKE}"
         ;;
     production)
         # Production should set DATABASE_URL explicitly
@@ -106,6 +110,7 @@ esac
 # Base URL configuration (environment-specific)
 export BASE_URL_DEV="http://localhost:3001"
 export BASE_URL_E2E="http://localhost:3002"
+export BASE_URL_SMOKE="http://localhost:3003"
 
 # Port configuration
 export LOOPCLOSER_DEFAULT_PORT_DEV="3001"

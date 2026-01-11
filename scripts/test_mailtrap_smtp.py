@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.email_providers.email_manager import EmailManager
 
 
-def test_mailtrap_api():
+def test_mailtrap_api() -> bool:
     """Test Mailtrap API by sending verification emails"""
 
     print("\n🔍 Testing Mailtrap API with EmailManager...")
@@ -62,7 +62,7 @@ def test_mailtrap_api():
     for recipient in test_recipients:
         email_manager.add_email(
             to_email=recipient["email"],
-            subject="Verify your Course Record Updater account",
+            subject="Verify your LoopCloser account",
             html_body=f"<h1>Hello {recipient['name']}!</h1><p>Please verify your account.</p>",
             text_body=f"Hello {recipient['name']}! Please verify your account.",
             metadata={"name": recipient["name"]},
@@ -84,13 +84,13 @@ def test_mailtrap_api():
             payload = {
                 "from": {
                     "email": "system@demomailtrap.co",
-                    "name": "Course Record Updater (Test)",
+                    "name": "LoopCloser (Test)",
                 },
                 "to": [{"email": to_email}],
                 "subject": subject,
                 "text": text_body,
                 "html": html_body,
-                "category": "Course Record Updater",
+                "category": "LoopCloser",
             }
 
             response = requests.post(

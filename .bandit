@@ -1,0 +1,6 @@
+[bandit]
+# Directories to exclude from recursive scans
+exclude_dirs = ./venv,./.venv,./cursor-rules,./logs,./node_modules,./archives
+
+# Default: show all severity levels. We rely on CI wrapper to decide which
+# severities should fail the build (HIGH and MEDIUM fail, LOW will be a warning).

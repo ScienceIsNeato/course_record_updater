@@ -359,8 +359,6 @@ def test_tc_crud_ia_007_create_term(authenticated_page: Page):
     authenticated_page.fill("#termStartDate", "2099-01-15")
     authenticated_page.fill("#termEndDate", "2099-05-15")
     authenticated_page.fill("#termAssessmentDueDate", "2099-05-20")
-    # termActive is checked by default, so no need to check it
-
     # Handle alert dialog
     authenticated_page.once("dialog", lambda dialog: dialog.accept())
 
