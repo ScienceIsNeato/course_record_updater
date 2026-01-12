@@ -630,10 +630,20 @@ class CLOWorkflowService:
                     section_outcome_id = section_outcome.get("id")
                     if not section_outcome_id:
                         continue
+                    # Merge essential fields from course_outcome since section_outcome
+                    # only has section-specific data (it links via outcome_id)
+                    # Fields like course_id, clo_number, description are on course_outcome
+                    enriched_section_outcome = {
+                        **section_outcome,
+                        "course_id": course_id,
+                        "clo_number": outcome.get("clo_number"),
+                        "description": outcome.get("description"),
+                        "assessment_method": outcome.get("assessment_method"),
+                    }
                     details = CLOWorkflowService.get_outcome_with_details(
                         str(section_outcome_id),
                         section_data=section,
-                        outcome_data=section_outcome,
+                        outcome_data=enriched_section_outcome,
                     )
                     if details:
                         results.append(details)

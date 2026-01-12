@@ -235,3 +235,53 @@ class TestToDictEdgeCases:
 
         assert result["outcome_id"] == "out-123"
         assert result["course_id"] == "course-123"
+
+    def test_to_dict_course_section_outcome_includes_workflow_fields(self):
+        """Regression test: CourseSectionOutcome to_dict must include status fields.
+
+        The audit CLO page requires status, approval_status, submitted_at, etc.
+        If these are missing from to_dict, the frontend shows 'Unknown' status.
+        """
+        from datetime import datetime
+
+        from src.models.models_sql import CourseSectionOutcome, to_dict
+
+        section_outcome = CourseSectionOutcome(
+            id="so-123",
+            section_id="sec-123",
+            outcome_id="out-123",
+            students_took=25,
+            students_passed=20,
+            assessment_tool="Quiz",
+            status="awaiting_approval",
+            approval_status="pending",
+            submitted_at=datetime(2025, 12, 5, 9, 0, 0),
+            submitted_by="user-123",
+            reviewed_at=None,
+            reviewed_by=None,
+            feedback_comments="Good work",
+        )
+
+        result = to_dict(section_outcome)
+
+        # Core fields
+        assert result["id"] == "so-123"
+        assert result["section_id"] == "sec-123"
+        assert result["outcome_id"] == "out-123"
+        # Assessment data
+        assert result["students_took"] == 25
+        assert result["students_passed"] == 20
+        assert result["assessment_tool"] == "Quiz"
+        # Workflow status fields (regression: these were missing!)
+        assert result["status"] == "awaiting_approval", (
+            "status must be included for audit page"
+        )
+        assert result["approval_status"] == "pending", (
+            "approval_status must be included"
+        )
+        # Audit trail fields
+        assert result["submitted_at"] == datetime(2025, 12, 5, 9, 0, 0)
+        assert result["submitted_by"] == "user-123"
+        assert result["reviewed_at"] is None
+        assert result["reviewed_by"] is None
+        assert result["feedback_comments"] == "Good work"

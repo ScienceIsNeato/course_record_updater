@@ -586,7 +586,10 @@ class TestExpandOutcomeForSections:
         mock_db.get_section_outcome_by_course_outcome_and_section.return_value = {
             "id": "section-outcome-1"
         }
-        mock_get_details.return_value = {"outcome_id": "outcome-1", "section_id": "sec-1"}
+        mock_get_details.return_value = {
+            "outcome_id": "outcome-1",
+            "section_id": "sec-1",
+        }
 
         outcome = {"outcome_id": "outcome-1", "course_id": "course-1"}
         result = CLOWorkflowService._expand_outcome_for_sections(outcome)
@@ -597,6 +600,57 @@ class TestExpandOutcomeForSections:
             "Bug: code uses section.get('id') but dict has 'section_id' key."
         )
         mock_get_details.assert_called_once()
+
+    @patch(
+        "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
+    )
+    @patch("src.services.clo_workflow_service.db")
+    def test_expand_merges_course_outcome_fields_into_section_outcome(
+        self, mock_db, mock_get_details
+    ):
+        """Regression test: section_outcome doesn't have course_id, clo_number, description.
+
+        These fields must be merged from the original course_outcome into the
+        outcome_data passed to get_outcome_with_details, or enrichment fails.
+        """
+        mock_db.get_sections_by_course.return_value = [
+            {"section_id": "sec-1", "section_number": "001"},
+        ]
+        # Section outcome from DB - note it DOES NOT have course_id, clo_number, description
+        mock_db.get_section_outcome_by_course_outcome_and_section.return_value = {
+            "id": "section-outcome-1",
+            "section_id": "sec-1",
+            "outcome_id": "course-outcome-1",
+            "status": "awaiting_approval",
+        }
+        mock_get_details.return_value = {"outcome_id": "section-outcome-1"}
+
+        # Course outcome (the input) HAS these fields
+        course_outcome = {
+            "outcome_id": "course-outcome-1",
+            "course_id": "course-123",
+            "clo_number": "2",
+            "description": "Test CLO description",
+            "assessment_method": "Quiz",
+        }
+        result = CLOWorkflowService._expand_outcome_for_sections(course_outcome)
+
+        assert len(result) == 1
+        # Verify get_outcome_with_details was called with merged data
+        call_args = mock_get_details.call_args
+        outcome_data = call_args.kwargs["outcome_data"]
+        assert outcome_data["course_id"] == "course-123", (
+            "course_id must be merged from course_outcome"
+        )
+        assert outcome_data["clo_number"] == "2", (
+            "clo_number must be merged from course_outcome"
+        )
+        assert outcome_data["description"] == "Test CLO description", (
+            "description must be merged from course_outcome"
+        )
+        assert outcome_data["assessment_method"] == "Quiz", (
+            "assessment_method must be merged from course_outcome"
+        )
 
     @patch(
         "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
