@@ -5,7 +5,7 @@ Tests the CLO submission and approval workflow service methods.
 """
 
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -67,6 +67,19 @@ class TestSubmitCLOForApproval:
         result = CLOWorkflowService.submit_clo_for_approval("outcome-123", "user-456")
 
         assert result is False
+
+    @patch("src.services.clo_workflow_service.db")
+    def test_submit_clo_skips_approved(self, mock_db):
+        """Test submission skips already approved CLOs."""
+        mock_db.get_course_outcome.return_value = {
+            "id": "outcome-123",
+            "status": CLOStatus.APPROVED,
+        }
+
+        result = CLOWorkflowService.submit_clo_for_approval("outcome-123", "user-456")
+
+        assert result is False
+        mock_db.update_course_outcome.assert_not_called()
 
     @patch("src.services.clo_workflow_service.db")
     def test_submit_clo_database_error(self, mock_db):
@@ -445,10 +458,10 @@ class TestGetCLOsByStatus:
     """Test CLOWorkflowService.get_clos_by_status method"""
 
     @patch(
-        "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
+        "src.services.clo_workflow_service.CLOWorkflowService._expand_outcome_for_sections"
     )
     @patch("src.services.clo_workflow_service.db")
-    def test_get_clos_by_status_success(self, mock_db, mock_get_details):
+    def test_get_clos_by_status_success(self, mock_db, mock_expand):
         """Test getting CLOs by status"""
         institution_id = "inst-123"
         status = CLOStatus.AWAITING_APPROVAL
@@ -457,9 +470,9 @@ class TestGetCLOsByStatus:
             {"outcome_id": "outcome-1"},
             {"outcome_id": "outcome-2"},
         ]
-        mock_get_details.side_effect = [
-            {"id": "outcome-1", "course_number": "CS-101"},
-            {"id": "outcome-2", "course_number": "CS-102"},
+        mock_expand.side_effect = [
+            [{"course_number": "CS-101"}],
+            [{"course_number": "CS-102"}],
         ]
 
         result = CLOWorkflowService.get_clos_by_status(
@@ -477,19 +490,20 @@ class TestGetCLOsByStatus:
             term_id=None,
             course_id=None,
         )
+        assert mock_expand.call_count == 2
 
     @patch(
-        "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
+        "src.services.clo_workflow_service.CLOWorkflowService._expand_outcome_for_sections"
     )
     @patch("src.services.clo_workflow_service.db")
-    def test_get_clos_by_status_with_program_filter(self, mock_db, mock_get_details):
+    def test_get_clos_by_status_with_program_filter(self, mock_db, mock_expand):
         """Test getting CLOs by status with program filter"""
         institution_id = "inst-123"
         program_id = "prog-456"
         status = CLOStatus.AWAITING_APPROVAL
 
-        mock_db.get_outcomes_by_status.return_value = [{"id": "outcome-1"}]
-        mock_get_details.return_value = {"id": "outcome-1"}
+        mock_db.get_outcomes_by_status.return_value = [{"outcome_id": "outcome-1"}]
+        mock_expand.return_value = [{"id": "outcome-1"}]
 
         CLOWorkflowService.get_clos_by_status(
             status=status,
@@ -504,6 +518,7 @@ class TestGetCLOsByStatus:
             term_id=None,
             course_id=None,
         )
+        mock_expand.assert_called_once()
 
     @patch("src.services.clo_workflow_service.db")
     def test_get_clos_by_status_empty_result(self, mock_db):
@@ -517,33 +532,6 @@ class TestGetCLOsByStatus:
 
         assert result == []
 
-    @patch(
-        "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
-    )
-    @patch("src.services.clo_workflow_service.db")
-    def test_get_clos_by_status_filters_none_details(self, mock_db, mock_get_details):
-        """Test that outcomes with None details are filtered out"""
-        mock_db.get_outcomes_by_status.return_value = [
-            {"outcome_id": "outcome-1"},
-            {"outcome_id": "outcome-2"},
-            {"outcome_id": "outcome-3"},
-        ]
-        # Second outcome returns None (missing data)
-        mock_get_details.side_effect = [
-            {"outcome_id": "outcome-1", "clo_number": "1"},
-            None,
-            {"outcome_id": "outcome-3", "clo_number": "3"},
-        ]
-
-        result = CLOWorkflowService.get_clos_by_status(
-            status=CLOStatus.AWAITING_APPROVAL,
-            institution_id="inst-123",
-        )
-
-        assert len(result) == 2
-        assert result[0]["outcome_id"] == "outcome-1"
-        assert result[1]["outcome_id"] == "outcome-3"
-
     @patch("src.services.clo_workflow_service.db")
     def test_get_clos_by_status_exception_handling(self, mock_db):
         """Test exception handling in get_clos_by_status"""
@@ -555,6 +543,101 @@ class TestGetCLOsByStatus:
         )
 
         assert result == []
+
+
+class TestExpandOutcomeForSections:
+    """Ensure section expansion logic behaves as expected."""
+
+    @patch(
+        "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
+    )
+    @patch("src.services.clo_workflow_service.db")
+    def test_expand_with_sections(self, mock_db, mock_get_details):
+        mock_db.get_sections_by_course.return_value = [
+            {
+                "id": "sec-1",
+                "section_number": "001",
+                "offering_id": "off-1",
+            },
+            {
+                "id": "sec-2",
+                "section_number": "002",
+                "offering_id": "off-1",
+            },
+        ]
+        # Mock section outcomes to be returned for each section
+        mock_db.get_section_outcome_by_course_outcome_and_section.side_effect = [
+            {"id": "section-outcome-1"},
+            {"id": "section-outcome-2"},
+        ]
+        mock_get_details.return_value = {"outcome_id": "outcome-1"}
+
+        outcome = {"outcome_id": "outcome-1", "course_id": "course-1"}
+        result = CLOWorkflowService._expand_outcome_for_sections(outcome)
+
+        assert len(result) == 2
+        assert mock_get_details.call_count == 2
+        called_sections = [
+            call.kwargs["section_data"]["id"]
+            for call in mock_get_details.call_args_list
+        ]
+        assert "sec-1" in called_sections
+        assert "sec-2" in called_sections
+
+    @patch(
+        "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
+    )
+    @patch("src.services.clo_workflow_service.db")
+    def test_expand_without_sections(self, mock_db, mock_get_details):
+        mock_db.get_sections_by_course.return_value = []
+        mock_get_details.return_value = {"outcome_id": "outcome-1"}
+
+        outcome = {"outcome_id": "outcome-1"}
+        result = CLOWorkflowService._expand_outcome_for_sections(outcome)
+
+        assert result == [{"outcome_id": "outcome-1"}]
+        mock_get_details.assert_called_once_with("outcome-1", outcome_data=outcome)
+
+    @patch(
+        "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
+    )
+    @patch("src.services.clo_workflow_service.db")
+    def test_expand_filters_out_none(self, mock_db, mock_get_details):
+        mock_db.get_sections_by_course.return_value = [
+            {"id": "sec-1", "offering_id": "off-1", "section_number": "001"}
+        ]
+        mock_db.get_section_outcome_by_course_outcome_and_section.return_value = {
+            "id": "section-outcome-1"
+        }
+        mock_get_details.return_value = None
+
+        result = CLOWorkflowService._expand_outcome_for_sections(
+            {"outcome_id": "outcome-1", "course_id": "course-1"}
+        )
+
+        assert result == []
+
+    @patch(
+        "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
+    )
+    @patch("src.services.clo_workflow_service.db")
+    def test_expand_with_sections_without_section_outcomes(
+        self, mock_db, mock_get_details
+    ):
+        """When sections exist but no section outcomes, result is empty (sections skipped)."""
+        mock_db.get_sections_by_course.return_value = [
+            {"id": "sec-1", "section_number": "001"},
+            {"id": "sec-2", "section_number": "002"},
+        ]
+        mock_db.get_section_outcome_by_course_outcome_and_section.return_value = None
+        mock_get_details.return_value = {"outcome_id": "outcome-1"}
+
+        outcome = {"outcome_id": "outcome-1", "course_id": "course-1"}
+        result = CLOWorkflowService._expand_outcome_for_sections(outcome)
+
+        # No section outcomes found means no results (sections without outcomes are skipped)
+        assert len(result) == 0
+        assert mock_get_details.call_count == 0
 
 
 class TestGetOutcomeWithDetails:

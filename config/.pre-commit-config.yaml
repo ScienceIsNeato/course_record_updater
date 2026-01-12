@@ -6,8 +6,8 @@ repos:
   - repo: local
     hooks:
       - id: quality-gate
-        name: Quality Gate (All Checks)
-        entry: bash -c 'cd "$PWD" && source venv/bin/activate && source .envrc && python scripts/ship_it.py'
+        name: Quality Gate (Commit Checks)
+        entry: bash -c 'cd "$PWD" && source venv/bin/activate && source .envrc && python scripts/ship_it.py --checks commit'
         language: system
         pass_filenames: false
         always_run: true

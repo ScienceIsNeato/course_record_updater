@@ -251,6 +251,13 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def get_section_outcome_by_course_outcome_and_section(
+        self, course_outcome_id: str, section_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Get section specific outcome"""
+        raise NotImplementedError
+
+    @abstractmethod
     def create_course_offering(self, offering_data: Dict[str, Any]) -> Optional[str]:
         raise NotImplementedError
 

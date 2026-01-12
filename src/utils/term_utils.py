@@ -4,7 +4,7 @@ Replaces hardcoded ALLOWED_TERMS with flexible term management.
 """
 
 from datetime import date, datetime
-from typing import List, Optional, Union
+from typing import List, Optional, TypedDict, Union
 
 from src.utils.time_utils import get_current_time
 
@@ -151,6 +151,13 @@ TERM_STATUS_SCHEDULED = "SCHEDULED"
 TERM_STATUS_UNKNOWN = "UNKNOWN"
 
 
+class ParsedTerm(TypedDict):
+    term_id: Optional[str]
+    start: Optional[date]
+    end: Optional[date]
+    basic_status: str
+
+
 def _coerce_to_date(value: Union[str, datetime, date, None]) -> Optional[date]:
     """Convert ISO string/datetime/date to a date object."""
     if value is None:
@@ -209,6 +216,59 @@ def is_term_active(
 # ---------------------------------------------------------------------------
 
 
+def _compare_date(ref: date, start: Optional[date], end: Optional[date]) -> str:
+    """Determine basic status based on dates."""
+    if not start or not end:
+        return TERM_STATUS_UNKNOWN
+    if ref < start:
+        return TERM_STATUS_SCHEDULED
+    if ref > end:
+        return TERM_STATUS_PASSED
+    return TERM_STATUS_ACTIVE
+
+
+def _parse_and_classify_terms(terms: List[dict], ref: date) -> List[ParsedTerm]:
+    """Parse raw term dicts into structured ParsedTerm objects with basic status."""
+    parsed_terms: List[ParsedTerm] = []
+    for term in terms:
+        term_id = str(term.get("term_id") or term.get("id"))
+        start = _coerce_to_date(term.get("start_date"))
+        end = _coerce_to_date(term.get("end_date"))
+
+        basic_status = _compare_date(ref, start, end)
+
+        parsed_terms.append(
+            {
+                "term_id": term_id,
+                "start": start,
+                "end": end,
+                "basic_status": basic_status,
+            }
+        )
+    return parsed_terms
+
+
+def _identify_continuously_active_terms(
+    parsed_terms: List[ParsedTerm], ref: date
+) -> set[str]:
+    """Identify terms that should remain active until a successor starts."""
+    # Find terms that have started (ref >= start)
+    started_terms = [
+        t for t in parsed_terms if t["start"] is not None and t["start"] <= ref
+    ]
+
+    if not started_terms:
+        return set()
+
+    # Sort by start_date desc to find the most recent one(s)
+    started_terms.sort(key=lambda t: t["start"] or date.min, reverse=True)
+
+    most_recent_start_date = started_terms[0]["start"]
+    return {
+        str(t["term_id"]) for t in started_terms if t["start"] == most_recent_start_date
+    }
+
+
 def get_all_term_statuses(
     terms: List[dict],
     reference_date: Optional[Union[str, datetime, date]] = None,
@@ -227,69 +287,31 @@ def get_all_term_statuses(
     Returns:
         Dict mapping term_id to status (PASSED | ACTIVE | SCHEDULED | UNKNOWN)
     """
-    ref = (
-        _coerce_to_date(reference_date) if reference_date else get_current_time().date()
-    )
+    # 1. Determine reference date
+    current_date = get_current_time().date()
+    ref: date = current_date
+    if reference_date:
+        coerced = _coerce_to_date(reference_date)
+        if coerced:
+            ref = coerced
 
-    # Parse all terms and classify them
-    parsed_terms = []
-    for term in terms:
-        term_id = term.get("term_id") or term.get("id")
-        start = _coerce_to_date(term.get("start_date"))
-        end = _coerce_to_date(term.get("end_date"))
+    # 2. Parse and get basic statuses
+    parsed_terms = _parse_and_classify_terms(terms, ref)
 
-        # Basic status using simple date logic
-        if not start or not end:
-            basic_status = TERM_STATUS_UNKNOWN
-        elif ref < start:
-            basic_status = TERM_STATUS_SCHEDULED
-        elif ref > end:
-            basic_status = TERM_STATUS_PASSED
-        else:
-            basic_status = TERM_STATUS_ACTIVE
+    # 3. Identify terms that satisfy the "holds active" rule
+    most_recent_started_ids = _identify_continuously_active_terms(parsed_terms, ref)
 
-        parsed_terms.append(
-            {
-                "term_id": term_id,
-                "start": start,
-                "end": end,
-                "basic_status": basic_status,
-            }
-        )
-
-    # Find terms that have started (ref >= start) and sort by start_date desc
-    started_terms = [t for t in parsed_terms if t["start"] and t["start"] <= ref]
-    started_terms.sort(key=lambda t: t["start"], reverse=True)
-
-    # The most recently started term(s) are ACTIVE (handle ties)
-    # All other started terms are PASSED
-    most_recent_start_date = started_terms[0]["start"] if started_terms else None
-    most_recent_started_ids = (
-        {t["term_id"] for t in started_terms if t["start"] == most_recent_start_date}
-        if most_recent_start_date
-        else set()
-    )
-
-    # Build result
+    # 4. Build final result
     result = {}
     for t in parsed_terms:
-        term_id = t["term_id"]
+        term_id = str(t["term_id"])
+        status = t["basic_status"]
 
-        if t["basic_status"] == TERM_STATUS_UNKNOWN:
-            result[term_id] = TERM_STATUS_UNKNOWN
-        elif t["basic_status"] == TERM_STATUS_SCHEDULED:
-            result[term_id] = TERM_STATUS_SCHEDULED
-        elif t["basic_status"] == TERM_STATUS_ACTIVE:
-            # Within dates - always ACTIVE
+        if status == TERM_STATUS_PASSED and term_id in most_recent_started_ids:
+            # Override PASSED to ACTIVE if it's the most recent started term
             result[term_id] = TERM_STATUS_ACTIVE
         else:
-            # basic_status is PASSED (end_date has passed)
-            # Check if this is one of the most recently started terms
-            if term_id in most_recent_started_ids:
-                # This term "holds active" until a successor starts
-                result[term_id] = TERM_STATUS_ACTIVE
-            else:
-                result[term_id] = TERM_STATUS_PASSED
+            result[term_id] = status
 
     return result
 

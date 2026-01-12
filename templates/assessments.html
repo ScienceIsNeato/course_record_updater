@@ -159,7 +159,7 @@
 
             <div class="text-end">
                 <button type="button" class="btn btn-success btn-lg" id="submitCourseBtn"><i
-                        class="fas fa-paper-plane"></i> Submit Course for Approval</button>
+                        class="fas fa-upload"></i> Submit Assessments</button>
             </div>
         </div>
     </div>
@@ -634,12 +634,11 @@
                 const sectionId = section?.section_id || section?.id;
                 const submitBtn = document.getElementById('submitCourseBtn');
 
-                // Update button text based on CLO status - if any are submitted, show "Update"
-                const anySubmitted = outcomes.some(o =>
-                    ['awaiting_approval', 'approved'].includes(o.status)
-                );
-                if (submitBtn && anySubmitted) {
-                    submitBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Update Course Records';
+                // Update button text based on whether assessments were previously submitted
+                if (submitBtn) {
+                    const hasPreviousSubmission = Boolean(data.has_previous_submission);
+                    const label = hasPreviousSubmission ? 'Re-Submit Assessments' : 'Submit Assessments';
+                    submitBtn.innerHTML = `<i class="fas fa-upload"></i> ${label}`;
                 }
 
                 submitBtn?.addEventListener('click', function () {

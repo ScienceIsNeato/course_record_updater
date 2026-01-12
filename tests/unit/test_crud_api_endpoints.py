@@ -757,6 +757,38 @@ class TestOutcomesCRUD:
         data = response.get_json()
         assert "description is required" in data["error"]
 
+    @patch("src.api_routes.get_course_outcomes")
+    @patch("src.api_routes.get_course_by_id")
+    def test_list_course_outcomes_includes_submission_flag(
+        self, mock_get_course, mock_get_outcomes, client
+    ):
+        """Test GET /api/courses/<id>/outcomes includes previous-submission flag."""
+        create_site_admin_session(client)
+        mock_get_course.return_value = {
+            "course_id": "course-123",
+            "course_number": "BIO101",
+            "course_title": "Intro Biology",
+        }
+        mock_get_outcomes.return_value = [
+            {
+                "outcome_id": "outcome-1",
+                "status": "awaiting_approval",
+                "submitted_at": None,
+            },
+            {
+                "outcome_id": "outcome-2",
+                "status": "in_progress",
+                "submitted_at": None,
+            },
+        ]
+
+        response = client.get("/api/courses/course-123/outcomes")
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["success"] is True
+        assert data["has_previous_submission"] is True
+
     @patch("src.api_routes.get_course_by_id")
     @patch("src.api_routes.get_current_institution_id")
     @patch("src.api_routes.get_course_outcome")

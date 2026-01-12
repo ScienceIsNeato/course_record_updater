@@ -1023,12 +1023,23 @@ document.addEventListener("DOMContentLoaded", () => {
         courseRow.className = "table-light";
         const courseCell = document.createElement("td");
         courseCell.colSpan = 8;
-        courseCell.innerHTML = `
-            <div class="d-flex align-items-center" style="cursor: pointer" data-bs-toggle="collapse" data-bs-target=".group-${safeKey}">
-                <i class="fas fa-chevron-down me-2"></i>
-                <strong>${courseKey}</strong>
-            </div>
-        `;
+
+        // Build course header using safe DOM construction
+        const courseDiv = document.createElement("div");
+        courseDiv.className = "d-flex align-items-center";
+        courseDiv.style.cursor = "pointer";
+        courseDiv.setAttribute("data-bs-toggle", "collapse");
+        courseDiv.setAttribute("data-bs-target", `.group-${safeKey}`);
+
+        const chevronIcon = document.createElement("i");
+        chevronIcon.className = "fas fa-chevron-down me-2";
+        courseDiv.appendChild(chevronIcon);
+
+        const courseStrong = document.createElement("strong");
+        courseStrong.textContent = courseKey;
+        courseDiv.appendChild(courseStrong);
+
+        courseCell.appendChild(courseDiv);
         courseRow.appendChild(courseCell);
         tbody.appendChild(courseRow);
 
@@ -1042,9 +1053,13 @@ document.addEventListener("DOMContentLoaded", () => {
             const sectionCell = document.createElement("td");
             sectionCell.colSpan = 8;
             sectionCell.style.paddingLeft = "30px";
-            sectionCell.innerHTML = `
-                <strong class="text-secondary">${sectionKey}</strong>
-            `;
+
+            // Build section header using safe DOM construction
+            const sectionStrong = document.createElement("strong");
+            sectionStrong.className = "text-secondary";
+            sectionStrong.textContent = sectionKey;
+            sectionCell.appendChild(sectionStrong);
+
             sectionRow.appendChild(sectionCell);
             tbody.appendChild(sectionRow);
 
@@ -1338,7 +1353,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Show success
       alert(
         "Rework request sent successfully!" +
-        (sendEmail ? " Email notification sent." : ""),
+          (sendEmail ? " Email notification sent." : ""),
       );
 
       // Reload list

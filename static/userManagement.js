@@ -64,6 +64,7 @@ function showAlert(type, message) {
 document.addEventListener("DOMContentLoaded", () => {
   initializeInviteUserModal();
   initializeEditUserModal();
+  initializeAddUserModal();
 });
 
 /**
@@ -197,6 +198,7 @@ function initializeEditUserModal() {
     const userId = document.getElementById("editUserId").value;
     const firstName = document.getElementById("editFirstName").value;
     const lastName = document.getElementById("editLastName").value;
+    const email = document.getElementById("editUserEmail").value;
     const displayName = document.getElementById("editDisplayName")?.value;
     const roleSelect = document.getElementById("editUserRole");
     const newRole = roleSelect?.value;
@@ -210,6 +212,7 @@ function initializeEditUserModal() {
     const updateData = {
       first_name: firstName,
       last_name: lastName,
+      email: email,
       ...(displayName && { display_name: displayName }),
     };
 
@@ -430,7 +433,98 @@ async function deleteUser(userId, userName) {
   }
 }
 
+/**
+ * Open Add User Modal
+ */
+function openAddUserModal() {
+  const modal = new bootstrap.Modal(document.getElementById("addUserModal"));
+
+  // Reset form
+  const form = document.getElementById("addUserForm");
+  if (form) {
+    form.reset();
+  }
+
+  modal.show();
+}
+
+/**
+ * Initialize Add User Modal
+ */
+function initializeAddUserModal() {
+  const form = document.getElementById("addUserForm");
+
+  if (!form) {
+    return; // Form not on this page
+  }
+
+  // Handle form submission
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const emailInput = document.getElementById("addUserEmail");
+    const firstNameInput = document.getElementById("addFirstName");
+    const lastNameInput = document.getElementById("addLastName");
+    const roleSelect = document.getElementById("addUserRole");
+
+    // Collect form data
+    const userData = {
+      email: emailInput.value,
+      first_name: firstNameInput.value,
+      last_name: lastNameInput.value,
+      role: roleSelect.value,
+    };
+
+    try {
+      const csrfToken = document.querySelector(
+        'meta[name="csrf-token"]',
+      )?.content;
+
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(csrfToken && { "X-CSRFToken": csrfToken }),
+        },
+        body: JSON.stringify(userData),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        // Close modal
+        const modalElement = document.getElementById("addUserModal");
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        modal.hide();
+
+        // Show success message
+        showAlert(
+          "success",
+          `User ${userData.email} created successfully! Invitation email sent.`,
+        );
+
+        // Reload users list
+        if (typeof globalThis.loadUsers === "function") {
+          globalThis.loadUsers();
+        }
+
+        // Reset form
+        form.reset();
+      } else {
+        showAlert(
+          "danger",
+          `Failed to create user: ${result.error || "Unknown error"}`,
+        );
+      }
+    } catch (error) {
+      console.error("Error creating user:", error); // eslint-disable-line no-console
+      showAlert("danger", "Failed to create user. Please try again.");
+    }
+  });
+}
+
 // Expose functions to window for inline onclick handlers and testing
+globalThis.openAddUserModal = openAddUserModal;
 globalThis.openEditUserModal = openEditUserModal;
 globalThis.deactivateUser = deactivateUser;
 globalThis.deleteUser = deleteUser;

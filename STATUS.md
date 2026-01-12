@@ -1,5 +1,94 @@
 # LoopCloser - Current Status
 
+## Latest Work: Enhanced Reminder and Invite Functionality (2026-01-11)
+
+**Status**: ✅ COMPLETE - Reminder modal now auto-populates all known information including due dates; invite button is functional with section assignment
+
+**Changes Made**:
+
+### Reminder Flow Enhancements
+1. **Auto-population of comprehensive context:**
+   - Instructor name
+   - Course offering (term + course number)
+   - Section number
+   - Course Learning Outcome (CLO) number and description
+   - **NEW**: Assessment due date (when available)
+
+2. **Implementation details:**
+   - Fetches section data via `/api/sections/{section_id}` to get `assessment_due_date`
+   - Formats due date in localized date format (e.g., "12/15/2024")
+   - Only includes due date line if available (graceful handling of missing data)
+   - Increased textarea height from 5 to 8 rows for longer message
+   - Added helper text explaining auto-population
+
+3. **Example auto-populated message:**
+   ```
+   Dear John Doe,
+
+   This is a friendly reminder to please submit your assessment data and narrative 
+   for Fall 2024 - CS101 (Section 001), CLO #2.
+
+   Submission due date: 12/15/2024
+
+   Thank you,
+   Institution Admin
+   ```
+
+### Invite Functionality Integration
+1. **"Invite New Instructor" option in assignment modal:**
+   - Added "— OR —" separator and invite button in assignment modal
+   - Button opens dedicated invite modal with section context
+   - Closes assignment modal when invite modal opens
+
+2. **Invite modal features:**
+   - Three required fields: Email, First Name, Last Name
+   - Role automatically set to "instructor"
+   - Section ID pre-filled from current assignment context
+   - Helper text explains instructor will be assigned upon acceptance
+   - Form validation (HTML5 + JavaScript)
+   - Success message includes instructor name and section assignment info
+   - Automatically reloads instructor list after successful invitation
+
+3. **API integration:**
+   - Uses existing `/api/invitations` endpoint
+   - Includes `section_id` in request payload for automatic assignment
+   - Handles errors and displays user-friendly messages
+
+### Test Coverage
+1. **JavaScript Unit Tests (`tests/javascript/unit/audit_clo.test.js`):**
+   - Reminder with due date auto-population (3 tests)
+   - Reminder without due date (graceful handling)
+   - Reminder with course offering format (term + course)
+   - Invite modal opening and assignment modal closing
+   - Invite submission with section assignment
+   - Invite success message and instructor reload
+   - Invite error handling
+   - Invite form validation
+
+2. **E2E Tests (`tests/e2e/test_clo_reminder_and_invite.py`):**
+   - Reminder autopopulates context
+   - Invite instructor from assignment modal
+   - Invite submission validates fields
+   - Reminder includes due date when available
+
+### Files Modified
+- `static/audit_clo.js`: Enhanced `remindOutcome()`, added `openInviteInstructorModal()` and `handleInviteSubmit()`
+- `templates/audit_clo.html`: Updated reminder modal, added invite modal and assignment modal invite button
+- `tests/javascript/unit/audit_clo.test.js`: Added 11 new test cases
+- `tests/e2e/test_clo_reminder_and_invite.py`: Created new E2E test file with 4 test cases
+
+**Verification Steps**:
+1. Navigate to CLO Audit & Approval page (`/audit-clo`)
+2. For CLOs in "In Progress", "Assigned", or "Needs Rework" status:
+   - Click reminder (bell) button
+   - Verify message includes instructor name, course offering, section, CLO, and due date (if available)
+3. For "Unassigned" CLOs:
+   - Click assign (user-plus) button
+   - Verify "Invite New Instructor" button is present
+   - Click invite button, verify modal opens with section assignment message
+   - Fill in email, first name, last name
+   - Submit and verify success message mentions section assignment
+
 ## Latest Work: Assessments layout tweak (2026-01-09)
 
 **Status**: ✅ COMPLETE - moved the CLO status summary banner above the course selector on the assessments page.

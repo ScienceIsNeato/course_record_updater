@@ -36,115 +36,55 @@
     </div>
 </div>
 
-<!-- Panel 1: Program Management -->
-<div class="dashboard-panel" id="institution-program-panel">
+<!-- Panel 1: CLO Audit & Approval -->
+<div class="dashboard-panel" id="institution-clo-audit-panel">
     <div class="panel-header">
         <h5 class="panel-title">
-            <span class="panel-icon">📚</span>
-            Program Management
+            <span class="panel-icon">✓</span>
+            CLO Audit & Approval
         </h5>
         <div class="panel-actions">
-            <button class="btn btn-sm btn-primary" onclick="createProgram()">
-                <i class="fas fa-plus"></i> Add Program
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="managePrograms()">
-                <i class="fas fa-sliders-h"></i> Manage Programs
+            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/audit-clo'">
+                <i class="fas fa-clipboard-check"></i> Review Submissions
             </button>
         </div>
         <button class="panel-toggle">▼</button>
     </div>
     <div class="panel-content">
-        <div id="programManagementContainer">
+        <div id="institutionCloAuditContainer">
             <div class="panel-loading">
                 <div class="spinner-border spinner-border-sm"></div>
-                Loading programs...
+                Loading audit data...
             </div>
         </div>
     </div>
 </div>
 
-<!-- Panel 2: Course Management -->
-<div class="dashboard-panel" id="institution-course-panel">
+<!-- Panel 2: Assessment Progress -->
+<div class="dashboard-panel" id="institution-assessment-panel">
     <div class="panel-header">
         <h5 class="panel-title">
-            <span class="panel-icon">📚</span>
-            Course Management
+            <span class="panel-icon">📊</span>
+            Assessment Progress
         </h5>
         <div class="panel-actions">
-            <button class="btn btn-sm btn-primary" onclick="createCourse()">
-                <i class="fas fa-plus"></i> Add Course
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="manageCourses()">
-                <i class="fas fa-list"></i> Manage Courses
+            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/assessments'">
+                <i class="fas fa-list"></i> Manage Assessments
             </button>
         </div>
         <button class="panel-toggle">▼</button>
     </div>
     <div class="panel-content">
-        <div id="courseManagementContainer">
+        <div id="assessmentProgressContainer">
             <div class="panel-loading">
                 <div class="spinner-border spinner-border-sm"></div>
-                Loading courses...
+                Loading assessment data...
             </div>
         </div>
     </div>
 </div>
 
-<!-- Panel 3: Term Management -->
-<div class="dashboard-panel" id="institution-term-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">📅</span>
-            Term Management
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-primary" onclick="createTerm()">
-                <i class="fas fa-plus"></i> Add Term
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="manageTerms()">
-                <i class="fas fa-list"></i> Manage Terms
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
-    </div>
-    <div class="panel-content">
-        <div id="termManagementContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading terms...
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Panel 4: Offering Management -->
-<div class="dashboard-panel" id="institution-offering-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">📋</span>
-            Course Offerings
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-primary" onclick="createOffering()">
-                <i class="fas fa-plus"></i> Add Offering
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="manageOfferings()">
-                <i class="fas fa-list"></i> Manage Offerings
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
-    </div>
-    <div class="panel-content">
-        <div id="offeringManagementContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading offerings...
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Panel 5: User Management -->
+<!-- Panel 3: User Management -->
 <div class="dashboard-panel" id="institution-faculty-panel">
     <div class="panel-header">
         <h5 class="panel-title">
@@ -174,7 +114,115 @@
     </div>
 </div>
 
-<!-- Panel 6: Course Sections -->
+<!-- Panel 4: Program Management -->
+<div class="dashboard-panel" id="institution-program-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📚</span>
+            Program Management
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-primary" onclick="createProgram()">
+                <i class="fas fa-plus"></i> Add Program
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="managePrograms()">
+                <i class="fas fa-sliders-h"></i> Manage Programs
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="programManagementContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading programs...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 5: Term Management -->
+<div class="dashboard-panel" id="institution-term-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📅</span>
+            Term Management
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-primary" onclick="createTerm()">
+                <i class="fas fa-plus"></i> Add Term
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="manageTerms()">
+                <i class="fas fa-list"></i> Manage Terms
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="termManagementContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading terms...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 6: Course Management -->
+<div class="dashboard-panel" id="institution-course-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📚</span>
+            Course Management
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-primary" onclick="createCourse()">
+                <i class="fas fa-plus"></i> Add Course
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="manageCourses()">
+                <i class="fas fa-list"></i> Manage Courses
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="courseManagementContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading courses...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 7: Course Offerings -->
+<div class="dashboard-panel" id="institution-offering-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📋</span>
+            Course Offerings
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-primary" onclick="createOffering()">
+                <i class="fas fa-plus"></i> Add Offering
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="manageOfferings()">
+                <i class="fas fa-list"></i> Manage Offerings
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="offeringManagementContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading offerings...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 8: Course Sections -->
 <div class="dashboard-panel" id="institution-sections-panel">
     <div class="panel-header">
         <h5 class="panel-title">
@@ -201,7 +249,7 @@
     </div>
 </div>
 
-<!-- Panel 7: Outcome (CLO) Management -->
+<!-- Panel 9: Outcome (CLO) Management -->
 <div class="dashboard-panel" id="institution-outcome-panel">
     <div class="panel-header">
         <h5 class="panel-title">
@@ -223,54 +271,6 @@
             <div class="panel-loading">
                 <div class="spinner-border spinner-border-sm"></div>
                 Loading outcomes...
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Panel 8: Assessment Progress -->
-<div class="dashboard-panel" id="institution-assessment-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">📊</span>
-            Assessment Progress
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/assessments'">
-                <i class="fas fa-list"></i> Manage Assessments
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
-    </div>
-    <div class="panel-content">
-        <div id="assessmentProgressContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading assessment data...
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Panel 9: CLO Audit & Approval -->
-<div class="dashboard-panel" id="institution-clo-audit-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">✓</span>
-            CLO Audit & Approval
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/audit-clo'">
-                <i class="fas fa-clipboard-check"></i> Review Submissions
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
-    </div>
-    <div class="panel-content">
-        <div id="institutionCloAuditContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading audit data...
             </div>
         </div>
     </div>
@@ -699,19 +699,19 @@
         {
             'programs': ['institution-program-panel', 'institution-course-panel'],
             'faculty': ['institution-faculty-panel', 'institution-sections-panel'],
-            'outcomes': ['institution-outcome-panel', 'institution-assessment-panel', 'institution-clo-audit-panel'],
-            'all': ['institution-program-panel', 'institution-course-panel', 'institution-term-panel', 'institution-offering-panel', 'institution-faculty-panel', 'institution-sections-panel', 'institution-outcome-panel', 'institution-assessment-panel', 'institution-clo-audit-panel']
+            'outcomes': ['institution-clo-audit-panel', 'institution-assessment-panel', 'institution-outcome-panel'],
+            'all': ['institution-clo-audit-panel', 'institution-assessment-panel', 'institution-faculty-panel', 'institution-program-panel', 'institution-term-panel', 'institution-course-panel', 'institution-offering-panel', 'institution-sections-panel', 'institution-outcome-panel']
         },
         [
-            'institution-program-panel',
-            'institution-course-panel',
-            'institution-term-panel',
-            'institution-offering-panel',
-            'institution-faculty-panel',
-            'institution-sections-panel',
-            'institution-outcome-panel',
+            'institution-clo-audit-panel',
             'institution-assessment-panel',
-            'institution-clo-audit-panel'
+            'institution-faculty-panel',
+            'institution-program-panel',
+            'institution-term-panel',
+            'institution-course-panel',
+            'institution-offering-panel',
+            'institution-sections-panel',
+            'institution-outcome-panel'
         ],
         {
             'all': '🏛️ Institution Administration',

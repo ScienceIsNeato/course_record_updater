@@ -7,7 +7,7 @@ import uuid
 from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from src.database.database_interface import DatabaseInterface
@@ -428,10 +428,11 @@ class SQLiteDatabase(DatabaseInterface):
 
     def update_user_profile(self, user_id: str, profile_data: Dict[str, Any]) -> bool:
         """
-        Update user profile fields only (first_name, last_name, display_name).
+        Update user profile fields only (first_name, last_name, display_name, email).
         Used for self-service profile updates by users.
+        Institution admins can update email addresses.
         """
-        allowed_fields = ["first_name", "last_name", "display_name"]
+        allowed_fields = ["first_name", "last_name", "display_name", "email"]
         filtered_data = {k: v for k, v in profile_data.items() if k in allowed_fields}
         if not filtered_data:
             return False
@@ -732,6 +733,25 @@ class SQLiteDatabase(DatabaseInterface):
         with self.sqlite.session_scope() as session:
             outcome = session.get(CourseOutcome, outcome_id)
             return to_dict(outcome) if outcome else None
+
+    def get_section_outcome_by_course_outcome_and_section(
+        self, course_outcome_id: str, section_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Get the CourseSectionOutcome for a specific section and course outcome."""
+        with self.sqlite.session_scope() as session:
+            section_outcome = (
+                session.execute(
+                    select(CourseSectionOutcome).where(
+                        and_(
+                            CourseSectionOutcome.outcome_id == course_outcome_id,
+                            CourseSectionOutcome.section_id == section_id,
+                        )
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            return to_dict(section_outcome) if section_outcome else None
 
     def get_outcomes_by_status(
         self,
@@ -1166,13 +1186,17 @@ class SQLiteDatabase(DatabaseInterface):
             if payload.get("offering_id"):
                 offering = session.get(CourseOffering, payload.get("offering_id"))
                 if offering:
-                    # Logic: Templates must match course_id AND program_id
-                    # We handle program_id=None as "Common/Default" if desired, OR strict match
-                    # User request implied "unique to COURSE+PROGRAM", so strict match is best.
+                    # Logic: Include course-level templates and program-specific overrides.
+                    # Program-specific offerings should still inherit the common (None) CLOs.
 
                     filters = [CourseOutcome.course_id == offering.course_id]
                     if offering.program_id:
-                        filters.append(CourseOutcome.program_id == offering.program_id)
+                        filters.append(
+                            or_(
+                                CourseOutcome.program_id == offering.program_id,
+                                CourseOutcome.program_id.is_(None),
+                            )
+                        )
                     else:
                         filters.append(CourseOutcome.program_id.is_(None))
 

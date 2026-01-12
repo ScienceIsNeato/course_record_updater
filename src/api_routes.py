@@ -173,6 +173,7 @@ from src.utils.constants import (
     TIMEZONE_UTC_SUFFIX,
     USER_NOT_AUTHENTICATED_MSG,
     USER_NOT_FOUND_MSG,
+    CLOStatus,
 )
 from src.utils.logging_config import get_logger
 from src.utils.term_utils import TERM_STATUS_ACTIVE, get_term_status
@@ -3807,6 +3808,16 @@ def list_course_outcomes_endpoint(course_id: str) -> ResponseReturnValue:
 
         # Get outcomes for this course
         outcomes = get_course_outcomes(course_id)
+        has_previous_submission = any(
+            outcome.get("submitted_at")
+            or outcome.get("status")
+            in [
+                CLOStatus.AWAITING_APPROVAL,
+                CLOStatus.APPROVED,
+                CLOStatus.COMPLETED,
+            ]
+            for outcome in outcomes
+        )
 
         return jsonify(
             {
@@ -3815,6 +3826,7 @@ def list_course_outcomes_endpoint(course_id: str) -> ResponseReturnValue:
                 "count": len(outcomes),
                 "course_number": course.get("course_number"),
                 "course_title": course.get("course_title"),
+                "has_previous_submission": has_previous_submission,
             }
         )
 

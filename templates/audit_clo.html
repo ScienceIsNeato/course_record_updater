@@ -161,6 +161,9 @@
                 <button type="button" class="btn btn-dark" id="markNCIBtn" onclick="markAsNCI()">
                     Mark as NCI (Never Coming In)
                 </button>
+                <button type="button" class="btn btn-warning" id="reopenBtn" onclick="reopenCLOFromModal()">
+                    Reopen Outcome
+                </button>
                 <button type="button" class="btn btn-success" id="approveBtn" onclick="approveCLO()">
                     Approve
                 </button>
@@ -208,6 +211,47 @@
         </div>
     </div>
 </div>
+
+<!-- Send Reminder Modal -->
+<div class="modal fade" id="sendReminderModal" tabindex="-1" aria-labelledby="sendReminderModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="sendReminderModalLabel">Send Reminder</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="sendReminderForm">
+                <div class="modal-body">
+                    <div class="alert alert-info mb-3 mb-3">
+                        <strong>📧 📧 Sending remindtrto:</strong>
+                        <p class="mb-0mdo1
+                    
+                    lass="mb-3">
+                        <label class="form-label fw-bold">Email Preview:</label>
+                        <div id" style="border:  fw-bold1pEmlil Prdview: #dee2e6; border-radius: 4px; padding: 15px; background-color: #f8f9fa; max-height: 400px; overflow-y: auto;">
+                         divPidw leli deoEmaiuPreviewlastyled bobdyr: 1px solJv #dae2e6; boSdrr-radiui: 4px; ptddin :>15px; backgund-color: #ff9fa;max-hgh: 400px; ovflow-y: uto;"
+                            <!-- Preview wiv> bepopud by JavaScrip ->
+                        </div>
+                    </div>
+                    
+                    <div id="reindrpletClOs"las="alrtalrt-wan"tyl="dsplay: ne;">
+                 <!- IncmeCLOswllblitdh--
+                    </div>
+                    
+                    <div id="reminderIncompleteClOs" class="alert alert-warning" style="display: none;">
+                        <!-- Incomplete CLOs will be listed here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Send Reminder</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Assign Instructor Modal -->
 <div class="modal fade" id="assignInstructorModal" tabindex="-1" aria-labelledby="assignInstructorModalLabel"
     aria-hidden="true">
@@ -226,10 +270,67 @@
                             <option value="">Loading instructors...</option>
                         </select>
                     </div>
+                    <div class="text-center my-3">
+                        <span class="text-muted">— OR —</span>
+                    </div>
+                    <div class="text-center">
+                        <button type="button" class="btn btn-outline-primary" id="inviteNewInstructorBtn">
+                            <i class="fas fa-envelope"></i> Invite New Instructor
+                        </button>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary" id="saveAssignmentBtn">Assign</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Invite Instructor Modal -->
+<div class="modal fade" id="inviteInstructorModal" tabindex="-1" aria-labelledby="inviteInstructorModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="inviteInstructorModalLabel">Invite New Instructor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="inviteInstructorForm">
+                <div class="modal-body">
+                    <p class="text-muted mb-3">Send an invitation to a new instructor. They will be assigned to this section upon accepting.</p>
+                    
+                    <div class="mb-3">
+                        <label for="inviteEmail" class="form-label">Email Address *</label>
+                        <input type="email" class="form-control" id="inviteEmail" required
+                               placeholder="instructor@university.edu">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="inviteFirstName" class="form-label">First Name *</label>
+                        <input type="text" class="form-control" id="inviteFirstName" required
+                               placeholder="John">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="inviteLastName" class="form-label">Last Name *</label>
+                        <input type="text" class="form-control" id="inviteLastName" required
+                               placeholder="Doe">
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <small>
+                            <i class="fas fa-info-circle"></i>
+                            The instructor will receive an email invitation and be automatically assigned to this section after accepting.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="sendInviteBtn">
+                        <i class="fas fa-paper-plane"></i> Send Invitation
+                    </button>
                 </div>
             </form>
         </div>

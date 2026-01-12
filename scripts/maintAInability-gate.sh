@@ -81,10 +81,10 @@ RUN_BLACK=false
 RUN_ISORT=false
 RUN_LINT=false
 RUN_TYPES=false
-RUN_TESTS=false
+RUN_PYTHON_UNIT_TESTS=false
 RUN_INTEGRATION_TESTS=false
 RUN_E2E_TESTS=false
-RUN_COVERAGE=false
+RUN_PYTHON_COVERAGE=false
 RUN_SECURITY=false
 RUN_SECURITY_LOCAL=false  # bandit+semgrep only, no safety (faster for commits)
 RUN_SONAR_ANALYZE=false
@@ -96,7 +96,7 @@ RUN_JS_LINT=false
 RUN_JS_FORMAT=false
 RUN_JS_TESTS=false
 RUN_JS_COVERAGE=false
-RUN_COVERAGE_NEW_CODE=false
+RUN_PYTHON_NEW_CODE_COVERAGE=false
 RUN_ALL=false
 
 # Output control
@@ -124,10 +124,10 @@ else
       --isort) RUN_ISORT=true ;;
       --lint) RUN_LINT=true ;;
       --types) RUN_TYPES=true ;;
-      --tests) RUN_TESTS=true ;;
+      --python-unit-tests) RUN_PYTHON_UNIT_TESTS=true ;;
       --integration-tests) RUN_INTEGRATION_TESTS=true ;;
       --e2e) RUN_E2E_TESTS=true ;;
-      --coverage) RUN_COVERAGE=true ;;
+      --python-coverage) RUN_PYTHON_COVERAGE=true ;;
       --security) RUN_SECURITY=true ;;
       --security-local) RUN_SECURITY_LOCAL=true ;;  # Skip safety (for commit hooks)
       --sonar-analyze) RUN_SONAR_ANALYZE=true ;;
@@ -138,9 +138,8 @@ else
       --js-lint) RUN_JS_LINT=true ;;
       --js-format) RUN_JS_FORMAT=true ;;
       --js-tests) RUN_JS_TESTS=true ;;
-      --js-tests-and-coverage) RUN_JS_COVERAGE=true ;;
-      --coverage-new-code) RUN_COVERAGE_NEW_CODE=true ;;
-      --coverage-full) RUN_COVERAGE=true; RUN_COVERAGE_NEW_CODE=true ;;
+      --js-coverage) RUN_JS_COVERAGE=true ;;
+      --python-new-code-coverage) RUN_PYTHON_NEW_CODE_COVERAGE=true ;;
       --smoke-tests) RUN_SMOKE_TESTS=true ;;
       --frontend-check) RUN_FRONTEND_CHECK=true ;;
       --verbose) VERBOSE=true ;;
@@ -158,7 +157,8 @@ else
         echo "  ./scripts/maintAInability-gate.sh --security # Check security vulnerabilities"
         echo "  ./scripts/maintAInability-gate.sh --sonar-analyze # Trigger new SonarCloud analysis and save run metadata"
         echo "  ./scripts/maintAInability-gate.sh --sonar-status  # Fetch results from most recent analysis"
-        echo "  ./scripts/maintAInability-gate.sh --js-tests-and-coverage # Run JavaScript coverage analysis"
+        echo "  ./scripts/maintAInability-gate.sh --js-tests # Run JavaScript tests"
+        echo "  ./scripts/maintAInability-gate.sh --js-coverage # Run JavaScript coverage analysis"
         echo "  ./scripts/maintAInability-gate.sh --duplication # Check code duplication"
         echo "  ./scripts/maintAInability-gate.sh --imports # Check import organization"
         echo "  ./scripts/maintAInability-gate.sh --complexity # Check code complexity"
@@ -184,8 +184,8 @@ if [[ "$RUN_ALL" == "true" ]]; then
   RUN_BLACK=true
   RUN_ISORT=true
   RUN_LINT=true
-  RUN_TESTS=true
-  RUN_COVERAGE=true
+  RUN_PYTHON_UNIT_TESTS=true
+  RUN_PYTHON_COVERAGE=true
   RUN_TYPES=true
   RUN_SECURITY=true
   RUN_SONAR_ANALYZE=true  # Enabled - SonarCloud project is configured
@@ -500,21 +500,29 @@ fi
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# TEST SUITE EXECUTION (ATOMIC) - UNIT TESTS ONLY
+# PYTHON UNIT TESTS (ATOMIC) - RUNS TESTS WITH COVERAGE OUTPUT
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-if [[ "$RUN_TESTS" == "true" ]]; then
-  echo "🧪 Test Suite Execution (pytest)"
+if [[ "$RUN_PYTHON_UNIT_TESTS" == "true" ]]; then
+  echo "🧪 Python Unit Tests (pytest with coverage generation)"
 
-  # Run UNIT tests only (fast tests, separate directory, no coverage)
-  echo "  🔍 Running UNIT test suite (tests only, no coverage)..."
-  # Use pytest-xdist for parallel execution (35% faster)
-  # Stream output live to CI logs while also capturing it for parsing
+  # Run UNIT tests with coverage to generate coverage.xml for subsequent coverage checks
+  echo "  🔍 Running UNIT test suite with coverage instrumentation..."
+  # NOTE: Running serially (no -n auto) to avoid SQLite database locking issues
+  # Coverage data is generated for use by python-coverage and python-new-code-coverage checks
   mkdir -p logs
   TEST_OUTPUT_FILE="logs/tests_output.txt"
+  COVERAGE_REPORT_FILE="logs/coverage_report.txt"
   TEST_FAILED=false
 
-  python -m pytest tests/unit/ -n auto -v 2>&1 | tee "$TEST_OUTPUT_FILE"
+  # Clean up old coverage data files to prevent race conditions
+  rm -f .coverage .coverage.*
+
+  # Run pytest with coverage - generates coverage.xml for coverage analysis checks
+  python -m pytest tests/unit/ tests/integration/ --cov=src --cov-report=term-missing --cov-report=xml:coverage.xml -v 2>&1 | tee "$TEST_OUTPUT_FILE"
   TEST_EXIT_CODE=${PIPESTATUS[0]}
+
+  # Also save to coverage report for parsing
+  cp "$TEST_OUTPUT_FILE" "$COVERAGE_REPORT_FILE"
 
   if [[ "$TEST_EXIT_CODE" -ne 0 ]]; then
     TEST_FAILED=true
@@ -658,66 +666,51 @@ if [[ "$RUN_E2E_TESTS" == "true" ]]; then
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# TEST COVERAGE ANALYSIS (ATOMIC) - 80% THRESHOLD
+# PYTHON COVERAGE (ATOMIC) - ANALYZES COVERAGE.XML (80% THRESHOLD)
+# Requires python-unit-tests to have run first to generate coverage.xml
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-if [[ "$RUN_COVERAGE" == "true" ]]; then
-  echo "📊 Test Coverage Analysis (80% threshold)"
+if [[ "$RUN_PYTHON_COVERAGE" == "true" ]]; then
+  echo "📊 Python Coverage Analysis (80% threshold)"
 
-  # Run coverage analysis independently of test results (unit tests only)
-  echo "  📊 Running coverage analysis (independent of test results)..."
+  # Check if coverage.xml exists
+  if [[ ! -f "coverage.xml" ]]; then
+    echo "❌ Python Coverage: FAILED (coverage.xml not found)"
+    echo ""
+    echo "🚨 This check requires python-unit-tests to run first."
+    echo "   Run: --checks python-unit-tests python-coverage"
+    echo ""
+    add_failure "Python Coverage" "coverage.xml not found" "Run python-unit-tests first to generate coverage data"
+    exit 1
+  fi
+
+  # Check if coverage.xml is fresh (less than 60 seconds old)
+  COVERAGE_FILE_AGE=$(($(date +%s) - $(stat -f %m coverage.xml 2>/dev/null || stat -c %Y coverage.xml 2>/dev/null)))
+  if [[ $COVERAGE_FILE_AGE -gt 60 ]]; then
+    echo "❌ Python Coverage: FAILED (coverage.xml is stale - ${COVERAGE_FILE_AGE}s old)"
+    echo ""
+    echo "🚨 Coverage data must be generated in the same session."
+    echo "   The coverage.xml file is ${COVERAGE_FILE_AGE} seconds old (max: 60s)."
+    echo "   Run: --checks python-unit-tests python-coverage"
+    echo ""
+    add_failure "Python Coverage" "coverage.xml is stale (${COVERAGE_FILE_AGE}s old)" "Run python-unit-tests first to generate fresh coverage data"
+    exit 1
+  fi
+
+  echo "  📊 Analyzing coverage data from coverage.xml (age: ${COVERAGE_FILE_AGE}s)..."
   
   # Ensure logs directory exists
   mkdir -p logs
   
-  # Coverage report file (overwrite previous)
+  # Coverage report file
   COVERAGE_REPORT_FILE="logs/coverage_report.txt"
   
-  # Clean up old coverage data files to prevent race conditions
-  rm -f .coverage .coverage.*
-  
-  # Run pytest with coverage AND capture exit code to detect test failures
-  # NOTE: Running serially (no -n auto) to avoid SQLite database locking issues in parallel execution
-  # conftest.py handles DATABASE_URL setup automatically
-  TEST_EXIT_CODE=0
-
-  # Stream coverage output to CI logs while also capturing it for analysis
-  python -m pytest tests/unit/ tests/integration/ --cov=src --cov-report=term-missing --cov-report=xml:coverage.xml --tb=no --quiet 2>&1 | tee "$COVERAGE_REPORT_FILE"
-  TEST_EXIT_CODE=${PIPESTATUS[0]}
-
-  # Load coverage output from file for parsing
-  COVERAGE_OUTPUT=$(cat "$COVERAGE_REPORT_FILE")
-  
-  # Check for ACTUAL test failures (not just coverage threshold failures)
-  # pytest exits with code 1 for both test failures AND coverage threshold failures
-  # Distinguish by checking for "FAILED" in output (actual test failures)
-  HAS_TEST_FAILURES=$(echo "$COVERAGE_OUTPUT" | grep -q "FAILED " && echo "true" || echo "false")
-  
-  if [[ "$HAS_TEST_FAILURES" == "true" ]]; then
-    echo "❌ Coverage: FAILED (tests failed)"
-    echo ""
-    echo "📋 Test Failure Details:"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    
-    # Show failing tests
-    FAILING_TESTS=$(echo "$COVERAGE_OUTPUT" | grep "FAILED " | head -10)
-    if [[ -n "$FAILING_TESTS" ]]; then
-      echo "🔴 Failing Tests:"
-      echo "$FAILING_TESTS" | sed 's/^/  /'
-      echo ""
-    fi
-    
-    # Show test summary
-    TEST_SUMMARY=$(echo "$COVERAGE_OUTPUT" | grep -E "failed|passed|error" | tail -3)
-    if [[ -n "$TEST_SUMMARY" ]]; then
-      echo "$TEST_SUMMARY" | sed 's/^/  /'
-    fi
-    
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    
-    FAILED_TESTS=$(echo "$COVERAGE_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
-    add_failure "Test Coverage" "Test failures: $FAILED_TESTS" "Fix failing tests before checking coverage. Run 'python -m pytest tests/unit/ -v' for details"
+  # Read coverage output from the log file generated by python-unit-tests
+  if [[ -f "$COVERAGE_REPORT_FILE" ]]; then
+    COVERAGE_OUTPUT=$(cat "$COVERAGE_REPORT_FILE")
   else
+    # If no log file, extract from coverage.xml directly using coverage report
+    COVERAGE_OUTPUT=$(python -m coverage report --fail-under=0 2>&1)
+  fi
   
   # Extract coverage percentage from output
   COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+\(\.[0-9]\+\)\?%' | grep -o '[0-9]\+\(\.[0-9]\+\)\?%' | head -1 || echo "unknown")
@@ -810,15 +803,41 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
     echo "$COVERAGE_OUTPUT" | head -20 | sed 's/^/  /'
     add_failure "Test Coverage" "Coverage analysis failed" "Check pytest-cov installation and configuration. Debug output: $PWD/$COVERAGE_REPORT_FILE"
   fi
-  fi  # Close the "else" block from test failure check
   echo ""
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# COVERAGE ON NEW CODE (DIFF-COVER) - 80% THRESHOLD ON PR/BRANCH CHANGES
+# PYTHON NEW CODE COVERAGE (DIFF-COVER) - 80% THRESHOLD ON PR/BRANCH CHANGES
+# Requires python-unit-tests to have run first to generate coverage.xml
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-if [[ "$RUN_COVERAGE_NEW_CODE" == "true" ]]; then
-  echo "📊 Coverage on New Code (80% threshold on PR/branch changes)"
+if [[ "$RUN_PYTHON_NEW_CODE_COVERAGE" == "true" ]]; then
+  echo "📊 Python New Code Coverage (80% on changed files)"
+
+  # Check if coverage.xml exists
+  if [[ ! -f "coverage.xml" ]]; then
+    echo "❌ Python New Code Coverage: FAILED (coverage.xml not found)"
+    echo ""
+    echo "🚨 This check requires python-unit-tests to run first."
+    echo "   Run: --checks python-unit-tests python-new-code-coverage"
+    echo ""
+    add_failure "Python New Code Coverage" "coverage.xml not found" "Run python-unit-tests first to generate coverage data"
+    exit 1
+  fi
+
+  # Check if coverage.xml is fresh (less than 60 seconds old)
+  COVERAGE_FILE_AGE=$(($(date +%s) - $(stat -f %m coverage.xml 2>/dev/null || stat -c %Y coverage.xml 2>/dev/null)))
+  if [[ $COVERAGE_FILE_AGE -gt 60 ]]; then
+    echo "❌ Python New Code Coverage: FAILED (coverage.xml is stale - ${COVERAGE_FILE_AGE}s old)"
+    echo ""
+    echo "🚨 Coverage data must be generated in the same session."
+    echo "   The coverage.xml file is ${COVERAGE_FILE_AGE} seconds old (max: 60s)."
+    echo "   Run: --checks python-unit-tests python-new-code-coverage"
+    echo ""
+    add_failure "Python New Code Coverage" "coverage.xml is stale (${COVERAGE_FILE_AGE}s old)" "Run python-unit-tests first to generate fresh coverage data"
+    exit 1
+  fi
+
+  echo "  📊 Analyzing new code coverage from coverage.xml (age: ${COVERAGE_FILE_AGE}s)..."
 
   # Check if diff-cover is installed
   if ! command -v diff-cover &> /dev/null; then
@@ -829,18 +848,6 @@ if [[ "$RUN_COVERAGE_NEW_CODE" == "true" ]]; then
     echo ""
     add_failure "Coverage on New Code" "diff-cover not installed" "Run 'pip install diff-cover' to install"
   else
-    # Check if coverage.xml exists
-    if [[ ! -f "coverage.xml" ]]; then
-      echo "⚠️  No coverage.xml found. Generating coverage data first..."
-      
-      # Clean up old coverage data files to prevent race conditions
-      rm -f .coverage .coverage.*
-      
-      # Generate coverage.xml
-      python -m pytest tests/unit/ tests/integration/ --cov=src --cov-report=xml:coverage.xml --tb=no --quiet 2>&1 || true
-    fi
-    
-    if [[ -f "coverage.xml" ]]; then
       # Determine the comparison branch
       # In CI, use origin/main; locally, try main or origin/main
       if [[ "${CI:-false}" == "true" ]]; then
@@ -906,10 +913,6 @@ if [[ "$RUN_COVERAGE_NEW_CODE" == "true" ]]; then
         
         add_failure "Coverage on New Code" "Coverage at $COVERAGE_PCT on modified lines (below 80% threshold)" "Add tests for the specific files/lines listed in logs/diff_coverage_report.txt"
       fi
-    else
-      echo "❌ Coverage on New Code: FAILED (could not generate coverage.xml)"
-      add_failure "Coverage on New Code" "Failed to generate coverage.xml" "Run 'pytest --cov=. --cov-report=xml' first"
-    fi
   fi
   echo ""
 fi
@@ -1869,20 +1872,11 @@ if [[ "$RUN_JS_COVERAGE" == "true" ]]; then
               echo "📊 Coverage Results:"
               echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
               
-              # Check for test execution failures
+              # Check for test execution failures (suppress raw test output)
               if echo "$JS_COVERAGE_OUTPUT" | grep -q "FAIL"; then
                   echo "❌ Test Execution Failed!"
-                  echo "📋 Failed Tests:"
-                  echo "$JS_COVERAGE_OUTPUT" | grep -A 5 "FAIL " | sed 's/^/  /'
+                  echo "📋 Run: npm run test:js (or ship_it.py --checks js-tests) for details"
                   echo ""
-                  
-                  # Extract test summary
-                  TEST_SUMMARY=$(echo "$JS_COVERAGE_OUTPUT" | grep -E "Test Suites:|Tests:|Snapshots:|Time:" | sed 's/^/  /')
-                  if [[ -n "$TEST_SUMMARY" ]]; then
-                    echo "📊 Test Summary:"
-                    echo "$TEST_SUMMARY"
-                    echo ""
-                  fi
               fi
 
               # Extract and display coverage summary table

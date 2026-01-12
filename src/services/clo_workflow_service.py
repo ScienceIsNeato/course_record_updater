@@ -36,6 +36,12 @@ class CLOWorkflowService:
             if not outcome:
                 logger.error(f"CLO not found: {logger.sanitize(outcome_id)}")
                 return False
+            if outcome.get("status") in [CLOStatus.APPROVED, CLOStatus.COMPLETED]:
+                logger.info(
+                    "Skipping submission for approved CLO %s",
+                    logger.sanitize(outcome_id),
+                )
+                return False
 
             # Update status and submission metadata
             update_data = {
@@ -493,6 +499,8 @@ class CLOWorkflowService:
             submitted_count = 0
             for outcome in outcomes:
                 outcome_id = outcome.get("outcome_id") or outcome.get("id")
+                if outcome.get("status") in [CLOStatus.APPROVED, CLOStatus.COMPLETED]:
+                    continue
                 if outcome_id and CLOWorkflowService.submit_clo_for_approval(
                     str(outcome_id), user_id
                 ):
@@ -584,20 +592,65 @@ class CLOWorkflowService:
                 course_id=course_id,
             )
 
-            # Enrich with course and instructor details
-            enriched_outcomes = []
+            expanded_outcomes = []
             for outcome in outcomes:
-                details = CLOWorkflowService.get_outcome_with_details(
-                    outcome["outcome_id"]
+                expanded_outcomes.extend(
+                    CLOWorkflowService._expand_outcome_for_sections(outcome)
                 )
-                if details:
-                    enriched_outcomes.append(details)
-
-            return enriched_outcomes
+            return expanded_outcomes
 
         except Exception as e:
             logger.error(f"Error getting CLOs by status: {e}")
             return []
+
+    @staticmethod
+    def _expand_outcome_for_sections(outcome: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Expand a course outcome into one entry per section (fallback to course-level row)."""
+        course_outcome_id = CLOWorkflowService._resolve_outcome_id(outcome)
+        if not course_outcome_id:
+            return []
+
+        course_id = outcome.get("course_id")
+        sections = db.get_sections_by_course(course_id) if course_id else []
+        results: List[Dict[str, Any]] = []
+
+        if sections:
+            for section in sections:
+                section_id = section.get("id")
+                if not section_id:
+                    continue
+                # Get the SECTION-SPECIFIC outcome for this course outcome + section
+                section_outcome = db.get_section_outcome_by_course_outcome_and_section(
+                    course_outcome_id, str(section_id)
+                )
+
+                if section_outcome:
+                    # Use the SECTION outcome ID, not the course outcome ID
+                    section_outcome_id = section_outcome.get("id")
+                    if not section_outcome_id:
+                        continue
+                    details = CLOWorkflowService.get_outcome_with_details(
+                        str(section_outcome_id),
+                        section_data=section,
+                        outcome_data=section_outcome,
+                    )
+                    if details:
+                        results.append(details)
+        else:
+            # Fallback to course-level outcome if no sections
+            details = CLOWorkflowService.get_outcome_with_details(
+                course_outcome_id, outcome_data=outcome
+            )
+            if details:
+                results.append(details)
+
+        return results
+
+    @staticmethod
+    def _resolve_outcome_id(outcome: Dict[str, Any]) -> Optional[str]:
+        """Return the normalized outcome ID from a dict (handles outcome_id/id)."""
+        raw_id = outcome.get("outcome_id") or outcome.get("id")
+        return str(raw_id) if raw_id else None
 
     @staticmethod
     def _get_instructor_from_outcome(
@@ -673,14 +726,20 @@ class CLOWorkflowService:
 
     @staticmethod
     def _enrich_outcome_with_instructor_details(
-        outcome: Dict[str, Any], course_id: str, outcome_id: str
+        outcome: Dict[str, Any],
+        course_id: str,
+        outcome_id: str,
+        section_data: Optional[Dict[str, Any]] = None,
     ) -> tuple[
         Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]
     ]:
         """Get instructor name, email, term name, instructor ID, and section ID."""
-        instructor = CLOWorkflowService._get_instructor_from_outcome(outcome)
+        if section_data:
+            return CLOWorkflowService._resolve_section_context(section_data)
 
+        instructor = CLOWorkflowService._get_instructor_from_outcome(outcome)
         section_id = None
+
         try:
             # Resolve section ID
             sections = db.get_sections_by_course(course_id)
@@ -719,19 +778,55 @@ class CLOWorkflowService:
         return instructor_name, instructor_email, term_name, instructor_id, section_id
 
     @staticmethod
-    def get_outcome_with_details(outcome_id: str) -> Optional[Dict[str, Any]]:
+    def _resolve_section_context(
+        section_data: Dict[str, Any],
+    ) -> tuple[
+        Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]
+    ]:
+        """Resolve instructor and term details for an explicit section."""
+        instructor_id = section_data.get("instructor_id")
+        instructor = db.get_user(instructor_id) if instructor_id else None
+        instructor_name = (
+            CLOWorkflowService._build_instructor_name(instructor)
+            if instructor
+            else None
+        )
+        instructor_email = instructor.get("email") if instructor else None
+
+        term_name = None
+        offering_id = section_data.get("offering_id")
+        if offering_id:
+            offering = db.get_course_offering(offering_id)
+            if offering:
+                term_id = offering.get("term_id")
+                if term_id:
+                    term = db.get_term_by_id(term_id)
+                    if term:
+                        term_name = term.get("term_name") or term.get("name")
+
+        section_id = section_data.get("section_id") or section_data.get("id")
+        return instructor_name, instructor_email, term_name, instructor_id, section_id
+
+    @staticmethod
+    def get_outcome_with_details(
+        outcome_id: str,
+        section_data: Optional[Dict[str, Any]] = None,
+        outcome_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Dict[str, Any]]:
         """
         Get a course outcome with enriched course and instructor details.
 
         Args:
             outcome_id: The ID of the course outcome
+            section_data: Optional section metadata to scope the instructor/term context
+            outcome_data: Optional pre-fetched outcome dict (avoids extra query)
 
         Returns:
             Dictionary with outcome data plus course_number, course_title,
             instructor_name, instructor_email, etc.
         """
         try:
-            outcome = db.get_course_outcome(outcome_id)
+            outcome = outcome_data or db.get_course_outcome(outcome_id)
             if not outcome:
                 return None
 
@@ -752,17 +847,23 @@ class CLOWorkflowService:
                     instructor_id,
                     section_id,
                 ) = CLOWorkflowService._enrich_outcome_with_instructor_details(
-                    outcome, course_id, outcome_id
+                    outcome,
+                    course_id,
+                    outcome_id,
+                    section_data=section_data,
                 )
                 program_name = CLOWorkflowService._get_program_name_for_course(
                     course_id
                 )
 
-            section_number = None
+            section_number = (
+                section_data.get("section_number") if section_data else None
+            )
+            section_status = section_data.get("status") if section_data else None
             if section_id:
                 section = db.get_section_by_id(section_id)
                 if section:
-                    section_number = section.get("section_number")
+                    section_number = section_number or section.get("section_number")
 
             return {
                 **outcome,
@@ -773,6 +874,7 @@ class CLOWorkflowService:
                 "instructor_id": instructor_id,
                 "section_id": section_id,
                 "section_number": section_number,
+                "section_status": section_status,
                 "program_name": program_name,
                 "term_name": term_name,
             }

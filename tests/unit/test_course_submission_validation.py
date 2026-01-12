@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.services.clo_workflow_service import CLOWorkflowService
+from src.utils.constants import CLOStatus
 
 
 class TestValidateCourseSubmission:
@@ -223,3 +224,34 @@ class TestSubmitCourseForApproval:
 
         assert result["success"] is False
         assert len(result["errors"]) == 1
+
+    @patch(
+        "src.services.clo_workflow_service.CLOWorkflowService.validate_course_submission"
+    )
+    @patch(
+        "src.services.clo_workflow_service.CLOWorkflowService.submit_clo_for_approval"
+    )
+    @patch("src.services.clo_workflow_service.db")
+    def test_submit_course_skips_approved_outcomes(
+        self, mock_db, mock_submit_clo, mock_validate
+    ):
+        """Test course submission skips already approved outcomes."""
+        course_id = "course-123"
+        user_id = "user-456"
+
+        mock_validate.return_value = {"valid": True, "errors": []}
+        mock_db.get_course_outcomes.return_value = [
+            {"outcome_id": "clo-1", "status": CLOStatus.APPROVED},
+            {"outcome_id": "clo-2", "status": CLOStatus.IN_PROGRESS},
+            {"outcome_id": "clo-3", "status": CLOStatus.NEVER_COMING_IN},
+        ]
+        mock_submit_clo.return_value = True
+
+        result = CLOWorkflowService.submit_course_for_approval(course_id, user_id)
+
+        assert result["success"] is True
+        assert mock_submit_clo.call_count == 2
+        called_outcome_ids = [
+            call_args[0][0] for call_args in mock_submit_clo.call_args_list
+        ]
+        assert "clo-1" not in called_outcome_ids
