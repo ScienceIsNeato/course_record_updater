@@ -273,12 +273,12 @@ class TestToDictEdgeCases:
         assert result["students_passed"] == 20
         assert result["assessment_tool"] == "Quiz"
         # Workflow status fields (regression: these were missing!)
-        assert result["status"] == "awaiting_approval", (
-            "status must be included for audit page"
-        )
-        assert result["approval_status"] == "pending", (
-            "approval_status must be included"
-        )
+        assert (
+            result["status"] == "awaiting_approval"
+        ), "status must be included for audit page"
+        assert (
+            result["approval_status"] == "pending"
+        ), "approval_status must be included"
         # Audit trail fields
         assert result["submitted_at"] == datetime(2025, 12, 5, 9, 0, 0)
         assert result["submitted_by"] == "user-123"

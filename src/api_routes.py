@@ -75,6 +75,7 @@ from src.database.database_service import (
     get_programs_by_institution,
     get_recent_audit_logs,
     get_section_by_id,
+    get_section_outcome,
     get_sections_by_instructor,
     get_sections_by_term,
     get_term_by_id,
@@ -90,6 +91,7 @@ from src.database.database_service import (
     update_institution,
     update_outcome_assessment,
     update_program,
+    update_section_outcome,
     update_term,
     update_user,
     update_user_profile,
@@ -3861,11 +3863,18 @@ def create_course_outcome_endpoint(course_id: str) -> ResponseReturnValue:
         outcome_id = database_service.create_course_outcome(data)
 
         if outcome_id:
+            # Get section outcomes that were auto-created for this course outcome
+            from src.database.database_service import get_section_outcomes_by_outcome
+
+            section_outcomes = get_section_outcomes_by_outcome(outcome_id)
+            section_outcome_ids = [so.get("id") for so in section_outcomes]
+
             return (
                 jsonify(
                     {
                         "success": True,
                         "outcome_id": outcome_id,
+                        "section_outcome_ids": section_outcome_ids,
                         "message": "Course outcome created successfully",
                     }
                 ),
@@ -4039,25 +4048,22 @@ def update_outcome_assessment_endpoint(outcome_id: str) -> ResponseReturnValue:
                 400,
             )
 
-        # Verify the outcome exists
-        institution_id = _get_current_institution_id_safe()
-        courses = get_all_courses(institution_id)
+        # Verify the section outcome exists
+        section_outcome = get_section_outcome(outcome_id)
+        if not section_outcome:
+            return (
+                jsonify({"success": False, "error": "Section outcome not found"}),
+                404,
+            )
 
-        found = False
-        for course in courses:
-            outcomes = get_course_outcomes(course["course_id"])
-            if any(o.get("outcome_id") == outcome_id for o in outcomes):
-                found = True
-                break
-
-        if not found:
-            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
-
-        success = update_outcome_assessment(
+        # Update the section outcome assessment
+        success = update_section_outcome(
             outcome_id,
-            students_took=students_took,
-            students_passed=students_passed,
-            assessment_tool=assessment_tool or None,
+            {
+                "students_took": students_took,
+                "students_passed": students_passed,
+                "assessment_tool": assessment_tool,
+            },
         )
 
         if success:

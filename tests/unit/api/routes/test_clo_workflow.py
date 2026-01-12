@@ -64,7 +64,7 @@ class TestCLOAuditEndpoints:
 
     @patch("src.api.routes.clo_workflow.CLOWorkflowService")
     @patch("src.api.routes.clo_workflow.get_course_by_id")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_submit_clo_for_approval_success(
         self,
         mock_get_outcome,
@@ -88,7 +88,7 @@ class TestCLOAuditEndpoints:
         data = assert_json_response(response, 200, True)
         assert "submitted for approval" in data["message"]
 
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_submit_clo_for_approval_not_found(
         self, mock_get_outcome, client, mock_institution, mock_session
     ):
@@ -99,7 +99,7 @@ class TestCLOAuditEndpoints:
 
     @patch("src.api.routes.clo_workflow.CLOWorkflowService")
     @patch("src.api.routes.clo_workflow.get_course_by_id")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_submit_clo_for_approval_exception(
         self,
         mock_get_outcome,
@@ -220,7 +220,7 @@ class TestCLOAuditEndpoints:
 
     @patch("src.api.routes.clo_workflow.CLOWorkflowService")
     @patch("src.api.routes.clo_workflow.get_course_by_id")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_approve_clo_success(
         self,
         mock_get_outcome,
@@ -246,7 +246,7 @@ class TestCLOAuditEndpoints:
 
     @patch("src.api.routes.clo_workflow.CLOWorkflowService")
     @patch("src.api.routes.clo_workflow.get_course_by_id")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_request_clo_rework_success(
         self,
         mock_get_outcome,
@@ -297,7 +297,7 @@ class TestCLOAuditEndpoints:
     )
     @patch("src.api.routes.clo_workflow.CLOWorkflowService")
     @patch("src.api.routes.clo_workflow.get_course_by_id")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_workflow_service_failure(
         self,
         mock_get_outcome,
@@ -326,7 +326,7 @@ class TestCLOAuditEndpoints:
 
     @patch("src.api.routes.clo_workflow.CLOWorkflowService")
     @patch("src.api.routes.clo_workflow.get_course_by_id")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_request_clo_rework_service_failure(
         self,
         mock_get_outcome,
@@ -352,7 +352,7 @@ class TestCLOAuditEndpoints:
         assert_json_response(response, 500, False)
 
     @patch("src.api.routes.clo_workflow.get_course_by_id")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_submit_clo_institution_mismatch(
         self,
         mock_get_outcome,
@@ -393,7 +393,7 @@ class TestCLOAuditEndpoints:
         data = assert_json_response(response, 500, False)
         assert "error" in data
 
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_approve_clo_not_found(
         self, mock_get_outcome, client, mock_institution, mock_session
     ):
@@ -403,7 +403,7 @@ class TestCLOAuditEndpoints:
         assert_json_response(response, 404, False)
 
     @patch("src.api.routes.clo_workflow.get_course_by_id")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_approve_clo_institution_mismatch(
         self,
         mock_get_outcome,
@@ -428,7 +428,7 @@ class TestCLOAuditEndpoints:
 
     @patch("src.api.routes.clo_workflow.CLOWorkflowService")
     @patch("src.api.routes.clo_workflow.get_course_by_id")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_approve_clo_exception(
         self,
         mock_get_outcome,
@@ -446,7 +446,7 @@ class TestCLOAuditEndpoints:
         response = client.post("/api/outcomes/outcome-1/approve")
         assert_json_response(response, 500, False)
 
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_request_rework_not_found(
         self, mock_get_outcome, client, mock_institution, mock_session
     ):
@@ -459,7 +459,7 @@ class TestCLOAuditEndpoints:
         assert_json_response(response, 404, False)
 
     @patch("src.api.routes.clo_workflow.get_course_by_id")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_request_rework_institution_mismatch(
         self,
         mock_get_outcome,
@@ -487,7 +487,7 @@ class TestCLOAuditEndpoints:
 
     @patch("src.api.routes.clo_workflow.CLOWorkflowService")
     @patch("src.api.routes.clo_workflow.get_course_by_id")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_request_rework_exception(
         self,
         mock_get_outcome,
@@ -511,7 +511,7 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.CLOWorkflowService")
     @patch("src.api.routes.clo_workflow.get_current_user")
     @patch("src.api.routes.clo_workflow.get_course_by_id")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_mark_nci_success(
         self,
         mock_get_outcome,
@@ -539,7 +539,7 @@ class TestCLOAuditEndpoints:
         assert response.json["message"] == "CLO marked as Never Coming In (NCI)"
 
     @patch("src.api.routes.clo_workflow.get_current_user")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_mark_nci_not_found(
         self,
         mock_get_outcome,
@@ -561,7 +561,7 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.CLOWorkflowService")
     @patch("src.api.routes.clo_workflow.get_current_user")
     @patch("src.api.routes.clo_workflow.get_course_by_id")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_mark_nci_service_fails(
         self,
         mock_get_outcome,
@@ -590,7 +590,7 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.CLOWorkflowService")
     @patch("src.api.routes.clo_workflow.get_current_user")
     @patch("src.api.routes.clo_workflow.get_course_by_id")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_mark_nci_exception(
         self,
         mock_get_outcome,
@@ -618,7 +618,7 @@ class TestCLOAuditEndpoints:
 
     @patch("src.api.routes.clo_workflow.CLOWorkflowService")
     @patch("src.api.routes.clo_workflow.get_course_by_id")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_get_clo_audit_details_success(
         self,
         mock_get_outcome,
@@ -648,7 +648,7 @@ class TestCLOAuditEndpoints:
         assert "outcome" in data
         assert data["outcome"]["id"] == "outcome-1"
 
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_get_clo_audit_details_not_found(
         self, mock_get_outcome, client, mock_institution, mock_session
     ):
@@ -658,7 +658,7 @@ class TestCLOAuditEndpoints:
         assert_json_response(response, 404, False)
 
     @patch("src.api.routes.clo_workflow.get_course_by_id")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_get_clo_audit_details_institution_mismatch(
         self,
         mock_get_outcome,
@@ -683,7 +683,7 @@ class TestCLOAuditEndpoints:
 
     @patch("src.api.routes.clo_workflow.CLOWorkflowService")
     @patch("src.api.routes.clo_workflow.get_course_by_id")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_get_clo_audit_details_service_returns_none(
         self,
         mock_get_outcome,
@@ -707,7 +707,7 @@ class TestCLOAuditEndpoints:
 
     @patch("src.api.routes.clo_workflow.CLOWorkflowService")
     @patch("src.api.routes.clo_workflow.get_course_by_id")
-    @patch("src.api.routes.clo_workflow.get_course_outcome")
+    @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_get_clo_audit_details_exception_handling(
         self,
         mock_get_outcome,

@@ -20,26 +20,28 @@ class CLOWorkflowService:
     """Service for managing CLO submission and approval workflows."""
 
     @staticmethod
-    def submit_clo_for_approval(outcome_id: str, user_id: str) -> bool:
+    def submit_clo_for_approval(section_outcome_id: str, user_id: str) -> bool:
         """
-        Submit a CLO for approval review.
+        Submit a section-level CLO for approval review.
 
         Args:
-            outcome_id: The ID of the course outcome to submit
+            section_outcome_id: The ID of the section outcome to submit
             user_id: The ID of the user submitting (instructor)
 
         Returns:
             bool: True if submission successful, False otherwise
         """
         try:
-            outcome = db.get_course_outcome(outcome_id)
+            outcome = db.get_section_outcome(section_outcome_id)
             if not outcome:
-                logger.error(f"CLO not found: {logger.sanitize(outcome_id)}")
+                logger.error(
+                    f"Section outcome not found: {logger.sanitize(section_outcome_id)}"
+                )
                 return False
             if outcome.get("status") in [CLOStatus.APPROVED, CLOStatus.COMPLETED]:
                 logger.info(
                     "Skipping submission for approved CLO %s",
-                    logger.sanitize(outcome_id),
+                    logger.sanitize(section_outcome_id),
                 )
                 return False
 
@@ -47,18 +49,18 @@ class CLOWorkflowService:
             update_data = {
                 "status": CLOStatus.AWAITING_APPROVAL,
                 "submitted_at": datetime.now(timezone.utc),
-                "submitted_by_user_id": user_id,
+                "submitted_by": user_id,
                 "approval_status": CLOApprovalStatus.PENDING,
             }
 
-            success = db.update_course_outcome(outcome_id, update_data)
+            success = db.update_section_outcome(section_outcome_id, update_data)
             if success:
                 logger.info(
-                    f"CLO {logger.sanitize(outcome_id)} submitted for approval by user {logger.sanitize(user_id)}"
+                    f"Section CLO {logger.sanitize(section_outcome_id)} submitted for approval by user {logger.sanitize(user_id)}"
                 )
             else:
                 logger.error(
-                    f"Failed to update CLO {logger.sanitize(outcome_id)} status"
+                    f"Failed to update section CLO {logger.sanitize(section_outcome_id)} status"
                 )
 
             return success
@@ -68,21 +70,21 @@ class CLOWorkflowService:
             return False
 
     @staticmethod
-    def approve_clo(outcome_id: str, reviewer_id: str) -> bool:
+    def approve_clo(section_outcome_id: str, reviewer_id: str) -> bool:
         """
-        Approve a CLO that has been submitted for review.
+        Approve a section-level CLO that has been submitted for review.
 
         Args:
-            outcome_id: The ID of the course outcome to approve
+            section_outcome_id: The ID of the section outcome to approve
             reviewer_id: The ID of the reviewing admin
 
         Returns:
             bool: True if approval successful, False otherwise
         """
         try:
-            outcome = db.get_course_outcome(outcome_id)
+            outcome = db.get_section_outcome(section_outcome_id)
             if not outcome:
-                logger.error(f"CLO not found: {outcome_id}")
+                logger.error(f"Section outcome not found: {section_outcome_id}")
                 return False
 
             # Verify CLO is in a state that can be approved
@@ -91,7 +93,7 @@ class CLOWorkflowService:
                 CLOStatus.AWAITING_APPROVAL,
             ]:
                 logger.warning(
-                    f"CLO {outcome_id} is in {outcome.get('status')} state, "
+                    f"Section CLO {section_outcome_id} is in {outcome.get('status')} state, "
                     f"cannot approve"
                 )
                 return False
@@ -102,14 +104,16 @@ class CLOWorkflowService:
                 "status": CLOStatus.APPROVED,
                 "approval_status": CLOApprovalStatus.APPROVED,
                 "reviewed_at": datetime.now(timezone.utc),
-                "reviewed_by_user_id": reviewer_id,
+                "reviewed_by": reviewer_id,
             }
 
-            success = db.update_course_outcome(outcome_id, update_data)
+            success = db.update_section_outcome(section_outcome_id, update_data)
             if success:
-                logger.info(f"CLO {outcome_id} approved by reviewer {reviewer_id}")
+                logger.info(
+                    f"Section CLO {section_outcome_id} approved by reviewer {reviewer_id}"
+                )
             else:
-                logger.error(f"Failed to approve CLO {outcome_id}")
+                logger.error(f"Failed to approve section CLO {section_outcome_id}")
 
             return success
 
@@ -119,13 +123,16 @@ class CLOWorkflowService:
 
     @staticmethod
     def request_rework(
-        outcome_id: str, reviewer_id: str, comments: str, send_email: bool = False
+        section_outcome_id: str,
+        reviewer_id: str,
+        comments: str,
+        send_email: bool = False,
     ) -> bool:
         """
-        Request rework on a submitted CLO with feedback comments.
+        Request rework on a submitted section-level CLO with feedback comments.
 
         Args:
-            outcome_id: The ID of the course outcome needing rework
+            section_outcome_id: The ID of the section outcome needing rework
             reviewer_id: The ID of the reviewing admin
             comments: Feedback comments explaining what needs to be fixed
             send_email: Whether to send email notification to the instructor
@@ -134,9 +141,9 @@ class CLOWorkflowService:
             bool: True if rework request successful, False otherwise
         """
         try:
-            outcome = db.get_course_outcome(outcome_id)
+            outcome = db.get_section_outcome(section_outcome_id)
             if not outcome:
-                logger.error(f"CLO not found: {outcome_id}")
+                logger.error(f"Section outcome not found: {section_outcome_id}")
                 return False
 
             # Verify CLO is in a state that can be sent back for rework
@@ -145,7 +152,7 @@ class CLOWorkflowService:
                 CLOStatus.AWAITING_APPROVAL,
             ]:
                 logger.warning(
-                    f"CLO {outcome_id} is in {outcome.get('status')} state, "
+                    f"Section CLO {section_outcome_id} is in {outcome.get('status')} state, "
                     f"cannot request rework"
                 )
                 return False
@@ -155,23 +162,26 @@ class CLOWorkflowService:
                 "status": CLOStatus.AWAITING_APPROVAL,
                 "approval_status": CLOApprovalStatus.NEEDS_REWORK,
                 "reviewed_at": datetime.now(timezone.utc),
-                "reviewed_by_user_id": reviewer_id,
+                "reviewed_by": reviewer_id,
                 "feedback_comments": comments,
-                "feedback_provided_at": datetime.now(timezone.utc),
             }
 
-            success = db.update_course_outcome(outcome_id, update_data)
+            success = db.update_section_outcome(section_outcome_id, update_data)
             if not success:
-                logger.error(f"Failed to request rework for CLO {outcome_id}")
+                logger.error(
+                    f"Failed to request rework for section CLO {section_outcome_id}"
+                )
                 return False
 
             logger.info(
-                f"CLO {outcome_id} sent back for rework by reviewer {reviewer_id}"
+                f"Section CLO {section_outcome_id} sent back for rework by reviewer {reviewer_id}"
             )
 
             # Send email notification if requested
             if send_email:
-                CLOWorkflowService._send_rework_notification(outcome_id, comments)
+                CLOWorkflowService._send_rework_notification(
+                    section_outcome_id, comments
+                )
 
             return True
 
@@ -180,11 +190,61 @@ class CLOWorkflowService:
             return False
 
     @staticmethod
+    def reopen_clo(section_outcome_id: str, reviewer_id: str) -> bool:
+        """
+        Reopen a finalized CLO (Approved or NCI).
+
+        Changes status back to IN_PROGRESS and approval_status to PENDING.
+
+        Args:
+            section_outcome_id: The ID of the section outcome to reopen
+            reviewer_id: The ID of the admin reopening
+
+        Returns:
+            bool: True if successful
+        """
+        try:
+            outcome = db.get_section_outcome(section_outcome_id)
+            if not outcome:
+                logger.error(f"Section outcome not found: {section_outcome_id}")
+                return False
+
+            # Allow reopening from Approved or NCI
+            if outcome.get("status") not in [
+                CLOStatus.APPROVED,
+                CLOStatus.NEVER_COMING_IN,
+            ]:
+                logger.warning(
+                    f"Section CLO {section_outcome_id} status {outcome.get('status')} cannot be reopened"
+                )
+                return False
+
+            update_data = {
+                "status": CLOStatus.IN_PROGRESS,
+                "approval_status": CLOApprovalStatus.PENDING,
+                # Reset review data? Maybe keep history?
+                # Usually we want to clear previous final decision metadata but keep audit trail if possible.
+                # But since we just update the current row, we overwrite status.
+            }
+
+            success = db.update_section_outcome(section_outcome_id, update_data)
+            if success:
+                logger.info(
+                    f"Section CLO {section_outcome_id} reopened by {reviewer_id}"
+                )
+
+            return success
+
+        except Exception as e:
+            logger.error(f"Error reopening CLO: {e}")
+            return False
+
+    @staticmethod
     def mark_as_nci(
-        outcome_id: str, reviewer_id: str, reason: Optional[str] = None
+        section_outcome_id: str, reviewer_id: str, reason: Optional[str] = None
     ) -> bool:
         """
-        Mark a CLO as "Never Coming In" (NCI) - added from CEI demo feedback.
+        Mark a section-level CLO as "Never Coming In" (NCI).
 
         Use cases:
         - Instructor left institution
@@ -192,7 +252,7 @@ class CLOWorkflowService:
         - Course cancelled/dropped after initial assignment
 
         Args:
-            outcome_id: The ID of the course outcome to mark as NCI
+            section_outcome_id: The ID of the section outcome to mark as NCI
             reviewer_id: The ID of the admin marking as NCI
             reason: Optional reason/note for NCI designation
 
@@ -200,9 +260,9 @@ class CLOWorkflowService:
             bool: True if successfully marked as NCI, False otherwise
         """
         try:
-            outcome = db.get_course_outcome(outcome_id)
+            outcome = db.get_section_outcome(section_outcome_id)
             if not outcome:
-                logger.error(f"CLO not found: {outcome_id}")
+                logger.error(f"Section outcome not found: {section_outcome_id}")
                 return False
 
             # Update status to NCI
@@ -210,18 +270,17 @@ class CLOWorkflowService:
                 "status": CLOStatus.NEVER_COMING_IN,
                 "approval_status": CLOApprovalStatus.NEVER_COMING_IN,
                 "reviewed_at": datetime.now(timezone.utc),
-                "reviewed_by_user_id": reviewer_id,
+                "reviewed_by": reviewer_id,
                 "feedback_comments": reason or "Marked as Never Coming In (NCI)",
-                "feedback_provided_at": datetime.now(timezone.utc),
             }
 
-            success = db.update_course_outcome(outcome_id, update_data)
+            success = db.update_section_outcome(section_outcome_id, update_data)
             if not success:
-                logger.error(f"Failed to mark CLO {outcome_id} as NCI")
+                logger.error(f"Failed to mark section CLO {section_outcome_id} as NCI")
                 return False
 
             logger.info(
-                f"CLO {outcome_id} marked as NCI by reviewer {reviewer_id}"
+                f"Section CLO {section_outcome_id} marked as NCI by reviewer {reviewer_id}"
                 + (f" - Reason: {reason}" if reason else "")
             )
 
@@ -298,21 +357,21 @@ class CLOWorkflowService:
             return False
 
     @staticmethod
-    def auto_mark_in_progress(outcome_id: str, user_id: str) -> bool:
+    def auto_mark_in_progress(section_outcome_id: str, user_id: str) -> bool:
         """
-        Automatically mark a CLO as in_progress when an instructor starts editing.
+        Automatically mark a section CLO as in_progress when an instructor starts editing.
 
         Args:
-            outcome_id: The ID of the course outcome
+            section_outcome_id: The ID of the section outcome
             user_id: The ID of the user editing
 
         Returns:
             bool: True if status updated, False otherwise
         """
         try:
-            outcome = db.get_course_outcome(outcome_id)
+            outcome = db.get_section_outcome(section_outcome_id)
             if not outcome:
-                logger.error(f"CLO not found: {outcome_id}")
+                logger.error(f"Section outcome not found: {section_outcome_id}")
                 return False
 
             current_status = outcome.get("status")
@@ -323,10 +382,12 @@ class CLOWorkflowService:
                 return True
 
             update_data = {"status": CLOStatus.IN_PROGRESS}
-            success = db.update_course_outcome(outcome_id, update_data)
+            success = db.update_section_outcome(section_outcome_id, update_data)
 
             if success:
-                logger.info(f"CLO {outcome_id} automatically marked as in_progress")
+                logger.info(
+                    f"Section CLO {section_outcome_id} automatically marked as in_progress"
+                )
 
             return success
 
@@ -573,6 +634,8 @@ class CLOWorkflowService:
         """
         Get CLOs filtered by status.
 
+        Now queries Section Outcomes directly, as status is tracked per section.
+
         Args:
             status: The CLO status to filter by, or None to get all statuses
             institution_id: The institution ID to filter by
@@ -584,7 +647,8 @@ class CLOWorkflowService:
             List of CLO dictionaries with enriched data
         """
         try:
-            outcomes = db.get_outcomes_by_status(
+            # Query Section Outcomes directly
+            section_outcomes = db.get_section_outcomes_by_criteria(
                 institution_id=institution_id,
                 status=status,
                 program_id=program_id,
@@ -592,12 +656,18 @@ class CLOWorkflowService:
                 course_id=course_id,
             )
 
-            expanded_outcomes = []
-            for outcome in outcomes:
-                expanded_outcomes.extend(
-                    CLOWorkflowService._expand_outcome_for_sections(outcome)
-                )
-            return expanded_outcomes
+            results: List[Dict[str, Any]] = []
+            for so in section_outcomes:
+                # Enrich each section outcome with template data
+                section_outcome_id = so.get("id")
+                if section_outcome_id:
+                    details = CLOWorkflowService.get_outcome_with_details(
+                        section_outcome_id
+                    )
+                    if details:
+                        results.append(details)
+
+            return results
 
         except Exception as e:
             logger.error(f"Error getting CLOs by status: {e}")
@@ -748,11 +818,63 @@ class CLOWorkflowService:
         if section_data:
             return CLOWorkflowService._resolve_section_context(section_data)
 
+        outcome_section_id = outcome.get("section_id")
+        if outcome_section_id:
+            resolved = CLOWorkflowService._resolve_from_section_id(
+                outcome, outcome_section_id
+            )
+            if resolved:
+                return resolved
+
+        return CLOWorkflowService._resolve_from_course_fallback(
+            outcome, course_id, outcome_id
+        )
+
+    @staticmethod
+    def _resolve_from_section_id(
+        outcome: Dict[str, Any], outcome_section_id: str
+    ) -> Optional[
+        tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]
+    ]:
+        """Attempt to resolve instructor details from a section ID associated with the outcome."""
+        section = db.get_section_by_id(outcome_section_id)
+        if not section:
+            return None
+
+        (
+            instructor_name,
+            instructor_email,
+            term_name,
+            instructor_id,
+            section_id,
+        ) = CLOWorkflowService._resolve_section_context(section)
+
+        if not instructor_name:
+            instructor = CLOWorkflowService._get_instructor_from_outcome(outcome)
+            if instructor:
+                instructor_name = CLOWorkflowService._build_instructor_name(instructor)
+                instructor_email = instructor.get("email")
+                instructor_id = instructor.get("user_id") or instructor.get("id")
+
+        return (
+            instructor_name,
+            instructor_email,
+            term_name,
+            instructor_id,
+            section_id or str(outcome_section_id),
+        )
+
+    @staticmethod
+    def _resolve_from_course_fallback(
+        outcome: Dict[str, Any], course_id: str, outcome_id: str
+    ) -> tuple[
+        Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]
+    ]:
+        """Fallback resolution based on course and responsible instructor."""
         instructor = CLOWorkflowService._get_instructor_from_outcome(outcome)
         section_id = None
 
         try:
-            # Resolve section ID
             sections = db.get_sections_by_course(course_id)
             if sections:
                 if instructor:
@@ -765,11 +887,9 @@ class CLOWorkflowService:
                             "id"
                         )
 
-                # Fallback to first section if still no section_id (e.g. Unassigned)
                 if not section_id:
                     section_id = sections[0].get("section_id") or sections[0].get("id")
         except Exception:
-            # Silently ignore section resolution errors - non-critical to overall operation
             pass
 
         if not instructor:
@@ -825,10 +945,10 @@ class CLOWorkflowService:
         outcome_data: Optional[Dict[str, Any]] = None,
     ) -> Optional[Dict[str, Any]]:
         """
-        Get a course outcome with enriched course and instructor details.
+        Get a section outcome with enriched course and instructor details.
 
         Args:
-            outcome_id: The ID of the course outcome
+            outcome_id: The ID of the section outcome
             section_data: Optional section metadata to scope the instructor/term context
             outcome_data: Optional pre-fetched outcome dict (avoids extra query)
 
@@ -837,18 +957,33 @@ class CLOWorkflowService:
             instructor_name, instructor_email, etc.
         """
         try:
-            outcome = outcome_data or db.get_course_outcome(outcome_id)
+            outcome = outcome_data or db.get_section_outcome(outcome_id)
             if not outcome:
                 return None
 
+            # If it's a raw section outcome (missing course_id/description), fetch the template
             raw_course_id = outcome.get("course_id")
+            if not raw_course_id and outcome.get("outcome_id"):
+                # Fetch the template (CourseOutcome)
+                template = db.get_course_outcome(outcome["outcome_id"])
+                if template:
+                    # Merge template data (defaults) into outcome
+                    # We preserve outcome's own values (status, etc) if they exist
+                    outcome = {
+                        **template,  # Base: Template fields (clo_number, description, course_id)
+                        **outcome,  # Override: Section outcome fields (status, specific assessment)
+                        "id": outcome["id"],  # Ensure we keep the section outcome ID
+                    }
+                    raw_course_id = outcome.get("course_id")
+
             course_id = raw_course_id if isinstance(raw_course_id, str) else None
-            course = db.get_course(course_id) if course_id else None
+            course_id = raw_course_id if isinstance(raw_course_id, str) else None
+            course = db.get_course_by_id(course_id) if course_id else None
 
             instructor_name = None
             instructor_email = None
             instructor_id = None
-            section_id = None
+            section_id = outcome.get("section_id")
             program_name = None
             term_name = None
 
@@ -858,7 +993,7 @@ class CLOWorkflowService:
                     instructor_email,
                     term_name,
                     instructor_id,
-                    section_id,
+                    resolved_section_id,
                 ) = CLOWorkflowService._enrich_outcome_with_instructor_details(
                     outcome,
                     course_id,
@@ -868,29 +1003,36 @@ class CLOWorkflowService:
                 program_name = CLOWorkflowService._get_program_name_for_course(
                     course_id
                 )
+                if resolved_section_id:
+                    section_id = resolved_section_id
 
             section_number = (
                 section_data.get("section_number") if section_data else None
             )
             section_status = section_data.get("status") if section_data else None
+            final_details = outcome.copy()
             if section_id:
                 section = db.get_section_by_id(section_id)
                 if section:
                     section_number = section_number or section.get("section_number")
 
-            return {
-                **outcome,
-                "course_number": course.get("course_number") if course else None,
-                "course_title": course.get("course_title") if course else None,
-                "instructor_name": instructor_name,
-                "instructor_email": instructor_email,
-                "instructor_id": instructor_id,
-                "section_id": section_id,
-                "section_number": section_number,
-                "section_status": section_status,
-                "program_name": program_name,
-                "term_name": term_name,
-            }
+                final_details.update(
+                    {
+                        "course_number": (
+                            course.get("course_number") if course else None
+                        ),
+                        "course_title": course.get("course_title") if course else None,
+                        "instructor_name": instructor_name,
+                        "instructor_email": instructor_email,
+                        "instructor_id": instructor_id,
+                        "section_id": section_id,
+                        "section_number": section_number,
+                        "section_status": section_status,
+                        "program_name": program_name,
+                        "term_name": term_name,
+                    }
+                )
+            return final_details
 
         except Exception as e:
             logger.error(f"Error getting outcome with details: {e}")

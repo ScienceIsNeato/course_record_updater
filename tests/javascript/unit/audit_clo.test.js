@@ -9,7 +9,10 @@ global.fetch = jest.fn();
 
 // Mock bootstrap Modal
 global.bootstrap = {
-  Modal: jest.fn(),
+  Modal: Object.assign(jest.fn(), {
+    getInstance: jest.fn(),
+    getOrCreateInstance: jest.fn(),
+  }),
 };
 global.bootstrap.Modal.getInstance = jest.fn();
 global.bootstrap.Modal.getOrCreateInstance = jest.fn();
@@ -397,8 +400,8 @@ describe("audit_clo.js - Utility Functions", () => {
 
     it("should handle CLOs with null values gracefully", () => {
       // Mock Blob and link for download
-      jest.spyOn(document.body, "appendChild").mockImplementation(() => {});
-      jest.spyOn(document.body, "removeChild").mockImplementation(() => {});
+      jest.spyOn(document.body, "appendChild").mockImplementation(() => { });
+      jest.spyOn(document.body, "removeChild").mockImplementation(() => { });
 
       const result = auditCloModule.exportCurrentViewToCsv([
         {
@@ -462,7 +465,18 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
         </select>
       </form>
       <div id="clo-list-container"></div>
+      <div id="sendReminderModal"></div>
+      <button id="reopenBtn"></button>
     `;
+
+    // Mock bootstrap modal instance
+    mockModalInstance = {
+      hide: jest.fn(),
+      show: jest.fn(),
+    };
+    bootstrap.Modal.mockImplementation(() => mockModalInstance);
+    bootstrap.Modal.getInstance.mockReturnValue(mockModalInstance);
+    bootstrap.Modal.getOrCreateInstance.mockReturnValue(mockModalInstance);
 
     // Setup globalThis.loadCLOs
     globalThis.loadCLOs = jest.fn().mockResolvedValue(undefined);
@@ -541,20 +555,16 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
       expect(fetch).not.toHaveBeenCalled();
     });
 
-    it("should send PUT request with in_progress status", async () => {
+    it("should send POST request to reopen endpoint", async () => {
       global.confirm = jest.fn(() => true);
       fetch.mockResolvedValueOnce({ ok: true });
 
       await auditCloModule.reopenOutcome("test-id");
 
       expect(fetch).toHaveBeenCalledWith(
-        "/api/outcomes/test-id",
+        "/api/outcomes/test-id/reopen",
         expect.objectContaining({
-          method: "PUT",
-          body: JSON.stringify({
-            status: "in_progress",
-            approval_status: "pending",
-          }),
+          method: "POST",
         })
       );
     });
@@ -582,6 +592,20 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
   });
 
   describe("remindOutcome", () => {
+    beforeEach(() => {
+      // Mock fetch for instructor details
+      fetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          user: {
+            first_name: "Test",
+            last_name: "Instructor",
+            email: "test@example.com"
+          }
+        })
+      });
+    });
+
     it("should return early if user cancels confirm dialog", async () => {
       global.confirm = jest.fn(() => false);
 
@@ -604,12 +628,20 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
 
     it("should send POST request to remind endpoint", async () => {
       global.confirm = jest.fn(() => true);
+
+      await auditCloModule.remindOutcome("test-id", "instructor-1", "course-1");
+
+      const msgArea = document.createElement("textarea");
+      msgArea.id = "reminderMessage";
+      msgArea.value = "Test Message";
+      document.body.appendChild(msgArea);
+
       fetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ success: true }),
       });
 
-      await auditCloModule.remindOutcome("test-id", "instructor-1", "course-1");
+      await auditCloModule.submitReminder();
 
       expect(fetch).toHaveBeenCalledWith(
         "/api/send-course-reminder",
@@ -618,6 +650,7 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
           body: JSON.stringify({
             instructor_id: "instructor-1",
             course_id: "course-1",
+            message: "Test Message",
           }),
         })
       );
@@ -625,24 +658,40 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
 
     it("should show success alert on successful reminder", async () => {
       global.confirm = jest.fn(() => true);
+
+      await auditCloModule.remindOutcome("test-id", "instructor-1", "course-1");
+
+      const msgArea = document.createElement("textarea");
+      msgArea.id = "reminderMessage";
+      msgArea.value = "Test Message";
+      document.body.appendChild(msgArea);
+
       fetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ success: true }),
       });
 
-      await auditCloModule.remindOutcome("test-id", "instructor-1", "course-1");
+      await auditCloModule.submitReminder();
 
       expect(global.alert).toHaveBeenCalledWith("Reminder sent successfully.");
     });
 
     it("should show error alert on failed reminder", async () => {
       global.confirm = jest.fn(() => true);
+
+      await auditCloModule.remindOutcome("test-id", "instructor-1", "course-1");
+
+      const msgArea = document.createElement("textarea");
+      msgArea.id = "reminderMessage";
+      msgArea.value = "Test Message";
+      document.body.appendChild(msgArea);
+
       fetch.mockResolvedValueOnce({
         ok: false,
         json: () => Promise.resolve({ error: "Email failed" }),
       });
 
-      await auditCloModule.remindOutcome("test-id", "instructor-1", "course-1");
+      await auditCloModule.submitReminder();
 
       expect(global.alert).toHaveBeenCalledWith(
         "Failed to send reminder: Email failed"
@@ -654,9 +703,11 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
     let mockModalInstance;
 
     beforeEach(() => {
-      // Setup mock Bootstrap Modal properly (preserving the mock structure)
+      // Setup mock Bootstrap Modal properly
       mockModalInstance = { show: jest.fn(), hide: jest.fn() };
-      global.bootstrap.Modal.mockImplementation(() => mockModalInstance);
+      bootstrap.Modal.mockImplementation(() => mockModalInstance);
+      bootstrap.Modal.getInstance.mockReturnValue(mockModalInstance);
+      bootstrap.Modal.getOrCreateInstance.mockReturnValue(mockModalInstance);
     });
 
     it("should return early if CLO not found", async () => {
@@ -765,6 +816,7 @@ describe("audit_clo.js - DOM Integration", () => {
       <div id="cloListContainer"></div>
       <div id="cloDetailModal">
         <div id="cloDetailContent"></div>
+        <button id="reopenBtn" style="display: none;"></button>
         <button id="approveBtn" style="display: none;"></button>
         <button id="requestReworkBtn" style="display: none;"></button>
         <button id="markNCIBtn" style="display: none;"></button>
@@ -792,6 +844,23 @@ describe("audit_clo.js - DOM Integration", () => {
             </form>
           </div>
         </div>
+      </div>
+      <div id="sendReminderModal" class="modal fade">
+        <div id="reminderCloDescription"></div>
+        <div id="reminderCourseDescription"></div>
+        <div id="reminderInstructorEmail"></div>
+        <textarea id="reminderMessage"></textarea>
+      </div>
+      <div id="inviteInstructorModal" class="modal fade">
+        <form id="inviteInstructorForm">
+          <input id="inviteFirstName">
+          <input id="inviteLastName">
+          <input id="inviteEmail">
+          <div id="inviteAlert"></div>
+        </form>
+      </div>
+      <div id="inviteSuccessModal" class="modal fade">
+        <div id="inviteSuccessMessage"></div>
       </div>
     `;
 
@@ -1194,6 +1263,15 @@ describe("audit_clo.js - DOM Integration", () => {
       };
       global.window.loadCLOs = jest.fn(() => Promise.resolve());
       global.window.updateStats = jest.fn(() => Promise.resolve());
+
+      // Mock bootstrap modal instance
+      mockModalInstance = {
+        hide: jest.fn(),
+        show: jest.fn(),
+      };
+      bootstrap.Modal.mockImplementation(() => mockModalInstance);
+      bootstrap.Modal.getInstance.mockReturnValue(mockModalInstance);
+      bootstrap.Modal.getOrCreateInstance.mockReturnValue(mockModalInstance);
 
       // Clear mocks
       jest.clearAllMocks();
@@ -1792,17 +1870,16 @@ describe("audit_clo.js - DOM Integration", () => {
       document.dispatchEvent(new Event("DOMContentLoaded"));
     });
 
-    it("should send PUT request to reopen outcome", async () => {
+    it("should send POST request to reopen endpoint", async () => {
       global.confirm = jest.fn(() => true);
       fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
 
       await window.reopenOutcome("out-1");
 
       expect(fetch).toHaveBeenCalledWith(
-        "/api/outcomes/out-1",
+        "/api/outcomes/out-1/reopen",
         expect.objectContaining({
-          method: "PUT",
-          body: expect.stringContaining('"status":"in_progress"')
+          method: "POST"
         })
       );
     });

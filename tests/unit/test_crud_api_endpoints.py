@@ -845,23 +845,20 @@ class TestOutcomesCRUD:
         data = response.get_json()
         assert data["success"] is True
 
-    @patch("src.api_routes.update_outcome_assessment")
-    @patch("src.api_routes.get_course_outcomes")
-    @patch("src.api_routes.get_all_courses")
-    @patch("src.api_routes.get_current_institution_id")
+    @patch("src.api_routes.update_section_outcome")
+    @patch("src.api_routes.get_section_outcome")
     def test_update_outcome_assessment_success(
         self,
-        mock_get_inst_id,
-        mock_get_courses,
-        mock_get_outcomes,
+        mock_get_outcome,
         mock_update_assessment,
         client,
     ):
         """Test PUT /api/outcomes/<id>/assessment - success"""
         create_site_admin_session(client)
-        mock_get_inst_id.return_value = "inst-1"
-        mock_get_courses.return_value = [{"course_id": "course-123"}]
-        mock_get_outcomes.return_value = [{"outcome_id": "outcome-123"}]
+        mock_get_outcome.return_value = {
+            "section_outcome_id": "outcome-123",
+            "course_section_id": "section-123",
+        }
         mock_update_assessment.return_value = True
 
         response = client.put(
@@ -881,15 +878,11 @@ class TestOutcomesCRUD:
 
     @patch("src.services.clo_workflow_service.CLOWorkflowService.auto_mark_in_progress")
     @patch("src.api_routes.get_current_user")
-    @patch("src.api_routes.update_outcome_assessment")
-    @patch("src.api_routes.get_course_outcomes")
-    @patch("src.api_routes.get_all_courses")
-    @patch("src.api_routes.get_current_institution_id")
+    @patch("src.api_routes.update_section_outcome")
+    @patch("src.api_routes.get_section_outcome")
     def test_update_outcome_assessment_auto_mark(
         self,
-        mock_get_inst_id,
-        mock_get_courses,
-        mock_get_outcomes,
+        mock_get_outcome,
         mock_update_assessment,
         mock_get_user,
         mock_auto_mark,
@@ -897,9 +890,10 @@ class TestOutcomesCRUD:
     ):
         """Test PUT /api/outcomes/<id>/assessment - auto-marks as in_progress"""
         create_site_admin_session(client)
-        mock_get_inst_id.return_value = "inst-1"
-        mock_get_courses.return_value = [{"course_id": "course-123"}]
-        mock_get_outcomes.return_value = [{"outcome_id": "outcome-123"}]
+        mock_get_outcome.return_value = {
+            "section_outcome_id": "outcome-123",
+            "course_section_id": "section-123",
+        }
         mock_update_assessment.return_value = True
         mock_get_user.return_value = {"user_id": "user-456"}
 
@@ -917,21 +911,18 @@ class TestOutcomesCRUD:
         # Verify auto_mark_in_progress was called
         mock_auto_mark.assert_called_once_with("outcome-123", "user-456")
 
-    @patch("src.api_routes.get_course_outcomes")
-    @patch("src.api_routes.get_all_courses")
-    @patch("src.api_routes.get_current_institution_id")
+    @patch("src.api_routes.get_section_outcome")
     def test_update_outcome_assessment_tool_too_long(
         self,
-        mock_get_inst_id,
-        mock_get_courses,
-        mock_get_outcomes,
+        mock_get_outcome,
         client,
     ):
         """Test PUT /api/outcomes/<id>/assessment - assessment_tool > 50 chars (CEI demo fix)"""
         create_site_admin_session(client)
-        mock_get_inst_id.return_value = "inst-1"
-        mock_get_courses.return_value = [{"course_id": "course-123"}]
-        mock_get_outcomes.return_value = [{"outcome_id": "outcome-123"}]
+        mock_get_outcome.return_value = {
+            "section_outcome_id": "outcome-123",
+            "course_section_id": "section-123",
+        }
 
         response = client.put(
             "/api/outcomes/outcome-123/assessment",

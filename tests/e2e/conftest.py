@@ -486,6 +486,12 @@ def authenticated_institution_admin_page(page: Page) -> Page:
 
 
 @pytest.fixture(scope="function")
+def admin_page(authenticated_institution_admin_page: Page) -> Page:
+    """Backward-compatible alias for institution admin page."""
+    return authenticated_institution_admin_page
+
+
+@pytest.fixture(scope="function")
 def authenticated_program_admin_page(page: Page) -> Page:
     """
     Provides page with program admin session (MockU).

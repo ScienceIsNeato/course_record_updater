@@ -240,6 +240,7 @@ class EmailService:
         institution_name: str,
         role: str,
         personal_message: Optional[str] = None,
+        section_context: Optional[str] = None,
     ) -> bool:
         """
         Send user invitation email
@@ -251,6 +252,7 @@ class EmailService:
             institution_name: Name of institution
             role: Role being invited to
             personal_message: Optional personal message from inviter
+            section_context: Optional course/section context for the invitation
 
         Returns:
             True if email sent successfully, False otherwise
@@ -270,6 +272,7 @@ class EmailService:
             institution_name=institution_name,
             role=role,
             personal_message=personal_message,
+            section_context=section_context,
         )
 
         text_body = EmailService._render_invitation_email_text(
@@ -279,6 +282,7 @@ class EmailService:
             institution_name=institution_name,
             role=role,
             personal_message=personal_message,
+            section_context=section_context,
         )
 
         return EmailService._send_email(
@@ -919,6 +923,7 @@ This email was sent to {email}
         institution_name: str,
         role: str,
         personal_message: Optional[str] = None,
+        section_context: Optional[str] = None,
     ) -> str:
         """Render HTML invitation email template"""
         personal_message_html = ""
@@ -928,6 +933,12 @@ This email was sent to {email}
                 <p><strong>Personal message from {inviter_name}:</strong></p>
                 <p style="font-style: italic;">"{personal_message}"</p>
             </div>
+            """
+
+        section_context_html = ""
+        if section_context:
+            section_context_html = f"""
+            <p><strong>Course assignment:</strong> You are being invited to manage learning outcomes for {section_context}.</p>
             """
 
         return f"""
@@ -953,6 +964,7 @@ This email was sent to {email}
         <div class="content">
             <h2>Join {institution_name}</h2>
             <p>{inviter_name} has invited you to join <strong>{institution_name}</strong> as a <strong>{role.replace('_', ' ').title()}</strong> on LoopCloser.</p>
+            {section_context_html}
             
             {personal_message_html}
             
@@ -984,6 +996,7 @@ This email was sent to {email}
         institution_name: str,
         role: str,
         personal_message: Optional[str] = None,
+        section_context: Optional[str] = None,
     ) -> str:
         """Render text invitation email template"""
         personal_message_text = ""
@@ -994,6 +1007,13 @@ Personal message from {inviter_name}:
 
 """
 
+        section_context_text = ""
+        if section_context:
+            section_context_text = f"""
+Course assignment: You are being invited to manage learning outcomes for {section_context}.
+
+"""
+
         return f"""
 LoopCloser - You're Invited!
 
@@ -1001,7 +1021,7 @@ Join {institution_name}
 
 {inviter_name} has invited you to join {institution_name} as a {role.replace('_', ' ').title()} on LoopCloser.
 
-{personal_message_text}To accept this invitation, visit:
+{section_context_text}{personal_message_text}To accept this invitation, visit:
 
 {invitation_url}
 
@@ -1288,10 +1308,17 @@ def send_invitation_email(
     institution_name: str,
     role: str,
     personal_message: Optional[str] = None,
+    section_context: Optional[str] = None,
 ) -> bool:
     """Convenience function for sending invitation emails"""
     return EmailService.send_invitation_email(
-        email, invitation_token, inviter_name, institution_name, role, personal_message
+        email,
+        invitation_token,
+        inviter_name,
+        institution_name,
+        role,
+        personal_message,
+        section_context,
     )
 
 

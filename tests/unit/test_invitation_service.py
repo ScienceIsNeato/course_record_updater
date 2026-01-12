@@ -753,9 +753,7 @@ class TestInvitationServiceAssignInstructor:
             user_id="user-789", section_id="section-123", replace_existing=False
         )
 
-        mock_db.update_course_section.assert_called_once_with(
-            "section-123", {"instructor_id": "user-789"}
-        )
+        mock_db.assign_instructor.assert_called_once_with("section-123", "user-789")
 
     @patch("src.services.invitation_service.db")
     def test_assign_instructor_section_not_found(self, mock_db):
@@ -767,7 +765,7 @@ class TestInvitationServiceAssignInstructor:
             user_id="user-789", section_id="nonexistent", replace_existing=False
         )
 
-        mock_db.update_course_section.assert_not_called()
+        mock_db.assign_instructor.assert_not_called()
 
     @patch("src.services.invitation_service.db")
     def test_assign_instructor_already_assigned_no_replace(self, mock_db):
@@ -782,7 +780,7 @@ class TestInvitationServiceAssignInstructor:
             user_id="new-instructor", section_id="section-123", replace_existing=False
         )
 
-        mock_db.update_course_section.assert_not_called()
+        mock_db.assign_instructor.assert_not_called()
 
     @patch("src.services.invitation_service.db")
     def test_assign_instructor_already_assigned_with_replace(self, mock_db):
@@ -797,8 +795,8 @@ class TestInvitationServiceAssignInstructor:
             user_id="new-instructor", section_id="section-123", replace_existing=True
         )
 
-        mock_db.update_course_section.assert_called_once_with(
-            "section-123", {"instructor_id": "new-instructor"}
+        mock_db.assign_instructor.assert_called_once_with(
+            "section-123", "new-instructor"
         )
 
     @patch("src.services.invitation_service.db")

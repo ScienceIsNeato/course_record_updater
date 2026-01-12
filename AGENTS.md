@@ -2,7 +2,7 @@
 
 > **⚠️ AUTO-GENERATED FILE - DO NOT EDIT DIRECTLY**
 > 
-> **Last Updated:** 2026-01-08 06:00:45 UTC  
+> **Last Updated:** 2026-01-12 18:38:34 UTC  
 > **Source:** `cursor-rules/.cursor/rules/`  
 > **To modify:** Edit source files in `cursor-rules/.cursor/rules/*.mdc` and run `cursor-rules/build_agent_instructions.sh`
 
@@ -1176,7 +1176,7 @@ _Including project rules matching:
 ✓ Including: course_record_updater.mdc
 # course_record_updater
 
-# LoopCloser Project Rules 📚
+# Course Record Updater Project Rules 📚
 
 ## 🔄 PR Closing Protocol
 

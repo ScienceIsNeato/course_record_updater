@@ -215,7 +215,7 @@
 <!-- Send Reminder Modal -->
 <div class="modal fade" id="sendReminderModal" tabindex="-1" aria-labelledby="sendReminderModalLabel"
     aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="sendReminderModalLabel">Send Reminder</h5>
@@ -223,22 +223,23 @@
             </div>
             <form id="sendReminderForm">
                 <div class="modal-body">
-                    <div class="alert alert-info mb-3 mb-3">
-                        <strong>📧 📧 Sending remindtrto:</strong>
-                        <p class="mb-0mdo1
-                    
-                    lass="mb-3">
-                        <label class="form-label fw-bold">Email Preview:</label>
-                        <div id" style="border:  fw-bold1pEmlil Prdview: #dee2e6; border-radius: 4px; padding: 15px; background-color: #f8f9fa; max-height: 400px; overflow-y: auto;">
-                         divPidw leli deoEmaiuPreviewlastyled bobdyr: 1px solJv #dae2e6; boSdrr-radiui: 4px; ptddin :>15px; backgund-color: #ff9fa;max-hgh: 400px; ovflow-y: uto;"
-                            <!-- Preview wiv> bepopud by JavaScrip ->
-                        </div>
+                    <div class="alert alert-info mb-3">
+                        <strong>Sending reminder to:</strong>
+                        <p class="mb-0" id="reminderInstructorEmail">—</p>
                     </div>
-                    
-                    <div id="reindrpletClOs"las="alrtalrt-wan"tyl="dsplay: ne;">
-                 <!- IncmeCLOswllblitdh--
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">CLO Context</label>
+                        <p class="mb-0 text-muted" id="reminderCloDescription"></p>
+                        <p class="mb-0 text-muted" id="reminderCourseDescription"></p>
                     </div>
-                    
+
+                    <div class="mb-3">
+                        <label for="reminderMessage" class="form-label fw-semibold">Email Preview</label>
+                        <textarea class="form-control" id="reminderMessage" rows="6" required></textarea>
+                        <small class="text-muted">This message is auto-populated and can be edited before sending.</small>
+                    </div>
+
                     <div id="reminderIncompleteClOs" class="alert alert-warning" style="display: none;">
                         <!-- Incomplete CLOs will be listed here -->
                     </div>
@@ -300,6 +301,8 @@
             <form id="inviteInstructorForm">
                 <div class="modal-body">
                     <p class="text-muted mb-3">Send an invitation to a new instructor. They will be assigned to this section upon accepting.</p>
+
+                    <div id="inviteInstructorAlert" class="alert d-none" role="alert"></div>
                     
                     <div class="mb-3">
                         <label for="inviteEmail" class="form-label">Email Address *</label>
@@ -333,6 +336,25 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Invite Success Modal -->
+<div class="modal fade" id="inviteSuccessModal" tabindex="-1" aria-labelledby="inviteSuccessModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="inviteSuccessModalLabel">Invitation Sent</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0" id="inviteSuccessMessage">Invitation sent successfully.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
         </div>
     </div>
 </div>

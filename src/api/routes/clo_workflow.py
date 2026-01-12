@@ -17,6 +17,7 @@ from src.database.database_service import (
     get_course_by_id,
     get_course_outcome,
     get_course_outcomes,
+    get_section_outcome,
     get_term_by_name,
 )
 from src.services.auth_service import get_current_institution_id
@@ -76,17 +77,34 @@ clo_workflow_bp = Blueprint("clo_workflow", __name__, url_prefix="/api/outcomes"
 logger = get_logger(__name__)
 
 
-@clo_workflow_bp.route("/<outcome_id>/submit", methods=["POST"])
+def _resolve_course_id(section_outcome):
+    """
+    Resolve course_id from a section outcome by looking up the template.
+    Section outcomes don't store course_id directly.
+    """
+    # Try getting from template link
+    outcome_id = section_outcome.get("outcome_id")
+    if outcome_id:
+        course_outcome = get_course_outcome(outcome_id)
+        if course_outcome:
+            return course_outcome.get("course_id")
+
+    # Fallback to course_id if it somehow exists (e.g. if enriched)
+    return section_outcome.get("course_id")
+
+
+@clo_workflow_bp.route("/<section_outcome_id>/submit", methods=["POST"])
 @lazy_permission_required("submit_clo")
-def submit_clo_for_approval(outcome_id: str):
+def submit_clo_for_approval(section_outcome_id: str):
     """
     Instructor submits their completed CLO for admin review.
     Changes status from IN_PROGRESS to AWAITING_APPROVAL.
     """
     try:
-        # Verify outcome exists
-        outcome = get_course_outcome(outcome_id)
-        if not outcome:
+        # Verify section outcome exists
+
+        section_outcome = get_section_outcome(section_outcome_id)
+        if not section_outcome:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         # Verify user has access (owns the course section)
@@ -96,13 +114,15 @@ def submit_clo_for_approval(outcome_id: str):
         institution_id = get_current_institution_id()
 
         # Verify institution access through course
-        course_id = outcome.get("course_id")
+        course_id = _resolve_course_id(section_outcome)
         course = get_course_by_id(course_id) if course_id else None
         if not course or course.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         # Submit for approval
-        success = CLOWorkflowService.submit_clo_for_approval(outcome_id, user_id)
+        success = CLOWorkflowService.submit_clo_for_approval(
+            section_outcome_id, user_id
+        )
 
         if success:
             return (
@@ -110,7 +130,7 @@ def submit_clo_for_approval(outcome_id: str):
                     {
                         "success": True,
                         "message": "CLO submitted for approval successfully",
-                        "outcome_id": outcome_id,
+                        "section_outcome_id": section_outcome_id,
                     }
                 ),
                 200,
@@ -197,23 +217,24 @@ def get_clos_for_audit():
         )
 
 
-@clo_workflow_bp.route("/<outcome_id>/approve", methods=["POST"])
+@clo_workflow_bp.route("/<section_outcome_id>/approve", methods=["POST"])
 @lazy_permission_required("audit_clo")
-def approve_clo(outcome_id: str):
+def approve_clo(section_outcome_id: str):
     """
     Approve a CLO that has been submitted for review.
 
     Changes status from AWAITING_APPROVAL (or APPROVAL_PENDING) to APPROVED.
     """
     try:
-        # Verify outcome exists
-        outcome = get_course_outcome(outcome_id)
-        if not outcome:
+        # Verify section outcome exists
+
+        section_outcome = get_section_outcome(section_outcome_id)
+        if not section_outcome:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         # Verify institution access
         institution_id = get_current_institution_id()
-        course_id = outcome.get("course_id")
+        course_id = _resolve_course_id(section_outcome)
         course = get_course_by_id(course_id) if course_id else None
         if not course or course.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
@@ -224,7 +245,7 @@ def approve_clo(outcome_id: str):
             return jsonify({"success": False, "error": "User not authenticated"}), 401
 
         # Approve the CLO
-        success = CLOWorkflowService.approve_clo(outcome_id, user_id)
+        success = CLOWorkflowService.approve_clo(section_outcome_id, user_id)
 
         if success:
             return (
@@ -232,7 +253,7 @@ def approve_clo(outcome_id: str):
                     {
                         "success": True,
                         "message": "CLO approved successfully",
-                        "outcome_id": outcome_id,
+                        "section_outcome_id": section_outcome_id,
                     }
                 ),
                 200,
@@ -247,9 +268,9 @@ def approve_clo(outcome_id: str):
         return handle_api_error(e, "Approve CLO", "Failed to approve CLO")
 
 
-@clo_workflow_bp.route("/<outcome_id>/request-rework", methods=["POST"])
+@clo_workflow_bp.route("/<section_outcome_id>/request-rework", methods=["POST"])
 @lazy_permission_required("audit_clo")
-def request_clo_rework(outcome_id: str):
+def request_clo_rework(section_outcome_id: str):
     """
     Request rework on a submitted CLO with feedback comments.
 
@@ -274,14 +295,15 @@ def request_clo_rework(outcome_id: str):
 
         send_email = data.get("send_email", False)
 
-        # Verify outcome exists
-        outcome = get_course_outcome(outcome_id)
-        if not outcome:
+        # Verify section outcome exists
+
+        section_outcome = get_section_outcome(section_outcome_id)
+        if not section_outcome:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         # Verify institution access
         institution_id = get_current_institution_id()
-        course_id = outcome.get("course_id")
+        course_id = _resolve_course_id(section_outcome)
         course = get_course_by_id(course_id) if course_id else None
         if not course or course.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
@@ -293,7 +315,7 @@ def request_clo_rework(outcome_id: str):
 
         # Request rework
         success = CLOWorkflowService.request_rework(
-            outcome_id, user_id, comments, send_email
+            section_outcome_id, user_id, comments, send_email
         )
 
         if success:
@@ -302,7 +324,7 @@ def request_clo_rework(outcome_id: str):
                     {
                         "success": True,
                         "message": "Rework requested successfully",
-                        "outcome_id": outcome_id,
+                        "section_outcome_id": section_outcome_id,
                     }
                 ),
                 200,
@@ -317,9 +339,9 @@ def request_clo_rework(outcome_id: str):
         return handle_api_error(e, "Request CLO rework", "Failed to request CLO rework")
 
 
-@clo_workflow_bp.route("/<outcome_id>/mark-nci", methods=["POST"])
+@clo_workflow_bp.route("/<section_outcome_id>/mark-nci", methods=["POST"])
 @lazy_permission_required("audit_clo")
-def mark_clo_as_nci(outcome_id: str):
+def mark_clo_as_nci(section_outcome_id: str):
     """
     Mark a CLO as "Never Coming In" (NCI).
 
@@ -341,20 +363,20 @@ def mark_clo_as_nci(outcome_id: str):
         if not user_id or not isinstance(user_id, str):
             return jsonify({"success": False, "error": "User ID not found"}), 401
 
-        # Verify outcome exists and belongs to current institution (efficient O(1) lookup)
-        outcome = get_course_outcome(outcome_id)
-        if not outcome:
+        # Verify section outcome exists and belongs to current institution (efficient O(1) lookup)
+        section_outcome = get_section_outcome(section_outcome_id)
+        if not section_outcome:
             return jsonify({"success": False, "error": "Outcome not found"}), 404
 
         # Verify institution access
         institution_id = get_current_institution_id()
-        course_id = outcome.get("course_id")
+        course_id = _resolve_course_id(section_outcome)
         course = get_course_by_id(course_id) if course_id else None
         if not course or course.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": "Outcome not found"}), 404
 
         # Mark as NCI
-        success = CLOWorkflowService.mark_as_nci(outcome_id, user_id, reason)
+        success = CLOWorkflowService.mark_as_nci(section_outcome_id, user_id, reason)
 
         if success:
             return (
@@ -376,29 +398,80 @@ def mark_clo_as_nci(outcome_id: str):
         return handle_api_error(e, "Mark CLO as NCI", "Failed to mark CLO as NCI")
 
 
-@clo_workflow_bp.route("/<outcome_id>/audit-details", methods=["GET"])
+@clo_workflow_bp.route("/<section_outcome_id>/reopen", methods=["POST"])
 @lazy_permission_required("audit_clo")
-def get_clo_audit_details(outcome_id: str):
+def reopen_clo(section_outcome_id: str):
     """
-    Get full audit details for a single CLO.
+    Reopen a finalized CLO (Approved or NCI).
 
-    Includes course info, instructor info, submission history, feedback history.
+    Changes status back to IN_PROGRESS.
     """
     try:
-        # Verify outcome exists
-        outcome = get_course_outcome(outcome_id)
-        if not outcome:
+        user = get_current_user()
+        if not user:
+            return jsonify({"success": False, "error": "User not authenticated"}), 401
+        user_id = user.get("user_id")
+
+        # Verify section outcome exists
+
+        section_outcome = get_section_outcome(section_outcome_id)
+        if not section_outcome:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         # Verify institution access
         institution_id = get_current_institution_id()
-        course_id = outcome.get("course_id")
+        course_id = _resolve_course_id(section_outcome)
+        course = get_course_by_id(course_id) if course_id else None
+        if not course or course.get("institution_id") != institution_id:
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
+
+        if not user_id:
+            return jsonify({"success": False, "error": "User not authenticated"}), 401
+
+        success = CLOWorkflowService.reopen_clo(section_outcome_id, str(user_id))
+
+        if success:
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "message": "CLO reopened successfully",
+                        "section_outcome_id": section_outcome_id,
+                    }
+                ),
+                200,
+            )
+        else:
+            return jsonify({"success": False, "error": "Failed to reopen CLO"}), 500
+
+    except Exception as e:
+        return handle_api_error(e, "Reopen CLO", "Failed to reopen CLO")
+
+
+@clo_workflow_bp.route("/<section_outcome_id>/audit-details", methods=["GET"])
+@lazy_permission_required("audit_clo")
+def get_clo_audit_details(section_outcome_id: str):
+    """
+    Get full audit details for a single section CLO.
+
+    Includes course info, instructor info, submission history, feedback history.
+    """
+    try:
+        # Verify section outcome exists
+
+        section_outcome = get_section_outcome(section_outcome_id)
+        if not section_outcome:
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
+
+        # Verify institution access
+        institution_id = get_current_institution_id()
+        course_id = _resolve_course_id(section_outcome)
         course = get_course_by_id(course_id) if course_id else None
         if not course or course.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         # Get enriched outcome details
-        details = CLOWorkflowService.get_outcome_with_details(outcome_id)
+        details = CLOWorkflowService.get_outcome_with_details(section_outcome_id)
 
         if details:
             return jsonify({"success": True, "outcome": details}), 200

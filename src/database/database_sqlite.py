@@ -7,7 +7,7 @@ import uuid
 from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from src.database.database_interface import DatabaseInterface
@@ -665,6 +665,47 @@ class SQLiteDatabase(DatabaseInterface):
 
         with self.sqlite.session_scope() as session:
             session.add(outcome)
+            session.flush()  # Ensure outcome exists
+
+            # Sync logic: Propagate new CLO to all existing sections of this course
+            # Find offerings for this course
+            offerings = (
+                session.execute(
+                    select(CourseOffering).where(
+                        CourseOffering.course_id == payload.get("course_id")
+                    )
+                )
+                .scalars()
+                .all()
+            )
+
+            if offerings:
+                offering_ids = [o.id for o in offerings]
+                sections = (
+                    session.execute(
+                        select(CourseSection).where(
+                            CourseSection.offering_id.in_(offering_ids)
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+
+                for section in sections:
+                    section_outcome = CourseSectionOutcome(
+                        id=str(uuid.uuid4()),
+                        section_id=section.id,
+                        outcome_id=outcome_id,
+                        # Default assessment values from template (if provided)
+                        students_took=payload.get("students_took"),
+                        students_passed=payload.get("students_passed"),
+                        assessment_tool=payload.get("assessment_tool"),
+                        # Default status
+                        status=payload.get("status", "unassigned"),
+                        approval_status="pending",
+                    )
+                    session.add(section_outcome)
+
             return outcome_id
 
     def update_course_outcome(
@@ -705,14 +746,19 @@ class SQLiteDatabase(DatabaseInterface):
         return self.update_course_outcome(outcome_id, update_data)
 
     def delete_course_outcome(self, outcome_id: str) -> bool:
-        """Delete course outcome."""
         try:
             with self.sqlite.session_scope() as session:
                 outcome = session.get(CourseOutcome, outcome_id)
-                if not outcome:
-                    return False
-                session.delete(outcome)
-                return True
+                if outcome:
+                    # Manual cascade for section outcomes
+                    session.execute(
+                        delete(CourseSectionOutcome).where(
+                            CourseSectionOutcome.outcome_id == outcome_id
+                        )
+                    )
+                    session.delete(outcome)
+                    return True
+                return False
         except Exception as e:
             logger.error(f"Failed to delete outcome: {e}")
             return False
@@ -752,6 +798,60 @@ class SQLiteDatabase(DatabaseInterface):
                 .first()
             )
             return to_dict(section_outcome) if section_outcome else None
+
+    def get_section_outcome(self, section_outcome_id: str) -> Optional[Dict[str, Any]]:
+        """Get a single section outcome by ID."""
+        with self.sqlite.session_scope() as session:
+            section_outcome = session.get(CourseSectionOutcome, section_outcome_id)
+            return to_dict(section_outcome) if section_outcome else None
+
+    def get_section_outcomes_by_section(self, section_id: str) -> List[Dict[str, Any]]:
+        """Get all section outcomes for a specific section."""
+        with self.sqlite.session_scope() as session:
+            section_outcomes = (
+                session.execute(
+                    select(CourseSectionOutcome).where(
+                        CourseSectionOutcome.section_id == section_id
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            return [to_dict(so) for so in section_outcomes]
+
+    def get_section_outcomes_by_outcome(self, outcome_id: str) -> List[Dict[str, Any]]:
+        """Get all section outcomes for a course outcome (template)."""
+        with self.sqlite.session_scope() as session:
+            section_outcomes = (
+                session.execute(
+                    select(CourseSectionOutcome).where(
+                        CourseSectionOutcome.outcome_id == outcome_id
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            return [to_dict(so) for so in section_outcomes]
+
+    def update_section_outcome(
+        self, section_outcome_id: str, outcome_data: Dict[str, Any]
+    ) -> bool:
+        """Update section outcome details (status, assessment data, workflow fields)."""
+        try:
+            with self.sqlite.session_scope() as session:
+                section_outcome = session.get(CourseSectionOutcome, section_outcome_id)
+                if not section_outcome:
+                    return False
+
+                for key, value in outcome_data.items():
+                    if hasattr(section_outcome, key) and key != "id":
+                        setattr(section_outcome, key, value)
+
+                section_outcome.updated_at = datetime.now(timezone.utc)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to update section outcome: {e}")
+            return False
 
     def get_outcomes_by_status(
         self,
@@ -798,6 +898,49 @@ class SQLiteDatabase(DatabaseInterface):
             # Use distinct to prevent duplicates when joining through multiple sections
             outcomes = session.execute(query.distinct()).scalars().all()
             return [to_dict(outcome) for outcome in outcomes]
+
+    def get_section_outcomes_by_criteria(
+        self,
+        institution_id: str,
+        status: Optional[str] = None,
+        program_id: Optional[str] = None,
+        term_id: Optional[str] = None,
+        course_id: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get section outcomes filtered by various criteria.
+        This is the source of truth for workflow audits (section-level granularity).
+        """
+        with self.sqlite.session_scope() as session:
+            # Start with CourseSectionOutcome and join up to Course/Institution
+            query = (
+                select(CourseSectionOutcome)
+                .join(
+                    CourseSection, CourseSectionOutcome.section_id == CourseSection.id
+                )
+                .join(CourseOffering, CourseSection.offering_id == CourseOffering.id)
+                .join(Course, CourseOffering.course_id == Course.id)
+                .where(Course.institution_id == institution_id)
+            )
+
+            if status and status != "all":
+                query = query.where(CourseSectionOutcome.status == status)
+
+            if course_id:
+                query = query.where(Course.id == course_id)
+
+            if term_id:
+                query = query.where(CourseOffering.term_id == term_id)
+
+            if program_id:
+                from src.models.models_sql import course_program_table
+
+                query = query.join(
+                    course_program_table, Course.id == course_program_table.c.course_id
+                ).where(course_program_table.c.program_id == program_id)
+
+            results = session.execute(query).scalars().all()
+            return [to_dict(res) for res in results]
 
     def get_sections_by_course(self, course_id: str) -> List[Dict[str, Any]]:
         """Get all course sections for a given course."""

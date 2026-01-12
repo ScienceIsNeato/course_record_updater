@@ -155,8 +155,11 @@ def _setup_rework_test_data(admin_page, institution_id):
     )
     assert clo_response.ok, f"Failed to create CLO: {clo_response.text()}"
     clo_id = clo_response.json()["outcome_id"]
+    section_outcome_ids = clo_response.json().get("section_outcome_ids", [])
+    assert len(section_outcome_ids) > 0, "No section outcomes created"
+    section_outcome_id = section_outcome_ids[0]  # Use first section outcome
 
-    # Submit CLO via instructor context
+    # Submit CLO via instructor context (using section_outcome_id)
     instructor_context = admin_page.context.browser.new_context()
     instructor_page = instructor_context.new_page()
     login_as_user(instructor_page, BASE_URL, instructor_email, "TestUser123!")
@@ -169,7 +172,7 @@ def _setup_rework_test_data(admin_page, institution_id):
     )
 
     submit_response = instructor_page.request.post(
-        f"{BASE_URL}/api/outcomes/{clo_id}/submit",
+        f"{BASE_URL}/api/outcomes/{section_outcome_id}/submit",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": instructor_csrf if instructor_csrf else "",
@@ -181,13 +184,14 @@ def _setup_rework_test_data(admin_page, institution_id):
 
     return {
         "clo_id": clo_id,
+        "section_outcome_id": section_outcome_id,
         "course_id": course_id,
         "instructor_email": instructor_email,
         "csrf_token": csrf_token,
     }
 
 
-def _step_admin_requests_rework(admin_page, clo_id):
+def _step_admin_requests_rework(admin_page, clo_id, section_outcome_id):
     """Admin navigates to audit and requests rework."""
     admin_page.goto(f"{BASE_URL}/audit-clo")
     expect(admin_page).to_have_url(f"{BASE_URL}/audit-clo")
@@ -198,7 +202,7 @@ def _step_admin_requests_rework(admin_page, clo_id):
     admin_page.wait_for_selector("#cloListContainer", timeout=10000)
 
     # Click CLO row
-    clo_row = admin_page.locator(f'tr[data-outcome-id="{clo_id}"]')
+    clo_row = admin_page.locator(f'tr[data-outcome-id="{section_outcome_id}"]')
     expect(clo_row).to_be_visible()
     clo_row.click()
 
@@ -226,20 +230,20 @@ def _step_admin_requests_rework(admin_page, clo_id):
     expect(detail_modal).not_to_be_visible()
 
 
-def _step_verify_rework_status(admin_page, clo_id, csrf_token):
+def _step_verify_rework_status(admin_page, clo_id, section_outcome_id, csrf_token):
     """Verify status updated to approval_pending/needs_rework."""
     # Check UI list
     filter_select = admin_page.locator("#statusFilter")
     filter_select.select_option("approval_pending")
     admin_page.wait_for_timeout(1000)
 
-    clo_row = admin_page.locator(f'tr[data-outcome-id="{clo_id}"]')
+    clo_row = admin_page.locator(f'tr[data-outcome-id="{section_outcome_id}"]')
     expect(clo_row).to_be_visible()
     expect(clo_row.locator("td").nth(0)).to_contain_text("Needs Rework")
 
     # Check API
     outcome_response = admin_page.request.get(
-        f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{section_outcome_id}/audit-details",
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome_response.ok
@@ -313,10 +317,11 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
     csrf_token = data["csrf_token"]
 
     # Step 2: Request Rework
-    _step_admin_requests_rework(admin_page, clo_id)
+    section_outcome_id = data["section_outcome_id"]
+    _step_admin_requests_rework(admin_page, clo_id, section_outcome_id)
 
     # Step 3: Verify Status
-    _step_verify_rework_status(admin_page, clo_id, csrf_token)
+    _step_verify_rework_status(admin_page, clo_id, section_outcome_id, csrf_token)
 
     # Step 4: Instructor Resubmit
     instructor_page = admin_page.context.new_page()

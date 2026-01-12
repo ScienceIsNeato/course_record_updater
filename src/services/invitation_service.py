@@ -18,13 +18,14 @@ UTC_OFFSET = "+00:00"
 
 import src.database.database_service as db
 from src.models.models import INVITATION_STATUSES, User, UserInvitation
+from src.utils.logging_config import get_logger
 from src.utils.time_utils import get_current_time
 
 from .auth_service import UserRole
 from .email_service import EmailService
 from .password_service import PasswordService
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Constants to avoid duplicate literals
 INVITATION_NOT_FOUND_MSG = "Invitation not found"
@@ -179,6 +180,13 @@ class InvitationService:
             InvitationError: If email sending fails
         """
         try:
+            section_context = None
+            section_id = invitation_data.get("section_id")
+            if section_id:
+                section_context = InvitationService._build_section_invite_context(
+                    section_id
+                )
+
             # Send invitation email with inviter and institution information
             success = EmailService.send_invitation_email(
                 email=invitation_data["email"],
@@ -191,6 +199,7 @@ class InvitationService:
                 ),
                 role=invitation_data["role"],
                 personal_message=invitation_data.get("personal_message"),
+                section_context=section_context,
             )
             email_error = EmailService.pop_last_error_message()
 
@@ -218,6 +227,47 @@ class InvitationService:
                 f"[Invitation Service] Error sending invitation email: {str(e)}"
             )
             raise InvitationError(f"Failed to send invitation email: {str(e)}")
+
+    @staticmethod
+    def _build_section_invite_context(section_id: str) -> Optional[str]:
+        """Build a readable course/section context string for invitations."""
+        section = db.get_section_by_id(section_id)
+        if not section:
+            return None
+
+        section_number = section.get("section_number") or section.get("section")
+        offering_id = section.get("offering_id")
+        course_number = None
+        course_title = None
+        term_name = None
+
+        if offering_id:
+            offering = db.get_course_offering(offering_id)
+            if offering:
+                course_id = offering.get("course_id")
+                term_id = offering.get("term_id")
+                if course_id:
+                    course = db.get_course_by_id(course_id)
+                    if course:
+                        course_number = course.get("course_number")
+                        course_title = course.get("course_title")
+                if term_id:
+                    term = db.get_term_by_id(term_id)
+                    if term:
+                        term_name = term.get("term_name") or term.get("name")
+
+        parts = []
+        if term_name:
+            parts.append(term_name)
+        if course_number:
+            if course_title:
+                parts.append(f"{course_number} - {course_title}")
+            else:
+                parts.append(course_number)
+        if section_number:
+            parts.append(f"Section {section_number}")
+
+        return " • ".join(parts) if parts else None
 
     @staticmethod
     def accept_invitation(
@@ -424,8 +474,14 @@ class InvitationService:
                 )
                 return
 
-            # Update section with new instructor
-            db.update_course_section(section_id, {"instructor_id": user_id})
+            # Update section with new instructor and assignment metadata
+            if not db.assign_instructor(section_id, user_id):
+                logger.warning(
+                    "[Invitation Service] Failed to assign instructor %s to section %s",
+                    logger.sanitize(user_id),
+                    logger.sanitize(section_id),
+                )
+                return
 
             logger.info(
                 f"[Invitation Service] Assigned instructor {user_id} to section {section_id}"

@@ -143,6 +143,15 @@
     flex: 1 1 auto;
 }
 
+.input-group {
+    align-items: stretch;
+}
+
+.input-group .form-floating .form-control {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
 .password-toggle-btn {
     display: flex;
     align-items: center;
@@ -152,6 +161,7 @@
     border-left: none;
     padding: 0 1rem;
     min-width: 52px;
+    height: calc(3.5rem + 2px);
 }
 
 .password-toggle-btn:hover {

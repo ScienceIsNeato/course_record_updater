@@ -164,7 +164,8 @@ function exportCurrentViewToCsv(cloList) {
 async function approveCLO() {
   if (!globalThis.currentCLO) return;
 
-  const outcomeId = globalThis.currentCLO.outcome_id;
+  const outcomeId =
+    globalThis.currentCLO.id || globalThis.currentCLO.outcome_id;
   if (!outcomeId) {
     alert("Error: CLO ID not found");
     return;
@@ -219,7 +220,8 @@ async function markAsNCI() {
   }
 
   try {
-    const outcomeId = globalThis.currentCLO.outcome_id;
+    const outcomeId =
+      globalThis.currentCLO.id || globalThis.currentCLO.outcome_id; // Use Section ID, not Template ID
 
     const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
     const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
@@ -476,12 +478,13 @@ globalThis.approveOutcome = approveOutcome;
 globalThis.assignOutcome = assignOutcome;
 globalThis.reopenOutcome = reopenOutcome;
 globalThis.remindOutcome = remindOutcome;
+globalThis.submitReminder = submitReminder;
 
 /**
  * Direct Approve from Table
  */
 async function approveOutcome(outcomeId) {
-  if (!confirm("Are you sure you want to approve this outcome?")) return;
+  if (!confirm("Are you sure you want to approve this outcome?")) return false;
   try {
     const csrfToken = document.querySelector(
       'meta[name="csrf-token"]',
@@ -494,14 +497,16 @@ async function approveOutcome(outcomeId) {
       },
     });
     if (res.ok) {
-      // alert("Approved successfully!"); // Optional
       await globalThis.loadCLOs();
+      return true;
     } else {
       const err = await res.json();
       alert("Failed to approve: " + (err.error || "Unknown error"));
+      return false;
     }
   } catch (e) {
     alert("Error approving outcome: " + e.message);
+    return false;
   }
 }
 
@@ -511,7 +516,9 @@ async function approveOutcome(outcomeId) {
 let currentAssignSectionId = null;
 
 async function assignOutcome(outcomeId) {
-  const clo = allCLOs.find((c) => (c.outcome_id || c.id) === outcomeId);
+  const clo = allCLOs.find(
+    (c) => c.id === outcomeId || c.outcome_id === outcomeId,
+  );
   if (!clo) return;
 
   // Ensure form is bound
@@ -527,7 +534,7 @@ async function assignOutcome(outcomeId) {
   currentAssignSectionId = clo.section_id;
 
   const modalEl = document.getElementById("assignInstructorModal");
-  const modal = new bootstrap.Modal(modalEl);
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   modal.show();
 
   await loadInstructors();
@@ -599,6 +606,110 @@ async function handleAssignSubmit(e) {
   }
 }
 
+async function handleInviteInstructorSubmit(event) {
+  event.preventDefault();
+
+  const emailInput = document.getElementById("inviteEmail");
+  const firstNameInput = document.getElementById("inviteFirstName");
+  const lastNameInput = document.getElementById("inviteLastName");
+  const alertBox = document.getElementById("inviteInstructorAlert");
+  const submitBtn = document.getElementById("sendInviteBtn");
+
+  if (!emailInput || !firstNameInput || !lastNameInput) {
+    alert("Invite form is missing required fields.");
+    return;
+  }
+
+  if (!currentAssignSectionId) {
+    alert("Missing section context for this invitation.");
+    return;
+  }
+
+  const form = event.target;
+  if (form && !form.checkValidity()) {
+    form.classList.add("was-validated");
+    return;
+  }
+
+  if (alertBox) {
+    alertBox.classList.add("d-none");
+    alertBox.classList.remove("alert-success", "alert-danger");
+    alertBox.textContent = "";
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+  }
+
+  try {
+    const csrfToken = document.querySelector(
+      'meta[name="csrf-token"]',
+    )?.content;
+
+    const response = await fetch("/api/auth/invite", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(csrfToken && { "X-CSRFToken": csrfToken }),
+      },
+      body: JSON.stringify({
+        invitee_email: emailInput.value.trim(),
+        invitee_role: "instructor",
+        first_name: firstNameInput.value.trim(),
+        last_name: lastNameInput.value.trim(),
+        section_id: currentAssignSectionId,
+        replace_existing: true,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || "Failed to send invitation");
+    }
+
+    if (alertBox) {
+      alertBox.classList.remove("d-none");
+      alertBox.classList.add("alert-success");
+      alertBox.textContent = result.message || "Invitation sent successfully!";
+    }
+
+    const modalEl = document.getElementById("inviteInstructorModal");
+    const modal = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
+    if (modal) {
+      modal.hide();
+    }
+
+    const successModalEl = document.getElementById("inviteSuccessModal");
+    if (successModalEl) {
+      const successMessage = document.getElementById("inviteSuccessMessage");
+      if (successMessage) {
+        successMessage.textContent =
+          result.message || "Invitation sent successfully.";
+      }
+      bootstrap.Modal.getOrCreateInstance(successModalEl).show();
+    }
+
+    if (form) {
+      form.reset();
+      form.classList.remove("was-validated");
+    }
+  } catch (error) {
+    if (alertBox) {
+      alertBox.classList.remove("d-none");
+      alertBox.classList.add("alert-danger");
+      alertBox.textContent =
+        error.message || "Failed to send invitation. Please try again.";
+    } else {
+      alert("Failed to send invitation: " + error.message);
+    }
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+    }
+  }
+}
+
 /**
  * Reopen Outcome (Set status to in_progress)
  */
@@ -613,18 +724,18 @@ async function reopenOutcome(outcomeId) {
     const csrfToken = document.querySelector(
       'meta[name="csrf-token"]',
     )?.content;
-    const res = await fetch(`/api/outcomes/${outcomeId}`, {
-      method: "PUT",
+    const res = await fetch(`/api/outcomes/${outcomeId}/reopen`, {
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-CSRF-Token": csrfToken,
       },
-      body: JSON.stringify({
-        status: "in_progress",
-        approval_status: "pending",
-      }),
     });
     if (res.ok) {
+      const modalEl = document.getElementById("cloDetailModal");
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+
       await globalThis.loadCLOs();
     } else {
       const err = await res.json();
@@ -635,15 +746,149 @@ async function reopenOutcome(outcomeId) {
   }
 }
 
+let reminderContext = null;
+
+function formatShortDate(dateString) {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toLocaleDateString();
+}
+
 /**
- * Send Reminder
+ * Send Reminder (opens modal and populates message)
  */
 async function remindOutcome(outcomeId, instructorId, courseId) {
+  if (!confirm("Are you sure you want to send a reminder?")) return;
   if (!instructorId || !courseId) {
     alert("Missing instructor or course information for this outcome.");
     return;
   }
-  if (!confirm("Send reminder email to instructor?")) return;
+
+  const clo = allCLOs.find(
+    (c) => c.id === outcomeId || c.outcome_id === outcomeId,
+  );
+  const modalEl = document.getElementById("sendReminderModal");
+  if (!modalEl) {
+    alert("Reminder modal is not available. Please refresh and try again.");
+    return;
+  }
+
+  reminderContext = {
+    outcomeId,
+    instructorId,
+    courseId,
+    sectionId: clo?.section_id || null,
+  };
+
+  const reminderCloDescription = document.getElementById(
+    "reminderCloDescription",
+  );
+  const reminderCourseDescription = document.getElementById(
+    "reminderCourseDescription",
+  );
+  const reminderInstructorEmail = document.getElementById(
+    "reminderInstructorEmail",
+  );
+  const reminderMessage = document.getElementById("reminderMessage");
+
+  const courseNumber = clo?.course_number || "Course";
+  const courseTitle = clo?.course_title || "";
+  const sectionLabel = clo?.section_number
+    ? `Section ${clo.section_number}`
+    : "Section";
+  const cloLabel = clo?.clo_number ? `CLO #${clo.clo_number}` : "CLO";
+  const termLabel = clo?.term_name ? `${clo.term_name} - ` : "";
+
+  const courseDisplay = courseTitle
+    ? `${courseNumber} - ${courseTitle}`
+    : courseNumber;
+
+  if (reminderCloDescription) {
+    reminderCloDescription.textContent = `${courseNumber} • ${sectionLabel} • ${cloLabel}`;
+  }
+  if (reminderCourseDescription) {
+    reminderCourseDescription.textContent = courseDisplay;
+  }
+
+  let instructorName = clo?.instructor_name || "Instructor";
+  let instructorEmail = clo?.instructor_email || "";
+  let dueDateText = null;
+
+  try {
+    const instructorResponse = await fetch(`/api/users/${instructorId}`);
+    if (instructorResponse.ok) {
+      const instructorData = await instructorResponse.json();
+      const user = instructorData.user || {};
+      instructorName =
+        user.display_name ||
+        `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
+        instructorName;
+      instructorEmail = user.email || instructorEmail;
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn("Failed to load instructor details:", error);
+  }
+
+  if (reminderInstructorEmail) {
+    reminderInstructorEmail.textContent =
+      instructorEmail || "Instructor email unavailable";
+  }
+
+  if (reminderContext.sectionId) {
+    try {
+      const sectionResponse = await fetch(
+        `/api/sections/${reminderContext.sectionId}`,
+      );
+      if (sectionResponse.ok) {
+        const sectionData = await sectionResponse.json();
+        const dueDate = sectionData.section?.assessment_due_date;
+        if (dueDate) {
+          dueDateText = formatShortDate(dueDate);
+        }
+      }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn("Failed to load section due date:", error);
+    }
+  }
+
+  if (reminderMessage) {
+    const dueLine = dueDateText ? `\nSubmission due date: ${dueDateText}` : "";
+    reminderMessage.value =
+      `Dear ${instructorName},\n\n` +
+      `This is a friendly reminder to submit your assessment results for ` +
+      `${termLabel}${courseNumber} (${sectionLabel}) ${cloLabel}.` +
+      `${dueLine}\n\n` +
+      `Thank you.`;
+  }
+
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  modal.show();
+}
+
+/**
+ * Submit reminder email
+ */
+async function submitReminder(event) {
+  if (event && typeof event.preventDefault === "function") {
+    event.preventDefault();
+  }
+
+  if (!reminderContext) {
+    alert("Reminder context is missing. Please try again.");
+    return;
+  }
+
+  const reminderMessage = document.getElementById("reminderMessage");
+  const message = reminderMessage?.value?.trim() || "";
+  if (!message) {
+    alert("Please provide a reminder message.");
+    return;
+  }
 
   try {
     const csrfToken = document.querySelector(
@@ -656,12 +901,16 @@ async function remindOutcome(outcomeId, instructorId, courseId) {
         "X-CSRF-Token": csrfToken,
       },
       body: JSON.stringify({
-        instructor_id: instructorId,
-        course_id: courseId,
+        instructor_id: reminderContext.instructorId,
+        course_id: reminderContext.courseId,
+        message,
       }),
     });
 
     if (res.ok) {
+      const modalEl = document.getElementById("sendReminderModal");
+      const modal = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
+      if (modal) modal.hide();
       alert("Reminder sent successfully.");
     } else {
       const err = await res.json();
@@ -685,10 +934,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const cloDetailModal = document.getElementById("cloDetailModal");
   const requestReworkModal = document.getElementById("requestReworkModal");
   const requestReworkForm = document.getElementById("requestReworkForm");
+  const sendReminderForm = document.getElementById("sendReminderForm");
+  const inviteNewInstructorBtn = document.getElementById(
+    "inviteNewInstructorBtn",
+  );
+  const inviteInstructorModal = document.getElementById(
+    "inviteInstructorModal",
+  );
+  const inviteInstructorForm = document.getElementById("inviteInstructorForm");
 
   // State - use window for global access by extracted functions
   globalThis.currentCLO = null;
-  let allCLOs = [];
+  allCLOs = [];
 
   // Expose functions on window for access by extracted functions (approveCLO, markAsNCI)
   globalThis.loadCLOs = loadCLOs;
@@ -742,6 +999,28 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     await submitReworkRequest();
   });
+  if (sendReminderForm) {
+    sendReminderForm.addEventListener("submit", submitReminder);
+  }
+  if (inviteNewInstructorBtn && inviteInstructorModal) {
+    inviteNewInstructorBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      const assignModalEl = document.getElementById("assignInstructorModal");
+      const assignModal = assignModalEl
+        ? bootstrap.Modal.getInstance(assignModalEl)
+        : null;
+      if (assignModal) {
+        assignModal.hide();
+      }
+      bootstrap.Modal.getOrCreateInstance(inviteInstructorModal).show();
+    });
+  }
+  if (inviteInstructorForm) {
+    inviteInstructorForm.addEventListener(
+      "submit",
+      handleInviteInstructorSubmit,
+    );
+  }
 
   /**
    * Initialize filters (programs, terms)
@@ -849,7 +1128,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const data = await response.json();
-      console.log("DEBUG: loadCLOs data:", JSON.stringify(data));
       allCLOs = data.outcomes || [];
 
       // Update stats
@@ -955,20 +1233,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderCLOList() {
     cloListContainer.textContent = ""; // Clear current content
 
-    if (allCLOs.length === 0) {
-      const emptyDiv = document.createElement("div");
-      emptyDiv.className = "text-center py-5";
-      const p = document.createElement("p");
-      p.className = "text-muted";
-      p.textContent = "No CLOs found for the selected filter.";
-      emptyDiv.appendChild(p);
-      cloListContainer.appendChild(emptyDiv);
-      return;
-    }
-
-    // Sort CLOs
-    const sorted = sortCLOs([...allCLOs]);
-
     const tableResp = document.createElement("div");
     tableResp.className = "table-responsive";
 
@@ -997,6 +1261,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Body
     const tbody = document.createElement("tbody");
+
+    if (allCLOs.length === 0) {
+      const emptyRow = document.createElement("tr");
+      const emptyCell = document.createElement("td");
+      emptyCell.colSpan = 8;
+      emptyCell.className = "text-center text-muted py-4";
+      emptyCell.textContent = "No CLOs found for the selected filter.";
+      emptyRow.appendChild(emptyCell);
+      tbody.appendChild(emptyRow);
+      table.appendChild(tbody);
+      tableResp.appendChild(table);
+      cloListContainer.appendChild(tableResp);
+      return;
+    }
+
+    // Sort CLOs
+    const sorted = sortCLOs([...allCLOs]);
 
     // Grouping Logic
     const groupedData = {};
@@ -1047,27 +1328,44 @@ document.addEventListener("DOMContentLoaded", () => {
         Object.keys(sectionGroups)
           .sort()
           .forEach((sectionKey) => {
+            const sectionSafeKey = `${safeKey}-${sectionKey.replace(/[^a-zA-Z0-9]/g, "")}`;
+
             // Section Header
             const sectionRow = document.createElement("tr");
-            sectionRow.className = `table-white group-${safeKey} collapse show`; // Collapsible
+            sectionRow.className = `table-secondary group-${safeKey} collapse show`; // Collapsible
             const sectionCell = document.createElement("td");
             sectionCell.colSpan = 8;
             sectionCell.style.paddingLeft = "30px";
+            sectionCell.classList.add("fw-semibold");
 
             // Build section header using safe DOM construction
+            const sectionDiv = document.createElement("div");
+            sectionDiv.className = "d-flex align-items-center";
+            sectionDiv.style.cursor = "pointer";
+            sectionDiv.setAttribute("data-bs-toggle", "collapse");
+            sectionDiv.setAttribute(
+              "data-bs-target",
+              `.section-${sectionSafeKey}`,
+            );
+
+            const sectionChevron = document.createElement("i");
+            sectionChevron.className = "fas fa-chevron-down me-2";
+            sectionDiv.appendChild(sectionChevron);
+
             const sectionStrong = document.createElement("strong");
             sectionStrong.className = "text-secondary";
             sectionStrong.textContent = sectionKey;
-            sectionCell.appendChild(sectionStrong);
+            sectionDiv.appendChild(sectionStrong);
+            sectionCell.appendChild(sectionDiv);
 
             sectionRow.appendChild(sectionCell);
             tbody.appendChild(sectionRow);
 
             // CLO Rows
             sectionGroups[sectionKey].forEach((clo) => {
-              const outcomeId = clo.outcome_id || clo.id || "";
+              const outcomeId = clo.id || clo.outcome_id || "";
               const tr = document.createElement("tr");
-              tr.className = `clo-row group-${safeKey} collapse show`; // Collapsible
+              tr.className = `clo-row group-${safeKey} section-${sectionSafeKey} collapse show`; // Collapsible
               tr.style.cursor = "pointer";
               tr.dataset.outcomeId = outcomeId;
 
@@ -1125,7 +1423,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 btn.innerHTML = '<i class="fas fa-check"></i>';
                 btn.onclick = (e) => {
                   e.stopPropagation();
-                  approveOutcome(clo.outcome_id);
+                  approveOutcome(clo.id || clo.outcome_id);
                 };
                 actionBtn = btn;
               } else if (clo.status === "unassigned") {
@@ -1135,7 +1433,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 btn.innerHTML = '<i class="fas fa-user-plus"></i>';
                 btn.onclick = (e) => {
                   e.stopPropagation();
-                  assignOutcome(clo.outcome_id);
+                  assignOutcome(clo.id || clo.outcome_id);
                 };
                 actionBtn = btn;
               } else if (["approved", "never_coming_in"].includes(clo.status)) {
@@ -1145,7 +1443,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 btn.innerHTML = '<i class="fas fa-undo"></i>';
                 btn.onclick = (e) => {
                   e.stopPropagation();
-                  reopenOutcome(clo.outcome_id);
+                  reopenOutcome(clo.id || clo.outcome_id);
                 };
                 actionBtn = btn;
               } else if (
@@ -1159,23 +1457,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 btn.innerHTML = '<i class="fas fa-bell"></i>';
                 btn.onclick = (e) => {
                   e.stopPropagation();
-                  remindOutcome(
-                    clo.outcome_id,
-                    clo.instructor_id,
-                    clo.course_id,
-                  );
+                  remindOutcome(outcomeId, clo.instructor_id, clo.course_id);
                 };
                 actionBtn = btn;
               }
 
               const viewBtn = document.createElement("button");
               viewBtn.className = "btn btn-outline-secondary";
-              viewBtn.dataset.outcomeId = clo.outcome_id;
+              viewBtn.dataset.outcomeId = clo.id || clo.outcome_id;
               viewBtn.title = "View Details";
               viewBtn.innerHTML = '<i class="fas fa-eye"></i>';
               viewBtn.onclick = (e) => {
                 e.stopPropagation();
-                globalThis.showCLODetails(clo.outcome_id);
+                globalThis.showCLODetails(outcomeId);
               };
 
               if (actionBtn) btnGroup.appendChild(actionBtn);
@@ -1263,15 +1557,38 @@ document.addEventListener("DOMContentLoaded", () => {
         "assigned",
         "in_progress",
       ].includes(clo.status);
-      document.getElementById("approveBtn").style.display = canApprove
-        ? "inline-block"
-        : "none";
-      document.getElementById("requestReworkBtn").style.display = canApprove
-        ? "inline-block"
-        : "none";
-      document.getElementById("markNCIBtn").style.display = canMarkNCI
-        ? "inline-block"
-        : "none";
+      const canReopen = ["approved", "never_coming_in"].includes(clo.status);
+      const reopenBtn = document.getElementById("reopenBtn");
+      if (reopenBtn) {
+        reopenBtn.style.display = canReopen ? "inline-block" : "none";
+        reopenBtn.onclick = () => reopenOutcome(clo.id);
+      }
+
+      const approveBtn = document.getElementById("approveBtn");
+      if (approveBtn) {
+        approveBtn.style.display = canApprove ? "inline-block" : "none";
+        approveBtn.onclick = async () => {
+          if (await approveOutcome(clo.id)) {
+            bootstrap.Modal.getInstance(
+              document.getElementById("cloDetailModal"),
+            ).hide();
+          }
+        };
+      }
+
+      const requestReworkBtn = document.getElementById("requestReworkBtn");
+      if (requestReworkBtn) {
+        requestReworkBtn.style.display = canApprove ? "inline-block" : "none";
+        requestReworkBtn.onclick = () => {
+          globalThis.openReworkModal();
+        };
+      }
+
+      const markNCIBtn = document.getElementById("markNCIBtn");
+      if (markNCIBtn) {
+        markNCIBtn.style.display = canMarkNCI ? "inline-block" : "none";
+        markNCIBtn.onclick = () => markAsNCI(clo.id);
+      }
 
       const modal = new bootstrap.Modal(cloDetailModal);
       modal.show();
@@ -1316,7 +1633,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const outcomeId = globalThis.currentCLO.outcome_id;
+    const outcomeId = globalThis.currentCLO.id;
     if (!outcomeId) {
       alert("Error: CLO ID not found");
       return;
@@ -1386,6 +1703,7 @@ if (typeof module !== "undefined" && module.exports) {
     handleAssignSubmit,
     reopenOutcome,
     remindOutcome,
+    submitReminder,
     // Note: sortCLOs and submitReworkRequest are inside DOMContentLoaded
     // and cannot be exported (they depend on DOM element references)
     // Expose internal state accessor for testing

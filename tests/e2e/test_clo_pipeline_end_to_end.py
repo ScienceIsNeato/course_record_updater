@@ -124,20 +124,29 @@ def _step_1_create_structure(admin_page, institution_id, csrf_token):
     )
     assert clo_response.ok
     clo_id = clo_response.json()["outcome_id"]
+    section_outcome_ids = clo_response.json().get("section_outcome_ids", [])
+    assert len(section_outcome_ids) > 0, "No section outcomes created"
+    section_outcome_id = section_outcome_ids[0]
 
     # Verify CLO is UNASSIGNED via API
     outcome = admin_page.request.get(
-        f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{section_outcome_id}/audit-details",
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
     assert outcome.json()["outcome"]["status"] == "unassigned"
 
-    return program_id, course_id, section_id, clo_id
+    return program_id, course_id, section_id, clo_id, section_outcome_id
 
 
 def _step_2_assign_instructor(
-    admin_page, institution_id, program_id, section_id, clo_id, csrf_token
+    admin_page,
+    institution_id,
+    program_id,
+    section_id,
+    clo_id,
+    section_outcome_id,
+    csrf_token,
 ):
     """Create instructor and assign to section."""
     # Create instructor
@@ -186,7 +195,7 @@ def _step_2_assign_instructor(
 
     # Verify CLO is ASSIGNED
     outcome = admin_page.request.get(
-        f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{section_outcome_id}/audit-details",
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
@@ -196,7 +205,7 @@ def _step_2_assign_instructor(
 
 
 def _step_3_instructor_edits(
-    instructor_page, course_id, clo_id, admin_page, csrf_token
+    instructor_page, course_id, clo_id, section_outcome_id, admin_page, csrf_token
 ):
     """Instructor edits CLO (IN_PROGRESS)."""
     instructor_page.goto(f"{BASE_URL}/assessments")
@@ -229,7 +238,7 @@ def _step_3_instructor_edits(
 
     # Verify status is IN_PROGRESS
     outcome = admin_page.request.get(
-        f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{section_outcome_id}/audit-details",
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
@@ -237,7 +246,7 @@ def _step_3_instructor_edits(
 
 
 def _step_4_instructor_submits(
-    instructor_page, clo_id, instructor_id, admin_page, csrf_token
+    instructor_page, clo_id, section_outcome_id, instructor_id, admin_page, csrf_token
 ):
     """Instructor submits CLO (AWAITING_APPROVAL)."""
     instructor_csrf = instructor_page.evaluate(
@@ -245,7 +254,7 @@ def _step_4_instructor_submits(
     )
 
     submit_response = instructor_page.request.post(
-        f"{BASE_URL}/api/outcomes/{clo_id}/submit",
+        f"{BASE_URL}/api/outcomes/{section_outcome_id}/submit",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": instructor_csrf if instructor_csrf else "",
@@ -256,7 +265,7 @@ def _step_4_instructor_submits(
 
     # Verify status is AWAITING_APPROVAL
     outcome = admin_page.request.get(
-        f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{section_outcome_id}/audit-details",
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
@@ -266,7 +275,7 @@ def _step_4_instructor_submits(
     assert outcome_data["submitted_by_user_id"] == instructor_id
 
 
-def _step_5_admin_rework(admin_page, clo_id, csrf_token):
+def _step_5_admin_rework(admin_page, clo_id, section_outcome_id, csrf_token):
     """Admin requests rework (APPROVAL_PENDING)."""
     admin_page.goto(f"{BASE_URL}/audit-clo")
     admin_page.wait_for_load_state("networkidle")
@@ -304,7 +313,7 @@ def _step_5_admin_rework(admin_page, clo_id, csrf_token):
 
     # Verify status is APPROVAL_PENDING
     outcome = admin_page.request.get(
-        f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{section_outcome_id}/audit-details",
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
@@ -316,7 +325,7 @@ def _step_5_admin_rework(admin_page, clo_id, csrf_token):
 
 
 def _step_6_instructor_resubmits(
-    instructor_page, course_id, clo_id, admin_page, csrf_token
+    instructor_page, course_id, clo_id, section_outcome_id, admin_page, csrf_token
 ):
     """Instructor addresses feedback and resubmits (AWAITING_APPROVAL)."""
     instructor_page.goto(f"{BASE_URL}/assessments")
@@ -361,14 +370,14 @@ def _step_6_instructor_resubmits(
 
     # Verify status is AWAITING_APPROVAL again
     outcome = admin_page.request.get(
-        f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{section_outcome_id}/audit-details",
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
     assert outcome.json()["outcome"]["status"] == "awaiting_approval"
 
 
-def _step_7_admin_approves(admin_page, clo_id):
+def _step_7_admin_approves(admin_page, clo_id, section_outcome_id):
     """Admin approves (APPROVED)."""
     admin_page.goto(f"{BASE_URL}/audit-clo")
     admin_page.wait_for_load_state("networkidle")
@@ -394,10 +403,12 @@ def _step_7_admin_approves(admin_page, clo_id):
     expect(modal).not_to_be_visible(timeout=5000)
 
 
-def _verify_audit_trail(admin_page, clo_id, instructor_id, csrf_token):
+def _verify_audit_trail(
+    admin_page, clo_id, section_outcome_id, instructor_id, csrf_token
+):
     """Verify final state and audit trail."""
     outcome = admin_page.request.get(
-        f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{section_outcome_id}/audit-details",
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
@@ -440,13 +451,19 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     )
 
     # === STEP 1: Create structure ===
-    program_id, course_id, section_id, clo_id = _step_1_create_structure(
-        admin_page, institution_id, csrf_token
+    program_id, course_id, section_id, clo_id, section_outcome_id = (
+        _step_1_create_structure(admin_page, institution_id, csrf_token)
     )
 
     # === STEP 2: Assign instructor ===
     instructor_id = _step_2_assign_instructor(
-        admin_page, institution_id, program_id, section_id, clo_id, csrf_token
+        admin_page,
+        institution_id,
+        program_id,
+        section_id,
+        clo_id,
+        section_outcome_id,
+        csrf_token,
     )
 
     # === STEP 3: Instructor setup & edits ===
@@ -459,27 +476,44 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
         )
 
         _step_3_instructor_edits(
-            instructor_page, course_id, clo_id, admin_page, csrf_token
+            instructor_page,
+            course_id,
+            clo_id,
+            section_outcome_id,
+            admin_page,
+            csrf_token,
         )
 
         # === STEP 4: Instructor submits ===
         _step_4_instructor_submits(
-            instructor_page, clo_id, instructor_id, admin_page, csrf_token
+            instructor_page,
+            clo_id,
+            section_outcome_id,
+            instructor_id,
+            admin_page,
+            csrf_token,
         )
 
         # === STEP 5: Admin rework ===
-        _step_5_admin_rework(admin_page, clo_id, csrf_token)
+        _step_5_admin_rework(admin_page, clo_id, section_outcome_id, csrf_token)
 
         # === STEP 6: Instructor resubmits ===
         _step_6_instructor_resubmits(
-            instructor_page, course_id, clo_id, admin_page, csrf_token
+            instructor_page,
+            course_id,
+            clo_id,
+            section_outcome_id,
+            admin_page,
+            csrf_token,
         )
 
         # === STEP 7: Admin approves ===
-        _step_7_admin_approves(admin_page, clo_id)
+        _step_7_admin_approves(admin_page, clo_id, section_outcome_id)
 
         # === STEP 8: Verify audit trail ===
-        _verify_audit_trail(admin_page, clo_id, instructor_id, csrf_token)
+        _verify_audit_trail(
+            admin_page, clo_id, section_outcome_id, instructor_id, csrf_token
+        )
 
     finally:
         # Cleanup
