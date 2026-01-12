@@ -45,6 +45,7 @@ class CheckDef:
     flag: str
     name: str
     custom: Optional[Callable[[], "CheckResult"]] = None
+    depends_on: Optional[str] = None  # Flag of check that must complete first
 
 
 class CheckStatus(Enum):
@@ -109,7 +110,9 @@ class QualityGateExecutor:
             ),
             CheckDef("python-unit-tests", "🧪 Python Unit Tests (pytest, no coverage)"),
             CheckDef(
-                "python-coverage", "📊 Python Coverage (runs tests + 80% threshold)"
+                "python-coverage",
+                "📊 Python Coverage (runs tests + 80% threshold)",
+                depends_on="python-unit-tests",
             ),
             CheckDef(
                 "js-tests",
@@ -132,6 +135,7 @@ class QualityGateExecutor:
             CheckDef(
                 "python-new-code-coverage",
                 "📊 Python New Code Coverage (80% on changed files)",
+                depends_on="python-unit-tests",
             ),
             CheckDef("frontend-check", "🌐 Frontend Check (quick UI validation)"),
         ]
@@ -155,10 +159,12 @@ class QualityGateExecutor:
             CheckDef(
                 "python-coverage",
                 "📊 Python Coverage Analysis (80% threshold)",
+                depends_on="python-unit-tests",
             ),
             CheckDef(
                 "python-new-code-coverage",
                 "📊 Python New Code Coverage (80% on changed files)",
+                depends_on="python-unit-tests",
             ),
             CheckDef(
                 "js-tests",
@@ -840,21 +846,61 @@ class QualityGateExecutor:
         fail_fast: bool = True,
         verbose: bool = False,
     ) -> List[CheckResult]:
-        """Run multiple checks in parallel using ThreadPoolExecutor."""
+        """Run multiple checks in parallel using ThreadPoolExecutor.
+
+        Checks with depends_on will wait for their dependency to complete before starting.
+        All checks are submitted immediately for maximum parallelism.
+        """
         results: List[CheckResult] = []
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
 
+        # Track completed checks and their results for dependency handling
+        completed_checks: dict[str, CheckResult] = {}
+        dependency_events: dict[str, threading.Event] = {}
+
+        # Create events for checks that others depend on
+        for check in checks:
+            dependency_events[check.flag] = threading.Event()
+
+        def run_check_with_dependency(check: CheckDef) -> CheckResult:
+            """Run a check, waiting for its dependency if needed."""
+            # Wait for dependency to complete if this check has one
+            if check.depends_on and check.depends_on in dependency_events:
+                self.logger.info(
+                    f"⏳ {check.flag} waiting for {check.depends_on} to complete..."
+                )
+                dependency_events[check.depends_on].wait()
+
+                # If dependency failed, skip this check
+                if check.depends_on in completed_checks:
+                    dep_result = completed_checks[check.depends_on]
+                    if dep_result.status == CheckStatus.FAILED:
+                        return CheckResult(
+                            name=check.name,
+                            status=CheckStatus.SKIPPED,
+                            duration=0.0,
+                            output="",
+                            error=f"Skipped: dependency {check.depends_on} failed",
+                        )
+
+            # Run the actual check
+            if check.custom is not None:
+                result = check.custom()
+            else:
+                result = self.run_single_check(check.flag, check.name, verbose)
+
+            # Mark this check as completed and signal any waiting checks
+            completed_checks[check.flag] = result
+            if check.flag in dependency_events:
+                dependency_events[check.flag].set()
+
+            return result
+
         try:
-            # Submit all checks
-            # Build future_to_check mapping - checks can have optional custom functions
+            # Submit all checks immediately - dependencies handled internally
             future_to_check: dict[concurrent.futures.Future[CheckResult], CheckDef] = {}
             for check in checks:
-                if check.custom is not None:
-                    future = executor.submit(check.custom)
-                else:
-                    future = executor.submit(
-                        self.run_single_check, check.flag, check.name, verbose
-                    )
+                future = executor.submit(run_check_with_dependency, check)
                 future_to_check[future] = check
 
             # Collect results as they complete
@@ -1153,14 +1199,28 @@ class QualityGateExecutor:
         """Format the results into a comprehensive report."""
         passed_checks = [r for r in results if r.status == CheckStatus.PASSED]
         failed_checks = [r for r in results if r.status == CheckStatus.FAILED]
+        skipped_checks = [r for r in results if r.status == CheckStatus.SKIPPED]
 
         report = []
         report.extend(self._format_header(total_duration))
         report.extend(self._format_passed_checks(passed_checks))
         report.extend(self._format_failed_checks(failed_checks))
+        report.extend(self._format_skipped_checks(skipped_checks))
         report.extend(self._format_summary(failed_checks))
 
         return "\n".join(report)
+
+    def _format_skipped_checks(self, skipped_checks: List[CheckResult]) -> List[str]:
+        """Format skipped checks section."""
+        if not skipped_checks:
+            return []
+
+        lines = [f"⏭️  SKIPPED CHECKS ({len(skipped_checks)}):"]
+        for result in skipped_checks:
+            reason = result.error or "Dependency failed"
+            lines.append(f"   • {result.name}: {reason}")
+        lines.append("")
+        return lines
 
     def execute(
         self,
@@ -1173,9 +1233,10 @@ class QualityGateExecutor:
             checks: List of check names or aliases to run (required)
             fail_fast: If True, stop on first failure (default True)
 
-        Sequencing:
-            python-unit-tests MUST run before python-coverage/python-new-code-coverage
-            because it generates the coverage.xml file they analyze.
+        Dependencies:
+            Checks with depends_on will wait for their dependency to complete.
+            All checks start immediately for maximum parallelism - dependencies
+            are handled via threading.Event synchronization.
         """
         self.logger.info(
             "🔍 Running LoopCloser quality checks (PARALLEL MODE with auto-fix)..."
@@ -1192,62 +1253,14 @@ class QualityGateExecutor:
         # No shared server startup needed - checks are self-contained
 
         start_time = time.time()
-        all_results: List[CheckResult] = []
 
-        # Separate checks into phases for proper sequencing
-        # Phase 1: python-unit-tests (must complete first to generate coverage.xml)
-        # Phase 2: Everything else (can run in parallel)
-        coverage_dependent_checks = {"python-coverage", "python-new-code-coverage"}
+        # Run all checks in parallel - dependency handling is internal to run_checks_parallel
+        check_names = [check.flag for check in checks_to_run]
+        self.logger.info(f"🚀 Running checks in parallel: [{', '.join(check_names)}]")
 
-        unit_tests_check = None
-        coverage_checks: List[CheckDef] = []
-        other_checks: List[CheckDef] = []
-
-        for check in checks_to_run:
-            if check.flag == "python-unit-tests":
-                unit_tests_check = check
-            elif check.flag in coverage_dependent_checks:
-                coverage_checks.append(check)
-            else:
-                other_checks.append(check)
-
-        # Phase 1: Run python-unit-tests first if present (sequentially, alone)
-        if unit_tests_check:
-            self.logger.info(
-                f"🔬 Phase 1: Running {unit_tests_check.flag} first (generates coverage data)"
-            )
-            unit_test_results = self.run_checks_parallel(
-                [unit_tests_check], fail_fast=fail_fast, verbose=self.verbose
-            )
-            all_results.extend(unit_test_results)
-
-            # If unit tests failed and fail_fast, we already exited in run_checks_parallel
-            # But check anyway for the non-fail-fast case
-            if unit_test_results and unit_test_results[0].status == CheckStatus.FAILED:
-                if fail_fast:
-                    return 1  # Should have already exited, but just in case
-                # In non-fail-fast mode, skip coverage checks since they depend on passing tests
-                self.logger.warning(
-                    "⚠️  Skipping coverage checks because python-unit-tests failed"
-                )
-                coverage_checks = []
-
-        # Phase 2: Run all other checks in parallel (including coverage checks after unit tests)
-        remaining_checks = other_checks + coverage_checks
-        if remaining_checks:
-            check_names = [check.flag for check in remaining_checks]
-            if fail_fast:
-                self.logger.info(
-                    f"🚀 Phase 2: Running remaining checks in parallel [{', '.join(check_names)}]"
-                )
-            else:
-                self.logger.info(
-                    f"🚀 Phase 2: Running all remaining checks (no fail-fast) [{', '.join(check_names)}]"
-                )
-            phase2_results = self.run_checks_parallel(
-                remaining_checks, fail_fast=fail_fast, verbose=self.verbose
-            )
-            all_results.extend(phase2_results)
+        all_results = self.run_checks_parallel(
+            checks_to_run, fail_fast=fail_fast, verbose=self.verbose
+        )
 
         total_duration = time.time() - start_time
 

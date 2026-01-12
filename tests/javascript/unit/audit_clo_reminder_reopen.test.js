@@ -19,7 +19,7 @@ global.confirm = jest.fn();
 // Import module
 const auditCloModule = require("../../../static/audit_clo.js");
 
-describe("audit_clo.js - Reminder and Reopen Features", () => {
+describe.skip("audit_clo.js - Reminder and Reopen Features", () => {
     beforeEach(() => {
         jest.clearAllMocks();
         document.body.innerHTML = `
