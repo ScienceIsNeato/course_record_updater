@@ -616,7 +616,8 @@ class CLOWorkflowService:
 
         if sections:
             for section in sections:
-                section_id = section.get("id")
+                # Handle both "section_id" (from to_dict) and "id" (legacy/mock format)
+                section_id = section.get("section_id") or section.get("id")
                 if not section_id:
                     continue
                 # Get the SECTION-SPECIFIC outcome for this course outcome + section
@@ -836,6 +837,8 @@ class CLOWorkflowService:
 
             instructor_name = None
             instructor_email = None
+            instructor_id = None
+            section_id = None
             program_name = None
             term_name = None
 

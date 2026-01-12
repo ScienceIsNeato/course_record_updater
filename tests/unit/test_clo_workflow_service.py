@@ -552,7 +552,58 @@ class TestExpandOutcomeForSections:
         "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
     )
     @patch("src.services.clo_workflow_service.db")
+    def test_expand_with_realistic_section_dict_format(self, mock_db, mock_get_details):
+        """Test with ACTUAL dict format from _course_section_to_dict (uses section_id, not id).
+
+        Regression test: The database model returns 'section_id' as the key,
+        not 'id'. This test ensures _expand_outcome_for_sections handles the
+        real database format correctly.
+        """
+        # This matches the REAL output from _course_section_to_dict in models_sql.py
+        mock_db.get_sections_by_course.return_value = [
+            {
+                "section_id": "sec-1",  # NOT "id" - matches real to_dict output
+                "offering_id": "off-1",
+                "instructor_id": "inst-1",
+                "section_number": "001",
+                "enrollment": 25,
+                "withdrawals": 2,
+                "students_passed": 20,
+                "students_dfic": 3,
+                "cannot_reconcile": False,
+                "reconciliation_note": None,
+                "narrative_celebrations": None,
+                "narrative_challenges": None,
+                "narrative_changes": None,
+                "status": "pending",
+                "due_date": None,
+                "assigned_date": None,
+                "completed_date": None,
+                "created_at": "2024-01-01T00:00:00",
+                "last_modified": "2024-01-01T00:00:00",
+            },
+        ]
+        mock_db.get_section_outcome_by_course_outcome_and_section.return_value = {
+            "id": "section-outcome-1"
+        }
+        mock_get_details.return_value = {"outcome_id": "outcome-1", "section_id": "sec-1"}
+
+        outcome = {"outcome_id": "outcome-1", "course_id": "course-1"}
+        result = CLOWorkflowService._expand_outcome_for_sections(outcome)
+
+        # With realistic format (section_id key), this should still return 1 result
+        assert len(result) == 1, (
+            "Section with section_id key should be processed. "
+            "Bug: code uses section.get('id') but dict has 'section_id' key."
+        )
+        mock_get_details.assert_called_once()
+
+    @patch(
+        "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
+    )
+    @patch("src.services.clo_workflow_service.db")
     def test_expand_with_sections(self, mock_db, mock_get_details):
+        """Test with legacy mock format (id key) - kept for backwards compatibility."""
         mock_db.get_sections_by_course.return_value = [
             {
                 "id": "sec-1",
@@ -745,6 +796,34 @@ class TestGetOutcomeWithDetails:
         result = CLOWorkflowService.get_outcome_with_details("outcome-123")
 
         assert result is None
+
+    @patch("src.services.clo_workflow_service.db")
+    def test_get_outcome_with_details_no_course_does_not_raise_unbound_error(
+        self, mock_db
+    ):
+        """Regression test: section_id/instructor_id must be initialized to None.
+
+        When course lookup fails, the code should not raise UnboundLocalError
+        for section_id or instructor_id.
+        """
+        mock_db.get_course_outcome.return_value = {
+            "id": "outcome-123",
+            "course_id": "course-456",
+        }
+        # Course not found - triggers the branch where instructor_id/section_id
+        # would be unbound if not properly initialized
+        mock_db.get_course.return_value = None
+
+        # This should NOT raise: UnboundLocalError: cannot access local variable
+        # 'section_id' where it is not associated with a value
+        result = CLOWorkflowService.get_outcome_with_details("outcome-123")
+
+        # Should still return a result (with None values for missing data)
+        assert result is not None
+        assert result["instructor_id"] is None
+        assert result["section_id"] is None
+        assert result["instructor_name"] is None
+        assert result["instructor_email"] is None
 
 
 class TestSendReworkNotification:
