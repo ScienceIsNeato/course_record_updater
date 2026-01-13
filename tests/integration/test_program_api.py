@@ -8,9 +8,7 @@ Tests the complete program management functionality including:
 - Default program protection
 """
 
-from unittest.mock import Mock, patch
-
-import pytest
+from unittest.mock import patch
 
 from src.app import app
 from tests.test_utils import CommonAuthMixin

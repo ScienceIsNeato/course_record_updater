@@ -7,9 +7,8 @@ Built using the new adapter registry system for extensible, institution-agnostic
 """
 
 import os
-import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -23,13 +22,11 @@ from src.database.database_service import (
     create_course_offering,
     create_course_outcome,
     create_course_section,
-    create_default_mocku_institution,
     create_term,
     create_user,
     get_course_by_number,
     get_course_offering_by_course_and_term,
     get_course_outcomes,
-    get_institution_by_short_name,
     get_term_by_name,
     get_user_by_email,
     update_course,
@@ -38,10 +35,6 @@ from src.database.database_service import (
 )
 
 # Import our models and services
-from src.models.models import (
-    format_term_name,
-    validate_course_number,
-)
 
 
 class ConflictStrategy(Enum):

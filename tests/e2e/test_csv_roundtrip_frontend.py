@@ -88,7 +88,7 @@ def _step_verify_zip(download_path: Path):
         print(
             f"   ✅ Manifest valid (format version: {manifest_data.get('format_version')})"
         )
-        print(f"   📊 Entity counts:")
+        print("   📊 Entity counts:")
         for entity_type, count in entity_counts.items():
             if count > 0:
                 print(f"      - {entity_type}: {count}")
@@ -143,7 +143,7 @@ def _step_import_data(page: Page, file_path: Path):
         import_adapter_select.select_option(value="generic_csv_v1")
         print("   ✅ Selected Generic CSV adapter for import")
     except Exception:
-        pytest.skip(f"Generic CSV adapter not available for import")
+        pytest.skip("Generic CSV adapter not available for import")
 
     # Submit
     import_button = page.locator('button:has-text("Excel Import")')

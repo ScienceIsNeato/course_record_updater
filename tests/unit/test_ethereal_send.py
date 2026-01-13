@@ -2,7 +2,7 @@
 Unit tests for Ethereal Provider send_email (mocked SMTP)
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 

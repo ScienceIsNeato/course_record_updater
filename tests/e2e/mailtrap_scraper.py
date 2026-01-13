@@ -10,7 +10,7 @@ a service with a proper read API (Mailosaur, Ethereal, etc.).
 
 import os
 import time
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from playwright.sync_api import Page, sync_playwright
 
@@ -164,7 +164,7 @@ class MailtrapScraper:
         # Wait a moment and check what happened
         time.sleep(2)
         page.screenshot(path="/tmp/mailtrap_after_submit.png")
-        print(f"📸 After submit screenshot: /tmp/mailtrap_after_submit.png")
+        print("📸 After submit screenshot: /tmp/mailtrap_after_submit.png")
         print(f"📍 Current URL: {page.url}")
 
         # Wait for redirect to dashboard

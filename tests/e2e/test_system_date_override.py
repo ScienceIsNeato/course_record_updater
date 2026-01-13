@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime, timedelta
 
-import pytest
 from playwright.sync_api import Page, expect
 
 from src.utils.constants import DATE_OVERRIDE_BANNER_PREFIX

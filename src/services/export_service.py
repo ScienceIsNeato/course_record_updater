@@ -12,10 +12,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
-
-import pandas as pd
-from openpyxl import Workbook
+from typing import Any, Dict, List, Optional, Tuple
 
 from src.adapters.adapter_registry import AdapterRegistryError, get_adapter_registry
 from src.database.database_service import (

@@ -15,14 +15,11 @@ Test Naming Convention:
 """
 
 import re
-import time
-from pathlib import Path
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page
 
 # Import fixtures and helpers
-from tests.conftest import INSTITUTION_ADMIN_EMAIL, INSTITUTION_ADMIN_PASSWORD
 from tests.e2e.conftest import BASE_URL
 
 # E2E tests should verify via UI only - no direct database imports needed
@@ -185,14 +182,14 @@ def test_login_script_loading(page: Page, server_running: bool):
         for log in console_logs[:10]:  # Limit to first 10
             print(f"   {log}")
 
-    print(f"✅ HYPOTHESIS 3 TEST COMPLETE - Check if auth.js loaded and initialized")
-    print(f"")
+    print("✅ HYPOTHESIS 3 TEST COMPLETE - Check if auth.js loaded and initialized")
+    print("")
     print(
-        f"🚨 KEY FINDING: auth.js loads, functions defined, BUT form.onsubmit is NOT SET"
+        "🚨 KEY FINDING: auth.js loads, functions defined, BUT form.onsubmit is NOT SET"
     )
-    print(f"   This means initializeLoginForm() was never called!")
+    print("   This means initializeLoginForm() was never called!")
     print(
-        f"   The form uses traditional HTML submit (action='/login'), causing page reload"
+        "   The form uses traditional HTML submit (action='/login'), causing page reload"
     )
 
 

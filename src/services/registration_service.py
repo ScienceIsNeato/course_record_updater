@@ -14,14 +14,12 @@ Features:
 """
 
 import secrets
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Tuple
-
-from flask import current_app
+from datetime import datetime, timedelta
+from typing import Any, Dict, Optional
 
 # Import other services
 import src.database.database_service as db
-from src.models.models import Institution, Program, User, UserInvitation
+from src.models.models import Institution, Program, User
 from src.utils.logging_config import get_logger
 from src.utils.time_utils import get_current_time
 

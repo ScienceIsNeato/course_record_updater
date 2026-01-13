@@ -128,7 +128,7 @@ def test_institution_admin_dashboard_program_metrics_from_db():
     dashboard_data = service.get_dashboard_data(user)
 
     # Debug: Print what we got
-    print(f"\n🔍 Dashboard Data Summary:")
+    print("\n🔍 Dashboard Data Summary:")
     print(f"  Summary: {dashboard_data.get('summary')}")
     print(f"  Program Overview: {dashboard_data.get('program_overview')}")
 
@@ -157,7 +157,7 @@ def test_institution_admin_dashboard_program_metrics_from_db():
         (p for p in program_overview if p["program_name"] == "Computer Science"), None
     )
     assert cs_metrics is not None, "CS program not found in overview"
-    print(f"\n📊 CS Program Metrics from DB:")
+    print("\n📊 CS Program Metrics from DB:")
     print(f"  Program ID: {cs_metrics.get('program_id')}")
     print(f"  Program Name: {cs_metrics.get('program_name')}")
     print(f"  Course Count: {cs_metrics.get('course_count')}")

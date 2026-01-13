@@ -6,7 +6,7 @@ Supports both sending emails (SMTP) and reading emails (IMAP/API).
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 
 class EmailProvider(ABC):

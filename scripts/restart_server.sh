@@ -29,7 +29,6 @@ ENV_ARG="$1"
 
 # Validate environment
 if [[ ! "$ENV_ARG" =~ ^(dev|e2e|smoke)$ ]]; then
-        ENV="test"
     echo -e "${RED}❌ Error: Invalid environment '$ENV_ARG'${NC}" >&2
     echo -e "${YELLOW}Valid environments: dev, e2e, smoke${NC}" >&2
     exit 1
@@ -85,7 +84,7 @@ fi
 
 # For E2E and smoke tests, unset EMAIL_PROVIDER so factory uses ENV-based selection (ENV=test -> ethereal)
 if [[ "$APP_ENV" =~ ^(e2e|uat|smoke)$ ]]; then
-        ENV="test"
+    export ENV="test"
     unset EMAIL_PROVIDER
     echo -e "${BLUE}🔧 Unset EMAIL_PROVIDER for $APP_ENV (will auto-select based on ENV)${NC}"
 fi
@@ -101,7 +100,7 @@ case "$APP_ENV" in
         BASE_URL="${BASE_URL_E2E:-http://localhost:3002}"
         ;;
     smoke)
-        ENV="test"
+        export ENV="test"
         DATABASE_URL="${DATABASE_URL_SMOKE:-sqlite:///course_records_smoke.db}"
         BASE_URL="${BASE_URL_SMOKE:-http://localhost:3003}"
         ;;
@@ -240,7 +239,7 @@ main() {
             port="${LOOPCLOSER_DEFAULT_PORT_E2E:-3002}"
             ;;
         smoke)
-        ENV="test"
+            export ENV="test"
             port="${LOOPCLOSER_DEFAULT_PORT_SMOKE:-3003}"
             ;;
         *)

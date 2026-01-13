@@ -8,9 +8,7 @@ Tests the complete course-program association functionality including:
 - Complete workflow scenarios
 """
 
-from unittest.mock import Mock, patch
-
-import pytest
+from unittest.mock import patch
 
 from src.app import app
 from tests.test_utils import CommonAuthMixin

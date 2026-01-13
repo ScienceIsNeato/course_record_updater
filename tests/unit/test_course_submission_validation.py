@@ -5,9 +5,7 @@ Tests the validation logic for submitting an entire course section at once,
 including all CLOs and course-level data.
 """
 
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from src.services.clo_workflow_service import CLOWorkflowService
 from src.utils.constants import CLOStatus

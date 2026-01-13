@@ -396,6 +396,39 @@ class CLOWorkflowService:
             return False
 
     @staticmethod
+    def mark_section_outcomes_assigned(section_id: str) -> bool:
+        """
+        When a section receives an instructor assignment, ensure all related section
+        outcomes move out of the 'unassigned' bucket so the audit UI reflects the new
+        ownership immediately.
+        """
+        try:
+            section_outcomes = db.get_section_outcomes_by_section(section_id)
+            for outcome in section_outcomes:
+                outcome_id = outcome.get("id")
+                if not outcome_id:
+                    continue
+                if outcome.get("status") != CLOStatus.UNASSIGNED:
+                    continue
+                success = db.update_section_outcome(
+                    outcome_id, {"status": CLOStatus.ASSIGNED}
+                )
+                if not success:
+                    logger.error(
+                        "Failed to update status for section outcome %s",
+                        logger.sanitize(outcome_id),
+                    )
+                    return False
+            return True
+        except Exception as e:
+            logger.error(
+                "Error marking section outcomes assigned for section %s: %s",
+                logger.sanitize(section_id),
+                e,
+            )
+            return False
+
+    @staticmethod
     def _validate_clo_fields(outcome: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Validate required fields for a single CLO."""
         errors = []

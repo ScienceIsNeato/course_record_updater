@@ -6,7 +6,7 @@ from unittest.mock import patch
 # Add src to path
 sys.path.append(os.getcwd())
 
-from src.models.models_sql import CourseOutcome, CourseSectionOutcome, to_dict
+from src.models.models_sql import CourseSectionOutcome, to_dict
 from src.services.clo_workflow_service import CLOWorkflowService
 
 

@@ -3,7 +3,7 @@ Unit tests for BulkEmailJob model
 """
 
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 from src.bulk_email_models.bulk_email_job import BulkEmailJob
 

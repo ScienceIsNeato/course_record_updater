@@ -25,7 +25,7 @@ from src.utils.constants import (
     DATE_OVERRIDE_BANNER_PREFIX,
 )
 from src.utils.logging_config import get_app_logger
-from src.utils.term_utils import TermGenerator, get_current_term, get_term_display_name
+from src.utils.term_utils import get_current_term, get_term_display_name
 
 from .api import register_blueprints  # New modular API structure
 
@@ -48,7 +48,6 @@ app = Flask(__name__, template_folder="../templates", static_folder="../static")
 
 # Initialize CSRF protection (disabled during testing)
 # Check if we're in test mode by looking for pytest in sys.modules
-import sys
 
 # SECURITY: CSRF protection configuration
 # CSRF is ENABLED for all routes to prevent cross-site request forgery attacks

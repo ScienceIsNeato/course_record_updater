@@ -4,9 +4,7 @@ Unit tests for password_reset_service.py
 Tests the PasswordResetService class and its methods for password reset functionality.
 """
 
-from datetime import datetime, timedelta
-from typing import Any, Dict
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 

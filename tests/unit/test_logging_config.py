@@ -1,11 +1,6 @@
 """Unit tests for logging_config.py module."""
 
 import logging
-import os
-import tempfile
-from unittest.mock import Mock, patch
-
-import pytest
 
 from src.utils.logging_config import get_import_logger, setup_logger
 

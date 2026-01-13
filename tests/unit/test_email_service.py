@@ -5,7 +5,7 @@ Tests email functionality including templates, SMTP integration, and
 CRITICAL PROTECTION against sending emails to real institution/protected domains.
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask

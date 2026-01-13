@@ -484,7 +484,6 @@ globalThis.submitReminder = submitReminder;
  * Direct Approve from Table
  */
 async function approveOutcome(outcomeId) {
-  if (!confirm("Are you sure you want to approve this outcome?")) return false;
   try {
     const csrfToken = document.querySelector(
       'meta[name="csrf-token"]',
@@ -1093,19 +1092,10 @@ document.addEventListener("DOMContentLoaded", () => {
    * Load CLOs from API
    */
   async function loadCLOs() {
+    const previousScroll =
+      window.scrollY || document.documentElement.scrollTop || 0;
     globalThis.loadCLOs = loadCLOs;
     try {
-      // nosemgrep
-      // nosemgrep
-      cloListContainer.innerHTML = `
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p class="text-muted mt-2">Loading CLOs...</p>
-                </div>
-            `;
-
       const status = statusFilter.value;
       const programId = programFilter ? programFilter.value : "";
       const termId = termFilter ? termFilter.value : "";
@@ -1135,16 +1125,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Render list
       renderCLOList();
+
+      // Restore scroll position once the new DOM has painted
+      window.requestAnimationFrame(() => {
+        window.scrollTo({
+          top: previousScroll,
+          behavior: "auto",
+        });
+      });
     } catch (error) {
       // Log error to aid debugging
       // eslint-disable-next-line no-console
       console.error("Error loading CLOs:", error);
-      // nosemgrep
-      cloListContainer.innerHTML = `
-                <div class="alert alert-danger">
-                    <strong>Error:</strong> Failed to load CLOs. ${error.message}
-                </div>
-            `;
+      const errorDiv = document.createElement("div");
+      errorDiv.className = "alert alert-danger";
+      errorDiv.innerHTML = `<strong>Error:</strong> Failed to load CLOs. ${error.message}`;
+      cloListContainer.prepend(errorDiv);
     }
   }
 
@@ -1418,6 +1414,7 @@ document.addEventListener("DOMContentLoaded", () => {
               let actionBtn = null;
               if (clo.status === "awaiting_approval") {
                 const btn = document.createElement("button");
+                btn.type = "button";
                 btn.className = "btn btn-success text-white";
                 btn.title = "Approve Outcome";
                 btn.innerHTML = '<i class="fas fa-check"></i>';
@@ -1428,6 +1425,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 actionBtn = btn;
               } else if (clo.status === "unassigned") {
                 const btn = document.createElement("button");
+                btn.type = "button";
                 btn.className = "btn btn-primary text-white";
                 btn.title = "Assign Instructor";
                 btn.innerHTML = '<i class="fas fa-user-plus"></i>';
@@ -1436,22 +1434,13 @@ document.addEventListener("DOMContentLoaded", () => {
                   assignOutcome(clo.id || clo.outcome_id);
                 };
                 actionBtn = btn;
-              } else if (["approved", "never_coming_in"].includes(clo.status)) {
-                const btn = document.createElement("button");
-                btn.className = "btn btn-warning text-dark";
-                btn.title = "Reopen Outcome";
-                btn.innerHTML = '<i class="fas fa-undo"></i>';
-                btn.onclick = (e) => {
-                  e.stopPropagation();
-                  reopenOutcome(clo.id || clo.outcome_id);
-                };
-                actionBtn = btn;
               } else if (
                 ["in_progress", "approval_pending", "assigned"].includes(
                   clo.status,
                 )
               ) {
                 const btn = document.createElement("button");
+                btn.type = "button";
                 btn.className = "btn btn-info text-white";
                 btn.title = "Send Reminder";
                 btn.innerHTML = '<i class="fas fa-bell"></i>';
@@ -1463,6 +1452,7 @@ document.addEventListener("DOMContentLoaded", () => {
               }
 
               const viewBtn = document.createElement("button");
+              viewBtn.type = "button";
               viewBtn.className = "btn btn-outline-secondary";
               viewBtn.dataset.outcomeId = clo.id || clo.outcome_id;
               viewBtn.title = "View Details";

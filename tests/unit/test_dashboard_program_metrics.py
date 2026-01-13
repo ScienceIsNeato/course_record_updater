@@ -1,7 +1,5 @@
 """Unit tests for dashboard program metrics calculation."""
 
-import pytest
-
 from src.services.dashboard_service import DashboardService
 
 
@@ -90,7 +88,7 @@ class TestDashboardProgramMetrics:
         assert len(metrics) == 1, f"Expected 1 program metric, got {len(metrics)}"
 
         cs_metrics = metrics[0]
-        print(f"\n🔍 CS Program Metrics:")
+        print("\n🔍 CS Program Metrics:")
         print(f"  Program ID: {cs_metrics.get('program_id')}")
         print(f"  Program Name: {cs_metrics.get('program_name')}")
         print(f"  Course Count: {cs_metrics.get('course_count')}")

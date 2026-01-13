@@ -84,18 +84,15 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label fw-bold" for="courseDueDate">Assessment Due Date:</label>
-                    <input
-                        type="{{ 'date' if can_edit_due_date else 'text' }}"
+                    <input type="{{ 'date' if can_edit_due_date else 'text' }}"
                         class="form-control{{ '' if can_edit_due_date else ' form-control-plaintext' }}"
-                        id="courseDueDate"
-                        {% if not can_edit_due_date %}readonly{% endif %}
-                        {% if can_edit_due_date %}placeholder="YYYY-MM-DD"{% endif %}
-                    >
+                        id="courseDueDate" {% if not can_edit_due_date %}readonly{% endif %} {% if can_edit_due_date
+                        %}placeholder="YYYY-MM-DD" {% endif %}>
                     <small class="text-muted">
                         {% if can_edit_due_date %}
-                            Editable by institution admins
+                        Editable by institution admins
                         {% else %}
-                            Set by program admin
+                        Set by program admin
                         {% endif %}
                     </small>
                 </div>
@@ -158,8 +155,8 @@
             </div>
 
             <div class="text-end">
-                <button type="button" class="btn btn-success btn-lg" id="submitCourseBtn"><i
-                        class="fas fa-upload"></i> Submit Assessments</button>
+                <button type="button" class="btn btn-success btn-lg" id="submitCourseBtn"><i class="fas fa-upload"></i>
+                    Submit Assessments</button>
             </div>
         </div>
     </div>
@@ -548,6 +545,7 @@
             `;
 
                 outcomes.forEach((outcome, index) => {
+                    console.log('DEBUG OUTCOME:', outcome);
                     const studentsTook = outcome.students_took ?? '';
                     const studentsPassed = outcome.students_passed ?? '';
                     const assessmentTool = outcome.assessment_tool || '';
@@ -567,7 +565,7 @@
                     const inputDisabled = isApproved ? 'disabled' : '';
 
                     html += `
-                    <div class="row g-2 py-2 align-items-center border-bottom ${rowClass}" data-outcome-id="${outcome.outcome_id}">
+                    <div class="row g-2 py-2 align-items-center border-bottom ${rowClass}" data-outcome-id="${outcome.id}" data-course-outcome-id="${outcome.outcome_id}">
                         <div class="col-md-1">
                             <span class="fw-bold">${index + 1}</span>
                             ${isApproved ? '<i class="fas fa-check-circle text-success ms-1" title="Approved"></i>' : ''}
@@ -580,7 +578,7 @@
                         <div class="col-md-2">
                             <input type="number" class="form-control form-control-sm clo-input" 
                                    data-field="students_took" 
-                                   data-outcome-id="${outcome.outcome_id}"
+                                   data-outcome-id="${outcome.id}"
                                    data-enrollment="${section.enrollment || 0}"
                                    value="${studentsTook}" 
                                    min="0" 
@@ -590,7 +588,7 @@
                         <div class="col-md-2">
                             <input type="number" class="form-control form-control-sm clo-input" 
                                    data-field="students_passed" 
-                                   data-outcome-id="${outcome.outcome_id}"
+                                   data-outcome-id="${outcome.id}"
                                    value="${studentsPassed}" 
                                    min="0" 
                                    placeholder="0"
@@ -599,7 +597,7 @@
                         <div class="col-md-2">
                             <input type="text" class="form-control form-control-sm clo-input" 
                                    data-field="assessment_tool" 
-                                   data-outcome-id="${outcome.outcome_id}"
+                                   data-outcome-id="${outcome.id}"
                                    value="${escapeHtml(assessmentTool)}" 
                                    maxlength="50" 
                                    placeholder="e.g., Lab 2"
@@ -1073,178 +1071,178 @@
         const saveCourseDataBtn = document.getElementById('saveCourseData');
         const canEditDueDate = {{ 'true' if can_edit_due_date else 'false' }};
 
-        // Toggle reconciliation note visibility
-        if (cannotReconcileCheckbox) {
-            cannotReconcileCheckbox.addEventListener('change', function () {
-                reconciliationNoteContainer.style.display = this.checked ? 'block' : 'none';
-                if (!this.checked) {
-                    document.getElementById('reconciliationNote').value = '';
-                }
-            });
-        }
-
-        // Load course-level data when course is selected
-        async function loadCourseLevelData(courseId) {
-            try {
-                // For now, use section data - in full implementation, this would be course-level
-                const section = instructorSections.find(s => s.course_id === courseId);
-                if (section) {
-                    // Populate read-only enrollment fields
-                    document.getElementById('courseEnrollment').value = section.enrollment || 'Not set';
-                    document.getElementById('courseWithdrawals').value = section.withdrawals || 0;
-
-                    // Format and display due date (added from CEI demo feedback)
-                    if (courseDueDateInput) {
-                        const dueValue = section.due_date || section.assessment_due_date || '';
-                        if (dueValue) {
-                            const dueDate = new Date(dueValue);
-                            if (canEditDueDate) {
-                                courseDueDateInput.value = isNaN(dueDate.getTime())
-                                    ? ''
-                                    : dueDate.toISOString().split('T')[0];
-                            } else {
-                                courseDueDateInput.value = isNaN(dueDate.getTime())
-                                    ? 'Not set'
-                                    : dueDate.toLocaleDateString();
-                            }
-                        } else {
-                            courseDueDateInput.value = canEditDueDate ? '' : 'Not set';
-                        }
-                    }
-
-                    // Populate instructor input fields (if they exist)
-                    document.getElementById('courseStudentsPassed').value = section.students_passed || '';
-                    document.getElementById('courseStudentsDFIC').value = section.students_dfic || '';
-                    document.getElementById('cannotReconcile').checked = section.cannot_reconcile || false;
-                    document.getElementById('reconciliationNote').value = section.reconciliation_note || '';
-
-                    // Show/hide reconciliation note based on checkbox
-                    reconciliationNoteContainer.style.display = section.cannot_reconcile ? 'block' : 'none';
-
-                    // Populate narratives
-                    document.getElementById('narrativeCelebrations').value = section.narrative_celebrations || '';
-                    document.getElementById('narrativeChallenges').value = section.narrative_challenges || '';
-                    document.getElementById('narrativeChanges').value = section.narrative_changes || '';
-
-                    // Store loaded data for dirty tracking
-                    loadedCourseData = {
-                        students_passed: (section.students_passed || '').toString(),
-                        students_dfic: (section.students_dfic || '').toString(),
-                        cannot_reconcile: section.cannot_reconcile || false,
-                        reconciliation_note: section.reconciliation_note || '',
-                        narrative_celebrations: section.narrative_celebrations || '',
-                        narrative_challenges: section.narrative_challenges || '',
-                        narrative_changes: section.narrative_changes || ''
-                    };
-
-                    // Show the section
-                    courseLevelSection.style.display = 'block';
-                }
-            } catch (error) {
-                console.error('Error loading course-level data:', error);
+    // Toggle reconciliation note visibility
+    if (cannotReconcileCheckbox) {
+        cannotReconcileCheckbox.addEventListener('change', function () {
+            reconciliationNoteContainer.style.display = this.checked ? 'block' : 'none';
+            if (!this.checked) {
+                document.getElementById('reconciliationNote').value = '';
             }
-        }
+        });
+    }
 
-        // Save course-level data
-        if (saveCourseDataBtn) {
-            saveCourseDataBtn.addEventListener('click', async function () {
-                const courseId = courseSelect.value;
-                if (!courseId) {
-                    alert('Please select a course first');
+    // Load course-level data when course is selected
+    async function loadCourseLevelData(courseId) {
+        try {
+            // For now, use section data - in full implementation, this would be course-level
+            const section = instructorSections.find(s => s.course_id === courseId);
+            if (section) {
+                // Populate read-only enrollment fields
+                document.getElementById('courseEnrollment').value = section.enrollment || 'Not set';
+                document.getElementById('courseWithdrawals').value = section.withdrawals || 0;
+
+                // Format and display due date (added from CEI demo feedback)
+                if (courseDueDateInput) {
+                    const dueValue = section.due_date || section.assessment_due_date || '';
+                    if (dueValue) {
+                        const dueDate = new Date(dueValue);
+                        if (canEditDueDate) {
+                            courseDueDateInput.value = isNaN(dueDate.getTime())
+                                ? ''
+                                : dueDate.toISOString().split('T')[0];
+                        } else {
+                            courseDueDateInput.value = isNaN(dueDate.getTime())
+                                ? 'Not set'
+                                : dueDate.toLocaleDateString();
+                        }
+                    } else {
+                        courseDueDateInput.value = canEditDueDate ? '' : 'Not set';
+                    }
+                }
+
+                // Populate instructor input fields (if they exist)
+                document.getElementById('courseStudentsPassed').value = section.students_passed || '';
+                document.getElementById('courseStudentsDFIC').value = section.students_dfic || '';
+                document.getElementById('cannotReconcile').checked = section.cannot_reconcile || false;
+                document.getElementById('reconciliationNote').value = section.reconciliation_note || '';
+
+                // Show/hide reconciliation note based on checkbox
+                reconciliationNoteContainer.style.display = section.cannot_reconcile ? 'block' : 'none';
+
+                // Populate narratives
+                document.getElementById('narrativeCelebrations').value = section.narrative_celebrations || '';
+                document.getElementById('narrativeChallenges').value = section.narrative_challenges || '';
+                document.getElementById('narrativeChanges').value = section.narrative_changes || '';
+
+                // Store loaded data for dirty tracking
+                loadedCourseData = {
+                    students_passed: (section.students_passed || '').toString(),
+                    students_dfic: (section.students_dfic || '').toString(),
+                    cannot_reconcile: section.cannot_reconcile || false,
+                    reconciliation_note: section.reconciliation_note || '',
+                    narrative_celebrations: section.narrative_celebrations || '',
+                    narrative_challenges: section.narrative_challenges || '',
+                    narrative_changes: section.narrative_changes || ''
+                };
+
+                // Show the section
+                courseLevelSection.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Error loading course-level data:', error);
+        }
+    }
+
+    // Save course-level data
+    if (saveCourseDataBtn) {
+        saveCourseDataBtn.addEventListener('click', async function () {
+            const courseId = courseSelect.value;
+            if (!courseId) {
+                alert('Please select a course first');
+                return;
+            }
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                const section = instructorSections.find(s => s.course_id === courseId);
+
+                if (!section) {
+                    alert('No section found for this course');
                     return;
                 }
 
-                try {
-                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-                    const section = instructorSections.find(s => s.course_id === courseId);
+                const data = {
+                    students_passed: Number.parseInt(document.getElementById('courseStudentsPassed').value) || null,
+                    students_dfic: Number.parseInt(document.getElementById('courseStudentsDFIC').value) || null,
+                    cannot_reconcile: document.getElementById('cannotReconcile').checked,
+                    reconciliation_note: document.getElementById('reconciliationNote').value.trim() || null,
+                    narrative_celebrations: document.getElementById('narrativeCelebrations').value.trim() || null,
+                    narrative_challenges: document.getElementById('narrativeChallenges').value.trim() || null,
+                    narrative_changes: document.getElementById('narrativeChanges').value.trim() || null
+                };
 
-                    if (!section) {
-                        alert('No section found for this course');
-                        return;
-                    }
-
-                    const data = {
-                        students_passed: Number.parseInt(document.getElementById('courseStudentsPassed').value) || null,
-                        students_dfic: Number.parseInt(document.getElementById('courseStudentsDFIC').value) || null,
-                        cannot_reconcile: document.getElementById('cannotReconcile').checked,
-                        reconciliation_note: document.getElementById('reconciliationNote').value.trim() || null,
-                        narrative_celebrations: document.getElementById('narrativeCelebrations').value.trim() || null,
-                        narrative_challenges: document.getElementById('narrativeChallenges').value.trim() || null,
-                        narrative_changes: document.getElementById('narrativeChanges').value.trim() || null
-                    };
-
-                    if (canEditDueDate && courseDueDateInput) {
-                        data.assessment_due_date = courseDueDateInput.value || null;
-                    }
-
-                    const response = await fetch(`/api/sections/${section.section_id}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-Token': csrfToken
-                        },
-                        body: JSON.stringify(data)
-                    });
-
-                    if (!response.ok) {
-                        const error = await response.json();
-                        throw new Error(error.error || 'Failed to save course data');
-                    }
-
-                    // Update loaded data to match what was just saved
-                    loadedCourseData = {
-                        students_passed: (data.students_passed || '').toString(),
-                        students_dfic: (data.students_dfic || '').toString(),
-                        cannot_reconcile: data.cannot_reconcile,
-                        reconciliation_note: data.reconciliation_note || '',
-                        narrative_celebrations: data.narrative_celebrations || '',
-                        narrative_challenges: data.narrative_challenges || '',
-                        narrative_changes: data.narrative_changes || ''
-                    };
-
-                    // Reload sections from API to refresh stale data
-                    await reloadSections();
-
-                    // Show success message
-                    const statusEl = document.getElementById('saveStatus');
-                    statusEl.textContent = 'Course data saved successfully!';
-                    statusEl.className = 'alert alert-success';
-                    statusEl.style.display = 'block';
-
-                    // Scroll to the status message
-                    statusEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-                    // Hide after 5 seconds
-                    setTimeout(() => {
-                        statusEl.style.display = 'none';
-                    }, 5000);
-
-                } catch (error) {
-                    console.error('Error saving course data:', error);
-
-                    // Show error message
-                    const statusEl = document.getElementById('saveStatus');
-                    statusEl.textContent = 'Failed to save course data: ' + error.message;
-                    statusEl.className = 'alert alert-danger';
-                    statusEl.style.display = 'block';
-
-                    // Scroll to the status message
-                    statusEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                if (canEditDueDate && courseDueDateInput) {
+                    data.assessment_due_date = courseDueDateInput.value || null;
                 }
-            });
-        }
 
-        // Initialize - call async function
-        loadCourses().then(() => {
-            // Auto-select course if provided in URL query parameter
-            const urlParams = new URLSearchParams(globalThis.location.search);
-            const courseParam = urlParams.get('course');
-            if (courseParam && courseSelect) {
-                courseSelect.value = courseParam;
-                loadOutcomes(courseParam);
-                loadCourseLevelData(courseParam); // NEW: Load course-level data on auto-select
+                const response = await fetch(`/api/sections/${section.section_id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to save course data');
+                }
+
+                // Update loaded data to match what was just saved
+                loadedCourseData = {
+                    students_passed: (data.students_passed || '').toString(),
+                    students_dfic: (data.students_dfic || '').toString(),
+                    cannot_reconcile: data.cannot_reconcile,
+                    reconciliation_note: data.reconciliation_note || '',
+                    narrative_celebrations: data.narrative_celebrations || '',
+                    narrative_challenges: data.narrative_challenges || '',
+                    narrative_changes: data.narrative_changes || ''
+                };
+
+                // Reload sections from API to refresh stale data
+                await reloadSections();
+
+                // Show success message
+                const statusEl = document.getElementById('saveStatus');
+                statusEl.textContent = 'Course data saved successfully!';
+                statusEl.className = 'alert alert-success';
+                statusEl.style.display = 'block';
+
+                // Scroll to the status message
+                statusEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                // Hide after 5 seconds
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 5000);
+
+            } catch (error) {
+                console.error('Error saving course data:', error);
+
+                // Show error message
+                const statusEl = document.getElementById('saveStatus');
+                statusEl.textContent = 'Failed to save course data: ' + error.message;
+                statusEl.className = 'alert alert-danger';
+                statusEl.style.display = 'block';
+
+                // Scroll to the status message
+                statusEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
-        }).catch(err => console.error('Failed to load courses:', err));
+        });
+    }
+
+    // Initialize - call async function
+    loadCourses().then(() => {
+        // Auto-select course if provided in URL query parameter
+        const urlParams = new URLSearchParams(globalThis.location.search);
+        const courseParam = urlParams.get('course');
+        if (courseParam && courseSelect) {
+            courseSelect.value = courseParam;
+            loadOutcomes(courseParam);
+            loadCourseLevelData(courseParam); // NEW: Load course-level data on auto-select
+        }
+    }).catch(err => console.error('Failed to load courses:', err));
     });
 </script>
 {% endblock %}

@@ -11,7 +11,6 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
-from openpyxl.worksheet.worksheet import Worksheet
 
 from src.models.models import validate_course_number
 
@@ -987,7 +986,6 @@ class CEIExcelAdapter(FileBaseAdapter):
             Tuple[bool, str, int]: (success, message, records_exported)
         """
         try:
-            from datetime import datetime
 
             from openpyxl import Workbook
 

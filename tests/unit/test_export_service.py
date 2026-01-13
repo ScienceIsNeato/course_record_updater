@@ -6,11 +6,7 @@ bidirectional data flow.
 """
 
 import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
-
-import pandas as pd
-import pytest
+from unittest.mock import Mock, patch
 
 from src.services.export_service import ExportConfig, ExportResult, ExportService
 

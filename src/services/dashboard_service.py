@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Sequence
 
 from src.database.database_service import (

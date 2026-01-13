@@ -21,7 +21,6 @@ class TestAuthorizationService:
 
     def test_site_admin_full_access(self):
         """Test: Site admin should have access to everything"""
-        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = {
@@ -73,7 +72,6 @@ class TestAuthorizationService:
 
     def test_institution_admin_scoped_access(self):
         """Test: Institution admin should have institution-scoped access"""
-        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = {
@@ -120,7 +118,6 @@ class TestAuthorizationService:
 
     def test_program_admin_scoped_access(self):
         """Test: Program admin should have program-scoped access"""
-        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = {
@@ -179,7 +176,6 @@ class TestAuthorizationService:
 
     def test_instructor_limited_access(self):
         """Test: Instructor should have limited, personal access"""
-        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = {
@@ -213,7 +209,6 @@ class TestAuthorizationService:
 
     def test_unauthorized_user_no_access(self):
         """Test: Unauthenticated user should have no access"""
-        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = None
@@ -264,7 +259,7 @@ class TestAPIEndpointSecurity:
             return "login page"
 
         with app.test_request_context():
-            from src.services.auth_service import login_required, permission_required
+            from src.services.auth_service import login_required
 
             @login_required
             def protected_endpoint():
@@ -436,7 +431,6 @@ class TestSecurityBoundaries:
 
     def test_cross_institution_access_blocked(self):
         """Test: Users cannot access data from other institutions"""
-        from src.services.auth_service import AuthService
 
         # Test institution admin trying to access other institution
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -462,7 +456,6 @@ class TestSecurityBoundaries:
 
     def test_cross_program_access_blocked(self):
         """Test: Program admins cannot access programs outside their scope"""
-        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = {
@@ -485,7 +478,6 @@ class TestSecurityBoundaries:
 
     def test_privilege_escalation_blocked(self):
         """Test: Users cannot escalate privileges beyond their role"""
-        from src.services.auth_service import AuthService
 
         # Test that instructor cannot access admin functions
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -514,7 +506,7 @@ class TestAuthorizationSystemHealth:
 
     def test_all_roles_have_valid_permissions(self):
         """Test: All roles should have valid, non-empty permission sets"""
-        from src.services.auth_service import ROLE_PERMISSIONS, UserRole
+        from src.services.auth_service import ROLE_PERMISSIONS
 
         for role in UserRole:
             role_perms = ROLE_PERMISSIONS.get(role.value)
@@ -528,7 +520,6 @@ class TestAuthorizationSystemHealth:
 
     def test_permission_system_consistency(self):
         """Test: Permission system should be internally consistent"""
-        from src.services.auth_service import ROLE_PERMISSIONS, Permission, UserRole
 
         # Test that all permission constants are strings
         for perm in Permission:
@@ -565,7 +556,7 @@ class TestAuthorizationSystemHealth:
 
     def test_authorization_service_singleton(self):
         """Test: AuthService should work as expected"""
-        from src.services.auth_service import AuthService, auth_service
+        from src.services.auth_service import auth_service
 
         # Test that global service instance exists
         assert auth_service is not None

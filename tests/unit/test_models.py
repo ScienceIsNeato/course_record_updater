@@ -8,7 +8,6 @@ import pytest
 
 from src.models.models import (
     ASSESSMENT_STATUSES,
-    ROLES,
     SECTION_STATUSES,
     Course,
     CourseOutcome,

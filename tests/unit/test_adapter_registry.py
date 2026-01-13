@@ -636,7 +636,6 @@ class TestAdapterRegistryError:
 
     def test_get_adapter_instance_creation_failure(self):
         """Test get_adapter raises AdapterRegistryError when adapter instantiation fails."""
-        from unittest.mock import MagicMock
 
         from src.adapters.adapter_registry import AdapterRegistry, AdapterRegistryError
 

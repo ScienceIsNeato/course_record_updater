@@ -22,8 +22,6 @@ User Personas:
 - Dr. Jennifer Lee, Instructor (recipient - needs reminder)
 """
 
-import pytest
-
 # Email flow tests - requires Ethereal credentials (ETHEREAL_USER, ETHEREAL_PASS)
 # Tests will be skipped automatically if credentials are not configured
 

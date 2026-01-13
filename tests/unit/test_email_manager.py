@@ -6,7 +6,7 @@ Tests rate limiting, exponential backoff, retry logic, and queue management.
 
 import time
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 from src.email_providers.email_manager import EmailJob, EmailManager, EmailStatus
 

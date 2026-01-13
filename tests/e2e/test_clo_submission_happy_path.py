@@ -213,13 +213,13 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
     )
 
     # Locate row for our CLO
-    clo_row = instructor_page.locator(f".row[data-outcome-id='{clo1_id}']")
+    clo_row = instructor_page.locator(f".row[data-course-outcome-id='{clo1_id}']")
     expect(clo_row).to_be_visible()
 
     # Fill inline inputs
-    took_input = clo_row.locator(f"input[data-field='students_took']")
-    passed_input = clo_row.locator(f"input[data-field='students_passed']")
-    tool_input = clo_row.locator(f"input[data-field='assessment_tool']")
+    took_input = clo_row.locator("input[data-field='students_took']")
+    passed_input = clo_row.locator("input[data-field='students_passed']")
+    tool_input = clo_row.locator("input[data-field='assessment_tool']")
 
     took_input.fill("30")
     passed_input.fill("27")

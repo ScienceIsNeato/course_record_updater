@@ -6,14 +6,12 @@ Tests:
 - Inviting new instructors from the assignment modal
 """
 
-import os
 import re
-from datetime import datetime, timedelta
 
 import pytest
 from playwright.sync_api import expect
 
-BASE_URL = os.getenv("BASE_URL_E2E", "http://localhost:5001")
+from tests.e2e.conftest import BASE_URL
 
 
 def test_reminder_autopopulates_context(admin_page, csrf_token):

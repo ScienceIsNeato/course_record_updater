@@ -512,7 +512,7 @@ def wait_for_email_via_imap(
         print("⚠️  Ethereal IMAP not configured, skipping email verification")
         return None
 
-    print(f"\n📥 Polling Ethereal IMAP inbox for email...")
+    print("\n📥 Polling Ethereal IMAP inbox for email...")
     if subject_substring:
         print(f"   Subject contains: {subject_substring}")
     if unique_identifier:

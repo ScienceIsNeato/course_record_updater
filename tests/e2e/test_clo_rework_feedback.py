@@ -273,7 +273,7 @@ def _step_instructor_resubmits(page, course_id, clo_id):
     expect(clo_row.locator(".text-warning.small")).to_contain_text("second law")
 
     # Update tool
-    tool_input = clo_row.locator(f"input[data-field='assessment_tool']")
+    tool_input = clo_row.locator("input[data-field='assessment_tool']")
     tool_input.fill("Final Exam")
     tool_input.blur()
     page.wait_for_timeout(1000)

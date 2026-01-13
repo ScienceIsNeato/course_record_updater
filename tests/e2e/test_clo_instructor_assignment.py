@@ -8,7 +8,6 @@ from tests.e2e.conftest import BASE_URL
 from tests.e2e.test_helpers import (
     create_test_user_via_api,
     get_institution_id_from_user,
-    login_as_user,
 )
 
 

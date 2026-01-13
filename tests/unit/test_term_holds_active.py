@@ -13,8 +13,6 @@ Example scenario (reference date: Dec 23, 2025):
 
 from datetime import date
 
-import pytest
-
 from src.utils.term_utils import (
     TERM_STATUS_ACTIVE,
     TERM_STATUS_PASSED,

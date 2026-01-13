@@ -5,8 +5,7 @@ Unit tests for Audit API routes.
 # Patch permission_required BEFORE importing audit routes
 import sys
 from datetime import datetime
-from io import BytesIO
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask

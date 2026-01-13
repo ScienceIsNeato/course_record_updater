@@ -15,7 +15,6 @@ Note: This test covers the most critical edge cases that don't require extensive
 5. Missing optional fields handling
 """
 
-import requests
 from playwright.sync_api import Page, expect
 
 from tests.e2e.conftest import BASE_URL

@@ -8,7 +8,6 @@ Handles user invitation functionality including:
 - Tracking invitation status
 """
 
-import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
@@ -17,7 +16,7 @@ from typing import Any, Dict, List, Optional, Tuple
 UTC_OFFSET = "+00:00"
 
 import src.database.database_service as db
-from src.models.models import INVITATION_STATUSES, User, UserInvitation
+from src.models.models import User, UserInvitation
 from src.utils.logging_config import get_logger
 from src.utils.time_utils import get_current_time
 

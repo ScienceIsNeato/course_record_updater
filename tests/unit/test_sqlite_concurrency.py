@@ -9,8 +9,6 @@ import threading
 import time
 from typing import List
 
-import pytest
-
 from src.database.database_factory import get_database_service
 
 

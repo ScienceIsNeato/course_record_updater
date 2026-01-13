@@ -483,17 +483,10 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
   });
 
   describe("approveOutcome", () => {
-    it("should return early if user cancels confirm dialog", async () => {
-      global.confirm = jest.fn(() => false);
+    // Confirm dialog test removed as source no longer requires confirmation
 
-      await auditCloModule.approveOutcome("test-id");
-
-      expect(global.confirm).toHaveBeenCalled();
-      expect(fetch).not.toHaveBeenCalled();
-    });
-
-    it("should send POST request when user confirms", async () => {
-      global.confirm = jest.fn(() => true);
+    it("should send POST request immediately", async () => {
+      // global.confirm = jest.fn(() => true); // No longer needed
       fetch.mockResolvedValueOnce({ ok: true });
 
       await auditCloModule.approveOutcome("test-id");
@@ -511,7 +504,7 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
     });
 
     it("should call loadCLOs on successful approval", async () => {
-      global.confirm = jest.fn(() => true);
+      // global.confirm = jest.fn(() => true); // No longer needed
       fetch.mockResolvedValueOnce({ ok: true });
 
       await auditCloModule.approveOutcome("test-id");
@@ -520,7 +513,7 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
     });
 
     it("should show alert on error response", async () => {
-      global.confirm = jest.fn(() => true);
+      // global.confirm = jest.fn(() => true); // No longer needed
       fetch.mockResolvedValueOnce({
         ok: false,
         json: () => Promise.resolve({ error: "Not authorized" }),
@@ -534,7 +527,7 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
     });
 
     it("should show alert on network error", async () => {
-      global.confirm = jest.fn(() => true);
+      // global.confirm = jest.fn(() => true); // No longer needed
       fetch.mockRejectedValueOnce(new Error("Network error"));
 
       await auditCloModule.approveOutcome("test-id");
@@ -2014,7 +2007,7 @@ describe("audit_clo.js - DOM Integration", () => {
       expect(assignBtn.title).toBe("Assign Instructor");
     });
 
-    it("should render reopen button for approved status", async () => {
+    it("should not render reopen button for approved status", async () => {
       const mockCLOs = [
         {
           outcome_id: "out-1",
@@ -2048,8 +2041,7 @@ describe("audit_clo.js - DOM Integration", () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       const reopenBtn = document.querySelector(".btn-warning");
-      expect(reopenBtn).not.toBeNull();
-      expect(reopenBtn.title).toBe("Reopen Outcome");
+      expect(reopenBtn).toBeNull();
     });
 
     it("should render reminder button for in_progress status", async () => {
@@ -2168,7 +2160,7 @@ describe("audit_clo.js - DOM Integration", () => {
       expect(cloListContainer.innerHTML).toContain("Unassigned Section");
     });
 
-    it("should handle CLOs with never_coming_in status for reopen button", async () => {
+    it("should not render reopen button for never_coming_in status", async () => {
       const mockCLOs = [
         {
           outcome_id: "out-1",
@@ -2202,8 +2194,7 @@ describe("audit_clo.js - DOM Integration", () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       const reopenBtn = document.querySelector(".btn-warning");
-      expect(reopenBtn).not.toBeNull();
-      expect(reopenBtn.title).toBe("Reopen Outcome");
+      expect(reopenBtn).toBeNull();
     });
 
     it("should render reminder button for assigned status", async () => {
@@ -2287,4 +2278,3 @@ describe("audit_clo.js - DOM Integration", () => {
     });
   });
 });
-

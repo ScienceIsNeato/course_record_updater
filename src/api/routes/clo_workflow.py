@@ -13,10 +13,8 @@ from flask import Blueprint, jsonify, request, session
 
 from src.api.utils import get_current_user, handle_api_error
 from src.database.database_service import (
-    get_all_courses,
     get_course_by_id,
     get_course_outcome,
-    get_course_outcomes,
     get_section_outcome,
     get_term_by_name,
 )

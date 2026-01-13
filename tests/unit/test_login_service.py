@@ -5,8 +5,7 @@ Tests the LoginService class and its methods for user authentication functionali
 """
 
 from datetime import datetime, timedelta
-from typing import Any, Dict
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 

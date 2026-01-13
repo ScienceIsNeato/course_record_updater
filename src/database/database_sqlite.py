@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import uuid
 from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
@@ -802,8 +801,14 @@ class SQLiteDatabase(DatabaseInterface):
     def get_section_outcome(self, section_outcome_id: str) -> Optional[Dict[str, Any]]:
         """Get a single section outcome by ID."""
         with self.sqlite.session_scope() as session:
-            section_outcome = session.get(CourseSectionOutcome, section_outcome_id)
-            return to_dict(section_outcome) if section_outcome else None
+            # Use select instead of get for robustness against session state issues
+            result = session.execute(
+                select(CourseSectionOutcome).where(
+                    CourseSectionOutcome.id == section_outcome_id
+                )
+            ).scalar_one_or_none()
+
+            return to_dict(result) if result else None
 
     def get_section_outcomes_by_section(self, section_id: str) -> List[Dict[str, Any]]:
         """Get all section outcomes for a specific section."""

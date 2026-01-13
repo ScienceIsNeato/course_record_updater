@@ -1,6 +1,5 @@
 """Unit tests for dashboard_service."""
 
-from datetime import datetime
 from unittest.mock import patch
 
 import pytest

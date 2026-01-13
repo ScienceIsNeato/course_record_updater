@@ -3,7 +3,6 @@ Quick test to verify Mailtrap scraper works
 """
 
 import os
-from datetime import datetime
 
 from tests.e2e.mailtrap_scraper import wait_for_email
 

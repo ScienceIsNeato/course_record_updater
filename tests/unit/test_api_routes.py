@@ -3964,7 +3964,6 @@ class TestBulkManageHelpers:
 
     def test_validate_bulk_manage_request_success(self):
         """Test _validate_bulk_manage_request with valid data."""
-        from unittest.mock import patch
 
         from src.api_routes import _validate_bulk_manage_request
         from src.app import app
@@ -3992,7 +3991,6 @@ class TestBulkManageHelpers:
 
     def test_validate_bulk_manage_request_invalid_action(self):
         """Test _validate_bulk_manage_request with invalid action."""
-        from unittest.mock import patch
 
         from src.api_routes import _validate_bulk_manage_request
         from src.app import app
@@ -4009,7 +4007,6 @@ class TestBulkManageHelpers:
 
     def test_validate_bulk_manage_request_missing_course_ids(self):
         """Test _validate_bulk_manage_request with missing course_ids."""
-        from unittest.mock import patch
 
         from src.api_routes import _validate_bulk_manage_request
         from src.app import app

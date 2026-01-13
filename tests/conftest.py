@@ -1,7 +1,6 @@
 """Global test configuration and fixtures for SQLite backend."""
 
 import os
-import tempfile
 
 import pytest
 
@@ -34,7 +33,6 @@ def pytest_collection_modifyitems(config, items):
 # Shared test credentials (seeded by seed_db.py)
 # Import from centralized test credentials module
 from tests.test_credentials import (
-    BASE_ACCOUNTS,
     INSTITUTION_ADMIN_EMAIL,
     INSTITUTION_ADMIN_PASSWORD,
     SITE_ADMIN_EMAIL,

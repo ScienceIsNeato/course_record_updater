@@ -4,7 +4,6 @@ Unit tests for Session Management Service
 Tests secure session creation, validation, timeout, and security features.
 """
 
-import secrets
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
@@ -12,7 +11,6 @@ import pytest
 from flask import Flask
 
 from data.session import (
-    SessionSecurityError,
     SessionService,
     create_user_session,
     destroy_session,
@@ -163,7 +161,6 @@ class TestSessionCreation:
         self, request_context, sample_user_data
     ):
         """Test that session ID is regenerated for security"""
-        from flask import session
 
         # Create a mock session with regenerate method
         mock_session = MagicMock()

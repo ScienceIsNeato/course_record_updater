@@ -4,10 +4,7 @@ Unit tests for clo_workflow_service.py
 Tests the CLO submission and approval workflow service methods.
 """
 
-from datetime import datetime
-from unittest.mock import MagicMock, call, patch
-
-import pytest
+from unittest.mock import patch
 
 from src.services.clo_workflow_service import CLOWorkflowService
 from src.utils.constants import CLOApprovalStatus, CLOStatus

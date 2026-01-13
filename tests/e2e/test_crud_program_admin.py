@@ -376,5 +376,5 @@ def test_tc_crud_pa_006_cannot_access_other_programs(
         )
 
     print(
-        f"✅ TC-CRUD-PA-006: Program Admin can only see courses in their assigned programs"
+        "✅ TC-CRUD-PA-006: Program Admin can only see courses in their assigned programs"
     )

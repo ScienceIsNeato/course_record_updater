@@ -113,7 +113,7 @@ def _seed_database():
     if seed_result.returncode != 0:
         print(f"   ❌ Database seeding failed: {seed_result.stderr}")
         raise RuntimeError("E2E database seeding failed")
-    print(f"   ✓ Baseline data seeded")
+    print("   ✓ Baseline data seeded")
 
 
 def _start_e2e_server(worker_port, db_path, env_overrides, log_file=None):
@@ -243,7 +243,7 @@ def setup_worker_environment(tmp_path_factory):
 
     # Cleanup
     if worker_id is None:
-        print(f"\n🧹 E2E Cleanup: Stopping server...")
+        print("\n🧹 E2E Cleanup: Stopping server...")
     else:
         print(f"\n🧹 Worker {worker_id}: Cleaning up...")
 
@@ -254,7 +254,7 @@ def setup_worker_environment(tmp_path_factory):
             print(f"   ✓ Server stopped (PID: {server_process.pid})")
         except Exception:
             server_process.kill()
-            print(f"   ⚠️  Server force-killed")
+            print("   ⚠️  Server force-killed")
 
     if worker_id is not None and worker_db and os.path.exists(worker_db):
         try:

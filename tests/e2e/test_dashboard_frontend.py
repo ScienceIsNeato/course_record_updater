@@ -65,7 +65,7 @@ class TestDashboardFrontend:
         # authenticated_page fixture already logs in and goes to dashboard
 
         # Ensure we are on the dashboard
-        authenticated_page.wait_for_url(f"**/dashboard")
+        authenticated_page.wait_for_url("**/dashboard")
 
         # Check for dashboard panels
         panels = authenticated_page.locator(".dashboard-panel")

@@ -9,8 +9,6 @@ import tempfile
 from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
-import pytest
-
 from src.services.import_service import (
     ConflictRecord,
     ConflictStrategy,

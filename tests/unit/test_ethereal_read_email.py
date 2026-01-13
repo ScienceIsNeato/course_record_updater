@@ -4,7 +4,7 @@ Unit tests for Ethereal Provider read_email() method
 
 import email
 import os
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 

@@ -1,9 +1,7 @@
 """E2E tests for dashboard summary statistics display."""
 
-import re
-
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page
 
 
 @pytest.mark.e2e
@@ -40,7 +38,7 @@ def test_tc_dashboard_001_institution_admin_summary_stats_display(
     faculty_count = page.locator("#facultyCount").text_content()
     section_count = page.locator("#sectionCount").text_content()
 
-    print(f"\n📊 Dashboard Stats:")
+    print("\n📊 Dashboard Stats:")
     print(f"  Programs: {program_count}")
     print(f"  Courses: {course_count}")
     print(f"  Faculty: {faculty_count}")
