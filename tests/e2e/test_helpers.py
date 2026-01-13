@@ -1,3 +1,7 @@
+from playwright.sync_api import Page
+
+from src.utils.constants import TEST_USER_PASSWORD
+
 """
 E2E Test Helper Functions
 
@@ -18,7 +22,7 @@ def create_test_user_via_api(
     last_name: str,
     role: str,
     institution_id: str,
-    password: str = "TestUser123!",
+    password: str = TEST_USER_PASSWORD,
     program_ids: list = None,
 ) -> dict:
     """
@@ -34,7 +38,7 @@ def create_test_user_via_api(
         last_name: Last name
         role: User role (instructor, program_admin, institution_admin)
         institution_id: Institution ID
-        password: User password (default: TestUser123!)
+        password: User password (default: TEST_USER_PASSWORD)
         program_ids: List of program IDs to associate with user (optional)
 
     Returns:
@@ -105,7 +109,7 @@ def login_as_user(page: Page, base_url: str, email: str, password: str) -> Page:
         Page: Authenticated page
 
     Example:
-        page = login_as_user(page, BASE_URL, "john.smith@test.com", "TestUser123!")
+        page = login_as_user(page, BASE_URL, "john.smith@test.com", TEST_USER_PASSWORD)
     """
     page.context.clear_cookies()
     page.goto(f"{base_url}/login")
@@ -202,7 +206,7 @@ def assign_user_to_program(
     role: str = "program_admin",
 ) -> None:
     """
-    Assign user to a program (for program admins).
+        password: str = TEST_USER_PASSWORD,
 
     Args:
         admin_page: Authenticated admin page

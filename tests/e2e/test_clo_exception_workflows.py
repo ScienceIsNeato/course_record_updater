@@ -9,6 +9,7 @@ import json
 import pytest
 from playwright.sync_api import Page, expect
 
+from src.utils.constants import TEST_USER_PASSWORD
 from tests.e2e.conftest import BASE_URL
 from tests.e2e.test_helpers import (
     create_test_user_via_api,
@@ -88,7 +89,7 @@ def _setup_clo_data(admin_page, institution_id, clo_status="assigned"):
 
     unique_id = str(uuid.uuid4())[:8]
     instructor_email = f"instructor.actions.{unique_id}@test.com"
-    instructor_password = "TestUser123!"  # pragma: allowlist secret
+    instructor_password = TEST_USER_PASSWORD
     instructor = create_test_user_via_api(
         admin_page=admin_page,
         base_url=BASE_URL,

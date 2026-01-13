@@ -24,6 +24,7 @@ import json
 import pytest
 from playwright.sync_api import Page, expect
 
+from src.utils.constants import TEST_USER_PASSWORD
 from tests.e2e.conftest import BASE_URL
 from tests.e2e.test_helpers import (
     create_test_user_via_api,
@@ -162,7 +163,7 @@ def _setup_rework_test_data(admin_page, institution_id):
     # Submit CLO via instructor context (using section_outcome_id)
     instructor_context = admin_page.context.browser.new_context()
     instructor_page = instructor_context.new_page()
-    login_as_user(instructor_page, BASE_URL, instructor_email, "TestUser123!")
+    login_as_user(instructor_page, BASE_URL, instructor_email, TEST_USER_PASSWORD)
 
     instructor_page.goto(f"{BASE_URL}/dashboard")
     instructor_page.wait_for_load_state("networkidle")
@@ -325,7 +326,11 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
 
     # Step 4: Instructor Resubmit
     instructor_page = admin_page.context.new_page()
-    login_as_user(instructor_page, BASE_URL, data["instructor_email"], "TestUser123!")
+    from src.utils.constants import TEST_USER_PASSWORD
+
+    login_as_user(
+        instructor_page, BASE_URL, data["instructor_email"], TEST_USER_PASSWORD
+    )
 
     _step_instructor_resubmits(instructor_page, course_id, clo_id)
 

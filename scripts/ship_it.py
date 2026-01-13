@@ -2441,12 +2441,29 @@ def _handle_pr_validation(args: Any) -> Optional[int]:
     if args.checks is None:
         checks_to_run = executor.pr_checks
     else:
+        checks_to_run = []
         available_checks: dict[str, CheckDef] = {
             check.flag: check for check in executor.all_checks
         }
-        checks_to_run = [
-            available_checks[c] for c in args.checks if c in available_checks
-        ]
+
+        for check_name in args.checks:
+            # Check if it's an alias
+            if check_name in executor.check_alias_lists:
+                checks_to_run.extend(executor.check_alias_lists[check_name])
+            # Check if it's a direct check flag
+            elif check_name in available_checks:
+                checks_to_run.append(available_checks[check_name])
+            else:
+                print(f"⚠️  Unknown check or alias: {check_name}")
+
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_checks = []
+        for check in checks_to_run:
+            if check.flag not in seen:
+                seen.add(check.flag)
+                unique_checks.append(check)
+        checks_to_run = unique_checks
 
     fail_fast = not args.no_fail_fast
 

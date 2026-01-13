@@ -10,6 +10,7 @@ import time
 import pytest
 from playwright.sync_api import Page
 
+from src.utils.constants import TEST_USER_PASSWORD
 from tests.e2e.conftest import BASE_URL
 from tests.e2e.test_helpers import (
     create_test_user_via_api,
@@ -39,7 +40,7 @@ def test_tc_crud_inst_001_update_own_profile(
 
     # Use unique email per test run to avoid conflicts in parallel execution
     test_email = f"john.instructor.{int(time.time() * 1000)}@test.local"
-    test_password = "TestUser123!"
+    test_password = TEST_USER_PASSWORD
 
     instructor = create_test_user_via_api(
         admin_page=authenticated_institution_admin_page,
@@ -153,7 +154,9 @@ def test_tc_crud_inst_002_cannot_delete_users(
     )
 
     # Login as instructor
-    instructor_page = login_as_user(page, BASE_URL, instructor_email, "TestUser123!")
+    instructor_page = login_as_user(
+        page, BASE_URL, instructor_email, TEST_USER_PASSWORD
+    )
 
     # Get CSRF token
     csrf_token = instructor_page.evaluate(
@@ -215,7 +218,9 @@ def test_tc_crud_inst_003_cannot_edit_other_users(
     )
 
     # Login as instructor
-    instructor_page = login_as_user(page, BASE_URL, instructor_email, "TestUser123!")
+    instructor_page = login_as_user(
+        page, BASE_URL, instructor_email, TEST_USER_PASSWORD
+    )
 
     # Get CSRF token
     csrf_token = instructor_page.evaluate(

@@ -228,23 +228,66 @@ def test_clo_invitation_immediate_assignment_and_scroll(
     inst_id = get_institution_id_from_user(admin_page)
     data = _setup_unassigned_clo(admin_page, inst_id)
 
+    # Intercept API to return many CLOs (mocking a long list)
+    def handle_outcomes_route(route):
+        # Construct mock response purely from test data to avoid fetch issues
+        mock_data = []
+
+        # 1. Create the target item (the one we need to click)
+        target_item = {
+            "id": data["section_outcome_id"],
+            "outcome_id": data["section_outcome_id"],
+            "status": "unassigned",
+            "course_number": "TEST-101",  # Derived from test setup if needed, or generic
+            "course_id": data["course_id"],
+            "course_title": "E2E Test Course",
+            "section_number": "001",
+            "clo_number": "1",
+            "description": "Target CLO for Assignment",
+            "instructor_name": None,
+            "submitted_at": "2025-01-01",
+        }
+        mock_data.append(target_item)
+
+        # 2. Add 50 dummy items to ensure scrollability
+        for i in range(50):
+            dummy = target_item.copy()
+            dummy["id"] = f"dummy-{i}"
+            dummy["outcome_id"] = f"dummy-{i}"
+            dummy["section_number"] = f"99{i}"
+            dummy["description"] = f"Dummy CLO {i} for scroll testing"
+            mock_data.append(dummy)
+
+        # Wrap in object as expected by audit_clo.js (data.outcomes)
+        route.fulfill(json={"outcomes": mock_data})
+
+    # Debug catch-all route wrapper
+    def handle_debug_route(route):
+        url = route.request.url
+        print(f"DEBUG_REQUEST: {url}")
+        if "/api/outcomes" in url:
+            print(f"DEBUG: MATCHED OUTCOMES via wrapper: {url}")
+            handle_outcomes_route(route)
+        else:
+            route.continue_()
+
+    admin_page.route("**", handle_debug_route)
+
     # Go to Audit Page
     admin_page.goto(f"{BASE_URL}/audit-clo")
     admin_page.select_option("#courseFilter", value=data["course_id"])
 
-    # Ensure page is scrollable by adding dummy content to force height
-    # The default content might be short if only one row matches
-    admin_page.evaluate("document.body.style.minHeight = '3000px'")
-
     row_selector = f"tr[data-outcome-id='{data['section_outcome_id']}']"
     admin_page.wait_for_selector(row_selector)
 
-    # Scroll down a bit
-    admin_page.evaluate("window.scrollTo(0, 100)")
-    admin_page.wait_for_timeout(200)  # Stabilization
+    # Scroll down to verify page is long
+    admin_page.evaluate("window.scrollTo(0, 200)")
+    admin_page.wait_for_timeout(200)
 
     initial_scroll = admin_page.evaluate("window.scrollY")
-    assert initial_scroll > 50, "Failed to scroll page down"
+    assert (
+        initial_scroll > 50
+    ), f"Failed to scroll page down. scrollY: {initial_scroll} - Table might be too short?"
 
     # Click "Assign Instructor" (opens first modal)
     invite_btn = admin_page.locator(f"{row_selector} button[title='Assign Instructor']")

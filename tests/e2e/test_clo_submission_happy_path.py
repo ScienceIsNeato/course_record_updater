@@ -17,6 +17,7 @@ import json
 import pytest
 from playwright.sync_api import Page, expect
 
+from src.utils.constants import TEST_USER_PASSWORD
 from tests.e2e.conftest import BASE_URL
 from tests.e2e.test_helpers import (
     create_test_user_via_api,
@@ -186,7 +187,7 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
     # === STEP 2: Instructor logs in ===
     instructor_page = admin_page.context.new_page()
     login_as_user(
-        instructor_page, BASE_URL, "uat007.instructor@test.com", "TestUser123!"
+        instructor_page, BASE_URL, "uat007.instructor@test.com", TEST_USER_PASSWORD
     )
 
     # Debug console logs

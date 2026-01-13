@@ -56,13 +56,13 @@ pre-commit run --all-files
 python scripts/ship_it.py
 
 # Full PR validation (comprehensive - includes all checks)
-python scripts/ship_it.py --validation-type PR
+python scripts/ship_it.py --checks PR
 
 # Specific checks
 python scripts/ship_it.py --checks format lint tests
 
 # Specific checks with PR validation
-python scripts/ship_it.py --validation-type PR --checks format lint tests security types
+python scripts/ship_it.py --checks format lint tests security types
 ```
 
 ### 🎯 Quality Standards

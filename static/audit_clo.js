@@ -1163,7 +1163,16 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Error loading CLOs:", error);
       const errorDiv = document.createElement("div");
       errorDiv.className = "alert alert-danger";
-      errorDiv.innerHTML = `<strong>Error:</strong> Failed to load CLOs. ${error.message}`;
+      const strong = document.createElement("strong");
+      strong.textContent = "Error:";
+      errorDiv.appendChild(strong);
+      // Add a space and plain-text error message to avoid HTML injection
+      errorDiv.appendChild(
+        document.createTextNode(
+          " Failed to load CLOs. " +
+            (error && error.message ? error.message : ""),
+        ),
+      );
       cloListContainer.prepend(errorDiv);
     }
   }

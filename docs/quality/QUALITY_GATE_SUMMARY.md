@@ -51,13 +51,13 @@ We've successfully implemented a comprehensive quality gate system based on FogO
 python scripts/ship_it.py
 
 # Full PR validation (all checks including security & sonar)
-python scripts/ship_it.py --validation-type PR
+python scripts/ship_it.py --checks PR
 
 # Specific checks
 python scripts/ship_it.py --checks format lint
 
 # Run specific checks with PR validation
-python scripts/ship_it.py --validation-type PR --checks format lint tests security types
+python scripts/ship_it.py --checks PR --checks format lint tests security types
 ```
 
 ### ⏱️ **Performance Results:**
