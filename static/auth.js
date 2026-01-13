@@ -108,11 +108,32 @@ function initializeRegisterForm() {
 
   form.addEventListener("submit", handleRegister);
 
-  // Password strength indicator
-  const passwordInput = document.getElementById("password");
-  if (passwordInput) {
-    passwordInput.addEventListener("input", updatePasswordStrength);
-    passwordInput.addEventListener("blur", validatePassword);
+  // --- MutationObserver for password field ---
+  const attachPasswordListeners = () => {
+    const passwordInput = document.getElementById("password");
+    if (!passwordInput) return;
+    // Remove previous listeners by cloning (safe for idempotency)
+    const clone = passwordInput.cloneNode(true);
+    passwordInput.parentNode.replaceChild(clone, passwordInput);
+    clone.addEventListener("input", updatePasswordStrength);
+    clone.addEventListener("blur", validatePassword);
+    clone.addEventListener("change", updatePasswordStrength);
+    clone.addEventListener("animationstart", (event) => {
+      if (event.animationName === "authAutoFill") {
+        updatePasswordStrength();
+      }
+    });
+    monitorPasswordAutofill(clone);
+  };
+  attachPasswordListeners();
+
+  // Observe for password field replacement
+  const passwordFieldParent = document.getElementById("password")?.parentNode;
+  if (passwordFieldParent) {
+    const observer = new MutationObserver(() => {
+      attachPasswordListeners();
+    });
+    observer.observe(passwordFieldParent, { childList: true, subtree: false });
   }
 
   // Confirm password validation
@@ -145,6 +166,33 @@ function initializeRegisterForm() {
     });
     input.addEventListener("input", clearValidation);
   });
+
+  // Re-evaluate password state for pre-filled or auto-complete values
+  updatePasswordStrength();
+}
+
+function monitorPasswordAutofill(input) {
+  if (!input) return;
+
+  let previousValue = input.value;
+  let attempts = 0;
+
+  const checkValue = () => {
+    if (!input) return;
+
+    const currentValue = input.value;
+    if (currentValue && currentValue !== previousValue) {
+      previousValue = currentValue;
+      updatePasswordStrength(input.id);
+    }
+
+    attempts += 1;
+    if (attempts < 6 && !currentValue) {
+      setTimeout(checkValue, 120 * attempts);
+    }
+  };
+
+  checkValue();
 }
 
 // Forgot Password Form
@@ -332,6 +380,9 @@ function clearValidation() {
 // Password Strength
 function updatePasswordStrength(inputId = "password") {
   const passwordInput = document.getElementById(inputId);
+  if (!passwordInput) {
+    return;
+  }
   const password = passwordInput.value;
   const strength = getPasswordStrength(password);
 
@@ -351,9 +402,44 @@ function updatePasswordStrength(inputId = "password") {
     labelElement.className = `strength-${strength.level}`;
   }
 
-  // Update requirements if on register page
   updatePasswordRequirements(password);
 }
+
+// Update password requirements checklist (for UI and tests)
+function updatePasswordRequirements(password) {
+  // Map of requirement id to test function
+  const requirements = {
+    "req-length": (pw) => pw && pw.length >= 8,
+    "req-uppercase": (pw) => /[A-Z]/.test(pw),
+    "req-lowercase": (pw) => /[a-z]/.test(pw),
+    "req-number": (pw) => /[0-9]/.test(pw),
+    "req-special": (pw) => /[^A-Za-z0-9]/.test(pw),
+  };
+  Object.entries(requirements).forEach(([id, test]) => {
+    const el = document.getElementById(id);
+    if (el) {
+      if (test(password)) {
+        el.classList.add("met");
+        el.classList.remove("unmet");
+      } else {
+        el.classList.remove("met");
+        el.classList.add("unmet");
+      }
+    }
+  });
+}
+
+// Password strength indicator initialization on page load
+document.addEventListener("DOMContentLoaded", () => {
+  // Initialize password strength for all relevant fields
+  const passwordFields = ["password", "newPassword"];
+  passwordFields.forEach((fieldId) => {
+    const field = document.getElementById(fieldId);
+    if (field) {
+      updatePasswordStrength(fieldId);
+    }
+  });
+});
 
 function getPasswordStrength(password) {
   if (!password) {
@@ -389,33 +475,6 @@ function getPasswordStrength(password) {
   };
 
   return { score, ...levels[Math.min(score, 8)] };
-}
-
-function updatePasswordRequirements(password) {
-  const requirements = [
-    { id: "req-length", test: password.length >= 8 },
-    { id: "req-uppercase", test: /[A-Z]/.test(password) },
-    { id: "req-lowercase", test: /[a-z]/.test(password) },
-    { id: "req-number", test: /[0-9]/.test(password) },
-  ];
-
-  requirements.forEach((req) => {
-    const element = document.getElementById(req.id);
-    if (element) {
-      const icon = element.querySelector("i");
-      if (req.test) {
-        element.classList.add("met");
-        if (icon) {
-          icon.className = "fas fa-check text-success";
-        }
-      } else {
-        element.classList.remove("met");
-        if (icon) {
-          icon.className = "fas fa-times text-danger";
-        }
-      }
-    }
-  });
 }
 
 // Generic async form submission handler to reduce duplication
@@ -548,9 +607,19 @@ async function handleRegister(e) {
       // Redirect immediately with success message as query parameter
       // The login page will display the message
       const message = encodeURIComponent(
-        "Account created successfully! Please check your email to verify your account.",
+        "Account created! Please check your email for the verification link before attempting to log in.",
       );
       globalThis.location.href = `/login?message=${message}`;
+    },
+    onError: (response, result) => {
+      // Show backend error message if available, else fallback to status message
+      let errorMsg = null;
+      if (result && (result.error || result.message)) {
+        errorMsg = result.error || result.message;
+      } else {
+        errorMsg = `Request failed with status ${response.status}`;
+      }
+      showError(errorMsg);
     },
   });
 }
@@ -1021,7 +1090,6 @@ const authTestExports = {
   clearValidation,
   updatePasswordStrength,
   getPasswordStrength,
-  updatePasswordRequirements,
   handleLogin,
   handleRegister,
   handleForgotPassword,
@@ -1037,5 +1105,7 @@ const authTestExports = {
 };
 
 if (typeof module !== "undefined" && module.exports) {
+  // Add updatePasswordRequirements for test access
+  authTestExports.updatePasswordRequirements = updatePasswordRequirements;
   module.exports = authTestExports;
 }

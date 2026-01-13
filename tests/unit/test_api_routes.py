@@ -548,10 +548,10 @@ class TestInvitationEndpoints:
             },
         )
 
-        assert response.status_code == 500  # Generic error for invalid email format
+        assert response.status_code == 400  # Now returns 400 for invalid input
         data = json.loads(response.data)
         assert data["success"] is False
-        assert "Failed to create invitation" in data["error"]
+        assert "Invalid email format" in data["error"]
 
     @patch("src.services.invitation_service.InvitationService")
     def test_create_invitation_service_error(self, mock_invitation_service):

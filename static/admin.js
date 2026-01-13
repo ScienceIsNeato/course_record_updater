@@ -708,6 +708,9 @@ async function handleInviteUser(event) {
       if (hasInvitationsView()) {
         loadInvitations();
       }
+
+      // Notify other components that a faculty member has been invited/assigned
+      document.dispatchEvent(new CustomEvent("faculty-invited"));
     } else {
       throw new Error(result.error || "Failed to send invitation");
     }

@@ -12,8 +12,13 @@
     <link rel="icon" href="{{ url_for('static', filename='images/loopcloser_favicon.png') }}" type="image/png">
 </head>
 <body class="auth-body">
+    {% set nav_button_text = 'Create Account' %}
+    {% set nav_button_url = url_for('register') %}
+    {% set nav_button_icon = 'fas fa-user-plus' %}
+    {% include 'components/app_header.html' %}
     <div class="auth-container">
-        <div class="auth-card">
+        <div class="auth-content">
+            <div class="auth-card">
             <div class="auth-header">
                 <img src="{{ url_for('static', filename='images/loopcloser_wordmark.png') }}" alt="Loopcloser" class="auth-logo" style="height: 60px; width: auto;">
                 <h1 class="auth-title">Welcome Back</h1>
@@ -81,6 +86,8 @@
                 <a href="{{ url_for('register') }}" class="btn btn-outline-primary">Create Account</a>
             </div>
         </div>
+    </div>
+</div>
 
         <!-- Account Lockout Modal -->
         <div class="modal fade" id="lockoutModal" tabindex="-1" aria-labelledby="lockoutModalLabel" aria-hidden="true">

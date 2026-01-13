@@ -87,8 +87,35 @@ class InvitationService:
 
             # Check if user already exists
             existing_user = db.get_user_by_email(invitee_email)
+            target_user_id = None
+
             if existing_user:
-                raise InvitationError(f"User with email {invitee_email} already exists")
+                if existing_user["account_status"] != "pending":
+                    raise InvitationError(
+                        f"User with email {invitee_email} already exists and is active"
+                    )
+                target_user_id = existing_user["user_id"]
+            else:
+                # Create pending user for immediate assignment capability
+                # Use provided names or placeholders/email-derived names if missing
+                user_first_name = first_name or "Invited"
+                user_last_name = last_name or "User"
+
+                user_data = User.create_schema(
+                    email=invitee_email,
+                    first_name=user_first_name,
+                    last_name=user_last_name,
+                    role=invitee_role,
+                    institution_id=institution_id,
+                    account_status="pending",
+                    program_ids=program_ids,
+                )
+                user_data["invited_by"] = inviter_user_id
+                user_data["invited_at"] = get_current_time()
+
+                target_user_id = db.create_user(user_data)
+                if not target_user_id:
+                    raise InvitationError("Failed to create pending user record")
 
             # Check for existing pending or sent invitation
             existing_invitation = db.get_invitation_by_email(
@@ -98,6 +125,9 @@ class InvitationService:
                 status = existing_invitation.get("status")
                 # Prevent duplicate invitations that are pending or already sent
                 if status in ["pending", "sent"]:
+                    # If replacng, we might want to resend? But here we just error as per original logic
+                    # unless we want to support re-invites implicitly.
+                    # For now, keeping original duplicate check but we might need to handle it better.
                     raise InvitationError(
                         f"Active invitation already exists for {invitee_email}"
                     )
@@ -153,8 +183,16 @@ class InvitationService:
 
             invitation_data["id"] = invitation_id
 
+            # Immediate Assignment if section_id is provided
+            if section_id and target_user_id:
+                InvitationService._assign_instructor_to_section(
+                    user_id=target_user_id,
+                    section_id=section_id,
+                    replace_existing=replace_existing,
+                )
+
             logger.info(
-                f"[Invitation Service] Created invitation {invitation_id} for {invitee_email}"
+                f"[Invitation Service] Created invitation {invitation_id} for {invitee_email} (User ID: {target_user_id})"
             )
             return invitation_data
 
@@ -300,11 +338,27 @@ class InvitationService:
                 invitation, password_hash, display_name
             )
 
-            # Save user and update invitation
-            user_id = InvitationService._finalize_invitation_acceptance(
-                invitation, user_data
-            )
-            user_data["id"] = user_id
+            # Check if user already exists (should be pending)
+            existing_user = db.get_user_by_email(invitation["email"])
+
+            if existing_user:
+                # Update existing pending user
+                user_id = InvitationService._update_pending_user_from_invitation(
+                    existing_user, invitation, password_hash, display_name
+                )
+                user_data = existing_user  # Basic data, updated in DB
+                user_data["id"] = user_id
+            else:
+                # Fallback: Create user account if not pre-created
+                user_data = InvitationService._create_user_from_invitation(
+                    invitation, password_hash, display_name
+                )
+
+                # Save user and update invitation
+                user_id = InvitationService._finalize_invitation_acceptance(
+                    invitation, user_data
+                )
+                user_data["id"] = user_id
 
             # Auto-assign to section if specified in invitation
             if invitation.get("section_id"):
@@ -312,6 +366,18 @@ class InvitationService:
                     user_id=user_id,
                     section_id=invitation["section_id"],
                     replace_existing=invitation.get("replace_existing", False),
+                )
+
+            # Mark invitation as accepted if handled by update path
+            if existing_user:
+                db.update_invitation(
+                    invitation["id"],
+                    {
+                        "status": "accepted",
+                        "accepted_at": get_current_time(),
+                        "accepted_by_user_id": user_id,
+                        "updated_at": get_current_time(),
+                    },
                 )
 
             # Send welcome email
@@ -442,6 +508,45 @@ class InvitationService:
         return user_id
 
     @staticmethod
+    def _update_pending_user_from_invitation(
+        existing_user: Dict[str, Any],
+        invitation: Dict[str, Any],
+        password_hash: str,
+        display_name: Optional[str],
+    ) -> str:
+        """Update an existing pending user record upon acceptance."""
+        first_name, last_name = InvitationService._parse_display_name(
+            display_name, invitation["email"]
+        )
+
+        # Determine names - prefer provided, fallback to existing if not "Invited User", fallback to email
+        # If existing user has placeholder names, overwrite them
+        update_data = {
+            "password_hash": password_hash,
+            "account_status": "active",
+            "email_verified": True,
+            "registration_completed_at": get_current_time(),
+            "updated_at": get_current_time(),
+        }
+
+        if first_name:
+            update_data["first_name"] = first_name
+        if last_name:
+            update_data["last_name"] = last_name
+        if display_name:
+            update_data["display_name"] = display_name
+
+        # If the user was created as "Invited User" and no new name provided, we might want to keep it or force update
+        # But _parse_display_name defaults to email part if None.
+        # For now, we trust _parse_display_name logic to give us something reasonable.
+
+        success = db.update_user(existing_user["user_id"], update_data)
+        if not success:
+            raise InvitationError("Failed to activate user account")
+
+        return existing_user["user_id"]
+
+    @staticmethod
     def _assign_instructor_to_section(
         user_id: str, section_id: str, replace_existing: bool = False
     ) -> None:
@@ -485,6 +590,44 @@ class InvitationService:
             logger.info(
                 f"[Invitation Service] Assigned instructor {user_id} to section {section_id}"
             )
+
+            # Fix: Also update related Section Outcomes to 'assigned' if they are 'unassigned'
+            # This ensures the audit view (which relies on section outcomes) reflects the assignment
+            try:
+                inst_id = section.get("institution_id")
+                if not inst_id:
+                    # Attempt to resolve institution_id
+                    offering_id = section.get("offering_id")
+                    if offering_id:
+                        offering = db.get_course_offering(offering_id)
+                        if offering:
+                            course_id = offering.get("course_id")
+                            course = (
+                                db.get_course_by_id(course_id)
+                                if isinstance(course_id, str)
+                                else None
+                            )
+                            if course:
+                                inst_id = course.get("institution_id")
+
+                if inst_id:
+                    section_outcomes = db.get_section_outcomes_by_criteria(
+                        institution_id=inst_id,
+                        section_id=section_id,
+                    )
+                    for outcome in section_outcomes:
+                        if outcome.get("status") == "unassigned":
+                            db.update_section_outcome(
+                                outcome["id"], {"status": "assigned"}
+                            )
+                            logger.info(
+                                f"[Invitation Service] Auto-assigned outcome {outcome['id']} to instructor {user_id}"
+                            )
+
+            except Exception as e_outcomes:
+                logger.error(
+                    f"[Invitation Service] Failed to update section outcomes: {e_outcomes}"
+                )
 
         except Exception as e:
             logger.error(

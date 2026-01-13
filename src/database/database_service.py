@@ -741,6 +741,7 @@ def get_section_outcomes_by_criteria(
     program_id: Optional[str] = None,
     term_id: Optional[str] = None,
     course_id: Optional[str] = None,
+    section_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Get section outcomes filtered by various criteria.
@@ -756,7 +757,7 @@ def get_section_outcomes_by_criteria(
         List of section outcome dictionaries
     """
     return _db_service.get_section_outcomes_by_criteria(
-        institution_id, status, program_id, term_id, course_id
+        institution_id, status, program_id, term_id, course_id, section_id
     )
 
 

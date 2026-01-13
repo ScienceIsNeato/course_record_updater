@@ -224,6 +224,7 @@ class TestLoginServiceAuthentication:
             "password_hash": "hashed-password",
             "role": "instructor",
             "account_status": "active",
+            "email_verified": True,
         }
         mock_password_service.verify_password.return_value = True
 

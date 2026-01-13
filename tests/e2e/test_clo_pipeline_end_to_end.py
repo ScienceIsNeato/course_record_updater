@@ -200,7 +200,7 @@ def _step_2_assign_instructor(
         conn = sqlite3.connect(target_db)
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE section_outcomes SET status='assigned' WHERE id=?",
+            "UPDATE course_section_outcomes SET status='assigned' WHERE id=?",
             (section_outcome_id,),
         )
         conn.commit()

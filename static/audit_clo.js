@@ -706,6 +706,11 @@ async function handleInviteInstructorSubmit(event) {
     if (submitBtn) {
       submitBtn.disabled = false;
     }
+    // Refresh the list to show the assigned instructor
+    if (typeof globalThis.loadCLOs === "function") {
+      await globalThis.loadCLOs();
+      document.dispatchEvent(new CustomEvent("faculty-invited"));
+    }
   }
 }
 
@@ -931,8 +936,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const exportButton = document.getElementById("exportCsvBtn");
   const cloListContainer = document.getElementById("cloListContainer");
   const cloDetailModal = document.getElementById("cloDetailModal");
-  const requestReworkModal = document.getElementById("requestReworkModal");
-  const requestReworkForm = document.getElementById("requestReworkForm");
+  const cloReworkSection = document.getElementById("cloReworkSection");
+  const cloReworkForm = document.getElementById("cloReworkForm");
+  const reworkFeedbackTextarea = document.getElementById(
+    "reworkFeedbackComments",
+  );
+  const reworkSendEmailCheckbox = document.getElementById("reworkSendEmail");
+  const reworkAlert = document.getElementById("reworkAlert");
   const sendReminderForm = document.getElementById("sendReminderForm");
   const inviteNewInstructorBtn = document.getElementById(
     "inviteNewInstructorBtn",
@@ -941,6 +951,14 @@ document.addEventListener("DOMContentLoaded", () => {
     "inviteInstructorModal",
   );
   const inviteInstructorForm = document.getElementById("inviteInstructorForm");
+  // Removed unused button assignments to fix ESLint no-unused-vars
+  const cancelReworkBtn = document.getElementById("cancelReworkBtn");
+  const cloDetailActionsStandard = document.getElementById(
+    "cloDetailActionsStandard",
+  );
+  const cloDetailActionsRework = document.getElementById(
+    "cloDetailActionsRework",
+  );
 
   // State - use window for global access by extracted functions
   globalThis.currentCLO = null;
@@ -949,6 +967,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Expose functions on window for access by extracted functions (approveCLO, markAsNCI)
   globalThis.loadCLOs = loadCLOs;
   globalThis.updateStats = updateStats;
+  globalThis.pendingReworkOutcomeId = null;
 
   // Initialize
   initialize();
@@ -994,10 +1013,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  requestReworkForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    await submitReworkRequest();
-  });
+  if (cloReworkForm) {
+    cloReworkForm.addEventListener("submit", submitReworkRequest);
+  }
+  if (cancelReworkBtn) {
+    cancelReworkBtn.addEventListener("click", () => {
+      toggleReworkMode(false);
+    });
+  }
   if (sendReminderForm) {
     sendReminderForm.addEventListener("submit", submitReminder);
   }
@@ -1020,6 +1043,7 @@ document.addEventListener("DOMContentLoaded", () => {
       handleInviteInstructorSubmit,
     );
   }
+  toggleReworkMode(false);
 
   /**
    * Initialize filters (programs, terms)
@@ -1227,6 +1251,11 @@ document.addEventListener("DOMContentLoaded", () => {
    * Render CLO list
    */
   function renderCLOList() {
+    // Prevent layout shift/scroll jumping by locking the height
+    if (cloListContainer.offsetHeight > 0) {
+      cloListContainer.style.minHeight = `${cloListContainer.offsetHeight}px`;
+    }
+
     cloListContainer.textContent = ""; // Clear current content
 
     const tableResp = document.createElement("div");
@@ -1411,18 +1440,32 @@ document.addEventListener("DOMContentLoaded", () => {
               const btnGroup = document.createElement("div");
               btnGroup.className = "btn-group btn-group-sm";
 
-              let actionBtn = null;
+              const actionBtns = [];
               if (clo.status === "awaiting_approval") {
-                const btn = document.createElement("button");
-                btn.type = "button";
-                btn.className = "btn btn-success text-white";
-                btn.title = "Approve Outcome";
-                btn.innerHTML = '<i class="fas fa-check"></i>';
-                btn.onclick = (e) => {
+                const approveBtn = document.createElement("button");
+                approveBtn.type = "button";
+                approveBtn.className = "btn btn-success text-white";
+                approveBtn.title = "Approve Outcome";
+                approveBtn.innerHTML = '<i class="fas fa-check"></i>';
+                approveBtn.onclick = (e) => {
                   e.stopPropagation();
                   approveOutcome(clo.id || clo.outcome_id);
                 };
-                actionBtn = btn;
+                actionBtns.push(approveBtn);
+
+                const reworkBtn = document.createElement("button");
+                reworkBtn.type = "button";
+                reworkBtn.className = "btn btn-warning text-dark";
+                reworkBtn.title = "Request Rework";
+                reworkBtn.innerHTML =
+                  '<i class="fas fa-exclamation-triangle"></i>';
+                reworkBtn.onclick = (e) => {
+                  e.stopPropagation();
+                  globalThis.pendingReworkOutcomeId =
+                    clo.id || clo.outcome_id || null;
+                  globalThis.showCLODetails(outcomeId);
+                };
+                actionBtns.push(reworkBtn);
               } else if (clo.status === "unassigned") {
                 const btn = document.createElement("button");
                 btn.type = "button";
@@ -1433,7 +1476,7 @@ document.addEventListener("DOMContentLoaded", () => {
                   e.stopPropagation();
                   assignOutcome(clo.id || clo.outcome_id);
                 };
-                actionBtn = btn;
+                actionBtns.push(btn);
               } else if (
                 ["in_progress", "approval_pending", "assigned"].includes(
                   clo.status,
@@ -1448,7 +1491,7 @@ document.addEventListener("DOMContentLoaded", () => {
                   e.stopPropagation();
                   remindOutcome(outcomeId, clo.instructor_id, clo.course_id);
                 };
-                actionBtn = btn;
+                actionBtns.push(btn);
               }
 
               const viewBtn = document.createElement("button");
@@ -1462,7 +1505,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 globalThis.showCLODetails(outcomeId);
               };
 
-              if (actionBtn) btnGroup.appendChild(actionBtn);
+              actionBtns.forEach((btn) => {
+                btnGroup.appendChild(btn);
+              });
               btnGroup.appendChild(viewBtn);
               tdActions.appendChild(btnGroup);
               tr.appendChild(tdActions);
@@ -1534,7 +1579,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Render HTML using extracted function
       // nosemgrep
-      const cloDetailContainer = document.getElementById("cloDetailContent");
+      const cloDetailContainer = document.getElementById(
+        "cloDetailContentMain",
+      );
       cloDetailContainer.replaceChildren(renderCLODetails(clo));
 
       // Show/hide action buttons based on status
@@ -1570,6 +1617,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (requestReworkBtn) {
         requestReworkBtn.style.display = canApprove ? "inline-block" : "none";
         requestReworkBtn.onclick = () => {
+          globalThis.pendingReworkOutcomeId = clo.id || clo.outcome_id || null;
           globalThis.openReworkModal();
         };
       }
@@ -1582,50 +1630,80 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const modal = new bootstrap.Modal(cloDetailModal);
       modal.show();
+
+      toggleReworkMode(false);
+      if (
+        globalThis.pendingReworkOutcomeId &&
+        (clo.id || clo.outcome_id) === globalThis.pendingReworkOutcomeId
+      ) {
+        globalThis.openReworkModal();
+        globalThis.pendingReworkOutcomeId = null;
+      }
     } catch (error) {
       alert("Failed to load CLO details: " + error.message);
     }
   };
 
   /**
-   * Open rework modal
+   * Activate rework mode inside the detail modal
    */
   globalThis.openReworkModal = function () {
     if (!globalThis.currentCLO) return;
+    if (!cloReworkSection || !cloReworkForm) return;
 
-    document.getElementById("reworkCloDescription").textContent =
-      `${globalThis.currentCLO.course_number} - CLO ${globalThis.currentCLO.clo_number}: ${globalThis.currentCLO.description}`;
-    document.getElementById("feedbackComments").value = "";
-    document.getElementById("sendEmailCheckbox").checked = true;
-
-    // Hide detail modal
-    const detailModalInstance = bootstrap.Modal.getInstance(cloDetailModal);
-    if (detailModalInstance) {
-      detailModalInstance.hide();
+    reworkFeedbackTextarea.value = "";
+    reworkSendEmailCheckbox.checked = true;
+    reworkAlert.classList.add("d-none");
+    const descriptionEl = document.getElementById("reworkCloDescription");
+    if (descriptionEl) {
+      descriptionEl.textContent = `${globalThis.currentCLO.course_number} - CLO ${globalThis.currentCLO.clo_number}: ${globalThis.currentCLO.description}`;
     }
 
-    // Show rework modal
-    const modal = new bootstrap.Modal(requestReworkModal);
-    modal.show();
+    enterReworkMode();
   };
+
+  function toggleReworkMode(show) {
+    if (cloReworkSection) {
+      cloReworkSection.style.display = show ? "block" : "none";
+    }
+    if (cloDetailActionsStandard) {
+      cloDetailActionsStandard.style.display = show ? "none" : "flex";
+    }
+    if (cloDetailActionsRework) {
+      cloDetailActionsRework.style.display = show ? "flex" : "none";
+    }
+    globalThis.reworkMode = show;
+  }
+
+  function enterReworkMode() {
+    toggleReworkMode(true);
+    if (reworkFeedbackTextarea) {
+      reworkFeedbackTextarea.focus();
+    }
+  }
 
   /**
    * Submit rework request
    */
-  async function submitReworkRequest() {
-    if (!globalThis.currentCLO) return;
+  async function submitReworkRequest(event) {
+    if (event && typeof event.preventDefault === "function") {
+      event.preventDefault();
+    }
 
-    const comments = document.getElementById("feedbackComments").value.trim();
-    const sendEmail = document.getElementById("sendEmailCheckbox").checked;
+    if (!globalThis.currentCLO) return;
+    if (!reworkFeedbackTextarea) return;
+
+    const comments = reworkFeedbackTextarea.value.trim();
+    const sendEmail = reworkSendEmailCheckbox?.checked ?? true;
 
     if (!comments) {
-      alert("Please provide feedback comments");
+      showReworkAlert("Please provide feedback comments.", "danger");
       return;
     }
 
     const outcomeId = globalThis.currentCLO.id;
     if (!outcomeId) {
-      alert("Error: CLO ID not found");
+      showReworkAlert("Error: CLO ID not found.", "danger");
       return;
     }
 
@@ -1653,21 +1731,29 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error(error.error || "Failed to request rework");
       }
 
-      // Close modal
-      const modal = bootstrap.Modal.getInstance(requestReworkModal);
-      modal.hide();
-
-      // Show success
-      alert(
+      showReworkAlert(
         "Rework request sent successfully!" +
           (sendEmail ? " Email notification sent." : ""),
+        "success",
       );
 
-      // Reload list
+      toggleReworkMode(false);
+      const modalInstance = bootstrap.Modal.getInstance(cloDetailModal);
+      if (modalInstance) {
+        modalInstance.hide();
+      }
+
       await loadCLOs();
     } catch (error) {
-      alert("Failed to request rework: " + error.message);
+      showReworkAlert("Failed to request rework: " + error.message, "danger");
     }
+  }
+
+  function showReworkAlert(message, variant = "info") {
+    if (!reworkAlert) return;
+    reworkAlert.textContent = message;
+    reworkAlert.className = `alert alert-${variant}`;
+    reworkAlert.classList.remove("d-none");
   }
 });
 

@@ -4645,7 +4645,7 @@ def create_invitation_api() -> ResponseReturnValue:
         500: Server error
     """
     try:
-        from src.services.invitation_service import InvitationService
+        from src.services.invitation_service import InvitationError, InvitationService
 
         # Get request data (silent=True prevents 415 exception, returns None instead)
         data = request.get_json(silent=True) or {}
@@ -4706,6 +4706,12 @@ def create_invitation_api() -> ResponseReturnValue:
             response_body["email_error"] = email_error
 
         return jsonify(response_body), 201
+
+    except InvitationError as e:
+        logger.error(f"Invitation error: {e}")
+        # Return 409 if conflict, else 400
+        status_code = 409 if "already exists" in str(e) else 400
+        return jsonify({"success": False, "error": str(e)}), status_code
 
     except Exception as e:
         logger.error(f"Error creating invitation: {e}")
@@ -4986,25 +4992,26 @@ def cancel_invitation_api(invitation_id: str) -> ResponseReturnValue:
 @api.route("/auth/login", methods=["POST"])
 def login_api() -> ResponseReturnValue:
     """
-    Authenticate user and create session
+    Authenticate user and create session.
 
-    JSON Body:
-    {
-        "email": "user@example.com",
-        "password": "password123",  # pragma: allowlist secret - API documentation example
-        "remember_me": false  // Optional, default false
-    }
+    Request body:
+    - email: User email
+    - password: User password
+    - remember_me: Boolean (optional) for extended session
 
     Returns:
-        200: Login successful
-        400: Invalid request data
-        401: Invalid credentials
-        423: Account locked
-        500: Server error
+    - success: Boolean indicating authentication result
+    - user: User data if successful
+    - error: Error message if failed
     """
+    from src.services.login_service import (
+        INVALID_CREDENTIALS_MSG,
+        LoginError,
+        LoginService,
+    )
+    from src.services.password_service import AccountLockedError
+
     try:
-        from src.services.login_service import LoginError, LoginService
-        from src.services.password_service import AccountLockedError
 
         # Get request data
         data = request.get_json(silent=True) or {}
@@ -5052,8 +5059,10 @@ def login_api() -> ResponseReturnValue:
         return jsonify({"success": False, "error": "Account is locked"}), 423
     except LoginError as e:
         logger.error(f"User login failed: {e}")
-        # Generic error message to prevent username enumeration
-        return jsonify({"success": False, "error": "Invalid email or password"}), 401
+        error_msg = str(e)
+        if error_msg == INVALID_CREDENTIALS_MSG:
+            error_msg = INVALID_CREDENTIALS_MSG
+        return jsonify({"success": False, "error": error_msg}), 401
     except Exception as e:
         logger.error(f"Login error: {e}")
         return handle_api_error(e, "User login", "An unexpected error occurred")

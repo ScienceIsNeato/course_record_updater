@@ -215,3 +215,95 @@ def test_clo_invite_button_opens_modal(authenticated_institution_admin_page: Pag
         print("Screenshot saved to /tmp/modal_failure.png")
 
     expect(modal).to_be_visible()
+
+
+@pytest.mark.e2e
+def test_clo_invitation_immediate_assignment_and_scroll(
+    authenticated_institution_admin_page: Page,
+):
+    admin_page = authenticated_institution_admin_page
+    # Capture console logs and dialogs for debugging
+    admin_page.on("console", lambda msg: print(f"Browser Console: {msg.text}"))
+
+    inst_id = get_institution_id_from_user(admin_page)
+    data = _setup_unassigned_clo(admin_page, inst_id)
+
+    # Go to Audit Page
+    admin_page.goto(f"{BASE_URL}/audit-clo")
+    admin_page.select_option("#courseFilter", value=data["course_id"])
+
+    # Ensure page is scrollable by adding dummy content to force height
+    # The default content might be short if only one row matches
+    admin_page.evaluate("document.body.style.minHeight = '3000px'")
+
+    row_selector = f"tr[data-outcome-id='{data['section_outcome_id']}']"
+    admin_page.wait_for_selector(row_selector)
+
+    # Scroll down a bit
+    admin_page.evaluate("window.scrollTo(0, 100)")
+    admin_page.wait_for_timeout(200)  # Stabilization
+
+    initial_scroll = admin_page.evaluate("window.scrollY")
+    assert initial_scroll > 50, "Failed to scroll page down"
+
+    # Click "Assign Instructor" (opens first modal)
+    invite_btn = admin_page.locator(f"{row_selector} button[title='Assign Instructor']")
+    invite_btn.click()
+
+    assign_modal = admin_page.locator("#assignInstructorModal")
+    expect(assign_modal).to_be_visible()
+
+    # Click "Invite New Instructor" (opens second modal)
+    link_invite_btn = assign_modal.locator("#inviteNewInstructorBtn")
+    link_invite_btn.click()
+
+    invite_modal = admin_page.locator("#inviteInstructorModal")
+    expect(invite_modal).to_be_visible()
+
+    # Fill Invite Form
+    unique = str(uuid.uuid4())[:8]
+    first_name = f"New-{unique}"
+    last_name = "Instructor"
+
+    invite_modal.locator("#inviteEmail").fill(f"new.instructor.{unique}@test.com")
+    invite_modal.locator("#inviteFirstName").fill(first_name)
+    invite_modal.locator("#inviteLastName").fill(last_name)
+
+    # Submit
+    submit_btn = invite_modal.locator("#sendInviteBtn")
+    submit_btn.click()
+
+    # Check for error alert first (debugging)
+    # Wait a moment for response
+    admin_page.wait_for_timeout(1000)
+    error_alert = invite_modal.locator("#inviteInstructorAlert")
+    if error_alert.is_visible():
+        err_text = error_alert.inner_text()
+        print(f"DEBUG: Error Alert Visible: {err_text}")
+        pytest.fail(f"Invitation failed with alert: {err_text}")
+
+    # Verify Success Modal appears
+    success_modal = admin_page.locator("#inviteSuccessModal")
+    expect(success_modal).to_be_visible()
+
+    # Close Success Modal (to see table)
+    # The success modal usually has an OK button or Close button
+    success_modal.locator("button.btn-primary").click()  # 'OK' button
+    expect(success_modal).not_to_be_visible()
+
+    # VERIFY TABLE UPDATE
+    # The row should update to show "Assigned" or instructor name.
+    # We check for the name we just used.
+    expect(admin_page.locator(row_selector)).to_contain_text(first_name)
+    expect(admin_page.locator(row_selector)).to_contain_text(last_name)
+
+    # Verify Badge status changed
+    expect(admin_page.locator(row_selector)).to_contain_text("Assigned")
+
+    # VERIFY SCROLL POSITION
+    final_scroll = admin_page.evaluate("window.scrollY")
+
+    # Check that scroll position hasn't reset to 0
+    assert (
+        abs(final_scroll - initial_scroll) < 20
+    ), f"Scroll jumped significant amount! Initial: {initial_scroll}, Final: {final_scroll}"

@@ -201,8 +201,14 @@
 
     async function loadSections() {
         const container = document.getElementById('sectionsTableContainer');
+
+        // Prevent layout shift/scroll jumping by locking the height
+        if (container.offsetHeight > 0) {
+            container.style.minHeight = `${container.offsetHeight}px`;
+        }
+
         container.innerHTML = `
-        <output class="d-flex justify-content-center align-items-center" style="min-height: 200px;" aria-live="polite">
+        <output class="d-flex justify-content-center align-items-center" style="height: 100%; min-height: 200px;" aria-live="polite">
             <div class="spinner-border" aria-hidden="true">
                 <span class="visually-hidden">Loading sections...</span>
             </div>

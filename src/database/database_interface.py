@@ -265,6 +265,7 @@ class DatabaseInterface(ABC):
         program_id: Optional[str] = None,
         term_id: Optional[str] = None,
         course_id: Optional[str] = None,
+        section_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Get section outcomes filtered by various criteria"""
         raise NotImplementedError

@@ -13,13 +13,17 @@ import sys
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+# Typing imports for static analysis
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-import src.database.database_service as database_service
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.database import database_service
 from src.models.models import (
     Course,
     CourseOffering,
@@ -31,12 +35,7 @@ from src.models.models import (
     User,
 )
 from src.services.password_service import hash_password
-
-# Constants
-SITE_ADMIN_INSTITUTION_ID = 1
-PROGRAM_DEFAULT_DESCRIPTION = "A sample academic program."
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.utils.constants import PROGRAM_DEFAULT_DESCRIPTION, SITE_ADMIN_INSTITUTION_ID
 
 
 class BaselineSeeder(ABC):
@@ -50,13 +49,17 @@ class BaselineSeeder(ABC):
     See SEED_DB_REFACTOR_PLAN.md for migration strategy.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, manifest_path: Optional[str] = None, env: str = "prod") -> None:
+        self.manifest_path = manifest_path
+        self.env = env
         self.created: Dict[str, List[Any]] = {
             "institutions": [],
             "users": [],
             "programs": [],
             "terms": [],
             "courses": [],
+            "offerings": [],
+            "sections": [],
         }
 
     @staticmethod
@@ -109,12 +112,12 @@ class BaselineSeeder(ABC):
             short_name = inst_data.get("short_name", "")
 
             # Check if already exists
-            existing = database_service.db.get_institution_by_short_name(short_name)
+            existing = database_service.db.get_institution_by_short_name(short_name)  # type: ignore[name-defined]
             if existing:
                 institution_ids.append(existing["institution_id"])
                 continue
 
-            schema = Institution.create_schema(
+            schema = Institution.create_schema(  # type: ignore[name-defined]
                 name=inst_data.get("name", short_name),
                 short_name=short_name,
                 admin_email=inst_data.get(
@@ -128,7 +131,7 @@ class BaselineSeeder(ABC):
             if inst_data.get("logo_path"):
                 schema["logo_path"] = inst_data["logo_path"]
 
-            inst_id = database_service.db.create_institution(schema)
+            inst_id = database_service.db.create_institution(schema)  # type: ignore[name-defined]
             if inst_id:
                 institution_ids.append(inst_id)
                 self.created["institutions"].append(inst_id)
@@ -182,7 +185,7 @@ class BaselineSeeder(ABC):
                     start_date = base_date + timedelta(days=start_offset)
                     end_date = base_date + timedelta(days=end_offset)
 
-                schema = Term.create_schema(
+                schema = Term.create_schema(  # type: ignore[name-defined]
                     name=term_data.get("name", "Default Term"),
                     start_date=start_date.isoformat(),
                     end_date=end_date.isoformat(),
@@ -194,7 +197,7 @@ class BaselineSeeder(ABC):
                 )
                 schema["institution_id"] = inst_id
 
-                term_id = database_service.db.create_term(schema)
+                term_id = database_service.db.create_term(schema)  # type: ignore[name-defined]
                 if term_id:
                     term_ids.append(term_id)
                     self.created["terms"].append(term_id)
@@ -242,7 +245,7 @@ class BaselineSeeder(ABC):
             else:
                 institution_id = institution_ids[0]
 
-            schema = Program.create_schema(
+            schema = Program.create_schema(  # type: ignore[name-defined]
                 name=prog_data["name"],
                 short_name=prog_data.get("code", prog_data["name"][:4].upper()),
                 institution_id=institution_id,
@@ -250,7 +253,7 @@ class BaselineSeeder(ABC):
                 created_by="system",
             )
 
-            prog_id = database_service.db.create_program(schema)
+            prog_id = database_service.db.create_program(schema)  # type: ignore[name-defined]
             if prog_id:
                 program_ids.append(prog_id)
                 self.created["programs"].append(prog_id)
@@ -960,6 +963,11 @@ class BaselineTestSeeder(BaselineSeeder):
         """Seed baseline data from manifest - REQUIRED"""
         self.log("🌱 Seeding baseline E2E infrastructure...")
 
+        # Refresh database service to ensure it uses the correct database
+        from src.database.database_factory import refresh_database_service
+
+        refresh_database_service()
+
         # Load manifest - REQUIRED
         if manifest_data is None:
             manifest_path = self._get_manifest_path()
@@ -1312,32 +1320,14 @@ def main() -> None:
     database_url = db_mapping[args.env]
     os.environ["DATABASE_URL"] = database_url
 
+    # Refresh database service to ensure it uses the correct database
+    from src.database.database_factory import refresh_database_service
+
+    refresh_database_service()
+
     # Log which database we're using
     db_file = database_url.replace("sqlite:///", "")
     print(f"[SEED] 🗄️  Using {args.env} database: {db_file}")
-
-    # CRITICAL: Import database modules AFTER setting DATABASE_URL
-    # This ensures the database_service initializes with the correct database
-    import src.database.database_service as database_service
-
-    db = database_service.refresh_connection()
-    from src.models.models import Course, Institution, Program, Term, User
-    from src.services.password_service import hash_password
-    from src.utils.constants import (
-        PROGRAM_DEFAULT_DESCRIPTION,
-        SITE_ADMIN_INSTITUTION_ID,
-    )
-
-    # Inject imports into module globals so classes can use them
-    globals()["db"] = db
-    globals()["PROGRAM_DEFAULT_DESCRIPTION"] = PROGRAM_DEFAULT_DESCRIPTION
-    globals()["SITE_ADMIN_INSTITUTION_ID"] = SITE_ADMIN_INSTITUTION_ID
-    globals()["Course"] = Course
-    globals()["Institution"] = Institution
-    globals()["Program"] = Program
-    globals()["Term"] = Term
-    globals()["User"] = User
-    globals()["hash_password"] = hash_password
 
     if args.demo:
         demo_seeder = DemoSeeder(manifest_path=args.manifest, env=args.env)

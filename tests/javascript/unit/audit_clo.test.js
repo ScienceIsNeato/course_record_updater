@@ -793,7 +793,7 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
 describe("audit_clo.js - DOM Integration", () => {
   let statusFilter, sortBy, sortOrder, cloListContainer;
   let programFilter, termFilter, exportButton;
-  let cloDetailModal, requestReworkModal, requestReworkForm;
+  let cloDetailModal, cloReworkSection, cloReworkForm, cancelReworkBtn;
   let mockModalInstance;
 
   beforeEach(() => {
@@ -808,18 +808,24 @@ describe("audit_clo.js - DOM Integration", () => {
       <button id="exportCsvBtn"></button>
       <div id="cloListContainer"></div>
       <div id="cloDetailModal">
-        <div id="cloDetailContent"></div>
-        <button id="reopenBtn" style="display: none;"></button>
-        <button id="approveBtn" style="display: none;"></button>
-        <button id="requestReworkBtn" style="display: none;"></button>
-        <button id="markNCIBtn" style="display: none;"></button>
-      </div>
-      <div id="requestReworkModal">
-        <form id="requestReworkForm">
-          <div id="reworkCloDescription"></div>
-          <textarea id="feedbackComments"></textarea>
-          <input type="checkbox" id="sendEmailCheckbox" checked>
-        </form>
+        <div id="cloDetailContentMain"></div>
+        <div id="cloReworkSection" style="display: none;">
+          <form id="cloReworkForm">
+            <div id="reworkCloDescription"></div>
+            <textarea id="reworkFeedbackComments"></textarea>
+            <input type="checkbox" id="reworkSendEmail" checked>
+            <div id="reworkAlert" class="d-none"></div>
+          </form>
+        </div>
+        <div id="cloDetailActionsStandard">
+          <button id="requestReworkBtn" style="display: none;"></button>
+          <button id="markNCIBtn" style="display: none;"></button>
+          <button id="reopenBtn" style="display: none;"></button>
+          <button id="approveBtn" style="display: none;"></button>
+        </div>
+        <div id="cloDetailActionsRework" style="display: none;">
+          <button id="cancelReworkBtn"></button>
+        </div>
       </div>
       <span id="statAwaitingApproval">0</span>
       <span id="statNeedsRework">0</span>
@@ -865,8 +871,9 @@ describe("audit_clo.js - DOM Integration", () => {
     exportButton = document.getElementById("exportCsvBtn");
     cloListContainer = document.getElementById("cloListContainer");
     cloDetailModal = document.getElementById("cloDetailModal");
-    requestReworkModal = document.getElementById("requestReworkModal");
-    requestReworkForm = document.getElementById("requestReworkForm");
+    cloReworkSection = document.getElementById("cloReworkSection");
+    cloReworkForm = document.getElementById("cloReworkForm");
+    cancelReworkBtn = document.getElementById("cancelReworkBtn");
 
     // Mock bootstrap modal instance
     mockModalInstance = {
@@ -1967,6 +1974,9 @@ describe("audit_clo.js - DOM Integration", () => {
       const approveBtn = document.querySelector(".btn-success");
       expect(approveBtn).not.toBeNull();
       expect(approveBtn.title).toBe("Approve Outcome");
+      const reworkBtn = document.querySelector(".btn-warning");
+      expect(reworkBtn).not.toBeNull();
+      expect(reworkBtn.title).toBe("Request Rework");
     });
 
     it("should render assign button for unassigned status", async () => {

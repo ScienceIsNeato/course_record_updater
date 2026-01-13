@@ -911,6 +911,7 @@ class SQLiteDatabase(DatabaseInterface):
         program_id: Optional[str] = None,
         term_id: Optional[str] = None,
         course_id: Optional[str] = None,
+        section_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Get section outcomes filtered by various criteria.
@@ -933,6 +934,9 @@ class SQLiteDatabase(DatabaseInterface):
 
             if course_id:
                 query = query.where(Course.id == course_id)
+
+            if section_id:
+                query = query.where(CourseSection.id == section_id)
 
             if term_id:
                 query = query.where(CourseOffering.term_id == term_id)

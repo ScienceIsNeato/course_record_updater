@@ -511,7 +511,7 @@ class CLOWorkflowService:
 
     @staticmethod
     def validate_course_submission(
-        course_id: str, section_id: Optional[str] = None
+        course_id: str, section_id: Optional[str] = None, user_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Validate all CLOs and course-level data are complete before submission.
@@ -519,30 +519,60 @@ class CLOWorkflowService:
         Args:
             course_id: The course ID to validate
             section_id: Optional section ID to validate course-level data
+            user_id: Optional user ID to determine appropriate sections to check
 
         Returns:
             Dict with 'valid' bool and 'errors' list of error details
         """
         try:
-            outcomes = db.get_course_outcomes(course_id)
+            # Get sections for this course
+            if user_id:
+                # Get user info to determine role
+                from src.database.database_service import get_user_by_id
 
-            if not outcomes:
+                user = get_user_by_id(user_id)
+                if user and user.get("role") == "instructor":
+                    # Instructors can only see their own sections
+                    sections = db.get_sections_by_instructor(user_id)
+                    # Filter to only sections for this course
+                    sections = [s for s in sections if s.get("course_id") == course_id]
+                else:
+                    # Admins and other roles can see all sections
+                    sections = db.get_sections_by_course(course_id)
+            else:
+                # Fallback to all sections
+                sections = db.get_sections_by_course(course_id)
+
+            # Get all section outcomes for this course
+            section_outcomes = []
+            logger.info(f"DEBUG: Found {len(sections)} sections for course {course_id}")
+            for section in sections:
+                section_id = section.get("section_id")
+                logger.info(f"DEBUG: Processing section {section_id}")
+                if section_id:
+                    outcomes = db.get_section_outcomes_by_section(section_id)
+                    logger.info(
+                        f"DEBUG: Section {section_id} has {len(outcomes)} outcomes"
+                    )
+                    section_outcomes.extend(outcomes)
+
+            if not section_outcomes:
                 return {
                     "valid": False,
                     "errors": [
                         {
                             "outcome_id": None,
                             "field": "course",
-                            "message": "No CLOs found for this course",
+                            "message": "No section outcomes found for this course",
                         }
                     ],
                 }
 
             errors = []
 
-            # Validate each CLO
-            for outcome in outcomes:
-                errors.extend(CLOWorkflowService._validate_clo_fields(outcome))
+            # Validate each section outcome
+            for section_outcome in section_outcomes:
+                errors.extend(CLOWorkflowService._validate_clo_fields(section_outcome))
 
             # Validate course-level section data if section provided
             if section_id:
@@ -579,24 +609,58 @@ class CLOWorkflowService:
             Dict with 'success' bool and 'errors' list if validation fails
         """
         # First validate
+        logger.info(
+            f"DEBUG: Validating course submission for course {course_id}, user {user_id}"
+        )
         validation = CLOWorkflowService.validate_course_submission(
-            course_id, section_id
+            course_id, section_id, user_id
+        )
+        logger.info(
+            f"DEBUG: Validation result: valid={validation['valid']}, errors={len(validation['errors'])}"
         )
         if not validation["valid"]:
+            for error in validation["errors"]:
+                logger.info(f"DEBUG: Validation error: {error}")
             return {"success": False, "errors": validation["errors"]}
 
         try:
-            # Get all CLOs for this course
-            outcomes = db.get_course_outcomes(course_id)
+            # Get sections for this course (same logic as validation)
+            if user_id:
+                # Get user info to determine role
+                from src.database.database_service import get_user_by_id
 
-            # Submit each CLO
+                user = get_user_by_id(user_id)
+                if user and user.get("role") == "instructor":
+                    # Instructors can only see their own sections
+                    sections = db.get_sections_by_instructor(user_id)
+                    # Filter to only sections for this course
+                    sections = [s for s in sections if s.get("course_id") == course_id]
+                else:
+                    # Admins and other roles can see all sections
+                    sections = db.get_sections_by_course(course_id)
+            else:
+                # Fallback to all sections
+                sections = db.get_sections_by_course(course_id)
+
+            # Get all section outcomes for this course
+            section_outcomes = []
+            for section in sections:
+                section_id = section.get("section_id")
+                if section_id:
+                    outcomes = db.get_section_outcomes_by_section(section_id)
+                    section_outcomes.extend(outcomes)
+
+            # Submit each section outcome
             submitted_count = 0
-            for outcome in outcomes:
-                outcome_id = outcome.get("outcome_id") or outcome.get("id")
-                if outcome.get("status") in [CLOStatus.APPROVED, CLOStatus.COMPLETED]:
+            for section_outcome in section_outcomes:
+                section_outcome_id = section_outcome.get("id")
+                if section_outcome.get("status") in [
+                    CLOStatus.APPROVED,
+                    CLOStatus.COMPLETED,
+                ]:
                     continue
-                if outcome_id and CLOWorkflowService.submit_clo_for_approval(
-                    str(outcome_id), user_id
+                if section_outcome_id and CLOWorkflowService.submit_clo_for_approval(
+                    str(section_outcome_id), user_id
                 ):
                     submitted_count += 1
 

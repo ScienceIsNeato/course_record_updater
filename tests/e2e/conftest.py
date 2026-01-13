@@ -95,7 +95,7 @@ def _clean_stale_db(db_path):
                 print(f"   ⚠️  Could not remove {f}: {e}")
 
 
-def _seed_database():
+def _seed_database(db_name: str):
     """Run database seeding script."""
     import subprocess
 
@@ -107,8 +107,13 @@ def _seed_database():
         "--manifest",
         "tests/fixtures/e2e_seed_manifest.json",
     ]
+
+    # Pass explicit DATABASE_URL to ensure seed script writes to the correct E2E specific DB
+    env = os.environ.copy()
+    env["DATABASE_URL"] = f"sqlite:///{os.path.abspath(db_name)}"
+
     seed_result = subprocess.run(
-        seed_cmd, capture_output=True, text=True, cwd=os.getcwd()
+        seed_cmd, capture_output=True, text=True, cwd=os.getcwd(), env=env
     )
     if seed_result.returncode != 0:
         print(f"   ❌ Database seeding failed: {seed_result.stderr}")
@@ -182,7 +187,8 @@ def _setup_serial_environment(worker_port):
     worker_db = "course_records_e2e.db"
 
     _clean_stale_db(worker_db)
-    _seed_database()
+    _clean_stale_db(worker_db)
+    _seed_database(worker_db)
 
     env_overrides = {
         "ENV": "e2e",
