@@ -256,17 +256,17 @@ def test_clo_rework_workflow(authenticated_institution_admin_page: Page):
 
     # Click Request Rework
     admin_page.click("#requestReworkBtn")
-    expect(admin_page.locator("#requestReworkModal")).to_be_visible()
+    expect(admin_page.locator("#cloReworkSection")).to_be_visible()
 
     # Fill Form
-    admin_page.fill("#feedbackComments", "Please fix the assessment data.")
+    admin_page.fill("#reworkFeedbackComments", "Please fix the assessment data.")
 
     # Submit
-    admin_page.click("#requestReworkForm button[type='submit']")
+    admin_page.click("#cloDetailActionsRework button[type='submit']")
 
     # Verify Success Alert/Modal Close
     # (Note: Alert handling is implicit in Playwright if not handled, but we check UI state)
-    expect(admin_page.locator("#requestReworkModal")).not_to_be_visible()
+    expect(admin_page.locator("#cloReworkSection")).not_to_be_visible()
 
     # Verify API State
     resp = admin_page.request.get(

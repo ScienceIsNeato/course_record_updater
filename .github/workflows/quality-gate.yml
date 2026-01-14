@@ -110,6 +110,8 @@ jobs:
       continue-on-error: true  # Don't fail CI if Codecov upload fails
 
   smoke-tests:
+    # Temporarily disabled - no development pipeline to run against yet
+    if: false
     runs-on: ubuntu-latest
     needs: setup
     timeout-minutes: 15
