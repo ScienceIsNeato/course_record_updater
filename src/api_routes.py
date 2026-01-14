@@ -4111,7 +4111,6 @@ def update_outcome_assessment_endpoint(outcome_id: str) -> ResponseReturnValue:
         # Verify outcome exists (this is a Section Outcome ID from frontend)
         outcome = get_section_outcome(outcome_id)
         if not outcome:
-            logger.error(f"DEBUG: Outcome NOT FOUND for ID: {outcome_id}")
             return jsonify({"success": False, "error": "Outcome not found"}), 404
 
         logger.info(f"DEBUG: Outcome FOUND. SectionID: {outcome['section_id']}")
@@ -4124,7 +4123,6 @@ def update_outcome_assessment_endpoint(outcome_id: str) -> ResponseReturnValue:
         section = get_section_by_id(outcome["section_id"])
 
         if not section:
-            logger.error(f"DEBUG: Section NOT FOUND: {outcome['section_id']}")
             return jsonify({"success": False, "error": "Section not found"}), 404
 
         # Check if user is the instructor or an admin
@@ -4144,7 +4142,15 @@ def update_outcome_assessment_endpoint(outcome_id: str) -> ResponseReturnValue:
         updates = {k: v for k, v in data.items() if k in allowed_fields}
 
         # Update
-        update_section_outcome(outcome_id, updates)
+        success = update_section_outcome(outcome_id, updates)
+        if not success:
+            logger.error(f"Failed to update section outcome for ID: {outcome_id}")
+            return (
+                jsonify(
+                    {"success": False, "message": "Failed to save assessment data"}
+                ),
+                500,
+            )
 
         # If status is changing to 'in_progress', logic might be needed, but 'update_section_outcome' is raw.
         # Ideally we use `CLOWorkflowService.update_assessment_data(outcome_id, updates)`

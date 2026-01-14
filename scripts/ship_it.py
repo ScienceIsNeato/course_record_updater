@@ -424,7 +424,7 @@ class QualityGateExecutor:
     def _get_git_diff_output(self) -> str:
         base_candidates = ["origin/main", "main", "master"]
         for base in base_candidates:
-            result = subprocess.run(  # nosec B404
+            result = subprocess.run(  # nosec B603,B607
                 ["git", "diff", "--unified=0", base],
                 capture_output=True,
                 text=True,
@@ -432,7 +432,7 @@ class QualityGateExecutor:
             if result.returncode == 0:
                 return result.stdout
 
-        fallback = subprocess.run(  # nosec B404
+        fallback = subprocess.run(  # nosec B603,B607
             ["git", "diff", "--unified=0", "HEAD~1"],
             capture_output=True,
             text=True,

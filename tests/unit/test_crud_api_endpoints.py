@@ -901,10 +901,12 @@ class TestOutcomesCRUD:
 
     @patch("src.database.database_service.get_section_by_id")
     @patch("src.api_routes.get_current_user")
+    @patch("src.api_routes.update_section_outcome")
     @patch("src.api_routes.get_section_outcome")
     def test_update_outcome_assessment_tool_too_long(
         self,
         mock_get_outcome,
+        mock_update_assessment,
         mock_get_user,
         mock_get_section,
         client,
@@ -920,6 +922,7 @@ class TestOutcomesCRUD:
             "instructor_id": "user-123",
         }
         mock_get_user.return_value = {"user_id": "user-123", "role": "instructor"}
+        mock_update_assessment.return_value = True
 
         response = client.put(
             "/api/outcomes/outcome-123/assessment",
