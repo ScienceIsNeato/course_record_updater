@@ -17,7 +17,6 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.adapters.generic_csv_adapter import GenericCSVAdapter
 from src.services.export_service import ExportConfig, create_export_service
 
 logging.basicConfig(level=logging.INFO)
@@ -73,7 +72,7 @@ def test_export():
             logger.error(f"❌ Export failed: {result.errors}")
             return 1
 
-        logger.info(f"✅ Export successful!")
+        logger.info("✅ Export successful!")
         logger.info(f"   Records exported: {result.records_exported}")
         logger.info(f"   File path: {result.file_path}")
 
@@ -90,7 +89,7 @@ def test_export():
                 logger.info(
                     f"   ✅ Manifest found (version {manifest['format_version']})"
                 )
-                logger.info(f"   📊 Entity counts:")
+                logger.info("   📊 Entity counts:")
                 for entity, count in manifest["entity_counts"].items():
                     if count > 0:
                         logger.info(f"      {entity}: {count}")

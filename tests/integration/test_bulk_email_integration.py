@@ -6,13 +6,11 @@ email sending, and status tracking.
 """
 
 import json
-import time
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.app import app
-from src.bulk_email_models.bulk_email_job import BulkEmailJob
 from tests.test_utils import CommonAuthMixin
 
 

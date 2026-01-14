@@ -16,6 +16,48 @@ DEFAULT_PAGINATION_LIMIT = 50
 DEFAULT_AUDIT_LOG_LIMIT = 20
 DEFAULT_EXPORT_LIMIT = 1000
 
+# Test secrets (placeholders used only in test environments)
+# NOTE: Do NOT hardcode passwords in tests. Add new test passwords here
+# and regenerate the .secrets.baseline when intentionally adding a new test secret.
+TEST_USER_PASSWORD = "TestUser123!"
+# Additional centralized test passwords (keep in sync with tests/test_credentials.py)
+TEST_PASSWORD = "TestPass123!"
+SECURE_PASSWORD = "SecurePassword123!"
+NEW_PASSWORD = "NewSecurePassword123!"
+NEW_SECURE_PASSWORD = "NewSecurePassword123!"
+VALID_PASSWORD = "ValidPassword123!"
+WRONG_PASSWORD = "WrongPass123!"
+WEAK_PASSWORD = "weak"
+INVALID_PASSWORD_SHORT = "a"
+INVALID_PASSWORD_NO_COMPLEXITY = "password123"
+STRONG_PASSWORD_1 = "Str0ng!Pass"
+STRONG_PASSWORD_2 = "StrongPass1!"
+LONG_PASSWORD = "A" * 129 + "1!"
+DEMO_PASSWORD = "Demo2025!"
+
+# Backwards-compatible aliases for test credentials module
+SITE_ADMIN_PASSWORD = "SiteAdmin123!"
+INSTITUTION_ADMIN_PASSWORD = "InstitutionAdmin123!"
+PROGRAM_ADMIN_PASSWORD = INSTITUTION_ADMIN_PASSWORD
+INSTRUCTOR_PASSWORD = "Instructor123!"
+DEFAULT_PASSWORD = INSTITUTION_ADMIN_PASSWORD
+
+# Test account emails and course constants (for tests re-export)
+SITE_ADMIN_EMAIL = "siteadmin@system.local"
+INSTITUTION_ADMIN_EMAIL = "sarah.admin@mocku.test"
+PROGRAM_ADMIN_EMAIL = "lisa.prog@mocku.test"
+INSTRUCTOR_EMAIL = "john.instructor@mocku.test"
+
+# Course/program names used in tests
+CS_INTRO_COURSE = "CS-101"
+CS_DATA_STRUCTURES_COURSE = "CS-201"
+EE_CIRCUITS_COURSE = "EE-101"
+CS_PROGRAM_NAME = "Computer Science"
+EE_PROGRAM_NAME = "Electrical Engineering"
+
+# Password used for password reset tests
+RESET_PASSWORD = NEW_SECURE_PASSWORD
+
 # Branding defaults for institutions
 DEFAULT_INSTITUTION_NAME = "Your Institution"
 DEFAULT_INSTITUTION_SHORT_NAME = "YOUR INSTITUTION"

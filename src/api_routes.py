@@ -12,21 +12,19 @@ import tempfile
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 from flask import (
     Blueprint,
     flash,
     jsonify,
     redirect,
-    render_template,
     request,
     send_file,
     session,
     url_for,
 )
 from flask.typing import ResponseReturnValue
-from werkzeug.datastructures import FileStorage
 
 import src.database.database_service as database_service
 from src.database.database_service import (
@@ -75,6 +73,7 @@ from src.database.database_service import (
     get_programs_by_institution,
     get_recent_audit_logs,
     get_section_by_id,
+    get_section_outcome,
     get_sections_by_instructor,
     get_sections_by_term,
     get_term_by_id,
@@ -88,8 +87,8 @@ from src.database.database_service import (
     update_course_programs,
     update_course_section,
     update_institution,
-    update_outcome_assessment,
     update_program,
+    update_section_outcome,
     update_term,
     update_user,
     update_user_profile,
@@ -98,7 +97,6 @@ from src.database.database_service import (
 from src.models.models import Program
 
 # Import our services
-from src.services.audit_service import AuditService
 from src.services.auth_service import (
     UserRole,
     clear_current_program_id,
@@ -110,6 +108,7 @@ from src.services.auth_service import (
     permission_required,
     set_current_program_id,
 )
+from src.services.clo_workflow_service import CLOWorkflowService
 from src.services.dashboard_service import DashboardService, DashboardServiceError
 from src.services.export_service import ExportConfig, create_export_service
 from src.services.import_service import import_excel
@@ -170,9 +169,9 @@ from src.utils.constants import (
     PROGRAM_NOT_FOUND_MSG,
     SECTION_NOT_FOUND_MSG,
     TERM_NOT_FOUND_MSG,
-    TIMEZONE_UTC_SUFFIX,
     USER_NOT_AUTHENTICATED_MSG,
     USER_NOT_FOUND_MSG,
+    CLOStatus,
 )
 from src.utils.logging_config import get_logger
 from src.utils.term_utils import TERM_STATUS_ACTIVE, get_term_status
@@ -3639,6 +3638,12 @@ def assign_instructor_to_section_endpoint(section_id: str) -> ResponseReturnValu
         success = assign_instructor(section_id, instructor_id)
 
         if success:
+            assigned_ok = CLOWorkflowService.mark_section_outcomes_assigned(section_id)
+            if not assigned_ok:
+                logger.warning(
+                    "Instructor assigned to section %s but CLO statuses failed to update",
+                    section_id,
+                )
             return (
                 jsonify(
                     {"success": True, "message": "Instructor assigned successfully"}
@@ -3791,8 +3796,8 @@ def create_outcome_endpoint() -> ResponseReturnValue:
         return handle_api_error(e, "Create outcome", "Failed to create outcome")
 
 
-@api.route("/courses/<course_id>/outcomes", methods=["GET"])
-@permission_required("view_program_data")
+# @api.route("/courses/<course_id>/outcomes", methods=["GET"])
+# @permission_required("view_program_data")
 def list_course_outcomes_endpoint(course_id: str) -> ResponseReturnValue:
     """
     Get list of outcomes for a course
@@ -3807,6 +3812,16 @@ def list_course_outcomes_endpoint(course_id: str) -> ResponseReturnValue:
 
         # Get outcomes for this course
         outcomes = get_course_outcomes(course_id)
+        has_previous_submission = any(
+            outcome.get("submitted_at")
+            or outcome.get("status")
+            in [
+                CLOStatus.AWAITING_APPROVAL,
+                CLOStatus.APPROVED,
+                CLOStatus.COMPLETED,
+            ]
+            for outcome in outcomes
+        )
 
         return jsonify(
             {
@@ -3815,12 +3830,68 @@ def list_course_outcomes_endpoint(course_id: str) -> ResponseReturnValue:
                 "count": len(outcomes),
                 "course_number": course.get("course_number"),
                 "course_title": course.get("course_title"),
+                "has_previous_submission": has_previous_submission,
             }
         )
 
     except Exception as e:
         return handle_api_error(
             e, "Get course outcomes", "Failed to retrieve course outcomes"
+        )
+
+
+@api.route("/courses/<course_id>/outcomes", methods=["GET"])
+@login_required
+def get_course_outcomes_endpoint_get(course_id: str) -> ResponseReturnValue:
+    """
+    Get outcomes for a course.
+    For instructors, returns SectionOutcomes for their sections in this course.
+    """
+    from src.database.database_service import (
+        get_section_outcomes_by_criteria,
+        get_sections_by_course,
+    )
+
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+        # 1. Get all sections for this course
+        sections = get_sections_by_course(course_id)
+
+        # 2. Filter sections where the current user is the instructor
+        # Note: In a real app we'd handle admins differently, but for now this fixes the instructor view
+        # The 'instructor_id' can be a string or int, so we stringify for comparison
+        user_section_ids = [
+            s["section_id"]
+            for s in sections
+            if str(s.get("instructor_id")) == str(current_user["user_id"])
+        ]
+
+        # 3. Get ALL section outcomes for this course
+        all_outcomes = get_section_outcomes_by_criteria(
+            institution_id=current_user["institution_id"], course_id=course_id
+        )
+
+        # 4. Filter outcomes that belong to the user's sections
+        outcomes = [o for o in all_outcomes if o.get("section_id") in user_section_ids]
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "outcomes": outcomes,
+                    "course_number": "Unknown",  # Could fetch course details if needed
+                    "course_title": "Unknown",
+                }
+            ),
+            200,
+        )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Get course outcomes", "Failed to get course outcomes"
         )
 
 
@@ -3849,11 +3920,18 @@ def create_course_outcome_endpoint(course_id: str) -> ResponseReturnValue:
         outcome_id = database_service.create_course_outcome(data)
 
         if outcome_id:
+            # Get section outcomes that were auto-created for this course outcome
+            from src.database.database_service import get_section_outcomes_by_outcome
+
+            section_outcomes = get_section_outcomes_by_outcome(outcome_id)
+            section_outcome_ids = [so.get("id") for so in section_outcomes]
+
             return (
                 jsonify(
                     {
                         "success": True,
                         "outcome_id": outcome_id,
+                        "section_outcome_ids": section_outcome_ids,
                         "message": "Course outcome created successfully",
                     }
                 ),
@@ -3943,6 +4021,27 @@ def get_course_outcome_by_id_endpoint(outcome_id: str) -> ResponseReturnValue:
         )
 
 
+@api.route("/outcomes/<outcome_id>/audit-details", methods=["GET"])
+@permission_required("audit_clo")
+def get_outcome_audit_details_endpoint(outcome_id: str) -> ResponseReturnValue:
+    """
+    Get detailed audit information for an outcome.
+    Includes version history, related comments, and workflow status.
+    """
+    from src.services.clo_workflow_service import CLOWorkflowService
+
+    try:
+        outcome = CLOWorkflowService.get_outcome_with_details(outcome_id)
+        if not outcome:
+            return jsonify({"success": False, "error": "Outcome not found"}), 404
+
+        return jsonify({"success": True, "outcome": outcome}), 200
+    except Exception as e:
+        return handle_api_error(
+            e, "Get audit details", "Failed to retrieve outcome audit details"
+        )
+
+
 @api.route("/outcomes/<outcome_id>", methods=["PUT"])
 @permission_required("manage_courses")
 def update_course_outcome_endpoint(outcome_id: str) -> ResponseReturnValue:
@@ -3992,91 +4091,75 @@ def update_course_outcome_endpoint(outcome_id: str) -> ResponseReturnValue:
 
 
 @api.route("/outcomes/<outcome_id>/assessment", methods=["PUT"])
-@permission_required("submit_assessments")
+@permission_required("submit_assessments")  # Or login_required + manual check
 def update_outcome_assessment_endpoint(outcome_id: str) -> ResponseReturnValue:
     """
-    Update course outcome assessment data (corrected field names from CEI demo feedback)
-
-    Request body should contain:
-    - students_took: Number of students who took this CLO assessment
-    - students_passed: Number of students who passed this CLO assessment
-    - assessment_tool: Brief description (40-50 chars) like "Test #3", "Lab 2"
+    Update assessment data for a Section Outcome.
+    Used by instructors to save results (students_took, students_passed, etc.)
     """
+    import logging
+
+    from src.database.database_service import get_section_by_id
+
+    logger = logging.getLogger(__name__)
+
     try:
         data = request.get_json(silent=True) or {}
-        if not data:
-            return (
-                jsonify({"success": False, "error": "Request body is required"}),
-                400,
-            )
 
-        # Extract new field names (corrected from CEI demo feedback)
-        students_took = data.get("students_took")
-        students_passed = data.get("students_passed")
-        assessment_tool = data.get("assessment_tool", "").strip()
+        logger.info(f"DEBUG: update_outcome_assessment for ID: {outcome_id}")
 
-        # Validation
-        if assessment_tool and len(assessment_tool) > 50:
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "error": "assessment_tool must be 50 characters or less",
-                    }
-                ),
-                400,
-            )
+        # Verify outcome exists (this is a Section Outcome ID from frontend)
+        outcome = get_section_outcome(outcome_id)
+        if not outcome:
+            return jsonify({"success": False, "error": "Outcome not found"}), 404
 
-        # Verify the outcome exists
-        institution_id = _get_current_institution_id_safe()
-        courses = get_all_courses(institution_id)
+        logger.info(f"DEBUG: Outcome FOUND. SectionID: {outcome['section_id']}")
 
-        found = False
-        for course in courses:
-            outcomes = get_course_outcomes(course["course_id"])
-            if any(o.get("outcome_id") == outcome_id for o in outcomes):
-                found = True
-                break
+        # Verify user access (Instructor of record)
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({"success": False, "error": "Unauthorized"}), 401
 
-        if not found:
-            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
+        section = get_section_by_id(outcome["section_id"])
 
-        success = update_outcome_assessment(
-            outcome_id,
-            students_took=students_took,
-            students_passed=students_passed,
-            assessment_tool=assessment_tool or None,
-        )
+        if not section:
+            return jsonify({"success": False, "error": "Section not found"}), 404
 
-        if success:
-            # Auto-mark CLO as in_progress when instructor starts editing
-            from src.services.clo_workflow_service import CLOWorkflowService
+        # Check if user is the instructor or an admin
+        if str(section.get("instructor_id")) != str(
+            current_user["user_id"]
+        ) and current_user["role"] not in ["institution_admin", "system_admin"]:
+            return jsonify({"success": False, "error": "Unauthorized"}), 403
 
-            user = get_current_user()
-            user_id = user.get("user_id") if user else None
-            if user_id and isinstance(user_id, str):
-                CLOWorkflowService.auto_mark_in_progress(outcome_id, user_id)
+        # Filter allowed fields
+        allowed_fields = [
+            "students_took",
+            "students_passed",
+            "assessment_tool",
+            "feedback_comments",
+            "status",
+        ]
+        updates = {k: v for k, v in data.items() if k in allowed_fields}
 
+        # Update
+        success = update_section_outcome(outcome_id, updates)
+        if not success:
+            logger.error(f"Failed to update section outcome for ID: {outcome_id}")
             return (
                 jsonify(
-                    {
-                        "success": True,
-                        "message": "Outcome assessment updated successfully",
-                    }
-                ),
-                200,
-            )
-        else:
-            return (
-                jsonify(
-                    {"success": False, "error": "Failed to update outcome assessment"}
+                    {"success": False, "message": "Failed to save assessment data"}
                 ),
                 500,
             )
 
+        # If status is changing to 'in_progress', logic might be needed, but 'update_section_outcome' is raw.
+        # Ideally we use `CLOWorkflowService.update_assessment_data(outcome_id, updates)`
+
+        return jsonify({"success": True, "message": "Assessment data saved"}), 200
+
     except Exception as e:
         return handle_api_error(
-            e, "Update outcome assessment", "Failed to update outcome assessment"
+            e, "Update assessment", "Failed to update assessment data"
         )
 
 
@@ -4568,11 +4651,7 @@ def create_invitation_api() -> ResponseReturnValue:
         500: Server error
     """
     try:
-        from src.services.auth_service import (
-            get_current_institution_id,
-            get_current_user,
-        )
-        from src.services.invitation_service import InvitationService
+        from src.services.invitation_service import InvitationError, InvitationService
 
         # Get request data (silent=True prevents 415 exception, returns None instead)
         data = request.get_json(silent=True) or {}
@@ -4633,6 +4712,12 @@ def create_invitation_api() -> ResponseReturnValue:
             response_body["email_error"] = email_error
 
         return jsonify(response_body), 201
+
+    except InvitationError as e:
+        logger.error(f"Invitation error: {e}")
+        # Return 409 if conflict, else 400
+        status_code = 409 if "already exists" in str(e) else 400
+        return jsonify({"success": False, "error": str(e)}), status_code
 
     except Exception as e:
         logger.error(f"Error creating invitation: {e}")
@@ -4823,7 +4908,6 @@ def list_invitations_api() -> ResponseReturnValue:
         500: Server error
     """
     try:
-        from src.services.auth_service import get_current_institution_id
         from src.services.invitation_service import InvitationService
 
         # Get institution context
@@ -4914,25 +4998,26 @@ def cancel_invitation_api(invitation_id: str) -> ResponseReturnValue:
 @api.route("/auth/login", methods=["POST"])
 def login_api() -> ResponseReturnValue:
     """
-    Authenticate user and create session
+    Authenticate user and create session.
 
-    JSON Body:
-    {
-        "email": "user@example.com",
-        "password": "password123",  # pragma: allowlist secret - API documentation example
-        "remember_me": false  // Optional, default false
-    }
+    Request body:
+    - email: User email
+    - password: User password
+    - remember_me: Boolean (optional) for extended session
 
     Returns:
-        200: Login successful
-        400: Invalid request data
-        401: Invalid credentials
-        423: Account locked
-        500: Server error
+    - success: Boolean indicating authentication result
+    - user: User data if successful
+    - error: Error message if failed
     """
+    from src.services.login_service import (
+        INVALID_CREDENTIALS_MSG,
+        LoginError,
+        LoginService,
+    )
+    from src.services.password_service import AccountLockedError
+
     try:
-        from src.services.login_service import LoginError, LoginService
-        from src.services.password_service import AccountLockedError
 
         # Get request data
         data = request.get_json(silent=True) or {}
@@ -4973,15 +5058,17 @@ def login_api() -> ResponseReturnValue:
             200,
         )
 
-    except AccountLockedError as e:
+    except AccountLockedError:
         logger.warning(
             f"Account locked during login attempt: {data.get('email', 'unknown')}"
         )
         return jsonify({"success": False, "error": "Account is locked"}), 423
     except LoginError as e:
         logger.error(f"User login failed: {e}")
-        # Generic error message to prevent username enumeration
-        return jsonify({"success": False, "error": "Invalid email or password"}), 401
+        error_msg = str(e)
+        if error_msg == INVALID_CREDENTIALS_MSG:
+            error_msg = INVALID_CREDENTIALS_MSG
+        return jsonify({"success": False, "error": error_msg}), 401
     except Exception as e:
         logger.error(f"Login error: {e}")
         return handle_api_error(e, "User login", "An unexpected error occurred")
@@ -5102,10 +5189,6 @@ def create_invitation_public_api() -> ResponseReturnValue:
     Returns 201 with invitation_id on success.
     """
     try:
-        from src.services.auth_service import (
-            get_current_institution_id,
-            get_current_user,
-        )
         from src.services.invitation_service import InvitationError, InvitationService
 
         payload = request.get_json(silent=True)
@@ -5201,7 +5284,6 @@ def unlock_account_api() -> ResponseReturnValue:
         500: Server error
     """
     try:
-        from src.services.auth_service import get_current_user
         from src.services.login_service import LoginService
 
         # Get request data
@@ -5257,7 +5339,6 @@ def update_profile_api() -> ResponseReturnValue:
         500: Server error
     """
     try:
-        from src.services.auth_service import get_current_user
 
         # Get current user
         current_user = _get_current_user_safe()
@@ -5327,7 +5408,6 @@ def change_password_api() -> ResponseReturnValue:
         500: Server error
     """
     try:
-        from src.services.auth_service import get_current_user
         from src.services.password_service import (
             PasswordValidationError,
             hash_password,

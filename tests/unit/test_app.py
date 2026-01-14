@@ -10,7 +10,6 @@ from unittest.mock import patch
 from flask import Flask
 
 # Import the app module for testing
-import src.app as app
 import src.app as app_module
 
 

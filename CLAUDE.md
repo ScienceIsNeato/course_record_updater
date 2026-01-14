@@ -51,7 +51,7 @@ python src/app.py
 python scripts/ship_it.py
 
 # Full PR validation (all checks + comment resolution)
-python scripts/ship_it.py --validation-type PR
+python scripts/ship_it.py --checks PR
 
 # Run specific check suites
 python scripts/ship_it.py --checks format lint tests

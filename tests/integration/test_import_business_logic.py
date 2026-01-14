@@ -14,7 +14,7 @@ Tests for the comprehensive business logic scenarios:
 
 import os
 import tempfile
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pandas as pd
 import pytest

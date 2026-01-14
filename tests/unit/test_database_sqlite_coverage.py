@@ -10,8 +10,6 @@ Focus areas (from coverage report):
 - Lines 984-1030: get_sections_by_instructor (HUGE block)
 """
 
-import pytest
-
 from src.database.database_sqlite import SQLiteDatabase
 
 

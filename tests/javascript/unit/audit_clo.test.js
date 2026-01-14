@@ -9,7 +9,10 @@ global.fetch = jest.fn();
 
 // Mock bootstrap Modal
 global.bootstrap = {
-  Modal: jest.fn(),
+  Modal: Object.assign(jest.fn(), {
+    getInstance: jest.fn(),
+    getOrCreateInstance: jest.fn(),
+  }),
 };
 global.bootstrap.Modal.getInstance = jest.fn();
 global.bootstrap.Modal.getOrCreateInstance = jest.fn();
@@ -397,8 +400,8 @@ describe("audit_clo.js - Utility Functions", () => {
 
     it("should handle CLOs with null values gracefully", () => {
       // Mock Blob and link for download
-      jest.spyOn(document.body, "appendChild").mockImplementation(() => {});
-      jest.spyOn(document.body, "removeChild").mockImplementation(() => {});
+      jest.spyOn(document.body, "appendChild").mockImplementation(() => { });
+      jest.spyOn(document.body, "removeChild").mockImplementation(() => { });
 
       const result = auditCloModule.exportCurrentViewToCsv([
         {
@@ -462,24 +465,28 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
         </select>
       </form>
       <div id="clo-list-container"></div>
+      <div id="sendReminderModal"></div>
+      <button id="reopenBtn"></button>
     `;
+
+    // Mock bootstrap modal instance
+    mockModalInstance = {
+      hide: jest.fn(),
+      show: jest.fn(),
+    };
+    bootstrap.Modal.mockImplementation(() => mockModalInstance);
+    bootstrap.Modal.getInstance.mockReturnValue(mockModalInstance);
+    bootstrap.Modal.getOrCreateInstance.mockReturnValue(mockModalInstance);
 
     // Setup globalThis.loadCLOs
     globalThis.loadCLOs = jest.fn().mockResolvedValue(undefined);
   });
 
   describe("approveOutcome", () => {
-    it("should return early if user cancels confirm dialog", async () => {
-      global.confirm = jest.fn(() => false);
+    // Confirm dialog test removed as source no longer requires confirmation
 
-      await auditCloModule.approveOutcome("test-id");
-
-      expect(global.confirm).toHaveBeenCalled();
-      expect(fetch).not.toHaveBeenCalled();
-    });
-
-    it("should send POST request when user confirms", async () => {
-      global.confirm = jest.fn(() => true);
+    it("should send POST request immediately", async () => {
+      // global.confirm = jest.fn(() => true); // No longer needed
       fetch.mockResolvedValueOnce({ ok: true });
 
       await auditCloModule.approveOutcome("test-id");
@@ -497,7 +504,7 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
     });
 
     it("should call loadCLOs on successful approval", async () => {
-      global.confirm = jest.fn(() => true);
+      // global.confirm = jest.fn(() => true); // No longer needed
       fetch.mockResolvedValueOnce({ ok: true });
 
       await auditCloModule.approveOutcome("test-id");
@@ -506,7 +513,7 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
     });
 
     it("should show alert on error response", async () => {
-      global.confirm = jest.fn(() => true);
+      // global.confirm = jest.fn(() => true); // No longer needed
       fetch.mockResolvedValueOnce({
         ok: false,
         json: () => Promise.resolve({ error: "Not authorized" }),
@@ -520,7 +527,7 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
     });
 
     it("should show alert on network error", async () => {
-      global.confirm = jest.fn(() => true);
+      // global.confirm = jest.fn(() => true); // No longer needed
       fetch.mockRejectedValueOnce(new Error("Network error"));
 
       await auditCloModule.approveOutcome("test-id");
@@ -541,20 +548,16 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
       expect(fetch).not.toHaveBeenCalled();
     });
 
-    it("should send PUT request with in_progress status", async () => {
+    it("should send POST request to reopen endpoint", async () => {
       global.confirm = jest.fn(() => true);
       fetch.mockResolvedValueOnce({ ok: true });
 
       await auditCloModule.reopenOutcome("test-id");
 
       expect(fetch).toHaveBeenCalledWith(
-        "/api/outcomes/test-id",
+        "/api/outcomes/test-id/reopen",
         expect.objectContaining({
-          method: "PUT",
-          body: JSON.stringify({
-            status: "in_progress",
-            approval_status: "pending",
-          }),
+          method: "POST",
         })
       );
     });
@@ -582,6 +585,20 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
   });
 
   describe("remindOutcome", () => {
+    beforeEach(() => {
+      // Mock fetch for instructor details
+      fetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          user: {
+            first_name: "Test",
+            last_name: "Instructor",
+            email: "test@example.com"
+          }
+        })
+      });
+    });
+
     it("should return early if user cancels confirm dialog", async () => {
       global.confirm = jest.fn(() => false);
 
@@ -604,12 +621,20 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
 
     it("should send POST request to remind endpoint", async () => {
       global.confirm = jest.fn(() => true);
+
+      await auditCloModule.remindOutcome("test-id", "instructor-1", "course-1");
+
+      const msgArea = document.createElement("textarea");
+      msgArea.id = "reminderMessage";
+      msgArea.value = "Test Message";
+      document.body.appendChild(msgArea);
+
       fetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ success: true }),
       });
 
-      await auditCloModule.remindOutcome("test-id", "instructor-1", "course-1");
+      await auditCloModule.submitReminder();
 
       expect(fetch).toHaveBeenCalledWith(
         "/api/send-course-reminder",
@@ -618,6 +643,7 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
           body: JSON.stringify({
             instructor_id: "instructor-1",
             course_id: "course-1",
+            message: "Test Message",
           }),
         })
       );
@@ -625,24 +651,40 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
 
     it("should show success alert on successful reminder", async () => {
       global.confirm = jest.fn(() => true);
+
+      await auditCloModule.remindOutcome("test-id", "instructor-1", "course-1");
+
+      const msgArea = document.createElement("textarea");
+      msgArea.id = "reminderMessage";
+      msgArea.value = "Test Message";
+      document.body.appendChild(msgArea);
+
       fetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ success: true }),
       });
 
-      await auditCloModule.remindOutcome("test-id", "instructor-1", "course-1");
+      await auditCloModule.submitReminder();
 
       expect(global.alert).toHaveBeenCalledWith("Reminder sent successfully.");
     });
 
     it("should show error alert on failed reminder", async () => {
       global.confirm = jest.fn(() => true);
+
+      await auditCloModule.remindOutcome("test-id", "instructor-1", "course-1");
+
+      const msgArea = document.createElement("textarea");
+      msgArea.id = "reminderMessage";
+      msgArea.value = "Test Message";
+      document.body.appendChild(msgArea);
+
       fetch.mockResolvedValueOnce({
         ok: false,
         json: () => Promise.resolve({ error: "Email failed" }),
       });
 
-      await auditCloModule.remindOutcome("test-id", "instructor-1", "course-1");
+      await auditCloModule.submitReminder();
 
       expect(global.alert).toHaveBeenCalledWith(
         "Failed to send reminder: Email failed"
@@ -654,9 +696,11 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
     let mockModalInstance;
 
     beforeEach(() => {
-      // Setup mock Bootstrap Modal properly (preserving the mock structure)
+      // Setup mock Bootstrap Modal properly
       mockModalInstance = { show: jest.fn(), hide: jest.fn() };
-      global.bootstrap.Modal.mockImplementation(() => mockModalInstance);
+      bootstrap.Modal.mockImplementation(() => mockModalInstance);
+      bootstrap.Modal.getInstance.mockReturnValue(mockModalInstance);
+      bootstrap.Modal.getOrCreateInstance.mockReturnValue(mockModalInstance);
     });
 
     it("should return early if CLO not found", async () => {
@@ -749,7 +793,7 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
 describe("audit_clo.js - DOM Integration", () => {
   let statusFilter, sortBy, sortOrder, cloListContainer;
   let programFilter, termFilter, exportButton;
-  let cloDetailModal, requestReworkModal, requestReworkForm;
+  let cloDetailModal, cloReworkSection, cloReworkForm, cancelReworkBtn;
   let mockModalInstance;
 
   beforeEach(() => {
@@ -764,17 +808,24 @@ describe("audit_clo.js - DOM Integration", () => {
       <button id="exportCsvBtn"></button>
       <div id="cloListContainer"></div>
       <div id="cloDetailModal">
-        <div id="cloDetailContent"></div>
-        <button id="approveBtn" style="display: none;"></button>
-        <button id="requestReworkBtn" style="display: none;"></button>
-        <button id="markNCIBtn" style="display: none;"></button>
-      </div>
-      <div id="requestReworkModal">
-        <form id="requestReworkForm">
-          <div id="reworkCloDescription"></div>
-          <textarea id="feedbackComments"></textarea>
-          <input type="checkbox" id="sendEmailCheckbox" checked>
-        </form>
+        <div id="cloDetailContentMain"></div>
+        <div id="cloReworkSection" style="display: none;">
+          <form id="cloReworkForm">
+            <div id="reworkCloDescription"></div>
+            <textarea id="reworkFeedbackComments"></textarea>
+            <input type="checkbox" id="reworkSendEmail" checked>
+            <div id="reworkAlert" class="d-none"></div>
+          </form>
+        </div>
+        <div id="cloDetailActionsStandard">
+          <button id="requestReworkBtn" style="display: none;"></button>
+          <button id="markNCIBtn" style="display: none;"></button>
+          <button id="reopenBtn" style="display: none;"></button>
+          <button id="approveBtn" style="display: none;"></button>
+        </div>
+        <div id="cloDetailActionsRework" style="display: none;">
+          <button id="cancelReworkBtn"></button>
+        </div>
       </div>
       <span id="statAwaitingApproval">0</span>
       <span id="statNeedsRework">0</span>
@@ -793,6 +844,23 @@ describe("audit_clo.js - DOM Integration", () => {
           </div>
         </div>
       </div>
+      <div id="sendReminderModal" class="modal fade">
+        <div id="reminderCloDescription"></div>
+        <div id="reminderCourseDescription"></div>
+        <div id="reminderInstructorEmail"></div>
+        <textarea id="reminderMessage"></textarea>
+      </div>
+      <div id="inviteInstructorModal" class="modal fade">
+        <form id="inviteInstructorForm">
+          <input id="inviteFirstName">
+          <input id="inviteLastName">
+          <input id="inviteEmail">
+          <div id="inviteAlert"></div>
+        </form>
+      </div>
+      <div id="inviteSuccessModal" class="modal fade">
+        <div id="inviteSuccessMessage"></div>
+      </div>
     `;
 
     statusFilter = document.getElementById("statusFilter");
@@ -803,8 +871,9 @@ describe("audit_clo.js - DOM Integration", () => {
     exportButton = document.getElementById("exportCsvBtn");
     cloListContainer = document.getElementById("cloListContainer");
     cloDetailModal = document.getElementById("cloDetailModal");
-    requestReworkModal = document.getElementById("requestReworkModal");
-    requestReworkForm = document.getElementById("requestReworkForm");
+    cloReworkSection = document.getElementById("cloReworkSection");
+    cloReworkForm = document.getElementById("cloReworkForm");
+    cancelReworkBtn = document.getElementById("cancelReworkBtn");
 
     // Mock bootstrap modal instance
     mockModalInstance = {
@@ -1194,6 +1263,15 @@ describe("audit_clo.js - DOM Integration", () => {
       };
       global.window.loadCLOs = jest.fn(() => Promise.resolve());
       global.window.updateStats = jest.fn(() => Promise.resolve());
+
+      // Mock bootstrap modal instance
+      mockModalInstance = {
+        hide: jest.fn(),
+        show: jest.fn(),
+      };
+      bootstrap.Modal.mockImplementation(() => mockModalInstance);
+      bootstrap.Modal.getInstance.mockReturnValue(mockModalInstance);
+      bootstrap.Modal.getOrCreateInstance.mockReturnValue(mockModalInstance);
 
       // Clear mocks
       jest.clearAllMocks();
@@ -1792,20 +1870,421 @@ describe("audit_clo.js - DOM Integration", () => {
       document.dispatchEvent(new Event("DOMContentLoaded"));
     });
 
-    it("should send PUT request to reopen outcome", async () => {
+    it("should send POST request to reopen endpoint", async () => {
       global.confirm = jest.fn(() => true);
       fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
 
       await window.reopenOutcome("out-1");
 
       expect(fetch).toHaveBeenCalledWith(
-        "/api/outcomes/out-1",
+        "/api/outcomes/out-1/reopen",
         expect.objectContaining({
-          method: "PUT",
-          body: expect.stringContaining('"status":"in_progress"')
+          method: "POST"
         })
       );
     });
   });
-});
 
+  describe("renderCLOList - Table Rendering", () => {
+    it("should render grouped CLO table with course and section headers", async () => {
+      const mockCLOs = [
+        {
+          outcome_id: "out-1",
+          course_number: "CS101",
+          course_title: "Intro to CS",
+          section_number: "001",
+          clo_number: "1",
+          description: "Test CLO description",
+          status: "awaiting_approval",
+          instructor_name: "Dr. Smith",
+          submitted_at: "2026-01-10T10:00:00Z"
+        },
+        {
+          outcome_id: "out-2",
+          course_number: "CS101",
+          course_title: "Intro to CS",
+          section_number: "002",
+          clo_number: "1",
+          description: "Another CLO",
+          status: "in_progress",
+          instructor_name: "Dr. Jones",
+          submitted_at: null
+        }
+      ];
+
+      // Set up fetch mock BEFORE loading script
+      fetch.mockImplementation((url) => {
+        if (url.includes("/api/outcomes")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ outcomes: mockCLOs })
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+      });
+
+      const fs = require("fs");
+      const path = require("path");
+      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      eval(auditCloCode);
+      document.dispatchEvent(new Event("DOMContentLoaded"));
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const cloListContainer = document.getElementById("cloListContainer");
+      expect(cloListContainer.innerHTML).toContain("CS101");
+      expect(cloListContainer.innerHTML).toContain("Section 001");
+      expect(cloListContainer.innerHTML).toContain("Section 002");
+      expect(cloListContainer.querySelectorAll("tr.clo-row").length).toBe(2);
+    });
+
+    it("should render action buttons for awaiting_approval status", async () => {
+      const mockCLOs = [
+        {
+          outcome_id: "out-1",
+          course_number: "CS101",
+          course_title: "Intro to CS",
+          section_number: "001",
+          clo_number: "1",
+          description: "Test CLO",
+          status: "awaiting_approval",
+          instructor_name: "Dr. Smith",
+          submitted_at: "2026-01-10T10:00:00Z"
+        }
+      ];
+
+      fetch.mockImplementation((url) => {
+        if (url.includes("/api/outcomes")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ outcomes: mockCLOs })
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+      });
+
+      const fs = require("fs");
+      const path = require("path");
+      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      eval(auditCloCode);
+      document.dispatchEvent(new Event("DOMContentLoaded"));
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const approveBtn = document.querySelector(".btn-success");
+      expect(approveBtn).not.toBeNull();
+      expect(approveBtn.title).toBe("Approve Outcome");
+      const reworkBtn = document.querySelector(".btn-warning");
+      expect(reworkBtn).not.toBeNull();
+      expect(reworkBtn.title).toBe("Request Rework");
+    });
+
+    it("should render assign button for unassigned status", async () => {
+      const mockCLOs = [
+        {
+          outcome_id: "out-1",
+          course_number: "CS101",
+          course_title: "Intro to CS",
+          section_number: "001",
+          clo_number: "1",
+          description: "Test CLO",
+          status: "unassigned",
+          instructor_name: null,
+          submitted_at: null
+        }
+      ];
+
+      fetch.mockImplementation((url) => {
+        if (url.includes("/api/outcomes")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ outcomes: mockCLOs })
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+      });
+
+      const fs = require("fs");
+      const path = require("path");
+      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      eval(auditCloCode);
+      document.dispatchEvent(new Event("DOMContentLoaded"));
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const assignBtn = document.querySelector(".btn-primary");
+      expect(assignBtn).not.toBeNull();
+      expect(assignBtn.title).toBe("Assign Instructor");
+    });
+
+    it("should not render reopen button for approved status", async () => {
+      const mockCLOs = [
+        {
+          outcome_id: "out-1",
+          course_number: "CS101",
+          course_title: "Intro to CS",
+          section_number: "001",
+          clo_number: "1",
+          description: "Test CLO",
+          status: "approved",
+          instructor_name: "Dr. Smith",
+          submitted_at: "2026-01-10T10:00:00Z"
+        }
+      ];
+
+      fetch.mockImplementation((url) => {
+        if (url.includes("/api/outcomes")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ outcomes: mockCLOs })
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+      });
+
+      const fs = require("fs");
+      const path = require("path");
+      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      eval(auditCloCode);
+      document.dispatchEvent(new Event("DOMContentLoaded"));
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const reopenBtn = document.querySelector(".btn-warning");
+      expect(reopenBtn).toBeNull();
+    });
+
+    it("should render reminder button for in_progress status", async () => {
+      const mockCLOs = [
+        {
+          outcome_id: "out-1",
+          course_number: "CS101",
+          course_title: "Intro to CS",
+          section_number: "001",
+          clo_number: "1",
+          description: "Test CLO",
+          status: "in_progress",
+          instructor_name: "Dr. Smith",
+          instructor_id: "inst-1",
+          course_id: "course-1",
+          submitted_at: null
+        }
+      ];
+
+      fetch.mockImplementation((url) => {
+        if (url.includes("/api/outcomes")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ outcomes: mockCLOs })
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+      });
+
+      const fs = require("fs");
+      const path = require("path");
+      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      eval(auditCloCode);
+      document.dispatchEvent(new Event("DOMContentLoaded"));
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const reminderBtn = document.querySelector(".btn-info");
+      expect(reminderBtn).not.toBeNull();
+      expect(reminderBtn.title).toBe("Send Reminder");
+    });
+
+    it("should render view details button for all CLOs", async () => {
+      const mockCLOs = [
+        {
+          outcome_id: "out-1",
+          course_number: "CS101",
+          course_title: "Intro to CS",
+          section_number: "001",
+          clo_number: "1",
+          description: "Test CLO",
+          status: "awaiting_approval",
+          instructor_name: "Dr. Smith",
+          submitted_at: "2026-01-10T10:00:00Z"
+        }
+      ];
+
+      fetch.mockImplementation((url) => {
+        if (url.includes("/api/outcomes")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ outcomes: mockCLOs })
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+      });
+
+      const fs = require("fs");
+      const path = require("path");
+      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      eval(auditCloCode);
+      document.dispatchEvent(new Event("DOMContentLoaded"));
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const viewBtn = document.querySelector(".btn-outline-secondary");
+      expect(viewBtn).not.toBeNull();
+      expect(viewBtn.title).toBe("View Details");
+      expect(viewBtn.dataset.outcomeId).toBe("out-1");
+    });
+
+    it("should handle CLOs without section numbers (unassigned section)", async () => {
+      const mockCLOs = [
+        {
+          outcome_id: "out-1",
+          course_number: "CS101",
+          course_title: "Intro to CS",
+          section_number: null,
+          clo_number: "1",
+          description: "Test CLO",
+          status: "in_progress",
+          instructor_name: "Dr. Smith",
+          submitted_at: null
+        }
+      ];
+
+      fetch.mockImplementation((url) => {
+        if (url.includes("/api/outcomes")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ outcomes: mockCLOs })
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+      });
+
+      const fs = require("fs");
+      const path = require("path");
+      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      eval(auditCloCode);
+      document.dispatchEvent(new Event("DOMContentLoaded"));
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const cloListContainer = document.getElementById("cloListContainer");
+      expect(cloListContainer.innerHTML).toContain("Unassigned Section");
+    });
+
+    it("should not render reopen button for never_coming_in status", async () => {
+      const mockCLOs = [
+        {
+          outcome_id: "out-1",
+          course_number: "CS101",
+          course_title: "Intro to CS",
+          section_number: "001",
+          clo_number: "1",
+          description: "Test CLO",
+          status: "never_coming_in",
+          instructor_name: "Dr. Smith",
+          submitted_at: "2026-01-10T10:00:00Z"
+        }
+      ];
+
+      fetch.mockImplementation((url) => {
+        if (url.includes("/api/outcomes")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ outcomes: mockCLOs })
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+      });
+
+      const fs = require("fs");
+      const path = require("path");
+      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      eval(auditCloCode);
+      document.dispatchEvent(new Event("DOMContentLoaded"));
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const reopenBtn = document.querySelector(".btn-warning");
+      expect(reopenBtn).toBeNull();
+    });
+
+    it("should render reminder button for assigned status", async () => {
+      const mockCLOs = [
+        {
+          outcome_id: "out-1",
+          course_number: "CS101",
+          course_title: "Intro to CS",
+          section_number: "001",
+          clo_number: "1",
+          description: "Test CLO",
+          status: "assigned",
+          instructor_name: "Dr. Smith",
+          instructor_id: "inst-1",
+          course_id: "course-1",
+          submitted_at: null
+        }
+      ];
+
+      fetch.mockImplementation((url) => {
+        if (url.includes("/api/outcomes")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ outcomes: mockCLOs })
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+      });
+
+      const fs = require("fs");
+      const path = require("path");
+      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      eval(auditCloCode);
+      document.dispatchEvent(new Event("DOMContentLoaded"));
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const reminderBtn = document.querySelector(".btn-info");
+      expect(reminderBtn).not.toBeNull();
+      expect(reminderBtn.title).toBe("Send Reminder");
+    });
+
+    it("should render reminder button for approval_pending status", async () => {
+      const mockCLOs = [
+        {
+          outcome_id: "out-1",
+          course_number: "CS101",
+          course_title: "Intro to CS",
+          section_number: "001",
+          clo_number: "1",
+          description: "Test CLO",
+          status: "approval_pending",
+          instructor_name: "Dr. Smith",
+          instructor_id: "inst-1",
+          course_id: "course-1",
+          submitted_at: null
+        }
+      ];
+
+      fetch.mockImplementation((url) => {
+        if (url.includes("/api/outcomes")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ outcomes: mockCLOs })
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+      });
+
+      const fs = require("fs");
+      const path = require("path");
+      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      eval(auditCloCode);
+      document.dispatchEvent(new Event("DOMContentLoaded"));
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const reminderBtn = document.querySelector(".btn-info");
+      expect(reminderBtn).not.toBeNull();
+      expect(reminderBtn.title).toBe("Send Reminder");
+    });
+  });
+});

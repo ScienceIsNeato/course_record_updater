@@ -3,10 +3,7 @@ Test utilities for LoopCloser tests.
 Provides authentication helpers and test data for consistent testing.
 """
 
-import json
 from contextlib import contextmanager
-
-from flask import current_app, session
 
 # Standard test user data
 ADMIN_USER_DATA = {

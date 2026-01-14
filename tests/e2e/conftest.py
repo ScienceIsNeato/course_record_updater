@@ -95,7 +95,7 @@ def _clean_stale_db(db_path):
                 print(f"   ⚠️  Could not remove {f}: {e}")
 
 
-def _seed_database():
+def _seed_database(db_name: str):
     """Run database seeding script."""
     import subprocess
 
@@ -107,13 +107,18 @@ def _seed_database():
         "--manifest",
         "tests/fixtures/e2e_seed_manifest.json",
     ]
+
+    # Pass explicit DATABASE_URL to ensure seed script writes to the correct E2E specific DB
+    env = os.environ.copy()
+    env["DATABASE_URL"] = f"sqlite:///{os.path.abspath(db_name)}"
+
     seed_result = subprocess.run(
-        seed_cmd, capture_output=True, text=True, cwd=os.getcwd()
+        seed_cmd, capture_output=True, text=True, cwd=os.getcwd(), env=env
     )
     if seed_result.returncode != 0:
         print(f"   ❌ Database seeding failed: {seed_result.stderr}")
         raise RuntimeError("E2E database seeding failed")
-    print(f"   ✓ Baseline data seeded")
+    print("   ✓ Baseline data seeded")
 
 
 def _start_e2e_server(worker_port, db_path, env_overrides, log_file=None):
@@ -182,7 +187,8 @@ def _setup_serial_environment(worker_port):
     worker_db = "course_records_e2e.db"
 
     _clean_stale_db(worker_db)
-    _seed_database()
+    _clean_stale_db(worker_db)
+    _seed_database(worker_db)
 
     env_overrides = {
         "ENV": "e2e",
@@ -243,7 +249,7 @@ def setup_worker_environment(tmp_path_factory):
 
     # Cleanup
     if worker_id is None:
-        print(f"\n🧹 E2E Cleanup: Stopping server...")
+        print("\n🧹 E2E Cleanup: Stopping server...")
     else:
         print(f"\n🧹 Worker {worker_id}: Cleaning up...")
 
@@ -254,7 +260,7 @@ def setup_worker_environment(tmp_path_factory):
             print(f"   ✓ Server stopped (PID: {server_process.pid})")
         except Exception:
             server_process.kill()
-            print(f"   ⚠️  Server force-killed")
+            print("   ⚠️  Server force-killed")
 
     if worker_id is not None and worker_db and os.path.exists(worker_db):
         try:
@@ -483,6 +489,12 @@ def authenticated_institution_admin_page(page: Page) -> Page:
         return page
     except Exception as e:
         pytest.fail(f"Institution admin login failed: {str(e)}")
+
+
+@pytest.fixture(scope="function")
+def admin_page(authenticated_institution_admin_page: Page) -> Page:
+    """Backward-compatible alias for institution admin page."""
+    return authenticated_institution_admin_page
 
 
 @pytest.fixture(scope="function")

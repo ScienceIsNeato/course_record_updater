@@ -9,8 +9,6 @@ Provides REST APIs for administrative CRUD operations:
 Used by demo automation and admin interfaces.
 """
 
-from typing import Any, Dict
-
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 

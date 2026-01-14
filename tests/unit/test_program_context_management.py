@@ -5,7 +5,7 @@ This module tests the program context switching, validation, and management
 features implemented in auth_service.py and api_routes.py.
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask

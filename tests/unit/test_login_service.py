@@ -5,8 +5,7 @@ Tests the LoginService class and its methods for user authentication functionali
 """
 
 from datetime import datetime, timedelta
-from typing import Any, Dict
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -225,6 +224,7 @@ class TestLoginServiceAuthentication:
             "password_hash": "hashed-password",
             "role": "instructor",
             "account_status": "active",
+            "email_verified": True,
         }
         mock_password_service.verify_password.return_value = True
 

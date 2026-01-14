@@ -484,6 +484,16 @@ def _course_section_outcome_to_dict(model: CourseSectionOutcome) -> Dict[str, An
         "students_took": model.students_took,
         "students_passed": model.students_passed,
         "assessment_tool": model.assessment_tool,
+        # Workflow status fields
+        "status": model.status,
+        "approval_status": model.approval_status,
+        # Audit trail fields
+        "submitted_at": model.submitted_at,
+        "submitted_by": model.submitted_by,
+        "reviewed_at": model.reviewed_at,
+        "reviewed_by": model.reviewed_by,
+        "feedback_comments": model.feedback_comments,
+        # Timestamps
         "created_at": model.created_at,
         "last_modified": model.updated_at,
     }

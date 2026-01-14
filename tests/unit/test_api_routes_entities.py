@@ -1,10 +1,7 @@
 import json
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from src.app import app
-from src.utils.constants import PROGRAM_NOT_FOUND_MSG, TERM_NOT_FOUND_MSG
 from tests.test_utils import create_test_session
 
 

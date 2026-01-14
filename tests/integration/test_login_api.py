@@ -5,10 +5,9 @@ Tests the complete login/logout flow through the API endpoints.
 """
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-from flask import Flask
 
 from src.app import app
 

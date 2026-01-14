@@ -6,7 +6,7 @@ and account activation functionality.
 """
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -562,7 +562,6 @@ class TestEmailVerificationExpiry:
 
     def test_email_verification_expired_no_timestamp(self):
         """Test _check_verification_expired when no timestamp present."""
-        from src.services.registration_service import RegistrationService
 
         service = RegistrationService()
         user = {}  # No verification_expires_at field
@@ -573,7 +572,6 @@ class TestEmailVerificationExpiry:
 
     def test_email_verification_expired_invalid_format(self):
         """Test _check_verification_expired with invalid datetime string."""
-        from src.services.registration_service import RegistrationService
 
         service = RegistrationService()
         user = {"email_verification_expires_at": "invalid-datetime"}

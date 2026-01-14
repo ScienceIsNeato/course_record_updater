@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Sequence
 
 from src.database.database_service import (
@@ -21,6 +20,7 @@ from src.database.database_service import (
     get_programs_by_institution,
 )
 from src.utils.logging_config import get_logger
+from src.utils.term_utils import TERM_STATUS_ACTIVE, get_all_term_statuses
 from src.utils.time_utils import get_current_time
 
 
@@ -65,10 +65,12 @@ class DashboardService:
                 f"Unknown user role: {role}. Valid roles: site_admin, institution_admin, program_admin, instructor"
             )
 
+        current_time = get_current_time()
         metadata = {
             "user_role": role,
             "data_scope": scope,
-            "last_updated": get_current_time().isoformat(),
+            "last_updated": current_time.isoformat(),
+            "reference_date": current_time.isoformat(),  # For frontend status calculations
         }
         payload.setdefault("metadata", metadata)
         payload["metadata"].update(metadata)
@@ -1134,7 +1136,12 @@ class DashboardService:
     def _calculate_clo_progress(
         self, courses: Sequence[Dict[str, Any]]
     ) -> Dict[str, Any]:
-        """Calculate assessment progress based on CLO completion."""
+        """Calculate assessment progress based on CLO completion.
+
+        Uses _is_clo_completed() for consistent CLO completion logic.
+        CLO fields (students_took, students_passed, status) are stored
+        directly on the CLO object, not in a deprecated assessment_data dict.
+        """
         total_clos = 0
         completed_clos = 0
 
@@ -1142,14 +1149,8 @@ class DashboardService:
             clos = course.get("clos", [])
             for clo in clos:
                 total_clos += 1
-                # A CLO is considered "completed" if it has assessment data
-                assessment_data = clo.get("assessment_data", {})
-                if assessment_data and isinstance(assessment_data, dict):
-                    # Check if any meaningful data exists (not just an empty dict)
-                    if assessment_data.get("students_took") or assessment_data.get(
-                        "students_passed"
-                    ):
-                        completed_clos += 1
+                if self._is_clo_completed(clo):
+                    completed_clos += 1
 
         percent = round((completed_clos / total_clos) * 100, 1) if total_clos else 0
         return {
@@ -1506,6 +1507,9 @@ class DashboardService:
 
         term_section_counts = self._build_term_section_counts(offerings, sections)
 
+        # Compute context-aware term statuses ("holds active" until successor starts)
+        term_statuses = get_all_term_statuses(terms)
+
         enriched_terms = []
         for term in terms:
             raw_term_id = term.get("term_id") or term.get("id")
@@ -1528,6 +1532,12 @@ class DashboardService:
             term_copy["course_count"] = len(unique_course_ids)
             term_copy["offering_count"] = len(term_specific_offerings)
             term_copy["section_count"] = term_section_counts.get(term_key, 0)
+
+            # Apply context-aware status (overrides individual calculation)
+            context_status = term_statuses.get(raw_term_id)
+            if context_status:
+                term_copy["status"] = context_status
+                term_copy["is_active"] = context_status == TERM_STATUS_ACTIVE
 
             enriched_terms.append(term_copy)
 

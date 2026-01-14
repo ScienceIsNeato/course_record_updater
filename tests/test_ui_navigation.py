@@ -3,6 +3,7 @@ import pytest
 import src.database.database_service as database_service
 from src.app import app
 from src.models.models import Institution, User
+from src.utils.constants import TEST_USER_PASSWORD
 
 
 @pytest.fixture
@@ -25,7 +26,7 @@ def auth(client):
         def __init__(self, client):
             self._client = client
 
-        def login(self, email="test@example.com", password="TestUser123!"):
+        def login(self, email="test@example.com", password=TEST_USER_PASSWORD):
             # First mark email as verified
             user = database_service.get_user_by_email(email)
             if user:
@@ -60,7 +61,7 @@ def setup_data():
         last_name="User",
         role="institution_admin",
         institution_id=inst_id,
-        password_hash=User.create_password_hash("TestUser123!"),
+        password_hash=User.create_password_hash(TEST_USER_PASSWORD),
         account_status="active",
     )
     database_service.create_user(user_data)

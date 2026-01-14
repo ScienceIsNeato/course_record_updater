@@ -14,10 +14,9 @@ Test Categories:
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from flask import Flask
 
-from src.services.auth_service import Permission, UserRole
+from src.services.auth_service import UserRole
 
 
 class TestInstitutionDataIsolation:
@@ -381,7 +380,7 @@ class TestRoleHierarchyAccess:
 
     def test_role_hierarchy_permission_inheritance(self):
         """Test that higher roles inherit permissions from lower roles"""
-        from src.services.auth_service import ROLE_PERMISSIONS, UserRole
+        from src.services.auth_service import ROLE_PERMISSIONS
 
         # Site admin should have all permissions
         site_admin_perms = ROLE_PERMISSIONS[UserRole.SITE_ADMIN.value]
@@ -412,7 +411,6 @@ class TestContextAwareAPIEndpoints:
 
         # Test URL parameter extraction
         with app.test_request_context("/api/institutions/inst-123/programs"):
-            from flask import request
 
             from src.services.auth_service import permission_required
 
@@ -507,7 +505,7 @@ class TestAuthorizationSystemIntegration:
         # This would be a comprehensive end-to-end test
         # For now, we'll test the key integration points
 
-        from src.services.auth_service import AuthService, UserRole
+        from src.services.auth_service import AuthService
 
         # Test that all components work together
         _ = AuthService()
@@ -526,7 +524,7 @@ class TestAuthorizationSystemIntegration:
 
     def test_permission_system_completeness(self):
         """Test that permission system covers all required scenarios"""
-        from src.services.auth_service import ROLE_PERMISSIONS, Permission, UserRole
+        from src.services.auth_service import ROLE_PERMISSIONS
 
         # Test that all roles have permissions defined
         for role in UserRole:

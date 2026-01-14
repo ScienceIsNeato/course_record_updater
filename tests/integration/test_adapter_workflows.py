@@ -17,7 +17,6 @@ from src.adapters.adapter_registry import get_adapter_registry
 from src.database.database_factory import get_database_service
 from src.database.database_service import (
     create_default_mocku_institution,
-    get_active_terms,
     get_all_courses,
     get_all_users,
 )

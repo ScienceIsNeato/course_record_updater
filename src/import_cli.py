@@ -210,7 +210,7 @@ def _print_conflicts_section(result: ImportResult, verbose: bool):
     if result.conflicts_detected <= 0:
         return
 
-    print(f"⚠️  CONFLICTS:")
+    print("⚠️  CONFLICTS:")
     print(f"   Conflicts detected: {result.conflicts_detected}")
     print(f"   Conflicts resolved: {result.conflicts_resolved}")
 

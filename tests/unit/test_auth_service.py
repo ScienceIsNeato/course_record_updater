@@ -784,7 +784,7 @@ class TestAuthServiceCoverage:
 
     def test_context_extraction_in_decorators(self):
         """Test context extraction in permission decorators."""
-        from flask import Flask, request, session
+        from flask import Flask, session
 
         from src.services.auth_service import permission_required
 

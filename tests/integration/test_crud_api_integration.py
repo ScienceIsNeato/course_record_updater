@@ -13,8 +13,6 @@ Tests the complete CRUD workflows for all entities including:
 
 from unittest.mock import patch
 
-import pytest
-
 from src.app import app
 from tests.test_utils import CommonAuthMixin
 
@@ -628,26 +626,36 @@ class TestOutcomesCRUDIntegration(CommonAuthMixin):
         data = response.get_json()
         assert data["success"] is True
 
-    @patch("src.api_routes.update_outcome_assessment")
-    @patch("src.api_routes.get_course_outcomes")
-    @patch("src.api_routes.get_all_courses")
+    @patch("src.database.database_service.get_section_by_id")
+    @patch("src.api_routes.get_current_user")
+    @patch("src.api_routes.update_section_outcome")
+    @patch("src.api_routes.get_section_outcome")
     def test_update_outcome_assessment_integration(
-        self, mock_get_courses, mock_get_outcomes, mock_update
+        self, mock_get_section_outcome, mock_update, mock_get_user, mock_get_section
     ):
-        """Test PUT /api/outcomes/<id>/assessment update assessment"""
-        mock_get_courses.return_value = [{"course_id": "course-123"}]
-        mock_get_outcomes.return_value = [
-            {"outcome_id": "outcome-123", "description": "Old"}
-        ]
+        """Test PUT /api/outcomes/<id>/assessment update assessment (section-level)"""
+        mock_get_section_outcome.return_value = {
+            "section_outcome_id": "section-outcome-123",
+            "outcome_id": "outcome-123",
+            "section_id": "section-123",
+            "description": "Old",
+        }
+        mock_get_section.return_value = {
+            "id": "section-123",
+            "instructor_id": "user-123",
+        }
+        mock_get_user.return_value = {"user_id": "user-123", "role": "instructor"}
+
         mock_update.return_value = True
 
         assessment_data = {
-            "assessment_status": "completed",
-            "assessment_data": {"score": 85, "method": "exam"},
+            "students_took": 30,
+            "students_passed": 25,
+            "assessment_tool": "Test #3",
         }
 
         response = self.client.put(
-            "/api/outcomes/outcome-123/assessment",
+            "/api/outcomes/section-outcome-123/assessment",
             json=assessment_data,
             headers={"X-CSRFToken": get_csrf_token(self.client)},
         )

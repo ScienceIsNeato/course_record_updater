@@ -164,7 +164,8 @@ function exportCurrentViewToCsv(cloList) {
 async function approveCLO() {
   if (!globalThis.currentCLO) return;
 
-  const outcomeId = globalThis.currentCLO.outcome_id;
+  const outcomeId =
+    globalThis.currentCLO.id || globalThis.currentCLO.outcome_id;
   if (!outcomeId) {
     alert("Error: CLO ID not found");
     return;
@@ -219,7 +220,8 @@ async function markAsNCI() {
   }
 
   try {
-    const outcomeId = globalThis.currentCLO.outcome_id;
+    const outcomeId =
+      globalThis.currentCLO.id || globalThis.currentCLO.outcome_id; // Use Section ID, not Template ID
 
     const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
     const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
@@ -476,12 +478,12 @@ globalThis.approveOutcome = approveOutcome;
 globalThis.assignOutcome = assignOutcome;
 globalThis.reopenOutcome = reopenOutcome;
 globalThis.remindOutcome = remindOutcome;
+globalThis.submitReminder = submitReminder;
 
 /**
  * Direct Approve from Table
  */
 async function approveOutcome(outcomeId) {
-  if (!confirm("Are you sure you want to approve this outcome?")) return;
   try {
     const csrfToken = document.querySelector(
       'meta[name="csrf-token"]',
@@ -494,14 +496,16 @@ async function approveOutcome(outcomeId) {
       },
     });
     if (res.ok) {
-      // alert("Approved successfully!"); // Optional
       await globalThis.loadCLOs();
+      return true;
     } else {
       const err = await res.json();
       alert("Failed to approve: " + (err.error || "Unknown error"));
+      return false;
     }
   } catch (e) {
     alert("Error approving outcome: " + e.message);
+    return false;
   }
 }
 
@@ -511,7 +515,9 @@ async function approveOutcome(outcomeId) {
 let currentAssignSectionId = null;
 
 async function assignOutcome(outcomeId) {
-  const clo = allCLOs.find((c) => (c.outcome_id || c.id) === outcomeId);
+  const clo = allCLOs.find(
+    (c) => c.id === outcomeId || c.outcome_id === outcomeId,
+  );
   if (!clo) return;
 
   // Ensure form is bound
@@ -527,7 +533,7 @@ async function assignOutcome(outcomeId) {
   currentAssignSectionId = clo.section_id;
 
   const modalEl = document.getElementById("assignInstructorModal");
-  const modal = new bootstrap.Modal(modalEl);
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   modal.show();
 
   await loadInstructors();
@@ -599,6 +605,115 @@ async function handleAssignSubmit(e) {
   }
 }
 
+async function handleInviteInstructorSubmit(event) {
+  event.preventDefault();
+
+  const emailInput = document.getElementById("inviteEmail");
+  const firstNameInput = document.getElementById("inviteFirstName");
+  const lastNameInput = document.getElementById("inviteLastName");
+  const alertBox = document.getElementById("inviteInstructorAlert");
+  const submitBtn = document.getElementById("sendInviteBtn");
+
+  if (!emailInput || !firstNameInput || !lastNameInput) {
+    alert("Invite form is missing required fields.");
+    return;
+  }
+
+  if (!currentAssignSectionId) {
+    alert("Missing section context for this invitation.");
+    return;
+  }
+
+  const form = event.target;
+  if (form && !form.checkValidity()) {
+    form.classList.add("was-validated");
+    return;
+  }
+
+  if (alertBox) {
+    alertBox.classList.add("d-none");
+    alertBox.classList.remove("alert-success", "alert-danger");
+    alertBox.textContent = "";
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+  }
+
+  try {
+    const csrfToken = document.querySelector(
+      'meta[name="csrf-token"]',
+    )?.content;
+
+    const response = await fetch("/api/auth/invite", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(csrfToken && { "X-CSRFToken": csrfToken }),
+      },
+      body: JSON.stringify({
+        invitee_email: emailInput.value.trim(),
+        invitee_role: "instructor",
+        first_name: firstNameInput.value.trim(),
+        last_name: lastNameInput.value.trim(),
+        section_id: currentAssignSectionId,
+        replace_existing: true,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || "Failed to send invitation");
+    }
+
+    if (alertBox) {
+      alertBox.classList.remove("d-none");
+      alertBox.classList.add("alert-success");
+      alertBox.textContent = result.message || "Invitation sent successfully!";
+    }
+
+    const modalEl = document.getElementById("inviteInstructorModal");
+    const modal = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
+    if (modal) {
+      modal.hide();
+    }
+
+    const successModalEl = document.getElementById("inviteSuccessModal");
+    if (successModalEl) {
+      const successMessage = document.getElementById("inviteSuccessMessage");
+      if (successMessage) {
+        successMessage.textContent =
+          result.message || "Invitation sent successfully.";
+      }
+      bootstrap.Modal.getOrCreateInstance(successModalEl).show();
+    }
+
+    if (form) {
+      form.reset();
+      form.classList.remove("was-validated");
+    }
+  } catch (error) {
+    if (alertBox) {
+      alertBox.classList.remove("d-none");
+      alertBox.classList.add("alert-danger");
+      alertBox.textContent =
+        error.message || "Failed to send invitation. Please try again.";
+    } else {
+      alert("Failed to send invitation: " + error.message);
+    }
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+    }
+    // Refresh the list to show the assigned instructor
+    if (typeof globalThis.loadCLOs === "function") {
+      await globalThis.loadCLOs();
+      document.dispatchEvent(new CustomEvent("faculty-invited"));
+    }
+  }
+}
+
 /**
  * Reopen Outcome (Set status to in_progress)
  */
@@ -613,18 +728,18 @@ async function reopenOutcome(outcomeId) {
     const csrfToken = document.querySelector(
       'meta[name="csrf-token"]',
     )?.content;
-    const res = await fetch(`/api/outcomes/${outcomeId}`, {
-      method: "PUT",
+    const res = await fetch(`/api/outcomes/${outcomeId}/reopen`, {
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-CSRF-Token": csrfToken,
       },
-      body: JSON.stringify({
-        status: "in_progress",
-        approval_status: "pending",
-      }),
     });
     if (res.ok) {
+      const modalEl = document.getElementById("cloDetailModal");
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+
       await globalThis.loadCLOs();
     } else {
       const err = await res.json();
@@ -635,15 +750,149 @@ async function reopenOutcome(outcomeId) {
   }
 }
 
+let reminderContext = null;
+
+function formatShortDate(dateString) {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toLocaleDateString();
+}
+
 /**
- * Send Reminder
+ * Send Reminder (opens modal and populates message)
  */
 async function remindOutcome(outcomeId, instructorId, courseId) {
+  if (!confirm("Are you sure you want to send a reminder?")) return;
   if (!instructorId || !courseId) {
     alert("Missing instructor or course information for this outcome.");
     return;
   }
-  if (!confirm("Send reminder email to instructor?")) return;
+
+  const clo = allCLOs.find(
+    (c) => c.id === outcomeId || c.outcome_id === outcomeId,
+  );
+  const modalEl = document.getElementById("sendReminderModal");
+  if (!modalEl) {
+    alert("Reminder modal is not available. Please refresh and try again.");
+    return;
+  }
+
+  reminderContext = {
+    outcomeId,
+    instructorId,
+    courseId,
+    sectionId: clo?.section_id || null,
+  };
+
+  const reminderCloDescription = document.getElementById(
+    "reminderCloDescription",
+  );
+  const reminderCourseDescription = document.getElementById(
+    "reminderCourseDescription",
+  );
+  const reminderInstructorEmail = document.getElementById(
+    "reminderInstructorEmail",
+  );
+  const reminderMessage = document.getElementById("reminderMessage");
+
+  const courseNumber = clo?.course_number || "Course";
+  const courseTitle = clo?.course_title || "";
+  const sectionLabel = clo?.section_number
+    ? `Section ${clo.section_number}`
+    : "Section";
+  const cloLabel = clo?.clo_number ? `CLO #${clo.clo_number}` : "CLO";
+  const termLabel = clo?.term_name ? `${clo.term_name} - ` : "";
+
+  const courseDisplay = courseTitle
+    ? `${courseNumber} - ${courseTitle}`
+    : courseNumber;
+
+  if (reminderCloDescription) {
+    reminderCloDescription.textContent = `${courseNumber} • ${sectionLabel} • ${cloLabel}`;
+  }
+  if (reminderCourseDescription) {
+    reminderCourseDescription.textContent = courseDisplay;
+  }
+
+  let instructorName = clo?.instructor_name || "Instructor";
+  let instructorEmail = clo?.instructor_email || "";
+  let dueDateText = null;
+
+  try {
+    const instructorResponse = await fetch(`/api/users/${instructorId}`);
+    if (instructorResponse.ok) {
+      const instructorData = await instructorResponse.json();
+      const user = instructorData.user || {};
+      instructorName =
+        user.display_name ||
+        `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
+        instructorName;
+      instructorEmail = user.email || instructorEmail;
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn("Failed to load instructor details:", error);
+  }
+
+  if (reminderInstructorEmail) {
+    reminderInstructorEmail.textContent =
+      instructorEmail || "Instructor email unavailable";
+  }
+
+  if (reminderContext.sectionId) {
+    try {
+      const sectionResponse = await fetch(
+        `/api/sections/${reminderContext.sectionId}`,
+      );
+      if (sectionResponse.ok) {
+        const sectionData = await sectionResponse.json();
+        const dueDate = sectionData.section?.assessment_due_date;
+        if (dueDate) {
+          dueDateText = formatShortDate(dueDate);
+        }
+      }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn("Failed to load section due date:", error);
+    }
+  }
+
+  if (reminderMessage) {
+    const dueLine = dueDateText ? `\nSubmission due date: ${dueDateText}` : "";
+    reminderMessage.value =
+      `Dear ${instructorName},\n\n` +
+      `This is a friendly reminder to submit your assessment results for ` +
+      `${termLabel}${courseNumber} (${sectionLabel}) ${cloLabel}.` +
+      `${dueLine}\n\n` +
+      `Thank you.`;
+  }
+
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  modal.show();
+}
+
+/**
+ * Submit reminder email
+ */
+async function submitReminder(event) {
+  if (event && typeof event.preventDefault === "function") {
+    event.preventDefault();
+  }
+
+  if (!reminderContext) {
+    alert("Reminder context is missing. Please try again.");
+    return;
+  }
+
+  const reminderMessage = document.getElementById("reminderMessage");
+  const message = reminderMessage?.value?.trim() || "";
+  if (!message) {
+    alert("Please provide a reminder message.");
+    return;
+  }
 
   try {
     const csrfToken = document.querySelector(
@@ -656,12 +905,16 @@ async function remindOutcome(outcomeId, instructorId, courseId) {
         "X-CSRF-Token": csrfToken,
       },
       body: JSON.stringify({
-        instructor_id: instructorId,
-        course_id: courseId,
+        instructor_id: reminderContext.instructorId,
+        course_id: reminderContext.courseId,
+        message,
       }),
     });
 
     if (res.ok) {
+      const modalEl = document.getElementById("sendReminderModal");
+      const modal = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
+      if (modal) modal.hide();
       alert("Reminder sent successfully.");
     } else {
       const err = await res.json();
@@ -679,19 +932,42 @@ document.addEventListener("DOMContentLoaded", () => {
   const sortOrder = document.getElementById("sortOrder");
   const programFilter = document.getElementById("programFilter");
   const termFilter = document.getElementById("termFilter");
+  const courseFilter = document.getElementById("courseFilter");
   const exportButton = document.getElementById("exportCsvBtn");
   const cloListContainer = document.getElementById("cloListContainer");
   const cloDetailModal = document.getElementById("cloDetailModal");
-  const requestReworkModal = document.getElementById("requestReworkModal");
-  const requestReworkForm = document.getElementById("requestReworkForm");
+  const cloReworkSection = document.getElementById("cloReworkSection");
+  const cloReworkForm = document.getElementById("cloReworkForm");
+  const reworkFeedbackTextarea = document.getElementById(
+    "reworkFeedbackComments",
+  );
+  const reworkSendEmailCheckbox = document.getElementById("reworkSendEmail");
+  const reworkAlert = document.getElementById("reworkAlert");
+  const sendReminderForm = document.getElementById("sendReminderForm");
+  const inviteNewInstructorBtn = document.getElementById(
+    "inviteNewInstructorBtn",
+  );
+  const inviteInstructorModal = document.getElementById(
+    "inviteInstructorModal",
+  );
+  const inviteInstructorForm = document.getElementById("inviteInstructorForm");
+  // Removed unused button assignments to fix ESLint no-unused-vars
+  const cancelReworkBtn = document.getElementById("cancelReworkBtn");
+  const cloDetailActionsStandard = document.getElementById(
+    "cloDetailActionsStandard",
+  );
+  const cloDetailActionsRework = document.getElementById(
+    "cloDetailActionsRework",
+  );
 
   // State - use window for global access by extracted functions
   globalThis.currentCLO = null;
-  let allCLOs = [];
+  allCLOs = [];
 
   // Expose functions on window for access by extracted functions (approveCLO, markAsNCI)
   globalThis.loadCLOs = loadCLOs;
   globalThis.updateStats = updateStats;
+  globalThis.pendingReworkOutcomeId = null;
 
   // Initialize
   initialize();
@@ -705,6 +981,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   if (termFilter) {
     termFilter.addEventListener("change", loadCLOs);
+  }
+  if (courseFilter) {
+    courseFilter.addEventListener("change", loadCLOs);
   }
   if (exportButton) {
     exportButton.addEventListener("click", () => {
@@ -734,10 +1013,37 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  requestReworkForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    await submitReworkRequest();
-  });
+  if (cloReworkForm) {
+    cloReworkForm.addEventListener("submit", submitReworkRequest);
+  }
+  if (cancelReworkBtn) {
+    cancelReworkBtn.addEventListener("click", () => {
+      toggleReworkMode(false);
+    });
+  }
+  if (sendReminderForm) {
+    sendReminderForm.addEventListener("submit", submitReminder);
+  }
+  if (inviteNewInstructorBtn && inviteInstructorModal) {
+    inviteNewInstructorBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      const assignModalEl = document.getElementById("assignInstructorModal");
+      const assignModal = assignModalEl
+        ? bootstrap.Modal.getInstance(assignModalEl)
+        : null;
+      if (assignModal) {
+        assignModal.hide();
+      }
+      bootstrap.Modal.getOrCreateInstance(inviteInstructorModal).show();
+    });
+  }
+  if (inviteInstructorForm) {
+    inviteInstructorForm.addEventListener(
+      "submit",
+      handleInviteInstructorSubmit,
+    );
+  }
+  toggleReworkMode(false);
 
   /**
    * Initialize filters (programs, terms)
@@ -776,6 +1082,26 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
+      // Load courses
+      const courseResponse = await fetch("/api/courses");
+      if (courseResponse.ok) {
+        const data = await courseResponse.json();
+        const courses = data.courses || [];
+        if (courseFilter) {
+          // Sort by course number
+          courses.sort((a, b) =>
+            (a.course_number || "").localeCompare(b.course_number || ""),
+          );
+
+          courses.forEach((course) => {
+            const option = document.createElement("option");
+            option.value = course.course_id || course.id;
+            option.textContent = `${course.course_number} - ${course.course_title}`;
+            courseFilter.appendChild(option);
+          });
+        }
+      }
+
       // Initial load of CLOs
       await loadCLOs();
     } catch (error) {
@@ -790,27 +1116,20 @@ document.addEventListener("DOMContentLoaded", () => {
    * Load CLOs from API
    */
   async function loadCLOs() {
+    const previousScroll =
+      window.scrollY || document.documentElement.scrollTop || 0;
     globalThis.loadCLOs = loadCLOs;
     try {
-      // nosemgrep
-      // nosemgrep
-      cloListContainer.innerHTML = `
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p class="text-muted mt-2">Loading CLOs...</p>
-                </div>
-            `;
-
       const status = statusFilter.value;
       const programId = programFilter ? programFilter.value : "";
       const termId = termFilter ? termFilter.value : "";
+      const courseId = courseFilter ? courseFilter.value : "";
 
       const params = new URLSearchParams();
       if (status !== "all") params.append("status", status);
       if (programId) params.append("program_id", programId);
       if (termId) params.append("term_id", termId);
+      if (courseId) params.append("course_id", courseId);
 
       const queryString = params.toString();
       const url = queryString
@@ -823,7 +1142,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const data = await response.json();
-      console.log("DEBUG: loadCLOs data:", JSON.stringify(data));
       allCLOs = data.outcomes || [];
 
       // Update stats
@@ -831,16 +1149,31 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Render list
       renderCLOList();
+
+      // Restore scroll position once the new DOM has painted
+      window.requestAnimationFrame(() => {
+        window.scrollTo({
+          top: previousScroll,
+          behavior: "auto",
+        });
+      });
     } catch (error) {
       // Log error to aid debugging
       // eslint-disable-next-line no-console
       console.error("Error loading CLOs:", error);
-      // nosemgrep
-      cloListContainer.innerHTML = `
-                <div class="alert alert-danger">
-                    <strong>Error:</strong> Failed to load CLOs. ${error.message}
-                </div>
-            `;
+      const errorDiv = document.createElement("div");
+      errorDiv.className = "alert alert-danger";
+      const strong = document.createElement("strong");
+      strong.textContent = "Error:";
+      errorDiv.appendChild(strong);
+      // Add a space and plain-text error message to avoid HTML injection
+      errorDiv.appendChild(
+        document.createTextNode(
+          " Failed to load CLOs. " +
+            (error && error.message ? error.message : ""),
+        ),
+      );
+      cloListContainer.prepend(errorDiv);
     }
   }
 
@@ -927,27 +1260,18 @@ document.addEventListener("DOMContentLoaded", () => {
    * Render CLO list
    */
   function renderCLOList() {
-    cloListContainer.textContent = ""; // Clear current content
-
-    if (allCLOs.length === 0) {
-      const emptyDiv = document.createElement("div");
-      emptyDiv.className = "text-center py-5";
-      const p = document.createElement("p");
-      p.className = "text-muted";
-      p.textContent = "No CLOs found for the selected filter.";
-      emptyDiv.appendChild(p);
-      cloListContainer.appendChild(emptyDiv);
-      return;
+    // Prevent layout shift/scroll jumping by locking the height
+    if (cloListContainer.offsetHeight > 0) {
+      cloListContainer.style.minHeight = `${cloListContainer.offsetHeight}px`;
     }
 
-    // Sort CLOs
-    const sorted = sortCLOs([...allCLOs]);
+    cloListContainer.textContent = ""; // Clear current content
 
     const tableResp = document.createElement("div");
     tableResp.className = "table-responsive";
 
     const table = document.createElement("table");
-    table.className = "table table-hover";
+    table.className = "table table-hover align-middle";
 
     // Header
     const thead = document.createElement("thead");
@@ -955,6 +1279,7 @@ document.addEventListener("DOMContentLoaded", () => {
     [
       "Status",
       "Course",
+      "Section",
       "CLO #",
       "Description",
       "Instructor",
@@ -970,121 +1295,236 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Body
     const tbody = document.createElement("tbody");
+
+    if (allCLOs.length === 0) {
+      const emptyRow = document.createElement("tr");
+      const emptyCell = document.createElement("td");
+      emptyCell.colSpan = 8;
+      emptyCell.className = "text-center text-muted py-4";
+      emptyCell.textContent = "No CLOs found for the selected filter.";
+      emptyRow.appendChild(emptyCell);
+      tbody.appendChild(emptyRow);
+      table.appendChild(tbody);
+      tableResp.appendChild(table);
+      cloListContainer.appendChild(tableResp);
+      return;
+    }
+
+    // Sort CLOs
+    const sorted = sortCLOs([...allCLOs]);
+
+    // Grouping Logic
+    const groupedData = {};
     sorted.forEach((clo) => {
-      const outcomeId =
-        clo.outcome_id || clo.id || clo.OutcomeId || clo.outcomeId || "";
-      const tr = document.createElement("tr");
-      tr.className = "clo-row";
-      tr.style.cursor = "pointer";
-      tr.dataset.outcomeId = outcomeId;
+      const courseKey = `${clo.course_number || "Unknown"} - ${clo.course_title || ""}`;
+      if (!groupedData[courseKey]) groupedData[courseKey] = {};
 
-      // Status
-      const tdStatus = document.createElement("td");
-      tdStatus.appendChild(getStatusBadge(clo.status));
-      tr.appendChild(tdStatus);
+      const sectionKey = clo.section_number
+        ? `Section ${clo.section_number}`
+        : "Unassigned Section";
+      if (!groupedData[courseKey][sectionKey])
+        groupedData[courseKey][sectionKey] = [];
 
-      // Course
-      const tdCourse = document.createElement("td");
-      const strong = document.createElement("strong");
-      strong.textContent = clo.course_number || "N/A";
-      tdCourse.appendChild(strong);
-      tr.appendChild(tdCourse);
-
-      // CLO #
-      const tdCloNum = document.createElement("td");
-      tdCloNum.textContent = clo.clo_number || "N/A";
-      tr.appendChild(tdCloNum);
-
-      // Description
-      const tdDesc = document.createElement("td");
-      tdDesc.textContent = truncateText(clo.description, 60);
-      tr.appendChild(tdDesc);
-
-      // Instructor
-      const tdInst = document.createElement("td");
-      tdInst.textContent = clo.instructor_name || "N/A";
-      tr.appendChild(tdInst);
-
-      // Submitted
-      const tdSub = document.createElement("td");
-      const small = document.createElement("small");
-      small.textContent = clo.submitted_at
-        ? formatDate(clo.submitted_at)
-        : "N/A";
-      tdSub.appendChild(small);
-      tr.appendChild(tdSub);
-
-      // Actions
-      const tdActions = document.createElement("td");
-      tdActions.className = "clo-actions";
-
-      const btnGroup = document.createElement("div");
-      btnGroup.className = "btn-group btn-group-sm";
-
-      let actionBtn = null;
-
-      if (clo.status === "awaiting_approval") {
-        const btn = document.createElement("button");
-        btn.className = "btn btn-success text-white";
-        btn.title = "Approve Outcome";
-        btn.innerHTML = '<i class="fas fa-check"></i> Approve';
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          approveOutcome(clo.outcome_id);
-        };
-        actionBtn = btn;
-      } else if (clo.status === "unassigned") {
-        const btn = document.createElement("button");
-        btn.className = "btn btn-primary text-white";
-        btn.title = "Assign Instructor";
-        btn.innerHTML = '<i class="fas fa-user-plus"></i> Assign';
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          assignOutcome(clo.outcome_id);
-        };
-        actionBtn = btn;
-      } else if (["approved", "never_coming_in"].includes(clo.status)) {
-        const btn = document.createElement("button");
-        btn.className = "btn btn-warning text-dark";
-        btn.title = "Reopen Outcome";
-        btn.innerHTML = '<i class="fas fa-undo"></i> Reopen';
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          reopenOutcome(clo.outcome_id);
-        };
-        actionBtn = btn;
-      } else if (
-        ["in_progress", "approval_pending", "assigned"].includes(clo.status)
-      ) {
-        const btn = document.createElement("button");
-        btn.className = "btn btn-info text-white";
-        btn.title = "Send Reminder";
-        btn.innerHTML = '<i class="fas fa-bell"></i> Remind';
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          remindOutcome(clo.outcome_id, clo.instructor_id, clo.course_id);
-        };
-        actionBtn = btn;
-      } else {
-        // Fallback View
-        const btn = document.createElement("button");
-        btn.className = "btn btn-outline-secondary";
-        btn.dataset.outcomeId = clo.outcome_id;
-        btn.title = "View Details";
-        btn.innerHTML = '<i class="fas fa-eye"></i> View';
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          globalThis.showCLODetails(clo.outcome_id);
-        };
-        actionBtn = btn;
-      }
-
-      if (actionBtn) btnGroup.appendChild(actionBtn);
-      tdActions.appendChild(btnGroup);
-      tr.appendChild(tdActions);
-
-      tbody.appendChild(tr);
+      groupedData[courseKey][sectionKey].push(clo);
     });
+
+    Object.keys(groupedData)
+      .sort()
+      .forEach((courseKey) => {
+        const safeKey = courseKey.replace(/[^a-zA-Z0-9]/g, "");
+
+        // Course Header Row
+        const courseRow = document.createElement("tr");
+        courseRow.className = "table-light";
+        const courseCell = document.createElement("td");
+        courseCell.colSpan = 8;
+
+        // Build course header using safe DOM construction
+        const courseDiv = document.createElement("div");
+        courseDiv.className = "d-flex align-items-center";
+        courseDiv.style.cursor = "pointer";
+        courseDiv.setAttribute("data-bs-toggle", "collapse");
+        courseDiv.setAttribute("data-bs-target", `.group-${safeKey}`);
+
+        const chevronIcon = document.createElement("i");
+        chevronIcon.className = "fas fa-chevron-down me-2";
+        courseDiv.appendChild(chevronIcon);
+
+        const courseStrong = document.createElement("strong");
+        courseStrong.textContent = courseKey;
+        courseDiv.appendChild(courseStrong);
+
+        courseCell.appendChild(courseDiv);
+        courseRow.appendChild(courseCell);
+        tbody.appendChild(courseRow);
+
+        const sectionGroups = groupedData[courseKey];
+        Object.keys(sectionGroups)
+          .sort()
+          .forEach((sectionKey) => {
+            const sectionSafeKey = `${safeKey}-${sectionKey.replace(/[^a-zA-Z0-9]/g, "")}`;
+
+            // Section Header
+            const sectionRow = document.createElement("tr");
+            sectionRow.className = `table-secondary group-${safeKey} collapse show`; // Collapsible
+            const sectionCell = document.createElement("td");
+            sectionCell.colSpan = 8;
+            sectionCell.style.paddingLeft = "30px";
+            sectionCell.classList.add("fw-semibold");
+
+            // Build section header using safe DOM construction
+            const sectionDiv = document.createElement("div");
+            sectionDiv.className = "d-flex align-items-center";
+            sectionDiv.style.cursor = "pointer";
+            sectionDiv.setAttribute("data-bs-toggle", "collapse");
+            sectionDiv.setAttribute(
+              "data-bs-target",
+              `.section-${sectionSafeKey}`,
+            );
+
+            const sectionChevron = document.createElement("i");
+            sectionChevron.className = "fas fa-chevron-down me-2";
+            sectionDiv.appendChild(sectionChevron);
+
+            const sectionStrong = document.createElement("strong");
+            sectionStrong.className = "text-secondary";
+            sectionStrong.textContent = sectionKey;
+            sectionDiv.appendChild(sectionStrong);
+            sectionCell.appendChild(sectionDiv);
+
+            sectionRow.appendChild(sectionCell);
+            tbody.appendChild(sectionRow);
+
+            // CLO Rows
+            sectionGroups[sectionKey].forEach((clo) => {
+              const outcomeId = clo.id || clo.outcome_id || "";
+              const tr = document.createElement("tr");
+              tr.className = `clo-row group-${safeKey} section-${sectionSafeKey} collapse show`; // Collapsible
+              tr.style.cursor = "pointer";
+              tr.dataset.outcomeId = outcomeId;
+
+              // Status
+              const tdStatus = document.createElement("td");
+              tdStatus.appendChild(getStatusBadge(clo.status));
+              tr.appendChild(tdStatus);
+
+              // Course (Redundant but requested)
+              const tdCourse = document.createElement("td");
+              tdCourse.textContent = clo.course_number || "N/A";
+              tr.appendChild(tdCourse);
+
+              // Section (Requested)
+              const tdSection = document.createElement("td");
+              tdSection.textContent = clo.section_number || "N/A";
+              tr.appendChild(tdSection);
+
+              // CLO #
+              const tdCloNum = document.createElement("td");
+              tdCloNum.textContent = clo.clo_number || "N/A";
+              tr.appendChild(tdCloNum);
+
+              // Description
+              const tdDesc = document.createElement("td");
+              tdDesc.textContent = truncateText(clo.description, 40);
+              tdDesc.title = clo.description;
+              tr.appendChild(tdDesc);
+
+              // Instructor
+              const tdInst = document.createElement("td");
+              tdInst.textContent = clo.instructor_name || "N/A";
+              tr.appendChild(tdInst);
+
+              // Submitted
+              const tdSub = document.createElement("td");
+              const small = document.createElement("small");
+              small.textContent = clo.submitted_at
+                ? formatDate(clo.submitted_at)
+                : "N/A";
+              tdSub.appendChild(small);
+              tr.appendChild(tdSub);
+
+              // Actions (same as before)
+              const tdActions = document.createElement("td");
+              tdActions.className = "clo-actions";
+              const btnGroup = document.createElement("div");
+              btnGroup.className = "btn-group btn-group-sm";
+
+              const actionBtns = [];
+              if (clo.status === "awaiting_approval") {
+                const approveBtn = document.createElement("button");
+                approveBtn.type = "button";
+                approveBtn.className = "btn btn-success text-white";
+                approveBtn.title = "Approve Outcome";
+                approveBtn.innerHTML = '<i class="fas fa-check"></i>';
+                approveBtn.onclick = (e) => {
+                  e.stopPropagation();
+                  approveOutcome(clo.id || clo.outcome_id);
+                };
+                actionBtns.push(approveBtn);
+
+                const reworkBtn = document.createElement("button");
+                reworkBtn.type = "button";
+                reworkBtn.className = "btn btn-warning text-dark";
+                reworkBtn.title = "Request Rework";
+                reworkBtn.innerHTML =
+                  '<i class="fas fa-exclamation-triangle"></i>';
+                reworkBtn.onclick = (e) => {
+                  e.stopPropagation();
+                  globalThis.pendingReworkOutcomeId =
+                    clo.id || clo.outcome_id || null;
+                  globalThis.showCLODetails(outcomeId);
+                };
+                actionBtns.push(reworkBtn);
+              } else if (clo.status === "unassigned") {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "btn btn-primary text-white";
+                btn.title = "Assign Instructor";
+                btn.innerHTML = '<i class="fas fa-user-plus"></i>';
+                btn.onclick = (e) => {
+                  e.stopPropagation();
+                  assignOutcome(clo.id || clo.outcome_id);
+                };
+                actionBtns.push(btn);
+              } else if (
+                ["in_progress", "approval_pending", "assigned"].includes(
+                  clo.status,
+                )
+              ) {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "btn btn-info text-white";
+                btn.title = "Send Reminder";
+                btn.innerHTML = '<i class="fas fa-bell"></i>';
+                btn.onclick = (e) => {
+                  e.stopPropagation();
+                  remindOutcome(outcomeId, clo.instructor_id, clo.course_id);
+                };
+                actionBtns.push(btn);
+              }
+
+              const viewBtn = document.createElement("button");
+              viewBtn.type = "button";
+              viewBtn.className = "btn btn-outline-secondary";
+              viewBtn.dataset.outcomeId = clo.id || clo.outcome_id;
+              viewBtn.title = "View Details";
+              viewBtn.innerHTML = '<i class="fas fa-eye"></i>';
+              viewBtn.onclick = (e) => {
+                e.stopPropagation();
+                globalThis.showCLODetails(outcomeId);
+              };
+
+              actionBtns.forEach((btn) => {
+                btnGroup.appendChild(btn);
+              });
+              btnGroup.appendChild(viewBtn);
+              tdActions.appendChild(btnGroup);
+              tr.appendChild(tdActions);
+
+              tbody.appendChild(tr);
+            });
+          });
+      });
 
     table.appendChild(tbody);
     tableResp.appendChild(table);
@@ -1148,7 +1588,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Render HTML using extracted function
       // nosemgrep
-      const cloDetailContainer = document.getElementById("cloDetailContent");
+      const cloDetailContainer = document.getElementById(
+        "cloDetailContentMain",
+      );
       cloDetailContainer.replaceChildren(renderCLODetails(clo));
 
       // Show/hide action buttons based on status
@@ -1161,62 +1603,116 @@ document.addEventListener("DOMContentLoaded", () => {
         "assigned",
         "in_progress",
       ].includes(clo.status);
-      document.getElementById("approveBtn").style.display = canApprove
-        ? "inline-block"
-        : "none";
-      document.getElementById("requestReworkBtn").style.display = canApprove
-        ? "inline-block"
-        : "none";
-      document.getElementById("markNCIBtn").style.display = canMarkNCI
-        ? "inline-block"
-        : "none";
+      const canReopen = ["approved", "never_coming_in"].includes(clo.status);
+      const reopenBtn = document.getElementById("reopenBtn");
+      if (reopenBtn) {
+        reopenBtn.style.display = canReopen ? "inline-block" : "none";
+        reopenBtn.onclick = () => reopenOutcome(clo.id);
+      }
+
+      const approveBtn = document.getElementById("approveBtn");
+      if (approveBtn) {
+        approveBtn.style.display = canApprove ? "inline-block" : "none";
+        approveBtn.onclick = async () => {
+          if (await approveOutcome(clo.id)) {
+            bootstrap.Modal.getInstance(
+              document.getElementById("cloDetailModal"),
+            ).hide();
+          }
+        };
+      }
+
+      const requestReworkBtn = document.getElementById("requestReworkBtn");
+      if (requestReworkBtn) {
+        requestReworkBtn.style.display = canApprove ? "inline-block" : "none";
+        requestReworkBtn.onclick = () => {
+          globalThis.pendingReworkOutcomeId = clo.id || clo.outcome_id || null;
+          globalThis.openReworkModal();
+        };
+      }
+
+      const markNCIBtn = document.getElementById("markNCIBtn");
+      if (markNCIBtn) {
+        markNCIBtn.style.display = canMarkNCI ? "inline-block" : "none";
+        markNCIBtn.onclick = () => markAsNCI(clo.id);
+      }
 
       const modal = new bootstrap.Modal(cloDetailModal);
       modal.show();
+
+      toggleReworkMode(false);
+      if (
+        globalThis.pendingReworkOutcomeId &&
+        (clo.id || clo.outcome_id) === globalThis.pendingReworkOutcomeId
+      ) {
+        globalThis.openReworkModal();
+        globalThis.pendingReworkOutcomeId = null;
+      }
     } catch (error) {
       alert("Failed to load CLO details: " + error.message);
     }
   };
 
   /**
-   * Open rework modal
+   * Activate rework mode inside the detail modal
    */
   globalThis.openReworkModal = function () {
     if (!globalThis.currentCLO) return;
+    if (!cloReworkSection || !cloReworkForm) return;
 
-    document.getElementById("reworkCloDescription").textContent =
-      `${globalThis.currentCLO.course_number} - CLO ${globalThis.currentCLO.clo_number}: ${globalThis.currentCLO.description}`;
-    document.getElementById("feedbackComments").value = "";
-    document.getElementById("sendEmailCheckbox").checked = true;
-
-    // Hide detail modal
-    const detailModalInstance = bootstrap.Modal.getInstance(cloDetailModal);
-    if (detailModalInstance) {
-      detailModalInstance.hide();
+    reworkFeedbackTextarea.value = "";
+    reworkSendEmailCheckbox.checked = true;
+    reworkAlert.classList.add("d-none");
+    const descriptionEl = document.getElementById("reworkCloDescription");
+    if (descriptionEl) {
+      descriptionEl.textContent = `${globalThis.currentCLO.course_number} - CLO ${globalThis.currentCLO.clo_number}: ${globalThis.currentCLO.description}`;
     }
 
-    // Show rework modal
-    const modal = new bootstrap.Modal(requestReworkModal);
-    modal.show();
+    enterReworkMode();
   };
+
+  function toggleReworkMode(show) {
+    if (cloReworkSection) {
+      cloReworkSection.style.display = show ? "block" : "none";
+    }
+    if (cloDetailActionsStandard) {
+      cloDetailActionsStandard.style.display = show ? "none" : "flex";
+    }
+    if (cloDetailActionsRework) {
+      cloDetailActionsRework.style.display = show ? "flex" : "none";
+    }
+    globalThis.reworkMode = show;
+  }
+
+  function enterReworkMode() {
+    toggleReworkMode(true);
+    if (reworkFeedbackTextarea) {
+      reworkFeedbackTextarea.focus();
+    }
+  }
 
   /**
    * Submit rework request
    */
-  async function submitReworkRequest() {
-    if (!globalThis.currentCLO) return;
+  async function submitReworkRequest(event) {
+    if (event && typeof event.preventDefault === "function") {
+      event.preventDefault();
+    }
 
-    const comments = document.getElementById("feedbackComments").value.trim();
-    const sendEmail = document.getElementById("sendEmailCheckbox").checked;
+    if (!globalThis.currentCLO) return;
+    if (!reworkFeedbackTextarea) return;
+
+    const comments = reworkFeedbackTextarea.value.trim();
+    const sendEmail = reworkSendEmailCheckbox?.checked ?? true;
 
     if (!comments) {
-      alert("Please provide feedback comments");
+      showReworkAlert("Please provide feedback comments.", "danger");
       return;
     }
 
-    const outcomeId = globalThis.currentCLO.outcome_id;
+    const outcomeId = globalThis.currentCLO.id;
     if (!outcomeId) {
-      alert("Error: CLO ID not found");
+      showReworkAlert("Error: CLO ID not found.", "danger");
       return;
     }
 
@@ -1244,21 +1740,29 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error(error.error || "Failed to request rework");
       }
 
-      // Close modal
-      const modal = bootstrap.Modal.getInstance(requestReworkModal);
-      modal.hide();
-
-      // Show success
-      alert(
+      showReworkAlert(
         "Rework request sent successfully!" +
           (sendEmail ? " Email notification sent." : ""),
+        "success",
       );
 
-      // Reload list
+      toggleReworkMode(false);
+      const modalInstance = bootstrap.Modal.getInstance(cloDetailModal);
+      if (modalInstance) {
+        modalInstance.hide();
+      }
+
       await loadCLOs();
     } catch (error) {
-      alert("Failed to request rework: " + error.message);
+      showReworkAlert("Failed to request rework: " + error.message, "danger");
     }
+  }
+
+  function showReworkAlert(message, variant = "info") {
+    if (!reworkAlert) return;
+    reworkAlert.textContent = message;
+    reworkAlert.className = `alert alert-${variant}`;
+    reworkAlert.classList.remove("d-none");
   }
 });
 
@@ -1284,6 +1788,7 @@ if (typeof module !== "undefined" && module.exports) {
     handleAssignSubmit,
     reopenOutcome,
     remindOutcome,
+    submitReminder,
     // Note: sortCLOs and submitReworkRequest are inside DOMContentLoaded
     // and cannot be exported (they depend on DOM element references)
     // Expose internal state accessor for testing

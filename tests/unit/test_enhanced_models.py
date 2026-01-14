@@ -11,20 +11,15 @@ Story 1.1 Smoke Tests
 """
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
 
 import pytest
 
 from src.models.models import (
-    ACCOUNT_STATUSES,
-    INVITATION_STATUSES,
-    ROLES,
     Course,
     Institution,
     Program,
     User,
     UserInvitation,
-    validate_email,
 )
 
 

@@ -6,10 +6,8 @@ fails because it doesn't include CSRF tokens in the request headers.
 """
 
 import json
-from unittest.mock import patch
 
 import pytest
-from flask import session
 
 from src.app import app
 

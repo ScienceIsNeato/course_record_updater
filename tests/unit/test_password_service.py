@@ -7,9 +7,8 @@ NOTE: Most tests use mocked bcrypt for speed (~0.01s vs ~0.2s per hash).
 test_hash_consistency uses real bcrypt to verify actual integration.
 """
 
-import time
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import g

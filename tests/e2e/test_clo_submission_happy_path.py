@@ -17,6 +17,7 @@ import json
 import pytest
 from playwright.sync_api import Page, expect
 
+from src.utils.constants import TEST_USER_PASSWORD
 from tests.e2e.conftest import BASE_URL
 from tests.e2e.test_helpers import (
     create_test_user_via_api,
@@ -186,7 +187,7 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
     # === STEP 2: Instructor logs in ===
     instructor_page = admin_page.context.new_page()
     login_as_user(
-        instructor_page, BASE_URL, "uat007.instructor@test.com", "TestUser123!"
+        instructor_page, BASE_URL, "uat007.instructor@test.com", TEST_USER_PASSWORD
     )
 
     # Debug console logs
@@ -213,13 +214,13 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
     )
 
     # Locate row for our CLO
-    clo_row = instructor_page.locator(f".row[data-outcome-id='{clo1_id}']")
+    clo_row = instructor_page.locator(f".row[data-course-outcome-id='{clo1_id}']")
     expect(clo_row).to_be_visible()
 
     # Fill inline inputs
-    took_input = clo_row.locator(f"input[data-field='students_took']")
-    passed_input = clo_row.locator(f"input[data-field='students_passed']")
-    tool_input = clo_row.locator(f"input[data-field='assessment_tool']")
+    took_input = clo_row.locator("input[data-field='students_took']")
+    passed_input = clo_row.locator("input[data-field='students_passed']")
+    tool_input = clo_row.locator("input[data-field='assessment_tool']")
 
     took_input.fill("30")
     passed_input.fill("27")

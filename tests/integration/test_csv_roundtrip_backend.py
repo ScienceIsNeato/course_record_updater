@@ -14,16 +14,13 @@ the database state through import/export cycles.
 """
 
 import json
-import os
 import sys
 import zipfile
-from datetime import datetime
 from pathlib import Path
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.adapters.adapter_registry import AdapterRegistry
 from src.database.database_factory import get_database_service
 from src.services.export_service import ExportConfig, create_export_service
 from src.services.import_service import ConflictStrategy, ImportService
@@ -67,7 +64,7 @@ def export_database(institution_id: str, output_path: str) -> dict:
 
 def compare_zip_files(export1_path: str, export2_path: str) -> dict:
     """Compare two CSV ZIP exports for data integrity."""
-    logger.info(f"🔍 Comparing exports...")
+    logger.info("🔍 Comparing exports...")
     logger.info(f"   Export 1: {export1_path}")
     logger.info(f"   Export 2: {export2_path}")
 
@@ -199,7 +196,7 @@ def main():
         logger.error(f"❌ Import failed: {import_result.errors}")
         return 1
 
-    logger.info(f"✅ Import successful:")
+    logger.info("✅ Import successful:")
     logger.info(f"   Records processed: {import_result.records_processed}")
     logger.info(f"   Records created: {import_result.records_created}")
     logger.info(f"   Records updated: {import_result.records_updated}")
@@ -239,7 +236,7 @@ def main():
 
     logger.info("=" * 70)
     logger.info("")
-    logger.info(f"📁 Export files saved:")
+    logger.info("📁 Export files saved:")
     logger.info(f"   Before: {export1_path}")
     logger.info(f"   After:  {export2_path}")
     logger.info("")

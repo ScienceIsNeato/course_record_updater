@@ -214,6 +214,7 @@ class DatabaseInterface(ABC):
         status: Optional[str],
         program_id: Optional[str] = None,
         term_id: Optional[str] = None,
+        course_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Get course outcomes filtered by status (or all if status is None)"""
         raise NotImplementedError
@@ -247,6 +248,49 @@ class DatabaseInterface(ABC):
     @abstractmethod
     def get_sections_by_course(self, course_id: str) -> List[Dict[str, Any]]:
         """Get all sections for a specific course"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_section_outcome_by_course_outcome_and_section(
+        self, course_outcome_id: str, section_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Get section specific outcome"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_section_outcomes_by_criteria(
+        self,
+        institution_id: str,
+        status: Optional[str] = None,
+        program_id: Optional[str] = None,
+        term_id: Optional[str] = None,
+        course_id: Optional[str] = None,
+        section_id: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get section outcomes filtered by various criteria"""
+        raise NotImplementedError
+
+    # Section Outcome operations (for section-level CLO workflow)
+    @abstractmethod
+    def get_section_outcome(self, section_outcome_id: str) -> Optional[Dict[str, Any]]:
+        """Get a single section outcome by ID"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_section_outcomes_by_section(self, section_id: str) -> List[Dict[str, Any]]:
+        """Get all section outcomes for a specific section"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_section_outcomes_by_outcome(self, outcome_id: str) -> List[Dict[str, Any]]:
+        """Get all section outcomes for a course outcome (template)"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_section_outcome(
+        self, section_outcome_id: str, outcome_data: Dict[str, Any]
+    ) -> bool:
+        """Update section outcome details (status, assessment data, etc.)"""
         raise NotImplementedError
 
     @abstractmethod

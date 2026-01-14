@@ -4,8 +4,6 @@ import json
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from src.services.audit_service import (
     AuditService,
     EntityType,

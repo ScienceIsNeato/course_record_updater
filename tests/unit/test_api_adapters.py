@@ -3,9 +3,7 @@ Unit tests for Adapter API endpoints.
 Tests /api/adapters and /api/export/data.
 """
 
-from unittest.mock import MagicMock, Mock, patch
-
-import pytest
+from unittest.mock import Mock, patch
 
 from src.app import app
 from tests.test_utils import create_test_session

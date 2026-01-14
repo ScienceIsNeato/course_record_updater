@@ -16,7 +16,7 @@ import os
 import re
 import secrets
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple
 
 import bcrypt

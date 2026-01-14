@@ -34,8 +34,8 @@ pip install -r requirements-dev.txt
 
 python scripts/ship_it.py
 
-# Run full PR validation)
-python scripts/ship_it.py --validation-type PR
+# Run full PR validation
+python scripts/ship_it.py --checks PR
 
 # Security Check (integrated into ship_it.py)
 # detect-secrets scan runs automatically during commit validation
@@ -197,3 +197,10 @@ python scripts/seed_db.py --clear
 *   Run tests after any code changes.
 *   See `PROJECT_OVERVIEW.md` for architecture details.
 *   See `STATUS.md` for current development progress.
+
+Test Passwords and Secrets Policy
+--------------------------------
+
+- **Do not hardcode password literals in tests.** Centralize test passwords in `src/utils/constants.py` as named constants (e.g., `TEST_USER_PASSWORD`).
+- When adding a new test secret constant intentionally, regenerate and commit the detect-secrets baseline (`.secrets.baseline`) so the scanner records the intentional test secret.
+- Contributors should import the constant from `src.utils.constants` in tests instead of using inline literals.

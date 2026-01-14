@@ -5,8 +5,6 @@ TDD: Tests for GET/POST/DELETE /api/profile/system-date.
 
 from datetime import datetime, timezone
 
-import pytest
-
 
 class TestSystemDateEndpoints:
     """Tests for system date override API endpoints."""

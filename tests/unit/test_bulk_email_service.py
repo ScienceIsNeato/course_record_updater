@@ -1,11 +1,9 @@
 """Unit tests for BulkEmailService."""
 
-import sys
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
-from src.services import bulk_email_service
 from src.services.bulk_email_service import BulkEmailService
 
 

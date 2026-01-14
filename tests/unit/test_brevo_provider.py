@@ -2,7 +2,6 @@
 Unit tests for BrevoProvider
 """
 
-import os
 from unittest.mock import Mock, patch
 
 import pytest

@@ -5,9 +5,7 @@ These tests verify that close() and close_connection() properly
 dispose of database resources.
 """
 
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 
 class TestSQLiteServiceClose:

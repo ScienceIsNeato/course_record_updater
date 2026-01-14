@@ -29,6 +29,9 @@
                     <option value="institution_admin">Institution Admins</option>
                     <option value="site_admin">Site Admins</option>
                 </select>
+                <button class="btn btn-sm btn-primary" onclick="openAddUserModal()">
+                    <i class="fas fa-plus"></i> Add User
+                </button>
                 <button class="btn btn-sm btn-outline-primary" onclick="loadUsers()">
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
@@ -217,6 +220,58 @@
 </script>
 <script src="{{ url_for('static', filename='userManagement.js') }}"></script>
 
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addUserModalLabel">Add New User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="addUserForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="addUserEmail" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="addUserEmail" required
+                               placeholder="user@example.com">
+                    </div>
+                    <div class="mb-3">
+                        <label for="addFirstName" class="form-label">First Name *</label>
+                        <input type="text" class="form-control" id="addFirstName" required
+                               placeholder="John">
+                    </div>
+                    <div class="mb-3">
+                        <label for="addLastName" class="form-label">Last Name *</label>
+                        <input type="text" class="form-control" id="addLastName" required
+                               placeholder="Doe">
+                    </div>
+                    <div class="mb-3">
+                        <label for="addUserRole" class="form-label">Role *</label>
+                        <select class="form-select" id="addUserRole" required>
+                            <option value="">Select a role...</option>
+                            <option value="instructor">Instructor</option>
+                            <option value="program_admin">Program Admin</option>
+                            <option value="institution_admin">Institution Admin</option>
+                        </select>
+                    </div>
+                    <div class="alert alert-info">
+                        <small>
+                            <i class="fas fa-info-circle"></i>
+                            The user will receive an invitation email with instructions to set their password.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-user-plus"></i> Create User
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Edit User Modal -->
 <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -230,7 +285,8 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="editUserEmail" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="editUserEmail" readonly>
+                        <input type="email" class="form-control" id="editUserEmail" required>
+                        <div class="form-text">Institution admins can update email addresses as needed</div>
                     </div>
                     <div class="mb-3">
                         <label for="editFirstName" class="form-label">First Name</label>

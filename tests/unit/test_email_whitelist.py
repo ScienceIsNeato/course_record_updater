@@ -8,8 +8,6 @@ and bypass in dev/staging/production.
 import os
 from unittest.mock import patch
 
-import pytest
-
 from src.email_providers.whitelist import (
     EmailWhitelist,
     get_email_whitelist,

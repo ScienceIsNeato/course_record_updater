@@ -17,8 +17,6 @@ from playwright.sync_api import Page
 from src.database.database_service import (
     get_all_courses,
     get_all_institutions,
-    get_all_users,
-    get_user_by_id,
 )
 from tests.e2e.conftest import BASE_URL
 

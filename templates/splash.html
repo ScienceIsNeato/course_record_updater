@@ -48,21 +48,10 @@
 </head>
 
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="/">
-                <img src="{{ url_for('static', filename='images/loopcloser_icon.png') }}" alt="Loopcloser Logo"
-                    height="30" class="d-inline-block align-text-top me-2">
-                Loopcloser
-            </a>
-            <div class="navbar-nav ms-auto">
-                <a class="btn btn-outline-light" href="/login">
-                    <i class="fas fa-sign-in-alt me-1"></i>Login
-                </a>
-            </div>
-        </div>
-    </nav>
+    {% set nav_button_text = 'Login' %}
+    {% set nav_button_url = url_for('login') %}
+    {% set nav_button_icon = 'fas fa-sign-in-alt' %}
+    {% include 'components/app_header.html' %}
 
     <!-- Hero Section -->
     <section class="hero-section">

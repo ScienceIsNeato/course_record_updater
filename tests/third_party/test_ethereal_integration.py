@@ -51,7 +51,7 @@ def test_ethereal_send_and_receive():
         f"<p>This is a test email with unique ID: <strong>{unique_id}</strong></p>"
     )
 
-    print(f"\n🔬 Testing Ethereal Email Integration")
+    print("\n🔬 Testing Ethereal Email Integration")
     print(f"📧 Unique ID: {unique_id}")
     print(f"📨 Sending to: {ethereal_user}")
 
@@ -144,7 +144,7 @@ def test_ethereal_send_and_receive():
     assert unique_id in email_body, f"Unique ID '{unique_id}' not found in email body"
 
     print("✅ Email content verified successfully!")
-    print(f"\n🎉 Ethereal Email integration test PASSED!")
+    print("\n🎉 Ethereal Email integration test PASSED!")
 
 
 if __name__ == "__main__":

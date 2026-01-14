@@ -183,7 +183,6 @@ class AuthService:
 
     def _get_mock_user(self) -> Optional[Dict[str, Any]]:
         """Mock user for development and testing"""
-        from flask import session
 
         base_user = {
             "user_id": "dev-admin-123",

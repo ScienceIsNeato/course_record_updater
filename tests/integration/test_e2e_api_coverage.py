@@ -12,8 +12,6 @@ See E2E_API_AUDIT.md for rationale and mapping to original E2E tests.
 
 from unittest.mock import patch
 
-import pytest
-
 from src.app import app
 from tests.test_utils import CommonAuthMixin, create_test_session
 
@@ -39,7 +37,6 @@ class TestProgramDeletionScenarios(CommonAuthMixin):
 
     def setup_method(self):
         """Set up test fixtures"""
-        import src.database.database_service as database_service
         import src.database.database_service as db
 
         self.app = app
@@ -252,7 +249,6 @@ class TestInvitationAPI(CommonAuthMixin):
 
     def setup_method(self):
         """Set up test fixtures"""
-        import src.database.database_service as database_service
         import src.database.database_service as db
 
         self.app = app

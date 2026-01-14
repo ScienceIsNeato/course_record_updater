@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import logging
 import os
 import threading
-from functools import lru_cache
 
 from src.database.database_interface import DatabaseInterface
 from src.database.database_sqlite import SQLiteDatabase

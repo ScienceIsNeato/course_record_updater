@@ -16,7 +16,6 @@ from typing import Any, Dict
 import pytest
 
 from tests.conftest import SITE_ADMIN_EMAIL
-from tests.test_credentials import CS_DATA_STRUCTURES_COURSE, CS_INTRO_COURSE
 from tests.test_utils import create_test_session
 
 

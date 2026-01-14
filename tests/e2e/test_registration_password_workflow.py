@@ -178,7 +178,7 @@ class TestRegistrationAndPasswordManagement:
                 "📧 Ethereal Email credentials not configured (ETHEREAL_USER/ETHEREAL_PASS)"
             )
             print(
-                f"🔗 Manual verification: Log into https://ethereal.email/ to check inbox"
+                "🔗 Manual verification: Log into https://ethereal.email/ to check inbox"
             )
             print("   Expected: Verification email sent to", self.TEST_EMAIL)
             print("   Subject: 'Verify your LoopCloser account'")

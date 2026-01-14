@@ -40,7 +40,7 @@ class TestInstitutionAdminDashboardWorkflow:
         expected_nav = [
             "Dashboard",
             "Audit",
-            "Progress",
+            "Assessments",
             "CLOs",
             "Users",
             "Courses",

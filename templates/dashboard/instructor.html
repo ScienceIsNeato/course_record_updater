@@ -9,12 +9,10 @@
 {% block nav_items %}
 <button class="nav-link btn btn-link" type="button" id="dashboard-view-all" onclick="filterDashboard('all')"><i
         class="fas fa-tachometer-alt me-1"></i>Dashboard</button>
-<button class="nav-link btn btn-link" type="button" id="dashboard-teaching" onclick="filterDashboard('teaching')"><i
-        class="fas fa-book-open me-1"></i>Teaching</button>
 <button class="nav-link btn btn-link" type="button" id="dashboard-assessments"
     onclick="filterDashboard('assessments')"><i class="fas fa-tasks me-1"></i>Assessments</button>
-<button class="nav-link btn btn-link" type="button" id="dashboard-progress" onclick="filterDashboard('progress')"><i
-        class="fas fa-chart-line me-1"></i>Progress</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-sections" onclick="filterDashboard('sections')"><i
+        class="fas fa-layer-group me-1"></i>Sections</button>
 {% endblock %}
 
 {% block page_title %}👨‍🏫 Instructor Dashboard{% endblock %}
@@ -66,28 +64,12 @@
     </div>
 </div>
 
-<!-- Panel 3: Recent Activity -->
-<div class="dashboard-panel" id="instructor-activity-panel">
+<!-- Panel 3: Course Sections -->
+<div class="dashboard-panel" id="instructor-sections-panel">
     <div class="panel-header">
         <h5 class="panel-title">
-            <span class="panel-icon">📝</span>
-            Recent Activity
-        </h5>
-        <button class="panel-toggle">▲</button>
-    </div>
-    <div class="panel-content collapsed">
-        <div id="instructorActivityContainer">
-            <ul class="list-unstyled mb-0" id="instructorActivityList"></ul>
-        </div>
-    </div>
-</div>
-
-<!-- Panel 4: Course Summary -->
-<div class="dashboard-panel" id="instructor-summary-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">📊</span>
-            Course Summary
+            <span class="panel-icon">📚</span>
+            Course Sections
         </h5>
         <button class="panel-toggle">▼</button>
     </div>
@@ -116,16 +98,14 @@
     // Configure dashboard navigation for Instructor role
     configureDashboardFilter(
         {
-            'teaching': ['instructor-teaching-panel'],
             'assessments': ['instructor-assessment-panel'],
-            'progress': ['instructor-activity-panel', 'instructor-summary-panel'],
-            'all': ['instructor-teaching-panel', 'instructor-assessment-panel', 'instructor-activity-panel', 'instructor-summary-panel']
+            'sections': ['instructor-sections-panel'],
+            'all': ['instructor-assessment-panel', 'instructor-sections-panel', 'data-management-panel']
         },
         [
-            'instructor-teaching-panel',
             'instructor-assessment-panel',
-            'instructor-activity-panel',
-            'instructor-summary-panel'
+            'instructor-sections-panel',
+            'data-management-panel'
         ]
     );
 

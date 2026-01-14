@@ -47,9 +47,7 @@ class TestMaybeRetryWithEthereal:
 
     @patch("src.services.email_service.os.getenv")
     @patch("src.services.email_service.current_app")
-    def test_fallback_skipped_when_ethereal_not_configured(
-        self, mock_app, mock_getenv
-    ):
+    def test_fallback_skipped_when_ethereal_not_configured(self, mock_app, mock_getenv):
         """Should skip fallback if ETHEREAL_USER not set."""
         from src.email_providers.brevo_provider import BrevoProvider
         from src.services.email_service import EmailService

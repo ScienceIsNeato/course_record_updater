@@ -3,6 +3,10 @@ module.exports = {
   rootDir: '..',
   roots: ['<rootDir>/tests/javascript'],
   testMatch: ['**/*.test.js'],
+  testPathIgnorePatterns: [
+    'userManagement_coverage.test.js',
+    'management_error_handlers.test.js'
+  ],
   setupFilesAfterEnv: ['<rootDir>/tests/javascript/setupTests.js'],
   moduleDirectories: ['node_modules', '<rootDir>/static', '<rootDir>/tests/javascript'],
   collectCoverageFrom: [

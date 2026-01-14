@@ -2,11 +2,10 @@
 Unit tests for API utility functions.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import BadRequest
 
 from src.api.utils import (
     InstitutionContextMissingError,

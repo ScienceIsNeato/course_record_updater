@@ -341,6 +341,26 @@ def get_course_outcome(outcome_id: str) -> Optional[Dict[str, Any]]:
     return _db_service.get_course_outcome(outcome_id)
 
 
+def get_section_outcome(section_outcome_id: str) -> Optional[Dict[str, Any]]:
+    """Get a section outcome by ID."""
+    return _db_service.get_section_outcome(section_outcome_id)
+
+
+def get_section_outcomes_by_section(section_id: str) -> List[Dict[str, Any]]:
+    """Get all section outcomes for a section."""
+    return _db_service.get_section_outcomes_by_section(section_id)
+
+
+def get_section_outcomes_by_outcome(outcome_id: str) -> List[Dict[str, Any]]:
+    """Get all section outcomes for a course outcome (template)."""
+    return _db_service.get_section_outcomes_by_outcome(outcome_id)
+
+
+def update_section_outcome(section_outcome_id: str, updates: Dict[str, Any]) -> bool:
+    """Update a section outcome."""
+    return _db_service.update_section_outcome(section_outcome_id, updates)
+
+
 def get_course_by_id(course_id: str) -> Optional[Dict[str, Any]]:
     return _db_service.get_course_by_id(course_id)
 
@@ -682,6 +702,7 @@ def get_outcomes_by_status(
     status: Optional[str],
     program_id: Optional[str] = None,
     term_id: Optional[str] = None,
+    course_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Get course outcomes filtered by status.
@@ -691,12 +712,13 @@ def get_outcomes_by_status(
         status: CLO status to filter by (None for all statuses)
         program_id: Optional program ID to further filter results
         term_id: Optional term ID to further filter results
+        course_id: Optional course ID to further filter results
 
     Returns:
         List of course outcome dictionaries
     """
     return _db_service.get_outcomes_by_status(
-        institution_id, status, program_id, term_id
+        institution_id, status, program_id, term_id, course_id
     )
 
 
@@ -711,6 +733,50 @@ def get_sections_by_course(course_id: str) -> List[Dict[str, Any]]:
         List of course section dictionaries
     """
     return _db_service.get_sections_by_course(course_id)
+
+
+def get_section_outcomes_by_criteria(
+    institution_id: str,
+    status: Optional[str] = None,
+    program_id: Optional[str] = None,
+    term_id: Optional[str] = None,
+    course_id: Optional[str] = None,
+    section_id: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Get section outcomes filtered by various criteria.
+
+    Args:
+        institution_id: The institution ID
+        status: The status to filter by
+        program_id: The program ID to filter by
+        term_id: The term ID to filter by
+        course_id: The course ID to filter by
+
+    Returns:
+        List of section outcome dictionaries
+    """
+    return _db_service.get_section_outcomes_by_criteria(
+        institution_id, status, program_id, term_id, course_id, section_id
+    )
+
+
+def get_section_outcome_by_course_outcome_and_section(
+    course_outcome_id: str, section_id: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Get a specific section outcome by template ID and section ID.
+
+    Args:
+        course_outcome_id: The template outcome ID
+        section_id: The section ID
+
+    Returns:
+        The section outcome dictionary or None if not found
+    """
+    return _db_service.get_section_outcome_by_course_outcome_and_section(
+        course_outcome_id, section_id
+    )
 
 
 __all__ = [
@@ -787,4 +853,9 @@ __all__ = [
     "list_invitations",
     "get_outcomes_by_status",
     "get_sections_by_course",
+    "get_section_outcome",
+    "get_section_outcomes_by_section",
+    "update_section_outcome",
+    "get_section_outcome_by_course_outcome_and_section",
+    "get_section_outcomes_by_criteria",
 ]

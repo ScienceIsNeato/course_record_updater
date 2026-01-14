@@ -5,10 +5,7 @@ TDD tests for:
 - Audit log search (GET /api/audit/search)
 """
 
-import os
 from unittest.mock import patch
-
-import pytest
 
 from src.app import app
 

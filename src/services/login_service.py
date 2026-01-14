@@ -9,7 +9,6 @@ Handles user authentication functionality including:
 """
 
 import logging
-from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 import src.database.database_service as db
@@ -22,6 +21,10 @@ logger = logging.getLogger(__name__)
 
 # Constants
 INVALID_CREDENTIALS_MSG = "Invalid email or password"
+UNVERIFIED_ACCOUNT_MSG = (
+    "Account found, but not verified. Please click the activation link in your "
+    "email and try logging in again."
+)
 
 
 class LoginError(Exception):
@@ -100,10 +103,7 @@ class LoginService:
 
             # Check email verification
             if not user.get("email_verified", False):
-                raise LoginError(
-                    "Please verify your email address before logging in. "
-                    "Check your inbox for the verification link."
-                )
+                raise LoginError(UNVERIFIED_ACCOUNT_MSG)
 
             # Verify password
             password_hash = user.get("password_hash")
@@ -170,6 +170,8 @@ class LoginService:
 
         except AccountLockedError:
             # Re-raise account locked errors
+            raise
+        except LoginError:
             raise
         except Exception as e:
             logger.error("[Login Service] Login failed for %s: %s", email, str(e))

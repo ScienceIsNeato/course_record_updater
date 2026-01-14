@@ -393,7 +393,6 @@ class TestSQLAlchemySchemaValidation:
 
     def test_validate_schema_or_exit_unexpected_error(self):
         """Should raise SchemaValidationError for unexpected errors."""
-        from src.database import database_validator
         from src.database.database_validator import (
             SchemaValidationError,
             validate_schema_or_exit,

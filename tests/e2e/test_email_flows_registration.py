@@ -16,8 +16,6 @@ TEST DATA:
 - Can verify email delivery programmatically (Phase 3 feature)
 """
 
-import pytest
-
 # Email flow tests - requires Ethereal credentials (ETHEREAL_USER, ETHEREAL_PASS)
 # Tests will be skipped automatically if credentials are not configured
 
