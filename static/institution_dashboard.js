@@ -11,7 +11,6 @@
     programContainer: "programManagementContainer",
     facultyContainer: "facultyOverviewContainer",
     sectionContainer: "courseSectionContainer",
-    assessmentContainer: "assessmentProgressContainer",
   };
 
   /**
@@ -280,10 +279,6 @@
         this.setLoading(SELECTORS.facultyContainer, "Loading faculty...");
         this.setLoading(SELECTORS.sectionContainer, "Loading sections...");
         this.setLoading(
-          SELECTORS.assessmentContainer,
-          "Loading assessment data...",
-        );
-        this.setLoading(
           "institutionCloAuditContainer",
           "Loading audit data...",
         );
@@ -322,10 +317,6 @@
           SELECTORS.sectionContainer,
           "Unable to load section data",
         );
-        this.showError(
-          SELECTORS.assessmentContainer,
-          "Unable to load assessment progress",
-        );
       }
     },
 
@@ -354,7 +345,6 @@
         data.courses || [],
         data.terms || [],
       );
-      this.renderAssessment(data.program_overview || []);
       this.renderCLOAudit(data.clos || []);
       const lastUpdated =
         data.metadata && data.metadata.last_updated
@@ -880,21 +870,34 @@
       });
 
       // Convert to table data
-      const tableData = Array.from(programStats.values()).map((stats) => ({
-        program: stats.program,
-        unassigned: stats.unassigned.toString(),
-        unassigned_sort: stats.unassigned.toString(),
-        assigned: stats.assigned.toString(),
-        assigned_sort: stats.assigned.toString(),
-        inProgress: stats.in_progress.toString(),
-        inProgress_sort: stats.in_progress.toString(),
-        needsRework: stats.approval_pending.toString(),
-        needsRework_sort: stats.approval_pending.toString(),
-        awaitingApproval: stats.awaiting_approval.toString(),
-        awaitingApproval_sort: stats.awaiting_approval.toString(),
-        approved: stats.approved.toString(),
-        approved_sort: stats.approved.toString(),
-      }));
+      const tableData = Array.from(programStats.values()).map((stats) => {
+        const total =
+          stats.unassigned +
+          stats.assigned +
+          stats.in_progress +
+          stats.approval_pending +
+          stats.awaiting_approval +
+          stats.approved;
+        const percentComplete =
+          total > 0 ? Math.round((stats.approved / total) * 100) : 0;
+        return {
+          program: stats.program,
+          unassigned: stats.unassigned.toString(),
+          unassigned_sort: stats.unassigned.toString(),
+          assigned: stats.assigned.toString(),
+          assigned_sort: stats.assigned.toString(),
+          inProgress: stats.in_progress.toString(),
+          inProgress_sort: stats.in_progress.toString(),
+          needsRework: stats.approval_pending.toString(),
+          needsRework_sort: stats.approval_pending.toString(),
+          awaitingApproval: stats.awaiting_approval.toString(),
+          awaitingApproval_sort: stats.awaiting_approval.toString(),
+          approved: stats.approved.toString(),
+          approved_sort: stats.approved.toString(),
+          percentComplete: `${percentComplete}%`,
+          percentComplete_sort: percentComplete.toString().padStart(3, "0"),
+        };
+      });
 
       const table = globalThis.panelManager.createSortableTable({
         id: "institution-clo-audit-table",
@@ -910,52 +913,9 @@
             sortable: true,
           },
           { key: "approved", label: "Approved", sortable: true },
+          { key: "percentComplete", label: "% Complete", sortable: true },
         ],
         data: tableData,
-      });
-
-      container.innerHTML = "";
-      container.appendChild(table);
-    },
-
-    renderAssessment(programOverview) {
-      const container = document.getElementById(SELECTORS.assessmentContainer);
-      if (!container) return;
-
-      if (!programOverview.length) {
-        container.innerHTML = "";
-        container.appendChild(
-          this.renderEmptyState("No assessment data available", "View Details"),
-        );
-        return;
-      }
-
-      const table = globalThis.panelManager.createSortableTable({
-        id: "institution-assessment-table",
-        columns: [
-          { key: "program", label: "Program", sortable: true },
-          { key: "courses", label: "Courses", sortable: true },
-          { key: "sections", label: "Sections", sortable: true },
-          { key: "totalClos", label: "Total CLOs", sortable: true },
-          { key: "percent", label: "Percent Complete", sortable: true },
-        ],
-        data: programOverview.map((program) => {
-          const progress = program.assessment_progress || {};
-          const total = progress.total ?? 0;
-          const percent = this.normalizeProgressPercent(progress);
-          const sectionCount = program.section_count ?? 0;
-          return {
-            program: program.program_name || program.name || "Program",
-            courses: (program.course_count ?? 0).toString(),
-            courses_sort: (program.course_count ?? 0).toString(),
-            sections: sectionCount.toString(),
-            sections_sort: sectionCount.toString(),
-            totalClos: total.toString(),
-            totalClos_sort: total.toString(),
-            percent: `${percent}%`,
-            percent_sort: percent,
-          };
-        }),
       });
 
       container.innerHTML = "";
