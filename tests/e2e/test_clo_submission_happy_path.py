@@ -204,7 +204,9 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
         f"#courseSelect option[value^='{course_id}::']", state="attached", timeout=10000
     )
     # Select the first option for this course (composite format)
-    composite_value = instructor_page.locator(f"#courseSelect option[value^='{course_id}::']").first.get_attribute("value")
+    composite_value = instructor_page.locator(
+        f"#courseSelect option[value^='{course_id}::']"
+    ).first.get_attribute("value")
     instructor_page.select_option("#courseSelect", value=composite_value)
 
     # === STEP 4: Edit CLO fields (auto-marks IN_PROGRESS) ===

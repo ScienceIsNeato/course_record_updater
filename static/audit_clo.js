@@ -463,7 +463,11 @@ function renderCLODetails(clo) {
       const icon = document.createElement("i");
       icon.className = "fas fa-clock me-2";
       li.appendChild(icon);
-      li.appendChild(document.createTextNode(`${entry.event} - ${formatDate(entry.occurred_at)}`));
+      li.appendChild(
+        document.createTextNode(
+          `${entry.event} - ${formatDate(entry.occurred_at)}`,
+        ),
+      );
       historyList.appendChild(li);
     });
     historyRow.appendChild(historyList);
