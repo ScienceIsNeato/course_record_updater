@@ -3846,6 +3846,7 @@ def get_course_outcomes_endpoint_get(course_id: str) -> ResponseReturnValue:
     """
     Get outcomes for a course.
     For instructors, returns SectionOutcomes for their sections in this course.
+    For admins, returns all SectionOutcomes for this course.
     """
     from src.database.database_service import (
         get_section_outcomes_by_criteria,
@@ -3857,17 +3858,50 @@ def get_course_outcomes_endpoint_get(course_id: str) -> ResponseReturnValue:
         if not current_user:
             return jsonify({"success": False, "error": "Unauthorized"}), 401
 
+        # Get course details for the response
+        course = get_course_by_id(course_id)
+        if not course:
+            return (
+                jsonify({"success": False, "error": f"Course not found: {course_id}"}),
+                404,
+            )
+        if not course.get("course_number"):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Course {course_id} has no course_number",
+                    }
+                ),
+                500,
+            )
+        if not course.get("course_title"):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Course {course_id} has no course_title",
+                    }
+                ),
+                500,
+            )
+        course_number = course["course_number"]
+        course_title = course["course_title"]
+
         # 1. Get all sections for this course
         sections = get_sections_by_course(course_id)
 
-        # 2. Filter sections where the current user is the instructor
-        # Note: In a real app we'd handle admins differently, but for now this fixes the instructor view
-        # The 'instructor_id' can be a string or int, so we stringify for comparison
-        user_section_ids = [
-            s["section_id"]
-            for s in sections
-            if str(s.get("instructor_id")) == str(current_user["user_id"])
-        ]
+        # 2. For admins, show all sections; for instructors, filter to their sections
+        user_role = current_user.get("role", "")
+        if user_role in ["institution_admin", "site_admin", "program_admin"]:
+            user_section_ids = [s["section_id"] for s in sections]
+        else:
+            # Filter sections where the current user is the instructor
+            user_section_ids = [
+                s["section_id"]
+                for s in sections
+                if str(s.get("instructor_id")) == str(current_user["user_id"])
+            ]
 
         # 3. Get ALL section outcomes for this course
         all_outcomes = get_section_outcomes_by_criteria(
@@ -3882,8 +3916,8 @@ def get_course_outcomes_endpoint_get(course_id: str) -> ResponseReturnValue:
                 {
                     "success": True,
                     "outcomes": outcomes,
-                    "course_number": "Unknown",  # Could fetch course details if needed
-                    "course_title": "Unknown",
+                    "course_number": course_number,
+                    "course_title": course_title,
                 }
             ),
             200,

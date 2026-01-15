@@ -959,6 +959,43 @@ class BaselineTestSeeder(BaselineSeeder):
         project_root = os.path.dirname(script_dir)
         return os.path.join(project_root, self.DEFAULT_MANIFEST_PATH)
 
+    def _build_program_map(
+        self, manifest_data: Dict[str, Any], prog_ids: List[str]
+    ) -> Dict[str, str]:
+        """Build program code -> ID map for code-based lookups."""
+        program_map: Dict[str, str] = {}
+        for i, prog_data in enumerate(manifest_data["programs"]):
+            if i < len(prog_ids):
+                code = prog_data.get("code", "")
+                if code:
+                    program_map[code] = prog_ids[i]
+        return program_map
+
+    def _extract_instructor_ids(
+        self, manifest_data: Dict[str, Any], user_ids: List[Optional[str]]
+    ) -> List[str]:
+        """Extract instructor IDs from created users."""
+        instructor_ids: List[str] = []
+        for i, user_data in enumerate(manifest_data["users"]):
+            if user_data.get("role") != "instructor":
+                continue
+            if i >= len(user_ids) or user_ids[i] is None:
+                continue
+            instructor_ids.append(user_ids[i])  # type: ignore[arg-type]
+        return instructor_ids
+
+    def _prepare_offerings_data(
+        self, offerings_data: List[Dict[str, Any]], term_ids: List[str]
+    ) -> str:
+        """Prepare offerings data with course codes and term IDs. Returns default term ID."""
+        for offering in offerings_data:
+            course_idx = offering.get("course_idx", 0)
+            offering["course_code"] = str(course_idx)
+            term_idx = offering.get("term_idx", 0)
+            if term_idx < len(term_ids):
+                offering["_term_id"] = term_ids[term_idx]
+        return term_ids[1] if len(term_ids) > 1 else term_ids[0]
+
     def seed_baseline(self, manifest_data: Optional[Dict[str, Any]] = None) -> bool:
         """Seed baseline data from manifest - REQUIRED"""
         self.log("🌱 Seeding baseline E2E infrastructure...")
@@ -1003,14 +1040,22 @@ class BaselineTestSeeder(BaselineSeeder):
             inst_ids, manifest_data["programs"]
         )
 
+        # Build program_map: code -> ID (for manifests using program_code)
+        program_map = self._build_program_map(manifest_data, prog_ids)
+
         # Create terms
         self.log("📅 Creating academic terms...")
         term_ids = self.create_terms_from_manifest(inst_ids, manifest_data["terms"])
 
-        # Create courses
+        # Create courses - pass program_map for code-based lookups, or prog_ids for idx-based
         self.log("📖 Creating sample courses...")
+        # Use program_map if any course uses program_code, else fall back to list
+        uses_program_code = any(
+            "program_code" in c for c in manifest_data.get("courses", [])
+        )
+        program_ref = program_map if uses_program_code and program_map else prog_ids
         course_ids = self.create_courses_from_manifest(
-            inst_ids, manifest_data["courses"], prog_ids
+            inst_ids, manifest_data["courses"], program_ref
         )
 
         # Build course_map by index for offerings
@@ -1021,37 +1066,24 @@ class BaselineTestSeeder(BaselineSeeder):
         from tests.test_credentials import INSTITUTION_ADMIN_PASSWORD
 
         default_hash = hash_password(INSTITUTION_ADMIN_PASSWORD)
+        # Use program_map if any user uses program_code, else fall back to list
+        uses_program_code_users = any(
+            "program_code" in u for u in manifest_data.get("users", [])
+        )
+        user_program_ref = (
+            program_map if uses_program_code_users and program_map else prog_ids
+        )
         user_ids = self.create_users_from_manifest(
-            inst_ids, manifest_data["users"], prog_ids, default_hash
+            inst_ids, manifest_data["users"], user_program_ref, default_hash
         )
 
         # Filter instructor IDs for section assignment
-        instructor_ids: List[str] = []
-        for i, user_data in enumerate(manifest_data["users"]):
-            if (
-                user_data.get("role") == "instructor"
-                and i < len(user_ids)
-                and user_ids[i] is not None
-            ):
-                user_id = user_ids[i]
-                if user_id is not None:  # Type narrowing for mypy
-                    instructor_ids.append(user_id)
+        instructor_ids = self._extract_instructor_ids(manifest_data, user_ids)
 
         # Create offerings and sections
         self.log("📝 Creating course offerings and sections...")
-        # Convert index-based offerings to code-based format for base class method
         offerings_data = manifest_data["offerings"]
-        for offering in offerings_data:
-            # Add course_code from course_idx
-            course_idx = offering.get("course_idx", 0)
-            offering["course_code"] = str(course_idx)
-            # Add term handling
-            term_idx = offering.get("term_idx", 0)
-            if term_idx < len(term_ids):
-                offering["_term_id"] = term_ids[term_idx]
-
-        # Use first term as default
-        default_term_id = term_ids[1] if len(term_ids) > 1 else term_ids[0]
+        default_term_id = self._prepare_offerings_data(offerings_data, term_ids)
 
         result = self.create_offerings_from_manifest(
             institution_id=inst_ids[0],
