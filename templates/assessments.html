@@ -771,6 +771,8 @@
 
                 if (response.ok && data.success) {
                     alert('Course submitted for approval successfully!');
+                    // Reconstruct composite ID for reload
+                    const compositeId = sectionId ? `${courseId}::${sectionId}` : courseId;
                     loadOutcomes(compositeId); // Reload to show updated status with section filter
                     loadCourses(); // Reload to update status summary counts
                 } else {
