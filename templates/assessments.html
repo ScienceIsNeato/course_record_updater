@@ -771,7 +771,7 @@
 
                 if (response.ok && data.success) {
                     alert('Course submitted for approval successfully!');
-                    loadOutcomes(courseId); // Reload to show updated status
+                    loadOutcomes(compositeId); // Reload to show updated status with section filter
                     loadCourses(); // Reload to update status summary counts
                 } else {
                     // Show validation errors
@@ -1027,7 +1027,11 @@
 
         // Save current course data
         async function saveCurrentCourseData() {
-            const section = instructorSections.find(s => s.course_id === currentCourseId);
+            // Parse composite ID to get actual course ID
+            const [courseId, sectionId] = currentCourseId.split('::');
+            const section = sectionId
+                ? instructorSections.find(s => s.section_id === sectionId)
+                : instructorSections.find(s => s.course_id === courseId);
 
             if (!section) {
                 throw new Error('No section found for current course');
@@ -1255,9 +1259,15 @@
         const urlParams = new URLSearchParams(globalThis.location.search);
         const courseParam = urlParams.get('course');
         if (courseParam && courseSelect) {
-            courseSelect.value = courseParam;
-            loadOutcomes(courseParam);
-            loadCourseLevelData(courseParam); // NEW: Load course-level data on auto-select
+            // Find the first option that matches this course ID (may have multiple sections)
+            const matchingOption = Array.from(courseSelect.options).find(opt => 
+                opt.value.startsWith(courseParam + '::')
+            );
+            if (matchingOption) {
+                courseSelect.value = matchingOption.value;
+                loadOutcomes(matchingOption.value);
+                loadCourseLevelData(matchingOption.value);
+            }
         }
     }).catch(err => console.error('Failed to load courses:', err));
     }); // Close DOMContentLoaded event listener
