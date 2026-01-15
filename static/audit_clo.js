@@ -460,7 +460,10 @@ function renderCLODetails(clo) {
     clo.history.forEach((entry) => {
       const li = document.createElement("li");
       li.className = "mb-1";
-      li.innerHTML = `<i class="fas fa-clock me-2"></i>${entry.event} - ${formatDate(entry.occurred_at)}`;
+      const icon = document.createElement("i");
+      icon.className = "fas fa-clock me-2";
+      li.appendChild(icon);
+      li.appendChild(document.createTextNode(`${entry.event} - ${formatDate(entry.occurred_at)}`));
       historyList.appendChild(li);
     });
     historyRow.appendChild(historyList);
