@@ -4,10 +4,6 @@
   const SELECTORS = {
     institutionName: "institutionName",
     currentTerm: "currentTermName",
-    programCount: "programCount",
-    courseCount: "courseCount",
-    facultyCount: "facultyCount",
-    sectionCount: "sectionCount",
     programContainer: "programManagementContainer",
     facultyContainer: "facultyOverviewContainer",
     sectionContainer: "courseSectionContainer",
@@ -328,7 +324,6 @@
           : null;
       this.referenceDate = referenceDate;
 
-      this.updateHeader(data, referenceDate);
       this.renderPrograms(data.program_overview || [], data.programs || []);
       this.renderCourses(data.courses || []);
       this.renderTerms(data.terms || [], referenceDate);
@@ -351,37 +346,6 @@
           ? data.metadata.last_updated
           : null;
       this.updateLastUpdated(lastUpdated);
-    },
-
-    updateHeader(data, referenceDate = null) {
-      const summary = data.summary || {};
-      document.getElementById(SELECTORS.programCount).textContent =
-        summary.programs ?? 0;
-      document.getElementById(SELECTORS.courseCount).textContent =
-        summary.courses ?? 0;
-      document.getElementById(SELECTORS.facultyCount).textContent =
-        summary.faculty ?? 0;
-      document.getElementById(SELECTORS.sectionCount).textContent =
-        summary.sections ?? 0;
-
-      const institutionName =
-        (data.institutions &&
-          data.institutions[0] &&
-          data.institutions[0].name) ||
-        document.getElementById(SELECTORS.institutionName).textContent;
-      document.getElementById(SELECTORS.institutionName).textContent =
-        institutionName || "Institution Overview";
-
-      const term =
-        (data.terms || []).find(
-          (item) =>
-            item && computeTimelineStatus(item, { referenceDate }) === "ACTIVE",
-        ) || (data.terms || [])[0];
-      const termName = term && term.name ? term.name : "--";
-      const termElement = document.getElementById(SELECTORS.currentTerm);
-      if (termElement) {
-        termElement.textContent = termName;
-      }
     },
 
     renderPrograms(programOverview, rawPrograms) {
@@ -800,7 +764,7 @@
       if (!clos || !clos.length) {
         container.innerHTML = "";
         container.appendChild(
-          this.renderEmptyState("No CLOs defined", "Add Outcome"),
+          this.renderEmptyState("No Outcomes defined", "Add Outcome"),
         );
         return;
       }
@@ -809,7 +773,7 @@
         id: "institution-clos-table",
         columns: [
           { key: "course", label: "Course", sortable: true },
-          { key: "clo_number", label: "CLO #", sortable: true },
+          { key: "clo_number", label: "Outcome #", sortable: true },
           { key: "description", label: "Description", sortable: true },
           { key: "status", label: "Status", sortable: true },
         ],
@@ -838,7 +802,10 @@
       if (!clos || !clos.length) {
         container.innerHTML = "";
         container.appendChild(
-          this.renderEmptyState("No CLOs pending audit", "Review Submissions"),
+          this.renderEmptyState(
+            "No Outcomes pending audit",
+            "Review Submissions",
+          ),
         );
         return;
       }

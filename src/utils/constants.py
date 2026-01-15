@@ -225,3 +225,11 @@ ERROR_AUTHENTICATION_REQUIRED = "Authentication required"
 
 # API error messages
 ERROR_PERMISSION_DENIED = "Permission denied"
+
+# UI Messages - Outcome Management
+MSG_NO_OUTCOMES_EXPORT = (
+    "No Outcome records available to export for the selected filters."
+)
+MSG_OUTCOME_MARKED_NCI = "Outcome marked as Never Coming In (NCI)"
+MSG_NO_OUTCOMES_PENDING_AUDIT = "No Outcomes pending audit"
+MSG_NO_OUTCOMES_DEFINED = "No Outcomes defined"

@@ -518,7 +518,7 @@
                 }
 
                 // Get section info for the selected section
-                const section = sectionId 
+                const section = sectionId
                     ? instructorSections.find(s => s.section_id === sectionId)
                     : instructorSections.find(s => s.course_id === courseId);
                 let termName = section?.term_name || 'Unknown Term';
@@ -814,7 +814,7 @@
                     throw new Error(error.error || 'Failed to submit for approval');
                 }
 
-                alert('CLO submitted for approval successfully!');
+                alert('Outcome submitted for approval successfully!');
 
                 // Reload outcomes for current course
                 const currentCourseId = courseSelect.value;
@@ -1095,7 +1095,7 @@
             // Parse composite ID: "courseId::sectionId"
             const [courseId, sectionId] = compositeId.split('::');
             // Find the specific section selected
-            const section = sectionId 
+            const section = sectionId
                 ? instructorSections.find(s => s.section_id === sectionId)
                 : instructorSections.find(s => s.course_id === courseId);
             if (section) {
@@ -1169,7 +1169,7 @@
 
             try {
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-                const section = sectionId 
+                const section = sectionId
                     ? instructorSections.find(s => s.section_id === sectionId)
                     : instructorSections.find(s => s.course_id === courseId);
 
@@ -1260,6 +1260,6 @@
             loadCourseLevelData(courseParam); // NEW: Load course-level data on auto-select
         }
     }).catch(err => console.error('Failed to load courses:', err));
-    });
+    }); // Close DOMContentLoaded event listener
 </script>
 {% endblock %}

@@ -17,31 +17,12 @@
 {% block page_subtitle %}Manage programs, faculty, and outcomes{% endblock %}
 
 {% block content %}
-<div class="header-stats">
-    <span id="institutionName">{{ user.institution_name or 'Institution Overview' }}</span>
-    <div class="stat-item" data-stat="programs">
-        [<span class="stat-number" id="programCount">0</span> Programs]
-    </div>
-    <div class="stat-item" data-stat="courses">
-        [<span class="stat-number" id="courseCount">0</span> Courses]
-    </div>
-    <div class="stat-item" data-stat="faculty">
-        [<span class="stat-number" id="facultyCount">0</span> Faculty]
-    </div>
-    <div class="stat-item" data-stat="sections">
-        [<span class="stat-number" id="sectionCount">0</span> Sections]
-    </div>
-    <div class="header-actions ms-auto">
-        <!-- Removed manual refresh - data auto-refreshes after mutations -->
-    </div>
-</div>
-
 <!-- Panel 1: CLO Audit & Approval -->
 <div class="dashboard-panel" id="institution-clo-audit-panel">
     <div class="panel-header">
         <h5 class="panel-title">
             <span class="panel-icon">✓</span>
-            CLO Audit & Approval
+            Learning Outcome Audit & Approval
         </h5>
         <div class="panel-actions">
             <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/audit-clo'">
@@ -74,7 +55,8 @@
             <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/faculty'">
                 <i class="fas fa-list"></i> Manage Users
             </button>
-            <button class="btn btn-sm btn-outline-primary" id="bulkReminderLauncher" data-bs-toggle="modal" data-bs-target="#bulkReminderModal">
+            <button class="btn btn-sm btn-outline-primary" id="bulkReminderLauncher" data-bs-toggle="modal"
+                data-bs-target="#bulkReminderModal">
                 <i class="fas fa-bell"></i> Send Reminders
             </button>
         </div>
@@ -230,7 +212,7 @@
     <div class="panel-header">
         <h5 class="panel-title">
             <span class="panel-icon">🎯</span>
-            Course Learning Outcomes (CLOs)
+            Course Learning Outcomes
         </h5>
         <div class="panel-actions">
             <button class="btn btn-sm btn-primary" onclick="createOutcome()">

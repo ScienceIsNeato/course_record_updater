@@ -12,10 +12,6 @@ describe('InstitutionDashboard', () => {
     setBody(`
       <div id="institutionName"></div>
       <div id="currentTermName"></div>
-      <div id="programCount"></div>
-      <div id="courseCount"></div>
-      <div id="facultyCount"></div>
-      <div id="sectionCount"></div>
       <div id="programManagementContainer"></div>
       <div id="facultyOverviewContainer"></div>
       <div id="courseSectionContainer"></div>
@@ -187,8 +183,7 @@ describe('InstitutionDashboard', () => {
   it('renders summary metrics and tables', () => {
     InstitutionDashboard.render(sampleData);
 
-    expect(document.getElementById('institutionName').textContent).toBe('Example University');
-    expect(document.getElementById('programCount').textContent).toBe('2');
+    // Header stats removed, just verify render completes and tables are created
     expect(window.panelManager.createSortableTable).toHaveBeenCalled();
   });
 
@@ -749,7 +744,25 @@ describe('InstitutionDashboard', () => {
       InstitutionDashboard.renderCLOAudit([]);
 
       const container = document.getElementById('institutionCloAuditContainer');
-      expect(container.innerHTML).toContain('No CLOs pending audit');
+      expect(container.innerHTML).toContain('No Outcomes pending audit');
+    });
+
+    it('calculates percent complete correctly for single program', () => {
+      const clos = [
+        { program_name: 'Engineering', status: 'approved' },
+        { program_name: 'Engineering', status: 'approved' },
+        { program_name: 'Engineering', status: 'in_progress' },
+        { program_name: 'Engineering', status: 'assigned' }
+      ];
+
+      InstitutionDashboard.renderCLOAudit(clos);
+
+      const callArgs = window.panelManager.createSortableTable.mock.calls[0][0];
+      const engProgram = callArgs.data[0];
+      
+      // 2 approved out of 4 total = 50%
+      expect(engProgram.percentComplete).toBe('50%');
+      expect(engProgram.percentComplete_sort).toBe('050');
     });
 
     it('handles missing container gracefully', () => {

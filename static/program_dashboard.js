@@ -3,10 +3,6 @@
   const API_ENDPOINT = "/api/dashboard/data";
   const SELECTORS = {
     title: "programAdminTitle",
-    courseCount: "programCourseCount",
-    facultyCount: "programFacultyCount",
-    studentCount: "programStudentCount",
-    sectionCount: "programSectionCount",
     coursesContainer: "programCoursesContainer",
     facultyContainer: "programFacultyContainer",
     cloContainer: "programCloContainer",
@@ -150,7 +146,6 @@
     },
 
     render(data) {
-      this.updateHeader(data);
       this.renderCourses(
         data.courses || [],
         data.sections || [],
@@ -164,36 +159,6 @@
           ? data.metadata.last_updated
           : null;
       this.updateLastUpdated(lastUpdated);
-    },
-
-    updateHeader(data) {
-      const summary = data.summary || {};
-      document.getElementById(SELECTORS.courseCount).textContent =
-        summary.courses ?? 0;
-      document.getElementById(SELECTORS.facultyCount).textContent =
-        summary.faculty ?? 0;
-      document.getElementById(SELECTORS.studentCount).textContent =
-        summary.students ?? 0;
-      document.getElementById(SELECTORS.sectionCount).textContent =
-        summary.sections ?? 0;
-
-      const programs = data.programs || [];
-      if (programs.length === 1) {
-        const program = programs[0];
-        document.getElementById(SELECTORS.title).textContent =
-          `${program.name || "Program"} Administration`;
-      } else if (programs.length > 1) {
-        const names = programs
-          .map((p) => p.name)
-          .filter(Boolean)
-          .slice(0, 3)
-          .join(", ");
-        document.getElementById(SELECTORS.title).textContent =
-          `${programs.length} Programs — ${names}${programs.length > 3 ? "…" : ""}`;
-      } else {
-        document.getElementById(SELECTORS.title).textContent =
-          "Program Overview";
-      }
     },
 
     renderCourses(courses, sections, programOverview) {
@@ -338,7 +303,7 @@
         container.appendChild(
           this.renderEmptyState(
             "No learning outcomes configured yet",
-            "Add CLO",
+            "Add Outcome",
           ),
         );
         return;
@@ -355,7 +320,7 @@
         id: "program-clo-table",
         columns: [
           { key: "course", label: "Course", sortable: true },
-          { key: "clos", label: "CLOs", sortable: true },
+          { key: "clos", label: "Outcomes", sortable: true },
           { key: "status", label: "Status", sortable: true },
           { key: "progress", label: "Progress", sortable: true },
         ],

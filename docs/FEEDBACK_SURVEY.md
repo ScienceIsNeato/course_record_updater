@@ -11,3 +11,8 @@
 9. currently, CLOs are all being managed one by one for each section. Would it be more likely that they would be preocessed as a batch, all having the same results? Is that flow common enough that batch processing should be implemented? If so, which levels would you want to be able to batch by - instructor? course? course offering (ie biology 101 spring 25) or even course offering section ()
 10. Do we need to be able to track the exams/syllabai/etc for each... CLO? section? course? what all would be nice to be able to specify and manage onthe site?
 **Rate 1-10**: Overall system satisfaction
+
+
+Known Issues for Demo:
+- Some small issues around changing/creating passowrds - figured not needed for demo
+- I currently don't have a flow for approving the course-level audit data, like celebrations and so on. I wanted to get feedback first about the current flow and if you wnated to stick with per outcome level management like shown here, or just always treat things as a batch per section/offering

@@ -11,10 +11,6 @@ describe('InstructorDashboard', () => {
   beforeEach(() => {
     setBody(`
       <div id="instructorName"></div>
-      <div id="instructorCourseCount"></div>
-      <div id="instructorSectionCount"></div>
-      <div id="instructorStudentCount"></div>
-      <div id="instructorAssessmentProgress"></div>
       <div id="instructorAssessmentContainer"></div>
       <ul id="instructorActivityList"></ul>
       <div id="instructorSummaryContainer"></div>
@@ -51,8 +47,6 @@ describe('InstructorDashboard', () => {
   it('renders instructor metrics and tables', () => {
     InstructorDashboard.render(sampleData);
 
-    expect(document.getElementById('instructorCourseCount').textContent).toBe('2');
-    expect(document.getElementById('instructorAssessmentProgress').textContent).toBe('50%');
     expect(document.getElementById('instructorAssessmentContainer').querySelector('table')).not.toBeNull();
   });
 
@@ -74,8 +68,8 @@ describe('InstructorDashboard', () => {
 
     InstructorDashboard.render(minimalData);
 
-    expect(document.getElementById('instructorCourseCount').textContent).toBe('0');
-    expect(document.getElementById('instructorAssessmentProgress').textContent).toBe('0%');
+    // Header stats removed, just verify render completes without errors
+    expect(document.getElementById('instructorAssessmentContainer')).not.toBeNull();
   });
 
   describe('data loading and refresh functionality', () => {
@@ -381,15 +375,6 @@ describe('InstructorDashboard', () => {
       expect(() => InstructorDashboard.updateLastUpdated('2024-01-01T12:00:00Z')).not.toThrow();
     });
 
-    it('handles zero assessment tasks correctly in updateHeader', () => {
-      const dataWithNoTasks = {
-        summary: { courses: 1, sections: 2, students: 50 },
-        assessment_tasks: []
-      };
-
-      InstructorDashboard.updateHeader(dataWithNoTasks);
-      expect(document.getElementById('instructorAssessmentProgress').textContent).toBe('0%');
-    });
 
     it('identifies completed tasks with various status strings', () => {
       expect(InstructorDashboard.isTaskComplete('completed')).toBe(true);

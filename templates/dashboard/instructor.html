@@ -19,27 +19,6 @@
 {% block page_subtitle %}Complete course assessments and monitor progress{% endblock %}
 
 {% block content %}
-<div class="header-stats">
-    <span id="instructorName">{{ user.first_name }} {{ user.last_name }}</span>
-    <div class="stat-item" data-stat="courses">
-        [<span class="stat-number" id="instructorCourseCount">0</span> Courses]
-    </div>
-    <div class="stat-item" data-stat="sections">
-        [<span class="stat-number" id="instructorSectionCount">0</span> Sections]
-    </div>
-    <div class="stat-item" data-stat="students">
-        [<span class="stat-number" id="instructorStudentCount">0</span> Students]
-    </div>
-    <div class="stat-item" data-stat="assessments">
-        [<span class="stat-number" id="instructorAssessmentProgress">0%</span> CLO Progress]
-    </div>
-    <div class="header-actions ms-auto">
-        <!-- Removed manual refresh - data auto-refreshes after mutations -->
-    </div>
-</div>
-
-
-
 <!-- Panel 2: Assessment Tasks -->
 <div class="dashboard-panel" id="instructor-assessment-panel">
     <div class="panel-header">

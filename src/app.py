@@ -440,7 +440,10 @@ def _parse_date_to_naive(date_value: Any) -> Any:
 def _find_matching_term(
     terms: list[dict[str, Any]], effective_date_naive: datetime
 ) -> Optional[str]:
-    """Find term where effective_date falls within start/end dates."""
+    """Find term where effective_date falls within start/end dates OR the most recent started term."""
+    # 1. First pass: Check for strictly active term (current date within start-end)
+    started_terms = []
+
     for term in terms:
         start_date = term.get("start_date")
         end_date = term.get("end_date")
@@ -451,8 +454,26 @@ def _find_matching_term(
         start_naive = _parse_date_to_naive(start_date)
         end_naive = _parse_date_to_naive(end_date)
 
+        # Optimization: Track all terms that have started for fallback
+        if start_naive <= effective_date_naive:
+            started_terms.append((start_naive, term))
+
+        # Strict match: Date is currently inside the term
         if start_naive <= effective_date_naive <= end_naive:
             return term.get("name") or term.get("term_name") or "Current Term"
+
+    # 2. Second pass: If no term is strictly active, use the most recent one that has started
+    # This covers the "gap" between terms (e.g., Winter break) where the previous Fall term
+    # should effectively remain active until Spring starts.
+    if started_terms:
+        # Sort by start date descending (newest first)
+        started_terms.sort(key=lambda x: x[0], reverse=True)
+        most_recent_term = started_terms[0][1]
+        return (
+            most_recent_term.get("name")
+            or most_recent_term.get("term_name")
+            or "Current Term"
+        )
 
     return None
 

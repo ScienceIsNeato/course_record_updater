@@ -3,10 +3,6 @@
   const API_ENDPOINT = "/api/dashboard/data";
   const SELECTORS = {
     name: "instructorName",
-    courseCount: "instructorCourseCount",
-    sectionCount: "instructorSectionCount",
-    studentCount: "instructorStudentCount",
-    assessmentProgress: "instructorAssessmentProgress",
     teachingContainer: "instructorTeachingContainer",
     assessmentContainer: "instructorAssessmentContainer",
     activityList: "instructorActivityList",
@@ -144,7 +140,6 @@
     },
 
     render(data) {
-      this.updateHeader(data);
       // Teaching panel removed, Assessment panel now uses course assignment data
       this.renderAssessmentTasks(data.teaching_assignments || []);
       this.renderRecentActivity(data.assessment_tasks || []);
@@ -157,29 +152,6 @@
           ? data.metadata.last_updated
           : null;
       this.updateLastUpdated(lastUpdated);
-    },
-
-    updateHeader(data) {
-      const summary = data.summary || {};
-      document.getElementById(SELECTORS.courseCount).textContent =
-        summary.courses ?? 0;
-      document.getElementById(SELECTORS.sectionCount).textContent =
-        summary.sections ?? 0;
-      document.getElementById(SELECTORS.studentCount).textContent =
-        summary.students ?? 0;
-
-      const tasks = data.assessment_tasks || [];
-      if (tasks.length) {
-        const completed = tasks.filter((task) =>
-          this.isTaskComplete(task.status),
-        ).length;
-        const percent = Math.round((completed / tasks.length) * 100);
-        document.getElementById(SELECTORS.assessmentProgress).textContent =
-          `${percent}%`;
-      } else {
-        document.getElementById(SELECTORS.assessmentProgress).textContent =
-          "0%";
-      }
     },
 
     renderAssessmentTasks(assignments) {
@@ -201,7 +173,7 @@
         id: "instructor-assessment-table",
         columns: [
           { key: "course", label: "Course", sortable: true },
-          { key: "clos", label: "CLOs", sortable: true },
+          { key: "clos", label: "Outcomes", sortable: true },
           { key: "progress", label: "Completion", sortable: true },
         ],
         data: assignments.map((assignment) => {
@@ -229,7 +201,7 @@
                 </div>
                 <span class="small text-muted">${percent}% (${completed}/${cloCount})</span>
               </div>`
-                : '<span class="text-muted small">No defined CLOs</span>',
+                : '<span class="text-muted small">No defined Outcomes</span>',
             progress_sort: cloCount > 0 ? percent : -1,
           };
         }),
