@@ -1724,6 +1724,43 @@ describe("audit_clo.js - DOM Integration", () => {
       // Email should be present
       expect(node.textContent).toContain("jane+test@example.com");
     });
+
+    it("should render history section when history is present", () => {
+      const clo = {
+        status: "awaiting_approval",
+        course_number: "CS101",
+        clo_number: 1,
+        description: "Test CLO",
+        students_took: 10,
+        students_passed: 8,
+        history: [
+          { event: "Assigned", occurred_at: "2024-01-10T10:00:00Z" },
+          { event: "Submitted", occurred_at: "2024-01-15T10:00:00Z" },
+        ],
+      };
+
+      const node = renderCLODetails(clo);
+
+      expect(node.textContent).toContain("History:");
+      expect(node.textContent).toContain("Assigned");
+      expect(node.textContent).toContain("Submitted");
+    });
+
+    it("should not render history section when history is empty", () => {
+      const clo = {
+        status: "awaiting_approval",
+        course_number: "CS101",
+        clo_number: 1,
+        description: "Test CLO",
+        students_took: 10,
+        students_passed: 8,
+        history: [],
+      };
+
+      const node = renderCLODetails(clo);
+
+      expect(node.textContent).not.toContain("History:");
+    });
   });
 
   describe("Assignment Workflow", () => {

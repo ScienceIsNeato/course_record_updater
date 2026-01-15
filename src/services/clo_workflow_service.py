@@ -88,9 +88,10 @@ class CLOWorkflowService:
                 return False
 
             # Verify CLO is in a state that can be approved
+            # Both awaiting_approval and approval_pending (needs rework) can be approved
             if outcome.get("status") not in [
                 CLOStatus.AWAITING_APPROVAL,
-                CLOStatus.AWAITING_APPROVAL,
+                "approval_pending",  # Needs Rework status - can be approved after fixes
             ]:
                 logger.warning(
                     f"Section CLO {section_outcome_id} is in {outcome.get('status')} state, "
@@ -149,7 +150,7 @@ class CLOWorkflowService:
             # Verify CLO is in a state that can be sent back for rework
             if outcome.get("status") not in [
                 CLOStatus.AWAITING_APPROVAL,
-                CLOStatus.AWAITING_APPROVAL,
+                "approval_pending",  # Already in rework, allow re-rework
             ]:
                 logger.warning(
                     f"Section CLO {section_outcome_id} is in {outcome.get('status')} state, "
@@ -158,8 +159,11 @@ class CLOWorkflowService:
                 return False
 
             # Update status and feedback
+            # NOTE: Using "approval_pending" string because the UI expects this for
+            # displaying the "Needs Rework" badge. CLOStatus.AWAITING_APPROVAL would
+            # display as "Awaiting Approval" which is incorrect after rework is requested.
             update_data = {
-                "status": CLOStatus.AWAITING_APPROVAL,
+                "status": "approval_pending",  # UI badge for "Needs Rework"
                 "approval_status": CLOApprovalStatus.NEEDS_REWORK,
                 "reviewed_at": datetime.now(timezone.utc),
                 "reviewed_by": reviewer_id,
@@ -1058,79 +1062,161 @@ class CLOWorkflowService:
             if not outcome:
                 return None
 
-            # If it's a raw section outcome (missing course_id/description), fetch the template
-            raw_course_id = outcome.get("course_id")
-            if not raw_course_id and outcome.get("outcome_id"):
-                # Fetch the template (CourseOutcome)
-                template = db.get_course_outcome(outcome["outcome_id"])
-                if template:
-                    # Merge template data (defaults) into outcome
-                    # We preserve outcome's own values (status, etc) if they exist
-                    outcome = {
-                        **template,  # Base: Template fields (clo_number, description, course_id)
-                        **outcome,  # Override: Section outcome fields (status, specific assessment)
-                        "id": outcome["id"],  # Ensure we keep the section outcome ID
-                    }
-                    raw_course_id = outcome.get("course_id")
+            # Enrich outcome with template data if needed
+            enriched_outcome = CLOWorkflowService._enrich_outcome_with_template(outcome)
 
-            course_id = raw_course_id if isinstance(raw_course_id, str) else None
-            course_id = raw_course_id if isinstance(raw_course_id, str) else None
-            course = db.get_course_by_id(course_id) if course_id else None
+            # Get course information
+            course = CLOWorkflowService._get_course_for_outcome(enriched_outcome)
 
-            instructor_name = None
-            instructor_email = None
-            instructor_id = None
-            section_id = outcome.get("section_id")
-            program_name = None
-            term_name = None
-
-            if course and course_id:
-                (
-                    instructor_name,
-                    instructor_email,
-                    term_name,
-                    instructor_id,
-                    resolved_section_id,
-                ) = CLOWorkflowService._enrich_outcome_with_instructor_details(
-                    outcome,
-                    course_id,
-                    outcome_id,
-                    section_data=section_data,
-                )
-                program_name = CLOWorkflowService._get_program_name_for_course(
-                    course_id
-                )
-                if resolved_section_id:
-                    section_id = resolved_section_id
-
-            section_number = (
-                section_data.get("section_number") if section_data else None
+            # Get instructor and term details
+            instructor_details = CLOWorkflowService._get_instructor_details_for_outcome(
+                enriched_outcome, course, outcome_id, section_data
             )
-            section_status = section_data.get("status") if section_data else None
-            final_details = outcome.copy()
-            if section_id:
-                section = db.get_section_by_id(section_id)
-                if section:
-                    section_number = section_number or section.get("section_number")
 
-                final_details.update(
-                    {
-                        "course_number": (
-                            course.get("course_number") if course else None
-                        ),
-                        "course_title": course.get("course_title") if course else None,
-                        "instructor_name": instructor_name,
-                        "instructor_email": instructor_email,
-                        "instructor_id": instructor_id,
-                        "section_id": section_id,
-                        "section_number": section_number,
-                        "section_status": section_status,
-                        "program_name": program_name,
-                        "term_name": term_name,
-                    }
-                )
+            # Get program information
+            program_name = CLOWorkflowService._get_program_name_for_outcome(course)
+
+            # Build final details
+            final_details = CLOWorkflowService._build_final_outcome_details(
+                enriched_outcome, course, instructor_details, program_name, section_data
+            )
+
+            # Add history
+            CLOWorkflowService._add_outcome_history(final_details)
+
             return final_details
 
         except Exception as e:
             logger.error(f"Error getting outcome with details: {e}")
             return None
+
+    @staticmethod
+    def _enrich_outcome_with_template(outcome: Dict[str, Any]) -> Dict[str, Any]:
+        """Enrich outcome with template data if it's a raw section outcome."""
+        raw_course_id = outcome.get("course_id")
+        if not raw_course_id and outcome.get("outcome_id"):
+            # Fetch the template (CourseOutcome)
+            template = db.get_course_outcome(outcome["outcome_id"])
+            if template:
+                # Merge template data (defaults) into outcome
+                # We preserve outcome's own values (status, etc) if they exist
+                enriched_outcome = {
+                    **template,  # Base: Template fields (clo_number, description, course_id)
+                    **outcome,  # Override: Section outcome fields (status, specific assessment)
+                    "id": outcome["id"],  # Ensure we keep the section outcome ID
+                }
+                return enriched_outcome
+        return outcome
+
+    @staticmethod
+    def _get_course_for_outcome(outcome: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Get course information for the outcome."""
+        raw_course_id = outcome.get("course_id")
+        course_id = raw_course_id if isinstance(raw_course_id, str) else None
+        return db.get_course_by_id(course_id) if course_id else None
+
+    @staticmethod
+    def _get_instructor_details_for_outcome(
+        outcome: Dict[str, Any],
+        course: Optional[Dict[str, Any]],
+        outcome_id: str,
+        section_data: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """Get instructor and term details for the outcome."""
+        if not course:
+            return {
+                "instructor_name": None,
+                "instructor_email": None,
+                "instructor_id": None,
+                "term_name": None,
+                "section_id": outcome.get("section_id"),
+            }
+
+        course_id = (
+            course.get("id")
+            if isinstance(course, dict) and course.get("id")
+            else course
+        )
+        (
+            instructor_name,
+            instructor_email,
+            term_name,
+            instructor_id,
+            resolved_section_id,
+        ) = CLOWorkflowService._enrich_outcome_with_instructor_details(
+            outcome,
+            course_id if isinstance(course_id, str) else "",
+            outcome_id,
+            section_data=section_data,
+        )
+
+        return {
+            "instructor_name": instructor_name,
+            "instructor_email": instructor_email,
+            "instructor_id": instructor_id,
+            "term_name": term_name,
+            "section_id": resolved_section_id or outcome.get("section_id"),
+        }
+
+    @staticmethod
+    def _get_program_name_for_outcome(
+        course: Optional[Dict[str, Any]],
+    ) -> Optional[str]:
+        """Get program name for the course."""
+        if not course:
+            return None
+        course_id = (
+            course.get("id")
+            if isinstance(course, dict) and course.get("id")
+            else course
+        )
+        if not course_id or not isinstance(course_id, str):
+            return None
+        return CLOWorkflowService._get_program_name_for_course(course_id)
+
+    @staticmethod
+    def _build_final_outcome_details(
+        enriched_outcome: Dict[str, Any],
+        course: Optional[Dict[str, Any]],
+        instructor_details: Dict[str, Any],
+        program_name: Optional[str],
+        section_data: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """Build the final outcome details dictionary."""
+        final_details = enriched_outcome.copy()
+
+        section_id = instructor_details.get("section_id")
+        section_number = section_data.get("section_number") if section_data else None
+        section_status = section_data.get("status") if section_data else None
+
+        if section_id:
+            section = db.get_section_by_id(section_id)
+            if section:
+                section_number = section_number or section.get("section_number")
+
+        final_details.update(
+            {
+                "course_number": (course.get("course_number") if course else None),
+                "course_title": course.get("course_title") if course else None,
+                "instructor_name": instructor_details.get("instructor_name"),
+                "instructor_email": instructor_details.get("instructor_email"),
+                "instructor_id": instructor_details.get("instructor_id"),
+                "section_id": section_id,
+                "section_number": section_number,
+                "section_status": section_status,
+                "program_name": program_name,
+                "term_name": instructor_details.get("term_name"),
+            }
+        )
+
+        return final_details
+
+    @staticmethod
+    def _add_outcome_history(final_details: Dict[str, Any]) -> None:
+        """Add unified history for the section outcome."""
+        outcome_id_for_history = final_details.get("id")
+        if outcome_id_for_history:
+            history = db.get_outcome_history(outcome_id_for_history)
+            final_details["history"] = history
+        else:
+            final_details["history"] = []

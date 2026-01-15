@@ -448,6 +448,25 @@ function renderCLODetails(clo) {
     container.appendChild(feedbackRow);
   }
 
+  // History (full list in modal)
+  if (clo.history && clo.history.length > 0) {
+    const historyRow = document.createElement("div");
+    historyRow.className = "mb-3";
+    const historyStrong = document.createElement("strong");
+    historyStrong.textContent = "History:";
+    historyRow.appendChild(historyStrong);
+    const historyList = document.createElement("ul");
+    historyList.className = "list-unstyled text-muted small mt-2";
+    clo.history.forEach((entry) => {
+      const li = document.createElement("li");
+      li.className = "mb-1";
+      li.innerHTML = `<i class="fas fa-clock me-2"></i>${entry.event} - ${formatDate(entry.occurred_at)}`;
+      historyList.appendChild(li);
+    });
+    historyRow.appendChild(historyList);
+    container.appendChild(historyRow);
+  }
+
   // Reviewer Info
   if (clo.reviewed_by_name) {
     const reviewerRow = document.createElement("div");
@@ -1423,10 +1442,17 @@ document.addEventListener("DOMContentLoaded", () => {
               tdCloNum.textContent = clo.clo_number || "N/A";
               tr.appendChild(tdCloNum);
 
-              // Description
+              // Description (with 3-line clamp in inner div)
               const tdDesc = document.createElement("td");
-              tdDesc.textContent = truncateText(clo.description, 40);
-              tdDesc.title = clo.description;
+              tdDesc.style.maxWidth = "250px";
+              const descDiv = document.createElement("div");
+              descDiv.textContent = clo.description || "";
+              descDiv.title = clo.description;
+              descDiv.style.display = "-webkit-box";
+              descDiv.style.webkitLineClamp = "3";
+              descDiv.style.webkitBoxOrient = "vertical";
+              descDiv.style.overflow = "hidden";
+              tdDesc.appendChild(descDiv);
               tr.appendChild(tdDesc);
 
               // Instructor

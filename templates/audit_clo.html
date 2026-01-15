@@ -165,7 +165,8 @@
                             <small class="text-muted">Be specific about what needs to be changed.</small>
                         </div>
                         <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="reworkSendEmail" name="send_email" checked>
+                            <input class="form-check-input" type="checkbox" id="reworkSendEmail" name="send_email"
+                                checked>
                             <label class="form-check-label" for="reworkSendEmail">
                                 Send email notification to instructor
                             </label>
@@ -175,7 +176,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <div id="cloDetailActionsStandard" class="w-100 d-flex justify-content-end gap-2">
+                <div id="cloDetailActionsStandard" class="w-100 justify-content-end gap-2" style="display: flex;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     <button type="button" class="btn btn-warning" id="requestReworkBtn" onclick="openReworkModal()">
                         Request Rework
@@ -190,7 +191,7 @@
                         Approve
                     </button>
                 </div>
-                <div id="cloDetailActionsRework" class="w-100 d-flex justify-content-end gap-2" style="display: none;">
+                <div id="cloDetailActionsRework" class="w-100 justify-content-end gap-2" style="display: none;">
                     <button type="button" class="btn btn-secondary" id="cancelReworkBtn">
                         Cancel
                     </button>
@@ -220,15 +221,10 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">CLO Context</label>
-                        <p class="mb-0 text-muted" id="reminderCloDescription"></p>
-                        <p class="mb-0 text-muted" id="reminderCourseDescription"></p>
-                    </div>
-
-                    <div class="mb-3">
                         <label for="reminderMessage" class="form-label fw-semibold">Email Preview</label>
                         <textarea class="form-control" id="reminderMessage" rows="6" required></textarea>
-                        <small class="text-muted">This message is auto-populated and can be edited before sending.</small>
+                        <small class="text-muted">This message is auto-populated and can be edited before
+                            sending.</small>
                     </div>
 
                     <div id="reminderIncompleteClOs" class="alert alert-warning" style="display: none;">
@@ -291,32 +287,32 @@
             </div>
             <form id="inviteInstructorForm">
                 <div class="modal-body">
-                    <p class="text-muted mb-3">Send an invitation to a new instructor. They will be assigned to this section upon accepting.</p>
+                    <p class="text-muted mb-3">Send an invitation to a new instructor. They will be assigned to this
+                        section upon accepting.</p>
 
                     <div id="inviteInstructorAlert" class="alert d-none" role="alert"></div>
-                    
+
                     <div class="mb-3">
                         <label for="inviteEmail" class="form-label">Email Address *</label>
                         <input type="email" class="form-control" id="inviteEmail" required
-                               placeholder="instructor@university.edu">
+                            placeholder="instructor@university.edu">
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="inviteFirstName" class="form-label">First Name *</label>
-                        <input type="text" class="form-control" id="inviteFirstName" required
-                               placeholder="John">
+                        <input type="text" class="form-control" id="inviteFirstName" required placeholder="John">
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="inviteLastName" class="form-label">Last Name *</label>
-                        <input type="text" class="form-control" id="inviteLastName" required
-                               placeholder="Doe">
+                        <input type="text" class="form-control" id="inviteLastName" required placeholder="Doe">
                     </div>
-                    
+
                     <div class="alert alert-info">
                         <small>
                             <i class="fas fa-info-circle"></i>
-                            The instructor will receive an email invitation and be automatically assigned to this section after accepting.
+                            The instructor will receive an email invitation and be automatically assigned to this
+                            section after accepting.
                         </small>
                     </div>
                 </div>

@@ -526,3 +526,37 @@ class DatabaseInterface(ABC):
     ) -> List[Dict[str, Any]]:
         """Get filtered audit logs for export"""
         raise NotImplementedError
+
+    # Instructor Reminder operations
+    @abstractmethod
+    def create_reminder(
+        self,
+        section_id: str,
+        instructor_id: str,
+        sent_by: Optional[str] = None,
+        reminder_type: str = "individual",
+        message_preview: Optional[str] = None,
+    ) -> Optional[str]:
+        """Record a reminder email sent to an instructor."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_reminders_by_section(self, section_id: str) -> List[Dict[str, Any]]:
+        """Get all reminders sent for a specific section."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_reminders_by_instructor(self, instructor_id: str) -> List[Dict[str, Any]]:
+        """Get all reminders sent to a specific instructor."""
+        raise NotImplementedError
+
+    # Outcome History operations
+    @abstractmethod
+    def add_outcome_history(self, section_outcome_id: str, event: str) -> bool:
+        """Add a history entry for a section outcome (for manual events like reminders)."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_outcome_history(self, section_outcome_id: str) -> List[Dict[str, Any]]:
+        """Get history entries for a section outcome, sorted by date DESC."""
+        raise NotImplementedError

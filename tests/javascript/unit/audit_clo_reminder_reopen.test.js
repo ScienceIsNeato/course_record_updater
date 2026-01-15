@@ -15,6 +15,7 @@ global.bootstrap.Modal.getOrCreateInstance = jest.fn();
 // Mock alert and confirm
 global.alert = jest.fn();
 global.confirm = jest.fn();
+global.location = global.location || { origin: "http://localhost:3000" };
 
 // Import module
 const auditCloModule = require("../../../static/audit_clo.js");
@@ -140,8 +141,9 @@ describe.skip("audit_clo.js - Reminder and Reopen Features", () => {
             expect(global.bootstrap.Modal).toHaveBeenCalled();
             const message = document.getElementById("reminderMessage").value;
             expect(message).toContain("Dear John Doe");
-            expect(message).toContain("Fall 2024 - CS101 (Section 001)");
-            expect(message).toContain("CLO #1");
+            expect(message).toContain("Please complete your course assessment");
+            expect(message).toContain("/assessments?course=cid");
+            expect(message).toContain("If you need assistance");
         });
     });
 

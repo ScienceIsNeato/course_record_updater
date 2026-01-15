@@ -789,6 +789,52 @@ class AuditLog(Base):  # type: ignore[valid-type,misc]
     institution_id = Column(String, index=True)
 
 
+class InstructorReminder(Base, TimestampMixin):  # type: ignore[valid-type,misc]
+    """
+    Tracks reminder emails sent to instructors.
+
+    Records each reminder sent for a specific section, enabling:
+    - Display of reminder history on audit page
+    - Audit trail for admin follow-ups
+    """
+
+    __tablename__ = "instructor_reminders"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    section_id = Column(String, ForeignKey("course_sections.id"), nullable=False)
+    instructor_id = Column(String, ForeignKey(USERS_ID), nullable=False)
+    sent_at = Column(DateTime, nullable=False, default=get_current_time)
+    sent_by = Column(String, ForeignKey(USERS_ID), nullable=True)  # Admin who sent
+    reminder_type = Column(String(50), default="individual")  # 'individual' or 'bulk'
+    message_preview = Column(Text, nullable=True)  # First 100 chars of message
+
+    # Relationships
+    section = relationship("CourseSection")
+    instructor = relationship("User", foreign_keys=[instructor_id])
+    sender = relationship("User", foreign_keys=[sent_by])
+
+
+class OutcomeHistory(Base, TimestampMixin):  # type: ignore[valid-type,misc]
+    """
+    Tracks all status change events on section outcomes.
+
+    Each status change creates a history entry, recorded atomically
+    in the same transaction as the status update.
+    """
+
+    __tablename__ = "outcome_history"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    section_outcome_id = Column(
+        String, ForeignKey("course_section_outcomes.id"), nullable=False
+    )
+    event = Column(String(100), nullable=False)  # 'Submitted', 'Approved', etc.
+    occurred_at = Column(DateTime, nullable=False, default=get_current_time)
+
+    # Relationship
+    section_outcome = relationship("CourseSectionOutcome")
+
+
 # Import BulkEmailJob to ensure it's registered with Base
 from src.bulk_email_models.bulk_email_job import BulkEmailJob  # noqa: E402
 
@@ -802,9 +848,12 @@ __all__ = [
     "CourseOffering",
     "CourseSection",
     "CourseOutcome",
+    "CourseSectionOutcome",
     "UserInvitation",
     "AuditLog",
     "BulkEmailJob",
+    "InstructorReminder",
+    "OutcomeHistory",
     "course_program_table",
     "user_program_table",
     "to_dict",

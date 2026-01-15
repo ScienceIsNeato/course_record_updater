@@ -830,7 +830,7 @@ class BaselineSeeder(ABC):
             "approved": (CLOStatus.APPROVED, CLOApprovalStatus.APPROVED),
             "completed": (CLOStatus.COMPLETED, None),
             "needs_rework": (
-                CLOStatus.AWAITING_APPROVAL,
+                "approval_pending",  # UI expects this for "Needs Rework" badge
                 CLOApprovalStatus.NEEDS_REWORK,
             ),
             "never_coming_in": (
@@ -964,9 +964,11 @@ class BaselineTestSeeder(BaselineSeeder):
         self.log("🌱 Seeding baseline E2E infrastructure...")
 
         # Refresh database service to ensure it uses the correct database
-        from src.database.database_factory import refresh_database_service
+        # NOTE: Must use database_service.refresh_connection() NOT database_factory.refresh_database_service()
+        # because the latter only updates the factory cache, not the database_service.db alias
+        from src.database import database_service
 
-        refresh_database_service()
+        database_service.refresh_connection()
 
         # Load manifest - REQUIRED
         if manifest_data is None:
@@ -1239,9 +1241,171 @@ class DemoSeeder(BaselineSeeder):
             f"   ✅ Created {len(result['offering_ids'])} offerings and {result['section_count']} sections"
         )
 
+        # 8. Apply section-specific CLO overrides (post-seeding)
+        if "section_outcome_overrides" in manifest:
+            self.log("🔧 Applying section-specific CLO overrides...")
+            override_count = self.apply_section_outcome_overrides(
+                manifest["section_outcome_overrides"], inst_ids[0]
+            )
+            self.log(f"   ✅ Applied {override_count} section outcome overrides")
+
         self.log("✅ Demo seeding completed!")
         self.print_summary()
         return True
+
+    def apply_section_outcome_overrides(
+        self, overrides: List[Dict[str, Any]], institution_id: str
+    ) -> int:
+        """
+        Apply section-specific CLO status overrides after seeding.
+
+        This allows individual section outcomes to have different statuses
+        than the course-level template (e.g., one section submitted, another forgot).
+
+        Args:
+            overrides: List of override dicts with course_code, section_number,
+                      clo_number, and the updates to apply
+            institution_id: Institution ID to look up course/section
+
+        Returns:
+            Number of overrides successfully applied
+        """
+        from src.utils.constants import CLOApprovalStatus, CLOStatus
+
+        applied_count = 0
+        status_lookup = self._status_lookup()
+
+        for override in overrides:
+            course_code = override.get("course_code")
+            section_number = override.get("section_number")
+            clo_number = str(override.get("clo_number"))
+            new_status = override.get("status", "assigned")
+
+            # Skip if required fields are missing
+            if not course_code or not section_number:
+                continue
+
+            # Look up the section outcome to update
+            section_outcome = self._find_section_outcome(
+                course_code, section_number, clo_number, institution_id
+            )
+            if not section_outcome:
+                self.log(
+                    f"   ⚠️ Section outcome not found: {course_code} Sec {section_number} CLO {clo_number}"
+                )
+                continue
+
+            # Build updates
+            status_enum, approval_status = status_lookup.get(
+                new_status, (CLOStatus.ASSIGNED, None)
+            )
+            updates: Dict[str, Any] = {
+                "status": status_enum,
+            }
+            if approval_status:
+                updates["approval_status"] = approval_status
+
+            # Add optional fields
+            if "feedback_comments" in override:
+                updates["feedback_comments"] = override["feedback_comments"]
+            if "students_took" in override:
+                updates["students_took"] = override["students_took"]
+            if "students_passed" in override:
+                updates["students_passed"] = override["students_passed"]
+
+            # Apply the update (this creates history for the current status too,
+            # but we'll add explicit historical entries below)
+            if database_service.db.update_section_outcome(
+                section_outcome["id"], updates
+            ):
+                applied_count += 1
+                self.log(
+                    f"   ✓ Updated {course_code} Sec {section_number} CLO {clo_number} → {new_status}"
+                )
+
+                # Add explicit history entries from manifest
+                if "history" in override:
+                    self._create_history_entries(
+                        section_outcome["id"], override["history"]
+                    )
+
+        return applied_count
+
+    def _create_history_entries(
+        self, section_outcome_id: str, history_data: List[Dict[str, Any]]
+    ) -> None:
+        """Create OutcomeHistory entries with relative dates from manifest."""
+        from datetime import timedelta
+
+        from src.database.database_sqlite import SQLiteDatabase
+        from src.models.models_sql import OutcomeHistory
+
+        now = datetime.now(timezone.utc)
+
+        # Cast to access internal session_scope (demo seeder only)
+        db: SQLiteDatabase = database_service.db  # type: ignore[assignment]
+        with db.sqlite.session_scope() as session:
+            for entry in history_data:
+                event = entry.get("event")
+                relative_days = entry.get("relative_days", 0)
+                occurred_at = now + timedelta(days=relative_days)
+
+                history_entry = OutcomeHistory(
+                    section_outcome_id=section_outcome_id,
+                    event=event,
+                    occurred_at=occurred_at,
+                )
+                session.add(history_entry)
+
+    def _find_section_outcome(
+        self,
+        course_code: str,
+        section_number: str,
+        clo_number: str,
+        institution_id: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Find a specific section outcome by course/section/CLO number."""
+        # Step 1: Find the course by course_code
+        course = database_service.db.get_course_by_number(course_code, institution_id)
+        if not course:
+            return None
+        course_id = course.get("id") or course.get("course_id")
+        if not course_id:
+            return None
+
+        # Step 2: Find the course outcome (template) by clo_number
+        course_outcomes = database_service.db.get_course_outcomes(course_id)
+        outcome_template = None
+        for co in course_outcomes or []:
+            if str(co.get("clo_number")) == clo_number:
+                outcome_template = co
+                break
+        if not outcome_template:
+            return None
+        outcome_id = outcome_template.get("id") or outcome_template.get("outcome_id")
+        if not outcome_id:
+            return None
+
+        # Step 3: Find the section by section_number
+        sections = database_service.db.get_sections_by_course(course_id)
+        target_section = None
+        for sec in sections or []:
+            if sec.get("section_number") == section_number:
+                target_section = sec
+                break
+        if not target_section:
+            return None
+        section_id = target_section.get("id") or target_section.get("section_id")
+        if not section_id:
+            return None
+
+        # Step 4: Find the section outcome by section_id and outcome_id
+        section_outcome = (
+            database_service.db.get_section_outcome_by_course_outcome_and_section(
+                outcome_id, section_id
+            )
+        )
+        return section_outcome
 
     def print_summary(self) -> None:
         """Print demo seeding summary"""
@@ -1321,9 +1485,11 @@ def main() -> None:
     os.environ["DATABASE_URL"] = database_url
 
     # Refresh database service to ensure it uses the correct database
-    from src.database.database_factory import refresh_database_service
+    # NOTE: Must use database_service.refresh_connection() NOT database_factory.refresh_database_service()
+    # because the latter only updates the factory cache, not the database_service.db alias
+    from src.database import database_service
 
-    refresh_database_service()
+    database_service.refresh_connection()
 
     # Log which database we're using
     db_file = database_url.replace("sqlite:///", "")

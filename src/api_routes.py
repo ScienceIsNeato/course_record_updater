@@ -6524,8 +6524,32 @@ def send_course_reminder_api() -> ResponseReturnValue:
             assessment_url=assessment_url,
         )
 
+        # Record reminder for each section the instructor teaches for this course
+        sections = database_service.get_sections_by_course(course_id)
+        reminder_count = 0
+        for section in sections:
+            if section.get("instructor_id") == instructor_id:
+                section_id = section.get("section_id") or section.get("id")
+                if section_id:
+                    database_service.create_reminder(
+                        section_id=section_id,
+                        instructor_id=instructor_id,
+                        sent_by=current_user.get("user_id"),
+                        reminder_type="individual",
+                    )
+                    # Record history for each section outcome in this section
+                    section_outcomes = database_service.get_section_outcomes_by_section(
+                        section_id
+                    )
+                    for so in section_outcomes:
+                        so_id = so.get("id")
+                        if so_id:
+                            database_service.add_outcome_history(so_id, "Reminder Sent")
+                    reminder_count += 1
+
         logger.info(
-            f"[API] Course reminder sent to {instructor['email']} for {course_number} by {current_user.get('email')}"
+            f"[API] Course reminder sent to {instructor['email']} for {course_number} by {current_user.get('email')} "
+            f"(recorded {reminder_count} section reminders)"
         )
 
         return (
