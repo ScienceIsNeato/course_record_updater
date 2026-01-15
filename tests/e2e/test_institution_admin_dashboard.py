@@ -41,7 +41,7 @@ class TestInstitutionAdminDashboardWorkflow:
             "Dashboard",
             "Audit",
             "Assessments",
-            "CLOs",
+            "Outcomes",
             "Users",
             "Courses",
             "Offerings",

@@ -37,7 +37,7 @@ class TestProgramAdminDashboardWorkflow:
         page.goto("http://localhost:3002/dashboard")
         page.wait_for_load_state("networkidle")
 
-        expected_nav = ["Dashboard", "Courses", "Faculty", "CLOs"]
+        expected_nav = ["Dashboard", "Courses", "Faculty", "Outcomes"]
         navigator = HeaderNavigator(page)
         labels = navigator.labels()
         assert labels[: len(expected_nav)] == expected_nav
