@@ -290,7 +290,7 @@ class CourseSection(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     enrollment = Column(Integer)
     withdrawals = Column(Integer, default=0)
 
-    # Course-Level Assessment Data (instructor-entered)
+    # Course-SectionLevel Assessment Data (instructor-entered)
     students_passed = Column(Integer, nullable=True)  # Students with A, B, C
     students_dfic = Column(Integer, nullable=True)  # Students with D, F, Incomplete
     cannot_reconcile = Column(Boolean, default=False)  # Enrollment math doesn't add up

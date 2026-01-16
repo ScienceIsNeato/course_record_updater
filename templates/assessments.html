@@ -41,6 +41,11 @@
 {% block page_title %}Course Assessments{% endblock %}
 {% block page_subtitle %}View and manage Course Assessments on a per-course-section basis, holistically{% endblock %}
 
+{% block nav_items %}
+<a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+<a class="nav-link" href="/assessments"><i class="fas fa-tasks me-1"></i>Assessments</a>
+{% endblock %}
+
 {% block content %}
 {% set can_edit_due_date = user.role in ['institution_admin', 'site_admin'] %}
 <div class="container mt-4">
@@ -104,12 +109,12 @@
                     <h6 class="text-primary mb-3">Course Grade Outcomes (Instructor Input)</h6>
                 </div>
                 <div class="col-md-6">
-                    <label for="studentsPassed" class="form-label">Students Passed (A/B/C) *</label>
+                    <label for="courseStudentsPassed" class="form-label">Students Passed (A/B/C) *</label>
                     <input type="number" class="form-control" id="courseStudentsPassed" min="0"
                         placeholder="Number of students with A, B, or C">
                 </div>
                 <div class="col-md-6">
-                    <label for="studentsDFIC" class="form-label">Students D/F/Incomplete *</label>
+                    <label for="courseStudentsDFIC" class="form-label">Students D/F/Incomplete *</label>
                     <input type="number" class="form-control" id="courseStudentsDFIC" min="0"
                         placeholder="Number of students with D, F, or I">
                 </div>
