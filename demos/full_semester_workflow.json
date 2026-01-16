@@ -1,14 +1,14 @@
 {
-  "demo_name": "Full Semester Lifecycle Story",
-  "demo_id": "full_semester_story",
-  "version": "3.0",
-  "description": "A structured walkthrough of the semester lifecycle: planning (creating terms/offerings), onboarding (inviting faculty), and auditing (reviewing outcomes).",
-  "estimated_duration_minutes": 20,
+  "demo_name": "LoopCloser Platform Demo",
+  "demo_id": "platform_demo_2026",
+  "version": "4.0",
+  "description": "Comprehensive walkthrough of the LoopCloser platform: site overview, outcome audit workflow, email integration with instructors, term/offering management, and key features.",
+  "estimated_duration_minutes": 15,
   "talking_points": [
-    "System Date Override allows testing full semester cycles in minutes",
-    "Streamlined faculty onboarding via email invitations",
-    "Closed-loop audit workflow ensures data quality",
-    "Real-time status updates across dashboards"
+    "Unified dashboard design with quick actions and comprehensive data panels",
+    "Complete audit workflow from institutional admin perspective",
+    "Email-driven instructor collaboration via Gmail integration",
+    "Streamlined term and offering creation for upcoming semesters"
   ],
   "environment": {
     "working_directory": ".",
@@ -23,57 +23,295 @@
   "steps": [
     {
       "step_number": 1,
-      "phase": "Act 1: Planning (Dec 2025)",
-      "name": "Verify Environment & Date",
-      "purpose": "Confirm the late-December override is active so the Fall semester and CLO closeout feel complete",
+      "phase": "Section 1: Site Overview",
+      "name": "Platform Navigation & Dashboard Design",
+      "purpose": "Introduce the LoopCloser interface, header elements, and dashboard panel organization",
       "pre_commands": [],
       "instructions": {
-        "human": "The server has been seeded with the Institution Admin date set to Dec 23, 2025 (right after classes ended and before CLO due dates).\n\nLogin as 'demo2025.admin@example.com' (Password: Demo2025!).\nNotice the yellow 'System Date Override' banner and the busy Fall 2025 summary.",
+        "human": "Login as Institution Admin (quarkswithforks@gmail.com / Demo123!).\n\n**Header Tour (Left to Right):**\n- LoopCloser Logo (optional branding)\n- Quick Links: Dashboard, Programs, Courses, etc.\n- Current Term Indicator: 'Fall 2025 (Active)'\n- System Date Override Banner: 'Dec 23, 2025' (admin-only feature for demo/testing)\n- Profile Dropdown: Account Settings, Logout\n- Home Button: Returns to main dashboard\n\n**Dashboard Panels:**\nNotice the panels are grouped by concept:\n- **Programs Panel:** Quick view of program metrics, 'Add Program' button, 'Manage Programs' opens data grid\n- **Courses Panel:** Course summary, quick add, manage\n- **Faculty Panel:** Instructor assignments, invite button\n- **Outcomes Panel:** CLO status summary with filters\n- **Terms Panel:** Active/upcoming terms, create new term\n\nEach panel follows the pattern: Summary stats → Quick action button (opens dialog) → Manage button (opens full page).",
         "automated": {
           "action": "api_post",
           "endpoint": "/api/auth/login",
           "data": {
-            "email": "demo2025.admin@example.com",
-            "password": "Demo2025!"
+            "email": "quarkswithforks@gmail.com",
+            "password": "Demo123!"
           },
-          "description": "Login as Sarah Admin"
+          "description": "Login as Institution Admin"
         }
       },
       "urls": [
         {
           "label": "Login Page",
-          "url": "http://localhost:3001/login",
-          "clickable": true
+          "url": "http://localhost:3001/login"
+        },
+        {
+          "label": "Dashboard",
+          "url": "http://localhost:3001/dashboard"
         }
       ],
       "inputs": {
-        "email": "demo2025.admin@example.com",
-        "password": "Demo2025!"
+        "email": "quarkswithforks@gmail.com",
+        "password": "Demo123!"
       },
       "expected_results": [
-        "Dashboard loads",
-        "Banner shows: 'System Date Override Active: Dec 23, 2025'"
+        "Dashboard loads with all panels visible",
+        "System Date Override banner shows 'Dec 23, 2025'",
+        "Current term indicator shows 'Fall 2025'"
       ],
       "post_commands": [],
-      "verification": {
-        "type": "ui_check",
-        "expected_url": "/dashboard"
-      },
-      "artifacts": {
-        "screenshots": [
-          "01_act1_dashboard_banner.png"
-        ]
-      },
+      "artifacts": {},
       "pause_for_human": true
     },
     {
       "step_number": 2,
-      "phase": "Act 1: Planning (Oct 2025)",
-      "name": "Create Spring 2026 Term",
-      "purpose": "Prepare for the upcoming semester",
+      "phase": "Section 2: Audit Flow",
+      "name": "Navigate to Learning Outcome Audit",
+      "purpose": "Access the audit page and understand the outcome review interface",
       "pre_commands": [],
       "instructions": {
-        "human": "Navigate to 'Terms' from the dashboard.\nClick 'Create New Term'.\n\nEnter Details:\n- Name: Spring 2026\n- Code: SP2026\n- Start: Jan 15, 2026\n- End: May 15, 2026\n- Assessment Due: May 20, 2026\n\nClick 'Create Term'.",
+        "human": "Navigate to 'Learning Outcome Audit & Approval' from the dashboard or via quick links.\n\nThe Audit page shows:\n- **Status Filters:** Unassigned, In Progress, Awaiting Approval, Approved, Needs Rework, Never Coming In\n- **Outcome Cards:** Each card shows course, section, CLO number, description, status, and history\n- **Action Buttons:** Approve, Request Rework, Reopen, Mark NCI (Never Coming In)\n\nNotice the current view shows outcomes from Fall 2025 that need attention.",
+        "automated": {
+          "action": "none"
+        }
+      },
+      "urls": [
+        {
+          "label": "Audit Page",
+          "url": "http://localhost:3001/audit-clo"
+        }
+      ],
+      "inputs": {},
+      "expected_results": [
+        "Audit page loads with filterable outcome list",
+        "Multiple outcomes visible in various statuses"
+      ],
+      "post_commands": [],
+      "artifacts": {},
+      "pause_for_human": true
+    },
+    {
+      "step_number": 3,
+      "phase": "Section 2: Audit Flow",
+      "name": "Approve an Outcome",
+      "purpose": "Demonstrate the approval workflow for a submitted outcome",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Find an outcome with status 'Awaiting Approval' (e.g., BIOL-101 Section 1, CLO #1).\n\nClick on the card to open the detail modal.\n\nReview:\n- Description\n- Assessment methods\n- Submission history\n\nClick 'Approve' button.\n\nThe outcome should move to 'Approved' status and disappear from the 'Awaiting Approval' filter.\n\n**Key Point:** This closes the loop for this outcome—the faculty member receives confirmation and the data is locked for reporting.",
+        "automated": {
+          "action": "none"
+        }
+      },
+      "urls": [],
+      "inputs": {},
+      "expected_results": [
+        "Outcome approved successfully",
+        "Status changes to 'Approved'",
+        "Card removed from pending queue"
+      ],
+      "post_commands": [],
+      "artifacts": {},
+      "pause_for_human": true
+    },
+    {
+      "step_number": 4,
+      "phase": "Section 2: Audit Flow",
+      "name": "Request Rework on an Outcome",
+      "purpose": "Flag an outcome that needs corrections from the instructor",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Find another outcome in 'Awaiting Approval' status (e.g., BIOL-101 Section 2, CLO #2).\n\nOpen the detail modal and notice there's an issue (e.g., vague description, incomplete assessment method).\n\nClick 'Request Rework'.\n\nEnter a comment explaining what needs to be fixed:\n\"Please clarify the assessment method and make the description more specific to the course content.\"\n\nConfirm.\n\n**Result:** The outcome status changes to 'Needs Rework' and the instructor receives an email notification with your comments.",
+        "automated": {
+          "action": "none"
+        }
+      },
+      "urls": [],
+      "inputs": {
+        "comment": "Please clarify assessment method and make description more specific"
+      },
+      "expected_results": [
+        "Outcome marked as 'Needs Rework'",
+        "Email notification queued for instructor",
+        "Admin comment saved to outcome history"
+      ],
+      "post_commands": [],
+      "artifacts": {},
+      "pause_for_human": true
+    },
+    {
+      "step_number": 5,
+      "phase": "Section 2: Audit Flow",
+      "name": "Reopen a Previously Approved Outcome",
+      "purpose": "Demonstrate the ability to reopen outcomes if issues are discovered later",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Switch to the 'Approved' filter.\n\nFind an approved outcome (e.g., BIOL-201 Section 1, CLO #1).\n\nImagine you discovered an error after approval. Click 'Reopen'.\n\nAdd a reason: \"Discovered assessment rubric mismatch with program standards.\"\n\n**Result:** The outcome returns to 'In Progress' or 'Needs Rework' status, allowing the instructor to make corrections.\n\nThis demonstrates the platform's flexibility for quality assurance even after initial approval.",
+        "automated": {
+          "action": "none"
+        }
+      },
+      "urls": [],
+      "inputs": {
+        "reason": "Assessment rubric mismatch with program standards"
+      },
+      "expected_results": [
+        "Outcome reopened successfully",
+        "Status reverted to editable state",
+        "Instructor notified of reopening"
+      ],
+      "post_commands": [],
+      "artifacts": {},
+      "pause_for_human": true
+    },
+    {
+      "step_number": 6,
+      "phase": "Section 2: Audit Flow",
+      "name": "Mark an Outcome as Never Coming In (NCI)",
+      "purpose": "Handle edge case where an instructor is unreachable or a section was cancelled",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Find an outcome that's been assigned but never submitted (e.g., from a section taught by an instructor who left mid-semester).\n\nClick 'Mark NCI' (Never Coming In).\n\nAdd administrative note: \"Instructor departed institution. Section was cancelled after week 3.\"\n\nConfirm.\n\n**Result:** The outcome is marked as NCI, removed from active audit queue, but preserved for institutional records and reporting (marked as an outlier).\n\nThis keeps your audit queue clean while maintaining complete historical data.",
+        "automated": {
+          "action": "none"
+        }
+      },
+      "urls": [],
+      "inputs": {
+        "note": "Instructor departed, section cancelled"
+      },
+      "expected_results": [
+        "Outcome marked as 'Never Coming In'",
+        "Removed from active audit queue",
+        "Administrative note recorded"
+      ],
+      "post_commands": [],
+      "artifacts": {},
+      "pause_for_human": true
+    },
+    {
+      "step_number": 7,
+      "phase": "Section 3: Instructor Email Flow",
+      "name": "Check Gmail for Instructor Notifications",
+      "purpose": "Show the email integration—reminders and rework notifications sent to faculty",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Open Gmail in a new browser tab/window.\n\nLogin to prof.raj.patel@gmail.com (Password: Demo123!).\n\nCheck the inbox for emails from LoopCloser:\n\n1. **Reminder Email:** \"Action Required: Submit Learning Outcomes for ZOOL-101\"\n   - Contains course details, due date, direct link to assessment form\n\n2. **Rework Notification:** \"Rework Requested: BIOL-101 Section 2, CLO #2\"\n   - Shows admin comments\n   - Contains direct link to edit the outcome\n\n**Key Point:** The email-driven workflow reduces friction—faculty can click directly from email to the exact form they need to complete.",
+        "automated": {
+          "action": "none"
+        }
+      },
+      "urls": [
+        {
+          "label": "Gmail Login",
+          "url": "https://mail.google.com"
+        }
+      ],
+      "inputs": {
+        "email": "prof.raj.patel@gmail.com",
+        "password": "Demo123!"
+      },
+      "expected_results": [
+        "Gmail inbox shows LoopCloser emails",
+        "Reminder email visible with course details",
+        "Rework notification email visible with admin feedback"
+      ],
+      "post_commands": [],
+      "artifacts": {},
+      "pause_for_human": true
+    },
+    {
+      "step_number": 8,
+      "phase": "Section 3: Instructor Email Flow",
+      "name": "Faculty Completes Fresh Submission",
+      "purpose": "Demonstrate instructor workflow for submitting outcomes from scratch",
+      "pre_commands": [],
+      "instructions": {
+        "human": "From the Gmail reminder email, click the direct link to the ZOOL-101 assessment form.\n\n(OR manually: Logout from admin account, login as prof.raj.patel@gmail.com / Demo123!, navigate to Assessments page, select ZOOL-101.)\n\nFill out CLO #1:\n- **Description:** \"Apply principles of animal physiology to real-world scenarios\"\n- **Assessment Method:** \"Lab practicals (40%), Final exam questions (30%), Research proposal (30%)\"\n- **Target Proficiency:** \"80% of students achieve 70% or better\"\n- **Actual Results:** \"85% of students scored 72% or better\"\n- **Narrative Reflections:** \"Students exceeded expectations on lab practicals. Will incorporate more research proposal practice next semester.\"\n\nClick 'Save' for the CLO.\n\nThen click 'Submit Course for Approval' at the bottom of the page.\n\n**Result:** All outcomes for this section are submitted to the institutional admin for review.",
+        "automated": {
+          "action": "none"
+        }
+      },
+      "urls": [
+        {
+          "label": "Assessments Page",
+          "url": "http://localhost:3001/assessments"
+        }
+      ],
+      "inputs": {
+        "course": "ZOOL-101",
+        "description": "Apply principles of animal physiology",
+        "assessment_method": "Lab practicals, final exam, research proposal"
+      },
+      "expected_results": [
+        "CLO data saved successfully",
+        "Course submitted for approval",
+        "Instructor sees confirmation message"
+      ],
+      "post_commands": [],
+      "artifacts": {},
+      "pause_for_human": true
+    },
+    {
+      "step_number": 9,
+      "phase": "Section 3: Instructor Email Flow",
+      "name": "Faculty Addresses Rework Request",
+      "purpose": "Show how faculty respond to admin feedback and resubmit outcomes",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Still logged in as prof.raj.patel@gmail.com.\n\nNavigate to BIOL-101 Section 2 (or click the rework email link).\n\nNotice the 'Needs Rework' status and the admin comment displayed prominently.\n\nEdit CLO #2 to address the feedback:\n- **Original:** \"Understand cell biology\" (too vague)\n- **Updated:** \"Demonstrate mastery of cellular respiration pathways through detailed mechanism explanation\"\n- **Assessment Method (clarified):** \"In-class diagram labeling (40%), Written exam short answer (60%)\"\n\nClick 'Save' then 'Resubmit for Approval'.\n\n**Result:** The outcome returns to 'Awaiting Approval' status. The institutional admin is notified that rework has been completed.",
+        "automated": {
+          "action": "none"
+        }
+      },
+      "urls": [],
+      "inputs": {
+        "updated_description": "Demonstrate mastery of cellular respiration pathways",
+        "updated_assessment": "Diagram labeling 40%, written exam 60%"
+      },
+      "expected_results": [
+        "Outcome updated with clarifications",
+        "Status changed to 'Awaiting Approval'",
+        "Admin receives notification of resubmission"
+      ],
+      "post_commands": [],
+      "artifacts": {},
+      "pause_for_human": true
+    },
+    {
+      "step_number": 10,
+      "phase": "Section 4: Back to Institutional Admin",
+      "name": "Complete Audit for Dr. Patel's Submissions",
+      "purpose": "Tie up the loop by reviewing and approving the faculty submissions",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Logout as prof.raj.patel@gmail.com.\n\nLogin again as quarkswithforks@gmail.com / Demo123!.\n\nGo to the Audit page.\n\nYou should now see:\n- ZOOL-101 CLO #1: Fresh submission from Dr. Patel\n- BIOL-101 Section 2, CLO #2: Reworked submission\n\nReview both and click 'Approve' on each.\n\n**Result:** Both outcomes are now closed out for Fall 2025. Dr. Patel receives approval notifications.\n\n**Key Point:** This completes the full closed-loop workflow: Admin requests work → Faculty receives email → Faculty submits → Admin reviews → Loop closed.",
+        "automated": {
+          "action": "none"
+        }
+      },
+      "urls": [
+        {
+          "label": "Audit Page",
+          "url": "http://localhost:3001/audit-clo"
+        }
+      ],
+      "inputs": {},
+      "expected_results": [
+        "Both Patel submissions visible in audit queue",
+        "Both approved successfully",
+        "Faculty receives approval notifications"
+      ],
+      "post_commands": [],
+      "artifacts": {},
+      "pause_for_human": true
+    },
+    {
+      "step_number": 11,
+      "phase": "Section 4: Back to Institutional Admin",
+      "name": "Create Spring 2026 Term",
+      "purpose": "Demonstrate term creation for upcoming semester planning",
+      "pre_commands": [],
+      "instructions": {
+        "human": "From the dashboard, navigate to 'Terms' or click 'Manage Terms' from the Terms panel.\n\nClick 'Create New Term'.\n\nEnter:\n- **Name:** Spring 2026\n- **Term Code:** SP2026\n- **Start Date:** January 15, 2026\n- **End Date:** May 15, 2026\n- **Assessment Due Date:** May 20, 2026\n\nClick 'Create Term'.\n\n**Result:** Spring 2026 term is created and appears in the terms list as 'Upcoming'.\n\nThis term is now available for creating course offerings.",
         "automated": {
           "action": "api_post",
           "endpoint": "/api/terms",
@@ -84,487 +322,134 @@
             "end_date": "2026-05-15",
             "assessment_due_date": "2026-05-20"
           },
-          "description": "Create SP2026 term"
+          "description": "Create Spring 2026 term"
         }
       },
       "urls": [],
       "inputs": {
         "name": "Spring 2026",
-        "code": "SP2026"
+        "code": "SP2026",
+        "start_date": "2026-01-15",
+        "end_date": "2026-05-15"
       },
       "expected_results": [
-        "Spring 2026 term appears in list with 'Upcoming' status"
+        "Spring 2026 term created",
+        "Term appears in list with 'Upcoming' status"
       ],
-      "post_commands": [
-        {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM terms WHERE code='SP2026' LIMIT 1\"",
-          "purpose": "Capture SP2026 ID",
-          "capture_output_as": "sp26_term_id"
-        }
-      ],
-      "verification": {
-        "type": "db_check"
-      },
+      "post_commands": [],
       "artifacts": {},
-      "pause_for_human": true
-    },
-    {
-      "step_number": 3,
-      "phase": "Act 1: Planning (Oct 2025)",
-      "name": "Create Course Offering",
-      "purpose": "Create offering for BIOL-101 in the new Spring 2026 term",
-      "pre_commands": [
-        {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM courses WHERE course_number='BIOL-101' LIMIT 1\"",
-          "purpose": "Get BIOL-101 ID",
-          "capture_output_as": "biol101_id"
-        },
-        {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM programs WHERE short_name='ZOOL' LIMIT 1\"",
-          "purpose": "Get Zoology Program ID",
-          "capture_output_as": "zool_program_id"
-        }
-      ],
-      "instructions": {
-        "human": "Navigate to 'Course Offerings'.\nClick 'Create New Course Offering'.\n\nSelect:\n- Course: BIOL-101\n- Term: Spring 2026\n- Program: Biology (or Zoology)\n\n(Sections: Use default '001')\n\nClick 'Create Offering'.",
-        "automated": {
-          "action": "api_post",
-          "endpoint": "/api/offerings",
-          "data": {
-            "course_id": "{{biol101_id}}",
-            "term_id": "{{sp26_term_id}}",
-            "program_id": "{{zool_program_id}}",
-            "sections": [
-              {
-                "section_number": "001"
-              }
-            ]
-          },
-          "description": "Create SP2026 offering for BIOL-101"
-        }
-      },
-      "urls": [],
-      "inputs": {
-        "course": "BIOL-101",
-        "term": "SP2026"
-      },
-      "expected_results": [
-        "Course offering created for BIOL-101 in Spring 2026",
-        "Section 001 automatically created"
-      ],
-      "post_commands": [
-        {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM course_offerings WHERE course_id='{{biol101_id}}' AND term_id='{{sp26_term_id}}' LIMIT 1\"",
-          "purpose": "Capture offering ID",
-          "capture_output_as": "sp26_offering_id"
-        },
-        {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM course_sections WHERE section_number='001' AND offering_id='{{sp26_offering_id}}' LIMIT 1\"",
-          "purpose": "Capture Section 001 ID",
-          "capture_output_as": "section_001_id"
-        }
-      ],
-      "verification": {
-        "type": "db_check"
-      },
-      "artifacts": {},
-      "pause_for_human": true
-    },
-    {
-      "step_number": 4,
-      "phase": "Act 2: Onboarding (Oct 2025)",
-      "name": "Invite New Faculty",
-      "purpose": "Onboard new faculty member for the new section",
-      "pre_commands": [],
-      "instructions": {
-        "human": "Navigate to the 'Course Sections' panel (or page).\nFind 'BIOL-101 (Section 001)' for Spring 2026.\nClick the 'Invite Instructor' (user-plus) icon.\n\nIn the modal:\n- Email: dr.newguy@example.com\n- First Name: New\n- Last Name: Guy\n- Section: BIOL-101 - Section 001 (Should be pre-selected)\n\nClick 'Send Invitation'.",
-        "automated": {
-          "action": "api_post",
-          "endpoint": "/api/invitations",
-          "data": {
-            "email": "dr.newguy@example.com",
-            "first_name": "New",
-            "last_name": "Guy",
-            "role": "instructor",
-            "section_id": "{{section_001_id}}"
-          },
-          "description": "Invite Dr. Newguy to Section 001"
-        }
-      },
-      "urls": [],
-      "inputs": {
-        "email": "dr.newguy@example.com",
-        "section": "001"
-      },
-      "expected_results": [
-        "Invitation sent successfully",
-        "Section status updates to 'Assigned' (or pending)"
-      ],
-      "post_commands": [],
-      "verification": {
-        "type": "db_check"
-      },
-      "artifacts": {
-        "logs": [
-          "email.log"
-        ]
-      },
-      "pause_for_human": true
-    },
-    {
-      "step_number": 5,
-      "phase": "Act 2: Onboarding (Oct 2025)",
-      "name": "Faculty Registration",
-      "purpose": "Simulate new faculty accepting invitation",
-      "pre_commands": [
-        {
-          "command": "sqlite3 course_records_dev.db \"SELECT token FROM user_invitations WHERE email='dr.newguy@example.com' ORDER BY created_at DESC LIMIT 1\"",
-          "purpose": "Get invitation token",
-          "capture_output_as": "invite_token"
-        }
-      ],
-      "instructions": {
-        "human": "Logout as Admin.\n(In a real flow, checking email) -> Simulate clicking the invite link.\n\nSimulate Invite Acceptance:\n- Token: (hidden)\n- Password: Password123!\n- Display Name: Dr. New Guy\n\nLogin as 'dr.newguy@example.com' and verify visualization of the assigned course.",
-        "automated": {
-          "action": "sequence",
-          "steps": [
-            {
-              "action": "api_post",
-              "endpoint": "/api/auth/logout",
-              "data": {}
-            },
-            {
-              "action": "api_post",
-              "endpoint": "/api/auth/accept-invitation",
-              "data": {
-                "invitation_token": "{{invite_token}}",
-                "password": "Password123!",
-                "display_name": "Dr. New Guy"
-              }
-            }
-          ]
-        }
-      },
-      "urls": [],
-      "inputs": {
-        "email": "dr.newguy@example.com"
-      },
-      "expected_results": [
-        "Account created",
-        "Logged in as Dr. New Guy",
-        "Dashboard shows BIOL-101 SP26"
-      ],
-      "post_commands": [],
-      "verification": {
-        "type": "ui_check"
-      },
-      "artifacts": {},
-      "pause_for_human": true
-    },
-    {
-      "step_number": 6,
-      "phase": "Act 3: Semester End (Dec 2025)",
-      "name": "Time Jump: Dec 23, 2025",
-      "purpose": "Advance timeline to the last stretch between the Fall 2025 end of classes and the CLO due date",
-      "pre_commands": [],
-      "instructions": {
-        "human": "Logout Dr. New Guy.\nLogin as 'demo2025.admin@example.com' (Demo2025!).\n\nUse the Date Override feature to jump to: December 23, 2025.\nThis simulates the busy window after final exams but before CLO due dates.",
-        "automated": {
-          "action": "sequence",
-          "steps": [
-            {
-              "action": "api_post",
-              "endpoint": "/api/auth/logout",
-              "data": {}
-            },
-            {
-              "action": "api_post",
-              "endpoint": "/api/auth/login",
-              "data": {
-                "email": "demo2025.admin@example.com",
-                "password": "Demo2025!"
-              }
-            },
-            {
-              "action": "api_post",
-              "endpoint": "/api/profile/system-date",
-              "data": {
-            "system_date": "2025-12-23T09:00:00"
-              }
-            }
-          ]
-        }
-      },
-      "urls": [],
-      "inputs": {
-        "date": "2025-12-23"
-      },
-      "expected_results": [
-        "Date Banner: Dec 23, 2025",
-        "Audit tasks become visible",
-        "CLO progress cards reflect ~85% completion"
-      ],
-      "post_commands": [],
-      "verification": {
-        "type": "ui_check"
-      },
-      "artifacts": {
-        "screenshots": [
-          "02_act3_date_jump.png"
-        ]
-      },
-      "pause_for_human": true
-    },
-    {
-      "step_number": 7,
-      "phase": "Act 3: Semester End (Dec 2025)",
-      "name": "Audit Queue Review",
-      "purpose": "Review submissions from Fall 2025",
-      "pre_commands": [],
-      "instructions": {
-        "human": "Navigate to 'Audit CLO' page.\nReview the list:\n- Identify the submission for BIOL-101 (Seeded with 'Rework Needed' status/content).\n- Identify the missing submission for ZOOL-101.",
-        "automated": {
-          "action": "none",
-          "url": "/audit-clo"
-        }
-      },
-      "urls": [],
-      "inputs": {},
-      "expected_results": [
-        "Audit table loaded",
-        "Progress summary shows ~85% of CLOs completed"
-      ],
-      "post_commands": [],
-      "verification": {
-        "type": "ui_check"
-      },
-      "artifacts": {},
-      "pause_for_human": true
-    },
-    {
-      "step_number": 8,
-      "phase": "Act 3: Semester End (Dec 2025)",
-      "name": "Request Rework",
-      "purpose": "Flag incorrect data for correction",
-      "pre_commands": [
-        {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM course_outcomes WHERE clo_number='4' AND description LIKE '%basket%' LIMIT 1\"",
-          "purpose": "Find the seeded 'Bad' CLO",
-          "capture_output_as": "bad_clo_id"
-        }
-      ],
-      "instructions": {
-        "human": "Click 'Request Rework' on the BIOL-101 CLO #4.\nComment: 'Description mismatch. Please correct copy/paste error.'\nConfirm.",
-        "automated": {
-          "action": "api_post",
-          "endpoint": "/api/outcomes/{{bad_clo_id}}/request-rework",
-          "data": {
-            "comments": "Description mismatch. Please correct copy/paste error."
-          },
-          "description": "Flag CLO for rework"
-        }
-      },
-      "urls": [],
-      "inputs": {
-        "comment": "Description mismatch"
-      },
-      "expected_results": [
-        "Status changes to Needs Rework"
-      ],
-      "post_commands": [],
-      "verification": {
-        "type": "db_check"
-      },
-      "artifacts": {},
-      "pause_for_human": true
-    },
-    {
-      "step_number": 9,
-      "phase": "Act 4: Correction (Dec 2025)",
-      "name": "Faculty Fixes Rework",
-      "purpose": "Faculty member correcting their submission",
-      "pre_commands": [],
-      "instructions": {
-        "human": "Logout Admin.\nLogin as 'dr.morgan@demo.example.com' (Instructor123!).\n\nNotice the 'Needs Rework' badge.\nEdit CLO #4: Change 'Basket Weaving' -> 'Scientific Method'.\nResubmit.",
-        "automated": {
-          "action": "sequence",
-          "steps": [
-            {
-              "action": "api_post",
-              "endpoint": "/api/auth/logout",
-              "data": {}
-            },
-            {
-              "action": "api_post",
-              "endpoint": "/api/auth/login",
-              "data": {
-                "email": "dr.morgan@demo.example.com",
-                "password": "Instructor123!"
-              }
-            },
-            {
-              "action": "api_put",
-              "endpoint": "/api/outcomes/{{bad_clo_id}}",
-              "data": {
-                "description": "Demonstrate proficiency in Scientific Method",
-                "status": "submitted"
-              }
-            }
-          ]
-        }
-      },
-      "urls": [],
-      "inputs": {
-        "description": "Scientific Method"
-      },
-      "expected_results": [
-        "CLO status updated to Submitted"
-      ],
-      "post_commands": [],
-      "verification": {
-        "type": "db_check"
-      },
-      "artifacts": {},
-      "pause_for_human": true
-    },
-    {
-      "step_number": 10,
-      "phase": "Act 5: Follow-up (Feb 2026)",
-      "name": "Time Jump: Feb 10, 2026",
-      "purpose": "Return to the new year when Spring 2026 prep and CLO closeout wrap up",
-      "pre_commands": [],
-      "instructions": {
-        "human": "Logout the instructor session.\nLogin as 'demo2025.admin@example.com'.\n\nUse the Date Override feature to jump to: February 10, 2026.\nThis puts us into the term reset where the new offering should be visible and the audit queue readies for final decisions.",
-        "automated": {
-          "action": "sequence",
-          "steps": [
-            {
-              "action": "api_post",
-              "endpoint": "/api/auth/logout",
-              "data": {}
-            },
-            {
-              "action": "api_post",
-              "endpoint": "/api/auth/login",
-              "data": {
-                "email": "demo2025.admin@example.com",
-                "password": "Demo2025!"
-              }
-            },
-            {
-              "action": "api_post",
-              "endpoint": "/api/profile/system-date",
-              "data": {
-                "system_date": "2026-02-10T09:00:00"
-              }
-            }
-          ]
-        }
-      },
-      "urls": [],
-      "inputs": {
-        "date": "2026-02-10"
-      },
-      "expected_results": [
-        "Date Banner: Feb 10, 2026",
-        "Spring 2026 offering is now visible in the dashboard summaries",
-        "Audit queue still shows the outstanding Needs Rework/NCI items from December"
-      ],
-      "post_commands": [],
-      "verification": {
-        "type": "ui_check"
-      },
-      "artifacts": {
-        "screenshots": [
-          "05_act5_date_jump.png"
-        ]
-      },
-      "pause_for_human": true
-    },
-    {
-      "step_number": 11,
-      "phase": "Act 5: Follow-up (Feb 2026)",
-      "name": "Final Approvals & Follow-up",
-      "purpose": "Admin ties up the December audit thread, sends a follow-up invitation, and confirms Spring 2026 is ready",
-      "pre_commands": [
-        {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM course_outcomes WHERE clo_number='5' AND description LIKE '%unicorns%' LIMIT 1\"",
-          "purpose": "Find the seeded 'NCI' CLO (Unicorns)",
-          "capture_output_as": "nci_clo_id"
-        }
-      ],
-      "instructions": {
-        "human": "Logout Dr. Morgan.\nLogin as 'demo2025.admin@example.com'.\n\nNavigate to 'Course Sections' and verify the Spring 2026 offering now shows (feel free to reopen that section's row).\nClick the green 'Invite' button on BIOL-101 Section 001 to reopen the unified invite modal and send Dr. New Guy a follow-up message.\nThen go to the Audit page.\n1. Verify CLO #4 is fixed. Click 'Approve'.\n2. Locate ZOOL-101 CLO #5. Click 'Mark NCI' (Never Coming In). Comment: 'Faculty unreachable'.\n\nAudit queue should be empty and Spring 2026 prep is complete.",
-        "automated": {
-          "action": "sequence",
-          "steps": [
-            {
-              "action": "api_post",
-              "endpoint": "/api/auth/logout",
-              "data": {}
-            },
-            {
-              "action": "api_post",
-              "endpoint": "/api/auth/login",
-              "data": {
-                "email": "demo2025.admin@example.com",
-                "password": "Demo2025!"
-              }
-            },
-            {
-              "action": "api_post",
-              "endpoint": "/api/management/audit/{{bad_clo_id}}/approve",
-              "data": {},
-              "description": "Approve fixed CLO #4"
-            },
-            {
-              "action": "api_post",
-              "endpoint": "/api/management/audit/{{nci_clo_id}}/nci",
-              "data": {
-                "admin_comment": "Faculty unreachable."
-              },
-              "description": "Mark CLO #5 as NCI"
-            }
-          ]
-        }
-      },
-      "urls": [],
-      "inputs": {},
-      "expected_results": [
-        "Items removed from queue",
-        "Spring 2026 checklist looks ready and the follow-up email was sent",
-        "Fall 2025 closeout and straggler NCI/approval decisions are reflected in the audit summary"
-      ],
-      "post_commands": [],
-      "verification": {
-        "type": "ui_check"
-      },
-      "artifacts": {
-        "screenshots": [
-          "04_final_dashboard.png"
-        ]
-      },
       "pause_for_human": true
     },
     {
       "step_number": 12,
-      "phase": "Completion",
-      "name": "Demo Complete",
-      "purpose": "Wrap up the multi-beat story that traveled from late Dec 2025 through Feb 2026",
+      "phase": "Section 4: Back to Institutional Admin",
+      "name": "Create Course Offering for Spring 2026",
+      "purpose": "Set up a course offering for the new term",
       "pre_commands": [],
       "instructions": {
-        "human": "Demo successfully completed.\nShown: Planning (SP26), Onboarding (Invite/Register), the December audit loop, plus the February follow-up finishing Spring 2026 prep.",
+        "human": "Navigate to 'Course Offerings' or 'Manage Offerings' from dashboard.\n\nClick 'Create New Offering'.\n\nSelect:\n- **Course:** BIOL-101 (Introduction to Biology)\n- **Term:** Spring 2026\n- **Program:** Biological Sciences\n\nIn the Sections area, add:\n- **Section 001:** Leave defaults\n\nClick 'Create Offering'.\n\n**Result:** The offering and section are created. The section is now ready for instructor assignment.",
         "automated": {
           "action": "none"
         }
       },
       "urls": [],
-      "inputs": {},
-      "expected_results": [],
-      "post_commands": [],
-      "verification": {
-        "type": "none"
+      "inputs": {
+        "course": "BIOL-101",
+        "term": "Spring 2026",
+        "program": "Biological Sciences"
       },
+      "expected_results": [
+        "Course offering created for BIOL-101 in Spring 2026",
+        "Section 001 automatically created",
+        "Ready for instructor assignment"
+      ],
+      "post_commands": [],
+      "artifacts": {},
+      "pause_for_human": true
+    },
+    {
+      "step_number": 13,
+      "phase": "Section 4: Back to Institutional Admin",
+      "name": "Assign Instructor to Spring 2026 Section (Side-by-Side View)",
+      "purpose": "Demonstrate instructor assignment flow with capability to view instructor profile",
+      "pre_commands": [],
+      "instructions": {
+        "human": "From the Course Offerings page, find BIOL-101 Spring 2026, Section 001.\n\nClick the 'Assign Instructor' button.\n\n**Side-by-Side Demo:**\n\nIn the assignment modal:\n- Left side shows section details\n- Right side shows instructor selector\n\nSelect 'Dr. Raj Patel' from the dropdown.\n\n(Optional) Click 'View Profile' to see instructor details in a split view:\n- Courses taught\n- Outcome submission history\n- Contact information\n\nClick 'Assign Instructor'.\n\n**Result:** Dr. Patel is assigned to Section 001. He will receive an email notification about the assignment and gains access to the assessment form.",
+        "automated": {
+          "action": "none"
+        }
+      },
+      "urls": [],
+      "inputs": {
+        "instructor": "Dr. Raj Patel",
+        "section": "BIOL-101 Section 001"
+      },
+      "expected_results": [
+        "Instructor assigned to section",
+        "Email notification sent to Dr. Patel",
+        "Assessment form becomes accessible to instructor"
+      ],
+      "post_commands": [],
+      "artifacts": {},
+      "pause_for_human": true
+    },
+    {
+      "step_number": 14,
+      "phase": "Section 5: Final Items & Known Issues",
+      "name": "Profile Management Features",
+      "purpose": "Tour the Profile/Account Settings page",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Click your profile dropdown in the header → 'Account Settings'.\n\n**Profile Page Features:**\n\n1. **Personal Information:** Update name, display name\n2. **Email Address:** (Currently read-only, 'Change Email' coming soon—see GitHub Issue #44)\n3. **Password Change:** Update password with strength validation\n4. **System Date Override** (Admin only):\n   - Override system date for testing/demos\n   - Currently set to Dec 23, 2025\n   - Click 'Reset to Live' to return to real-time\n5. **Account Information:** Shows role, institution, member since date\n\n**Known Limitation:** Email changes require admin contact for now (Issue #44).",
+        "automated": {
+          "action": "none"
+        }
+      },
+      "urls": [
+        {
+          "label": "Profile Settings",
+          "url": "http://localhost:3001/profile"
+        },
+        {
+          "label": "Change Email Issue #44",
+          "url": "https://github.com/ScienceIsNeato/course_record_updater/issues/44"
+        }
+      ],
+      "inputs": {},
+      "expected_results": [
+        "Profile page loads with all sections",
+        "Date override controls visible for admin",
+        "Password change form functional"
+      ],
+      "post_commands": [],
+      "artifacts": {},
+      "pause_for_human": true
+    },
+    {
+      "step_number": 15,
+      "phase": "Section 5: Final Items & Known Issues",
+      "name": "Import/Export Features",
+      "purpose": "Highlight bulk data management capabilities",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Return to the dashboard.\n\n**Import Features:**\n- Navigate to 'Courses' → 'Import from Excel'\n- Supports bulk upload of: Courses, Learning Outcomes, Program Outcomes, Sections\n- Template download available\n- Validation errors shown inline\n\n**Export Features:**\n- From any management page (Courses, Outcomes, Faculty), click 'Export to CSV'\n- Audit page has 'Export Current View' to export filtered results\n- Useful for reporting and data backup\n\n**Future Work:**\n- Issue #45: Implement duplicate string checker to prevent test brittleness\n- Enhanced Excel templates with more validation\n- Batch instructor assignment via CSV\n\n**Demo Complete!**\n\nYou've seen:\n✓ Platform navigation and dashboard design\n✓ Complete outcome audit workflow\n✓ Email-driven instructor collaboration\n✓ Term/offering creation and instructor assignment\n✓ Profile management and import/export features",
+        "automated": {
+          "action": "none"
+        }
+      },
+      "urls": [
+        {
+          "label": "Duplicate String Checker Issue #45",
+          "url": "https://github.com/ScienceIsNeato/course_record_updater/issues/45"
+        }
+      ],
+      "inputs": {},
+      "expected_results": [
+        "Import/export features accessible from relevant pages",
+        "CSV exports include current filters",
+        "Templates available for bulk uploads"
+      ],
+      "post_commands": [],
       "artifacts": {},
       "pause_for_human": false
     }

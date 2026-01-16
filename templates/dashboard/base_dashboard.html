@@ -164,11 +164,12 @@
         {% block page_header %}
         <div class="row mb-4">
             <div class="col">
-                <h1 class="h2">
+                <h1 class="h2 mb-1">
                     {% block page_title %}Dashboard{% endblock %}
-                    <small class="text-muted">{% block page_subtitle %}Welcome, {{ user.first_name }}!{% endblock
-                        %}</small>
                 </h1>
+                <p class="text-muted mb-0">
+                    {% block page_subtitle %}Welcome, {{ user.first_name }}!{% endblock %}
+                </p>
             </div>
         </div>
         {% endblock %}

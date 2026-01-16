@@ -104,17 +104,17 @@ function calculateSuccessRate(clo) {
 }
 
 /**
- * Export current CLO list to CSV
+ * Export current Outcome list to CSV
  */
 function exportCurrentViewToCsv(cloList) {
   if (!Array.isArray(cloList) || cloList.length === 0) {
-    alert("No CLO records available to export for the selected filters.");
+    alert("No Outcome records available to export for the selected filters.");
     return false;
   }
 
   const headers = [
     "Course",
-    "CLO Number",
+    "Outcome Number",
     "Status",
     "Instructor",
     "Submitted At",
@@ -150,7 +150,7 @@ function exportCurrentViewToCsv(cloList) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `clo_audit_${new Date().toISOString().slice(0, 10)}.csv`;
+  link.download = `outcome_audit_${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -167,7 +167,7 @@ async function approveCLO() {
   const outcomeId =
     globalThis.currentCLO.id || globalThis.currentCLO.outcome_id;
   if (!outcomeId) {
-    alert("Error: CLO ID not found");
+    alert("Error: Outcome ID not found");
     return;
   }
 
@@ -185,7 +185,7 @@ async function approveCLO() {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to approve CLO");
+      throw new Error(error.error || "Failed to approve Outcome");
     }
 
     // Close modal
@@ -200,7 +200,7 @@ async function approveCLO() {
     // Reload list
     await globalThis.loadCLOs();
   } catch (error) {
-    alert("Failed to approve CLO: " + error.message);
+    alert("Failed to approve Outcome: " + error.message);
   }
 }
 
@@ -211,7 +211,7 @@ async function markAsNCI() {
   if (!globalThis.currentCLO) return;
 
   const reason = prompt(
-    `Mark this CLO as "Never Coming In"?\n\n${globalThis.currentCLO.course_number} - CLO ${globalThis.currentCLO.clo_number}\n\nOptional: Provide a reason (e.g., "Instructor left institution", "Non-responsive instructor"):`,
+    `Mark this Outcome as "Never Coming In"?\n\n${globalThis.currentCLO.course_number} - Outcome ${globalThis.currentCLO.clo_number}\n\nOptional: Provide a reason (e.g., "Instructor left institution", "Non-responsive instructor"):`,
   );
 
   // null means cancelled, empty string is allowed
@@ -239,7 +239,7 @@ async function markAsNCI() {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to mark CLO as NCI");
+      throw new Error(error.error || "Failed to mark Outcome as NCI");
     }
 
     // Close modal
@@ -248,13 +248,13 @@ async function markAsNCI() {
     modal.hide();
 
     // Show success
-    alert("CLO marked as Never Coming In (NCI)");
+    alert("Outcome marked as Never Coming In (NCI)");
 
     // Reload list
     await globalThis.loadCLOs();
     await globalThis.updateStats();
   } catch (error) {
-    alert("Failed to mark CLO as NCI: " + error.message);
+    alert("Failed to mark Outcome as NCI: " + error.message);
   }
 }
 
@@ -297,7 +297,7 @@ function renderCLODetails(clo) {
   const cloCol = document.createElement("div");
   cloCol.className = "col-md-6";
   const cloStrong = document.createElement("strong");
-  cloStrong.textContent = "CLO Number:";
+  cloStrong.textContent = "Outcome Number:";
   cloCol.appendChild(cloStrong);
   cloCol.appendChild(document.createTextNode(` ${clo.clo_number || "N/A"}`));
   courseRow.appendChild(cloCol);
@@ -446,6 +446,32 @@ function renderCLODetails(clo) {
     feedbackP.textContent = clo.feedback_comments;
     feedbackRow.appendChild(feedbackP);
     container.appendChild(feedbackRow);
+  }
+
+  // History (full list in modal)
+  if (clo.history && clo.history.length > 0) {
+    const historyRow = document.createElement("div");
+    historyRow.className = "mb-3";
+    const historyStrong = document.createElement("strong");
+    historyStrong.textContent = "History:";
+    historyRow.appendChild(historyStrong);
+    const historyList = document.createElement("ul");
+    historyList.className = "list-unstyled text-muted small mt-2";
+    clo.history.forEach((entry) => {
+      const li = document.createElement("li");
+      li.className = "mb-1";
+      const icon = document.createElement("i");
+      icon.className = "fas fa-clock me-2";
+      li.appendChild(icon);
+      li.appendChild(
+        document.createTextNode(
+          `${entry.event} - ${formatDate(entry.occurred_at)}`,
+        ),
+      );
+      historyList.appendChild(li);
+    });
+    historyRow.appendChild(historyList);
+    container.appendChild(historyRow);
   }
 
   // Reviewer Info
@@ -1280,7 +1306,7 @@ document.addEventListener("DOMContentLoaded", () => {
       "Status",
       "Course",
       "Section",
-      "CLO #",
+      "Outcome #",
       "Description",
       "Instructor",
       "Submitted",
@@ -1301,7 +1327,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const emptyCell = document.createElement("td");
       emptyCell.colSpan = 8;
       emptyCell.className = "text-center text-muted py-4";
-      emptyCell.textContent = "No CLOs found for the selected filter.";
+      emptyCell.textContent = "No Outcomes found for the selected filter.";
       emptyRow.appendChild(emptyCell);
       tbody.appendChild(emptyRow);
       table.appendChild(tbody);
@@ -1423,10 +1449,17 @@ document.addEventListener("DOMContentLoaded", () => {
               tdCloNum.textContent = clo.clo_number || "N/A";
               tr.appendChild(tdCloNum);
 
-              // Description
+              // Description (with 3-line clamp in inner div)
               const tdDesc = document.createElement("td");
-              tdDesc.textContent = truncateText(clo.description, 40);
-              tdDesc.title = clo.description;
+              tdDesc.style.maxWidth = "250px";
+              const descDiv = document.createElement("div");
+              descDiv.textContent = clo.description || "";
+              descDiv.title = clo.description;
+              descDiv.style.display = "-webkit-box";
+              descDiv.style.webkitLineClamp = "3";
+              descDiv.style.webkitBoxOrient = "vertical";
+              descDiv.style.overflow = "hidden";
+              tdDesc.appendChild(descDiv);
               tr.appendChild(tdDesc);
 
               // Instructor
@@ -1450,7 +1483,15 @@ document.addEventListener("DOMContentLoaded", () => {
               btnGroup.className = "btn-group btn-group-sm";
 
               const actionBtns = [];
-              if (clo.status === "awaiting_approval") {
+
+              // Approve Button - Available for Awaiting Approval, In Progress, and Needs Rework
+              if (
+                [
+                  "awaiting_approval",
+                  "in_progress",
+                  "approval_pending",
+                ].includes(clo.status)
+              ) {
                 const approveBtn = document.createElement("button");
                 approveBtn.type = "button";
                 approveBtn.className = "btn btn-success text-white";
@@ -1461,7 +1502,10 @@ document.addEventListener("DOMContentLoaded", () => {
                   approveOutcome(clo.id || clo.outcome_id);
                 };
                 actionBtns.push(approveBtn);
+              }
 
+              // Rework Button - Only for Awaiting Approval
+              if (clo.status === "awaiting_approval") {
                 const reworkBtn = document.createElement("button");
                 reworkBtn.type = "button";
                 reworkBtn.className = "btn btn-warning text-dark";
@@ -1475,7 +1519,10 @@ document.addEventListener("DOMContentLoaded", () => {
                   globalThis.showCLODetails(outcomeId);
                 };
                 actionBtns.push(reworkBtn);
-              } else if (clo.status === "unassigned") {
+              }
+
+              // Assign Button
+              if (clo.status === "unassigned") {
                 const btn = document.createElement("button");
                 btn.type = "button";
                 btn.className = "btn btn-primary text-white";
@@ -1486,7 +1533,10 @@ document.addEventListener("DOMContentLoaded", () => {
                   assignOutcome(clo.id || clo.outcome_id);
                 };
                 actionBtns.push(btn);
-              } else if (
+              }
+
+              // Reminder Button
+              if (
                 ["in_progress", "approval_pending", "assigned"].includes(
                   clo.status,
                 )
@@ -1594,6 +1644,7 @@ document.addEventListener("DOMContentLoaded", () => {
       cloDetailContainer.replaceChildren(renderCLODetails(clo));
 
       // Show/hide action buttons based on status
+      // Only show approve/rework for outcomes that backend can process
       const canApprove = ["awaiting_approval", "approval_pending"].includes(
         clo.status,
       );
@@ -1649,7 +1700,7 @@ document.addEventListener("DOMContentLoaded", () => {
         globalThis.pendingReworkOutcomeId = null;
       }
     } catch (error) {
-      alert("Failed to load CLO details: " + error.message);
+      alert("Failed to load Outcome details: " + error.message);
     }
   };
 
@@ -1665,7 +1716,7 @@ document.addEventListener("DOMContentLoaded", () => {
     reworkAlert.classList.add("d-none");
     const descriptionEl = document.getElementById("reworkCloDescription");
     if (descriptionEl) {
-      descriptionEl.textContent = `${globalThis.currentCLO.course_number} - CLO ${globalThis.currentCLO.clo_number}: ${globalThis.currentCLO.description}`;
+      descriptionEl.textContent = `${globalThis.currentCLO.course_number} - Outcome ${globalThis.currentCLO.clo_number}: ${globalThis.currentCLO.description}`;
     }
 
     enterReworkMode();
@@ -1712,7 +1763,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const outcomeId = globalThis.currentCLO.id;
     if (!outcomeId) {
-      showReworkAlert("Error: CLO ID not found.", "danger");
+      showReworkAlert("Error: Outcome ID not found.", "danger");
       return;
     }
 

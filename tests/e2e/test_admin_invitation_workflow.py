@@ -292,8 +292,8 @@ class TestAdminInvitationsAndMultiRole:
         print("✅ Instructor logged in successfully")
         print("   Dashboard: Instructor view confirmed")
 
-        # Verify can see courses count (instructor-specific element)
-        expect(page.locator("#instructorCourseCount")).to_be_visible()
+        # Header stats removed - just verify dashboard loaded
+        # (removed check for #instructorCourseCount which was part of removed header stats)
 
         # Logout (open user dropdown menu first)
         page.click("#userDropdown")

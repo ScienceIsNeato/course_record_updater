@@ -763,24 +763,31 @@ class TestOutcomesCRUD:
         data = response.get_json()
         assert "description is required" in data["error"]
 
+    @patch("src.api_routes.get_course_by_id")
     @patch("src.database.database_service.get_section_outcomes_by_criteria")
     @patch("src.database.database_service.get_sections_by_course")
     @patch("src.api_routes.get_current_user")
     def test_list_course_outcomes_instructor_view(
-        self, mock_get_user, mock_get_sections, mock_get_outcomes, client
+        self,
+        mock_get_user,
+        mock_get_sections,
+        mock_get_outcomes,
+        mock_get_course,
+        client,
     ):
         """Test GET /api/courses/<id>/outcomes - returns instructor sections outcomes."""
         create_site_admin_session(client)
         mock_get_user.return_value = {"user_id": "user-123", "institution_id": 1}
+        mock_get_course.return_value = {
+            "course_id": "course-123",
+            "course_number": "CS101",
+            "course_title": "Intro to Programming",
+        }
 
         # Mock sections where user is instructor
         mock_get_sections.return_value = [
-            {"section_id": "section-1", "instructor_id": "user-123", "id": "section-1"},
-            {
-                "section_id": "section-2",
-                "instructor_id": "other-user",
-                "id": "section-2",
-            },
+            {"section_id": "section-1", "instructor_id": "user-123"},
+            {"section_id": "section-2", "instructor_id": "other-user"},
         ]
 
         # Mock outcomes
@@ -794,6 +801,8 @@ class TestOutcomesCRUD:
         assert response.status_code == 200
         data = response.get_json()
         assert data["success"] is True
+        assert data["course_number"] == "CS101"
+        assert data["course_title"] == "Intro to Programming"
         # Should filter to only include outcome-1 (belonging to section-1)
         assert len(data["outcomes"]) == 1
         assert data["outcomes"][0]["id"] == "outcome-1"

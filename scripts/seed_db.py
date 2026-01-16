@@ -830,7 +830,7 @@ class BaselineSeeder(ABC):
             "approved": (CLOStatus.APPROVED, CLOApprovalStatus.APPROVED),
             "completed": (CLOStatus.COMPLETED, None),
             "needs_rework": (
-                CLOStatus.AWAITING_APPROVAL,
+                "approval_pending",  # UI expects this for "Needs Rework" badge
                 CLOApprovalStatus.NEEDS_REWORK,
             ),
             "never_coming_in": (
@@ -959,14 +959,53 @@ class BaselineTestSeeder(BaselineSeeder):
         project_root = os.path.dirname(script_dir)
         return os.path.join(project_root, self.DEFAULT_MANIFEST_PATH)
 
+    def _build_program_map(
+        self, manifest_data: Dict[str, Any], prog_ids: List[str]
+    ) -> Dict[str, str]:
+        """Build program code -> ID map for code-based lookups."""
+        program_map: Dict[str, str] = {}
+        for i, prog_data in enumerate(manifest_data["programs"]):
+            if i < len(prog_ids):
+                code = prog_data.get("code", "")
+                if code:
+                    program_map[code] = prog_ids[i]
+        return program_map
+
+    def _extract_instructor_ids(
+        self, manifest_data: Dict[str, Any], user_ids: List[Optional[str]]
+    ) -> List[str]:
+        """Extract instructor IDs from created users."""
+        instructor_ids: List[str] = []
+        for i, user_data in enumerate(manifest_data["users"]):
+            if user_data.get("role") != "instructor":
+                continue
+            if i >= len(user_ids) or user_ids[i] is None:
+                continue
+            instructor_ids.append(user_ids[i])  # type: ignore[arg-type]
+        return instructor_ids
+
+    def _prepare_offerings_data(
+        self, offerings_data: List[Dict[str, Any]], term_ids: List[str]
+    ) -> str:
+        """Prepare offerings data with course codes and term IDs. Returns default term ID."""
+        for offering in offerings_data:
+            course_idx = offering.get("course_idx", 0)
+            offering["course_code"] = str(course_idx)
+            term_idx = offering.get("term_idx", 0)
+            if term_idx < len(term_ids):
+                offering["_term_id"] = term_ids[term_idx]
+        return term_ids[1] if len(term_ids) > 1 else term_ids[0]
+
     def seed_baseline(self, manifest_data: Optional[Dict[str, Any]] = None) -> bool:
         """Seed baseline data from manifest - REQUIRED"""
         self.log("🌱 Seeding baseline E2E infrastructure...")
 
         # Refresh database service to ensure it uses the correct database
-        from src.database.database_factory import refresh_database_service
+        # NOTE: Must use database_service.refresh_connection() NOT database_factory.refresh_database_service()
+        # because the latter only updates the factory cache, not the database_service.db alias
+        from src.database import database_service
 
-        refresh_database_service()
+        database_service.refresh_connection()
 
         # Load manifest - REQUIRED
         if manifest_data is None:
@@ -1001,14 +1040,22 @@ class BaselineTestSeeder(BaselineSeeder):
             inst_ids, manifest_data["programs"]
         )
 
+        # Build program_map: code -> ID (for manifests using program_code)
+        program_map = self._build_program_map(manifest_data, prog_ids)
+
         # Create terms
         self.log("📅 Creating academic terms...")
         term_ids = self.create_terms_from_manifest(inst_ids, manifest_data["terms"])
 
-        # Create courses
+        # Create courses - pass program_map for code-based lookups, or prog_ids for idx-based
         self.log("📖 Creating sample courses...")
+        # Use program_map if any course uses program_code, else fall back to list
+        uses_program_code = any(
+            "program_code" in c for c in manifest_data.get("courses", [])
+        )
+        program_ref = program_map if uses_program_code and program_map else prog_ids
         course_ids = self.create_courses_from_manifest(
-            inst_ids, manifest_data["courses"], prog_ids
+            inst_ids, manifest_data["courses"], program_ref
         )
 
         # Build course_map by index for offerings
@@ -1019,37 +1066,24 @@ class BaselineTestSeeder(BaselineSeeder):
         from tests.test_credentials import INSTITUTION_ADMIN_PASSWORD
 
         default_hash = hash_password(INSTITUTION_ADMIN_PASSWORD)
+        # Use program_map if any user uses program_code, else fall back to list
+        uses_program_code_users = any(
+            "program_code" in u for u in manifest_data.get("users", [])
+        )
+        user_program_ref = (
+            program_map if uses_program_code_users and program_map else prog_ids
+        )
         user_ids = self.create_users_from_manifest(
-            inst_ids, manifest_data["users"], prog_ids, default_hash
+            inst_ids, manifest_data["users"], user_program_ref, default_hash
         )
 
         # Filter instructor IDs for section assignment
-        instructor_ids: List[str] = []
-        for i, user_data in enumerate(manifest_data["users"]):
-            if (
-                user_data.get("role") == "instructor"
-                and i < len(user_ids)
-                and user_ids[i] is not None
-            ):
-                user_id = user_ids[i]
-                if user_id is not None:  # Type narrowing for mypy
-                    instructor_ids.append(user_id)
+        instructor_ids = self._extract_instructor_ids(manifest_data, user_ids)
 
         # Create offerings and sections
         self.log("📝 Creating course offerings and sections...")
-        # Convert index-based offerings to code-based format for base class method
         offerings_data = manifest_data["offerings"]
-        for offering in offerings_data:
-            # Add course_code from course_idx
-            course_idx = offering.get("course_idx", 0)
-            offering["course_code"] = str(course_idx)
-            # Add term handling
-            term_idx = offering.get("term_idx", 0)
-            if term_idx < len(term_ids):
-                offering["_term_id"] = term_ids[term_idx]
-
-        # Use first term as default
-        default_term_id = term_ids[1] if len(term_ids) > 1 else term_ids[0]
+        default_term_id = self._prepare_offerings_data(offerings_data, term_ids)
 
         result = self.create_offerings_from_manifest(
             institution_id=inst_ids[0],
@@ -1239,9 +1273,171 @@ class DemoSeeder(BaselineSeeder):
             f"   ✅ Created {len(result['offering_ids'])} offerings and {result['section_count']} sections"
         )
 
+        # 8. Apply section-specific CLO overrides (post-seeding)
+        if "section_outcome_overrides" in manifest:
+            self.log("🔧 Applying section-specific CLO overrides...")
+            override_count = self.apply_section_outcome_overrides(
+                manifest["section_outcome_overrides"], inst_ids[0]
+            )
+            self.log(f"   ✅ Applied {override_count} section outcome overrides")
+
         self.log("✅ Demo seeding completed!")
         self.print_summary()
         return True
+
+    def apply_section_outcome_overrides(
+        self, overrides: List[Dict[str, Any]], institution_id: str
+    ) -> int:
+        """
+        Apply section-specific CLO status overrides after seeding.
+
+        This allows individual section outcomes to have different statuses
+        than the course-level template (e.g., one section submitted, another forgot).
+
+        Args:
+            overrides: List of override dicts with course_code, section_number,
+                      clo_number, and the updates to apply
+            institution_id: Institution ID to look up course/section
+
+        Returns:
+            Number of overrides successfully applied
+        """
+        from src.utils.constants import CLOApprovalStatus, CLOStatus
+
+        applied_count = 0
+        status_lookup = self._status_lookup()
+
+        for override in overrides:
+            course_code = override.get("course_code")
+            section_number = override.get("section_number")
+            clo_number = str(override.get("clo_number"))
+            new_status = override.get("status", "assigned")
+
+            # Skip if required fields are missing
+            if not course_code or not section_number:
+                continue
+
+            # Look up the section outcome to update
+            section_outcome = self._find_section_outcome(
+                course_code, section_number, clo_number, institution_id
+            )
+            if not section_outcome:
+                self.log(
+                    f"   ⚠️ Section outcome not found: {course_code} Sec {section_number} CLO {clo_number}"
+                )
+                continue
+
+            # Build updates
+            status_enum, approval_status = status_lookup.get(
+                new_status, (CLOStatus.ASSIGNED, None)
+            )
+            updates: Dict[str, Any] = {
+                "status": status_enum,
+            }
+            if approval_status:
+                updates["approval_status"] = approval_status
+
+            # Add optional fields
+            if "feedback_comments" in override:
+                updates["feedback_comments"] = override["feedback_comments"]
+            if "students_took" in override:
+                updates["students_took"] = override["students_took"]
+            if "students_passed" in override:
+                updates["students_passed"] = override["students_passed"]
+
+            # Apply the update (this creates history for the current status too,
+            # but we'll add explicit historical entries below)
+            if database_service.db.update_section_outcome(
+                section_outcome["id"], updates
+            ):
+                applied_count += 1
+                self.log(
+                    f"   ✓ Updated {course_code} Sec {section_number} CLO {clo_number} → {new_status}"
+                )
+
+                # Add explicit history entries from manifest
+                if "history" in override:
+                    self._create_history_entries(
+                        section_outcome["id"], override["history"]
+                    )
+
+        return applied_count
+
+    def _create_history_entries(
+        self, section_outcome_id: str, history_data: List[Dict[str, Any]]
+    ) -> None:
+        """Create OutcomeHistory entries with relative dates from manifest."""
+        from datetime import timedelta
+
+        from src.database.database_sqlite import SQLiteDatabase
+        from src.models.models_sql import OutcomeHistory
+
+        now = datetime.now(timezone.utc)
+
+        # Cast to access internal session_scope (demo seeder only)
+        db: SQLiteDatabase = database_service.db  # type: ignore[assignment]
+        with db.sqlite.session_scope() as session:
+            for entry in history_data:
+                event = entry.get("event")
+                relative_days = entry.get("relative_days", 0)
+                occurred_at = now + timedelta(days=relative_days)
+
+                history_entry = OutcomeHistory(
+                    section_outcome_id=section_outcome_id,
+                    event=event,
+                    occurred_at=occurred_at,
+                )
+                session.add(history_entry)
+
+    def _find_section_outcome(
+        self,
+        course_code: str,
+        section_number: str,
+        clo_number: str,
+        institution_id: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Find a specific section outcome by course/section/CLO number."""
+        # Step 1: Find the course by course_code
+        course = database_service.db.get_course_by_number(course_code, institution_id)
+        if not course:
+            return None
+        course_id = course.get("id") or course.get("course_id")
+        if not course_id:
+            return None
+
+        # Step 2: Find the course outcome (template) by clo_number
+        course_outcomes = database_service.db.get_course_outcomes(course_id)
+        outcome_template = None
+        for co in course_outcomes or []:
+            if str(co.get("clo_number")) == clo_number:
+                outcome_template = co
+                break
+        if not outcome_template:
+            return None
+        outcome_id = outcome_template.get("id") or outcome_template.get("outcome_id")
+        if not outcome_id:
+            return None
+
+        # Step 3: Find the section by section_number
+        sections = database_service.db.get_sections_by_course(course_id)
+        target_section = None
+        for sec in sections or []:
+            if sec.get("section_number") == section_number:
+                target_section = sec
+                break
+        if not target_section:
+            return None
+        section_id = target_section.get("id") or target_section.get("section_id")
+        if not section_id:
+            return None
+
+        # Step 4: Find the section outcome by section_id and outcome_id
+        section_outcome = (
+            database_service.db.get_section_outcome_by_course_outcome_and_section(
+                outcome_id, section_id
+            )
+        )
+        return section_outcome
 
     def print_summary(self) -> None:
         """Print demo seeding summary"""
@@ -1321,9 +1517,11 @@ def main() -> None:
     os.environ["DATABASE_URL"] = database_url
 
     # Refresh database service to ensure it uses the correct database
-    from src.database.database_factory import refresh_database_service
+    # NOTE: Must use database_service.refresh_connection() NOT database_factory.refresh_database_service()
+    # because the latter only updates the factory cache, not the database_service.db alias
+    from src.database import database_service
 
-    refresh_database_service()
+    database_service.refresh_connection()
 
     # Log which database we're using
     db_file = database_url.replace("sqlite:///", "")

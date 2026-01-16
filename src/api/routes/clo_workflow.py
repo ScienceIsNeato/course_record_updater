@@ -381,7 +381,7 @@ def mark_clo_as_nci(section_outcome_id: str):
                 jsonify(
                     {
                         "success": True,
-                        "message": "CLO marked as Never Coming In (NCI)",
+                        "message": "Outcome marked as Never Coming In (NCI)",
                     }
                 ),
                 200,

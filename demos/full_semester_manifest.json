@@ -36,7 +36,7 @@
     ],
     "users": [
         {
-            "email": "demo2025.admin@example.com",
+            "email": "quarkswithforks@gmail.com",
             "first_name": "Demo",
             "last_name": "Admin",
             "role": "institution_admin",
@@ -67,11 +67,12 @@
             "program_code": "BIOL"
         },
         {
-            "email": "dr.patel@demo.example.com",
+            "email": "prof.raj.patel@gmail.com",
             "first_name": "Raj",
             "last_name": "Patel",
             "role": "instructor",
-            "program_code": "ZOOL"
+            "program_code": "ZOOL",
+            "password_env_var": "DEMO_PASSWORD"
         }
     ],
     "courses": [
@@ -157,21 +158,31 @@
     },
     "clos": [
         {
+            "_comment": "HIST-101 CLO 1 - Spring 2025, approved (complete from previous term)",
             "course_code": "HIST-101",
             "clo_number": 1,
             "description": "Analyze historical scientific events",
             "assessment_method": "Essay",
             "status": "approved",
-            "submitted_at": "2025-12-10T14:30:00",
+            "submitted_at": "2025-05-10T14:30:00",
             "students_took": 40,
             "students_passed": 38,
             "assessment_tool": "Term Paper"
         },
         {
+            "_comment": "HIST-101 CLO 2 - NCI - Retired adjunct never submitted after repeated reminders",
+            "course_code": "HIST-101",
+            "clo_number": 2,
+            "description": "Evaluate historical scientific claims using primary sources",
+            "assessment_method": "Research Analysis",
+            "status": "never_coming_in"
+        },
+        {
+            "_comment": "BIOL-101 CLOs 1-3 (Sections 001-002 approved by Morgan, Section 003 forgotten by Patel)",
             "course_code": "BIOL-101",
             "clo_number": 1,
             "status": "approved",
-            "submitted_at": "2025-12-23T09:00:00",
+            "submitted_at": "2025-12-12T09:00:00",
             "students_took": 25,
             "students_passed": 23,
             "assessment_tool": "Scientific Method Lab"
@@ -180,7 +191,7 @@
             "course_code": "BIOL-101",
             "clo_number": 2,
             "status": "approved",
-            "submitted_at": "2025-12-23T09:00:00",
+            "submitted_at": "2025-12-12T09:00:00",
             "students_took": 24,
             "students_passed": 21,
             "assessment_tool": "Cell Biology Analysis"
@@ -189,29 +200,13 @@
             "course_code": "BIOL-101",
             "clo_number": 3,
             "status": "approved",
-            "submitted_at": "2025-12-23T09:00:00",
+            "submitted_at": "2025-12-12T09:00:00",
             "students_took": 25,
             "students_passed": 25,
             "assessment_tool": "Ecosystem Project"
         },
         {
-            "course_code": "BIOL-101",
-            "clo_number": 4,
-            "description": "Demonstrate proficiency in underwater basket weaving (COPY/PASTE ERROR)",
-            "assessment_method": "Midterm Exam",
-            "status": "needs_rework",
-            "students_took": 25,
-            "students_passed": 0,
-            "assessment_tool": "incorrectly pasted data"
-        },
-        {
-            "course_code": "BIOL-101",
-            "clo_number": 99,
-            "description": "Bonus unassigned learning outcome for audit testing",
-            "assessment_method": "Project",
-            "status": "unassigned"
-        },
-        {
+            "_comment": "BIOL-201 CLOs 1-3 - All approved (Dr. Morgan, efficient as always)",
             "course_code": "BIOL-201",
             "clo_number": 1,
             "status": "approved",
@@ -224,7 +219,7 @@
             "course_code": "BIOL-201",
             "clo_number": 2,
             "status": "approved",
-            "submitted_at": "2025-12-13T11:00:00",
+            "submitted_at": "2025-12-12T11:00:00",
             "students_took": 21,
             "students_passed": 19,
             "assessment_tool": "Metabolism Quiz"
@@ -233,16 +228,17 @@
             "course_code": "BIOL-201",
             "clo_number": 3,
             "status": "approved",
-            "submitted_at": "2025-12-14T09:00:00",
+            "submitted_at": "2025-12-12T09:00:00",
             "students_took": 20,
             "students_passed": 18,
             "assessment_tool": "Final Project"
         },
         {
+            "_comment": "BIOL-301 CLOs 1-3 - All awaiting approval (Prof. Chen just submitted Dec 18, not yet reviewed)",
             "course_code": "BIOL-301",
             "clo_number": 1,
-            "status": "approved",
-            "submitted_at": "2025-12-15T13:00:00",
+            "status": "awaiting_approval",
+            "submitted_at": "2025-12-18T13:00:00",
             "students_took": 15,
             "students_passed": 14,
             "assessment_tool": "Genetic Map"
@@ -250,8 +246,8 @@
         {
             "course_code": "BIOL-301",
             "clo_number": 2,
-            "status": "approved",
-            "submitted_at": "2025-12-15T13:00:00",
+            "status": "awaiting_approval",
+            "submitted_at": "2025-12-18T13:00:00",
             "students_took": 15,
             "students_passed": 12,
             "assessment_tool": "DNA Analysis"
@@ -259,13 +255,14 @@
         {
             "course_code": "BIOL-301",
             "clo_number": 3,
-            "status": "approved",
-            "submitted_at": "2025-12-15T13:00:00",
+            "status": "awaiting_approval",
+            "submitted_at": "2025-12-18T13:00:00",
             "students_took": 15,
             "students_passed": 15,
             "assessment_tool": "Research Grant"
         },
         {
+            "_comment": "ZOOL-101 CLOs 1-3 - All approved (Dr. Patel completed this one early Dec 8)",
             "course_code": "ZOOL-101",
             "clo_number": 1,
             "status": "approved",
@@ -293,13 +290,7 @@
             "assessment_tool": "Species Exam"
         },
         {
-            "course_code": "ZOOL-101",
-            "clo_number": 5,
-            "description": "Analyze long-term migration patterns of unicorns",
-            "assessment_method": "Dream Journal",
-            "status": "never_coming_in"
-        },
-        {
+            "_comment": "ZOOL-205 CLOs 1-3 - All approved (Dr. Morgan completed Dec 18)",
             "course_code": "ZOOL-205",
             "clo_number": 1,
             "status": "approved",
@@ -321,77 +312,32 @@
             "course_code": "ZOOL-205",
             "clo_number": 3,
             "status": "approved",
-            "submitted_at": "2025-12-20T10:00:00",
+            "submitted_at": "2025-12-18T10:00:00",
             "students_took": 18,
             "students_passed": 15,
             "assessment_tool": "Anatomy Final"
         },
         {
-            "course_code": "BIOL-201",
-            "clo_number": 4,
-            "description": "Demonstrate application of lab safety procedures",
-            "assessment_method": "Lab Practicum",
-            "status": "awaiting_approval",
-            "students_took": 20,
-            "students_passed": 18,
-            "assessment_tool": "Lab Safety Debrief"
-        },
-        {
-            "course_code": "BIOL-301",
-            "clo_number": 4,
-            "description": "Design a genetics experiment",
-            "assessment_method": "Project Proposal",
-            "status": "awaiting_approval",
-            "students_took": 16,
-            "students_passed": 15,
-            "assessment_tool": "Proposal Draft"
-        },
-        {
-            "course_code": "ZOOL-205",
-            "clo_number": 4,
-            "description": "Evaluate animal anatomy through dissection",
-            "assessment_method": "Lab Observation",
-            "status": "awaiting_approval",
-            "students_took": 19,
-            "students_passed": 17,
-            "assessment_tool": "Dissection Reflection"
-        },
-        {
-            "course_code": "BIOL-101",
-            "clo_number": 5,
-            "description": "Apply statistical analysis to lab results",
-            "assessment_method": "Data Assignment",
-            "status": "assigned"
-        },
-        {
-            "course_code": "ZOOL-101",
-            "clo_number": 4,
-            "description": "Conduct field experiments with guidance",
-            "assessment_method": "Field Report",
-            "status": "assigned"
-        },
-        {
+            "_comment": "ZOOL-310 CLOs 1-3 - All assigned (Prof. Chen forgot to submit this course entirely)",
             "course_code": "ZOOL-310",
             "clo_number": 1,
-            "status": "approved",
-            "submitted_at": "2025-12-05T09:00:00",
-            "students_took": 12,
-            "students_passed": 12,
-            "assessment_tool": "Behavior Study"
+            "description": "Identify and classify animal species",
+            "assessment_method": "Field Observation",
+            "status": "assigned"
         },
         {
             "course_code": "ZOOL-310",
             "clo_number": 2,
-            "status": "approved",
-            "submitted_at": "2025-12-19T14:00:00",
-            "students_took": 12,
-            "students_passed": 10,
-            "assessment_tool": "Field Data"
+            "description": "Analyze animal behavior patterns",
+            "assessment_method": "Lab Report",
+            "status": "assigned"
         },
         {
             "course_code": "ZOOL-310",
             "clo_number": 3,
-            "status": "unassigned"
+            "description": "Evaluate ecological relationships",
+            "assessment_method": "Final Exam",
+            "status": "assigned"
         }
     ],
     "offerings": [
@@ -420,7 +366,8 @@
                     "section_number": "002",
                     "enrollment": 25,
                     "status": "assigned",
-                    "instructor_idx": 3
+                    "instructor_idx": 2,
+                    "_comment": "Morgan teaches this too - has one CLO in rework for typo"
                 },
                 {
                     "section_number": "003",
@@ -493,6 +440,559 @@
                     "enrollment": 15,
                     "status": "assigned",
                     "instructor_idx": 3
+                }
+            ]
+        }
+    ],
+    "section_outcome_overrides": [
+        {
+            "course_code": "HIST-101",
+            "section_number": "001",
+            "clo_number": 1,
+            "status": "approved",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -180
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -170
+                },
+                {
+                    "event": "Approved",
+                    "relative_days": -168
+                }
+            ]
+        },
+        {
+            "course_code": "HIST-101",
+            "section_number": "001",
+            "clo_number": 2,
+            "status": "never_coming_in",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -180
+                },
+                {
+                    "event": "Reminder Sent",
+                    "relative_days": -150
+                },
+                {
+                    "event": "Reminder Sent",
+                    "relative_days": -120
+                },
+                {
+                    "event": "Marked NCI",
+                    "relative_days": -90
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-101",
+            "section_number": "001",
+            "clo_number": 1,
+            "status": "approved",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -14
+                },
+                {
+                    "event": "Approved",
+                    "relative_days": -10
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-101",
+            "section_number": "001",
+            "clo_number": 2,
+            "status": "approved",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -14
+                },
+                {
+                    "event": "Approved",
+                    "relative_days": -10
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-101",
+            "section_number": "001",
+            "clo_number": 3,
+            "status": "approved",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -14
+                },
+                {
+                    "event": "Approved",
+                    "relative_days": -10
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-101",
+            "section_number": "002",
+            "clo_number": 1,
+            "status": "approved",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -14
+                },
+                {
+                    "event": "Approved",
+                    "relative_days": -10
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-101",
+            "section_number": "002",
+            "clo_number": 2,
+            "status": "needs_rework",
+            "feedback_comments": "It looks like you might have forgot the second digit here - only 2 students are reported as having taken the final",
+            "students_took": 2,
+            "students_passed": 2,
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -14
+                },
+                {
+                    "event": "Rework Requested",
+                    "relative_days": -7
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-101",
+            "section_number": "002",
+            "clo_number": 3,
+            "status": "approved",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -14
+                },
+                {
+                    "event": "Approved",
+                    "relative_days": -10
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-101",
+            "section_number": "003",
+            "clo_number": 1,
+            "status": "assigned",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Reminder Sent",
+                    "relative_days": -14
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-101",
+            "section_number": "003",
+            "clo_number": 2,
+            "status": "assigned",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Reminder Sent",
+                    "relative_days": -14
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-101",
+            "section_number": "003",
+            "clo_number": 3,
+            "status": "assigned",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Reminder Sent",
+                    "relative_days": -14
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-101",
+            "section_number": "004",
+            "clo_number": 1,
+            "status": "awaiting_approval",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -5
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-101",
+            "section_number": "004",
+            "clo_number": 2,
+            "status": "awaiting_approval",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -5
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-101",
+            "section_number": "004",
+            "clo_number": 3,
+            "status": "awaiting_approval",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -5
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-201",
+            "section_number": "001",
+            "clo_number": 1,
+            "status": "approved",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -12
+                },
+                {
+                    "event": "Approved",
+                    "relative_days": -10
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-201",
+            "section_number": "001",
+            "clo_number": 2,
+            "status": "approved",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -12
+                },
+                {
+                    "event": "Approved",
+                    "relative_days": -10
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-201",
+            "section_number": "001",
+            "clo_number": 3,
+            "status": "approved",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -12
+                },
+                {
+                    "event": "Approved",
+                    "relative_days": -10
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-301",
+            "section_number": "001",
+            "clo_number": 1,
+            "status": "awaiting_approval",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -5
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-301",
+            "section_number": "001",
+            "clo_number": 2,
+            "status": "awaiting_approval",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -5
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-301",
+            "section_number": "001",
+            "clo_number": 3,
+            "status": "awaiting_approval",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -5
+                }
+            ]
+        },
+        {
+            "course_code": "ZOOL-101",
+            "section_number": "001",
+            "clo_number": 1,
+            "status": "approved",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -16
+                },
+                {
+                    "event": "Approved",
+                    "relative_days": -14
+                }
+            ]
+        },
+        {
+            "course_code": "ZOOL-101",
+            "section_number": "001",
+            "clo_number": 2,
+            "status": "approved",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -16
+                },
+                {
+                    "event": "Approved",
+                    "relative_days": -14
+                }
+            ]
+        },
+        {
+            "course_code": "ZOOL-101",
+            "section_number": "001",
+            "clo_number": 3,
+            "status": "approved",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -16
+                },
+                {
+                    "event": "Approved",
+                    "relative_days": -14
+                }
+            ]
+        },
+        {
+            "course_code": "ZOOL-205",
+            "section_number": "001",
+            "clo_number": 1,
+            "status": "approved",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -5
+                },
+                {
+                    "event": "Approved",
+                    "relative_days": -3
+                }
+            ]
+        },
+        {
+            "course_code": "ZOOL-205",
+            "section_number": "001",
+            "clo_number": 2,
+            "status": "approved",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -5
+                },
+                {
+                    "event": "Approved",
+                    "relative_days": -3
+                }
+            ]
+        },
+        {
+            "course_code": "ZOOL-205",
+            "section_number": "001",
+            "clo_number": 3,
+            "status": "approved",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -5
+                },
+                {
+                    "event": "Approved",
+                    "relative_days": -3
+                }
+            ]
+        },
+        {
+            "course_code": "ZOOL-310",
+            "section_number": "001",
+            "clo_number": 1,
+            "status": "assigned",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Reminder Sent",
+                    "relative_days": -14
+                },
+                {
+                    "event": "Reminder Sent",
+                    "relative_days": -7
+                }
+            ]
+        },
+        {
+            "course_code": "ZOOL-310",
+            "section_number": "001",
+            "clo_number": 2,
+            "status": "assigned",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Reminder Sent",
+                    "relative_days": -14
+                },
+                {
+                    "event": "Reminder Sent",
+                    "relative_days": -7
+                }
+            ]
+        },
+        {
+            "course_code": "ZOOL-310",
+            "section_number": "001",
+            "clo_number": 3,
+            "status": "assigned",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Reminder Sent",
+                    "relative_days": -14
+                },
+                {
+                    "event": "Reminder Sent",
+                    "relative_days": -7
                 }
             ]
         }

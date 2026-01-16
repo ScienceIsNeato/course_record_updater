@@ -1,5 +1,15 @@
 require('@testing-library/jest-dom');
 
+// Polyfill globalThis for older Node.js versions
+if (typeof globalThis === 'undefined') {
+  global.globalThis = global;
+}
+
+// Ensure globalThis.location exists
+if (!globalThis.location) {
+  globalThis.location = { origin: 'http://localhost:3000' };
+}
+
 const modalInstances = new WeakMap();
 
 class BootstrapModalMock {
@@ -11,6 +21,10 @@ class BootstrapModalMock {
 
   show() {
     this.visible = true;
+    // Dispatch the shown.bs.modal event to match real Bootstrap behavior
+    if (this.element) {
+      this.element.dispatchEvent(new Event('shown.bs.modal'));
+    }
   }
 
   hide() {

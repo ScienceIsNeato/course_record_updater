@@ -15,10 +15,6 @@ describe('ProgramDashboard', () => {
   beforeEach(() => {
     setBody(`
       <div id="programAdminTitle"></div>
-      <div id="programCourseCount"></div>
-      <div id="programFacultyCount"></div>
-      <div id="programStudentCount"></div>
-      <div id="programSectionCount"></div>
       <div id="programCoursesContainer"></div>
       <div id="programFacultyContainer"></div>
       <div id="programCloContainer"></div>
@@ -64,7 +60,6 @@ describe('ProgramDashboard', () => {
   it('renders program metrics and tables', () => {
     ProgramDashboard.render(sampleData);
 
-    expect(document.getElementById('programCourseCount').textContent).toBe('4');
     const result = document.getElementById('programAssessmentContainer').querySelector('table');
     expect(result).not.toBeNull();
   });

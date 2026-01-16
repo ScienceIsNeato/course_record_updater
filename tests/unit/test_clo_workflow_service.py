@@ -209,7 +209,9 @@ class TestRequestRework:
         assert result is True
         update_call = mock_db.update_section_outcome.call_args[0]
         update_data = update_call[1]
-        assert update_data["status"] == CLOStatus.AWAITING_APPROVAL
+        assert (
+            update_data["status"] == "approval_pending"
+        )  # UI expects this for "Needs Rework" badge
         assert update_data["approval_status"] == CLOApprovalStatus.NEEDS_REWORK
         assert update_data["feedback_comments"] == comments
         assert update_data["reviewed_by"] == reviewer_id

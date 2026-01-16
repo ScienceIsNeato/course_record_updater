@@ -841,22 +841,58 @@ class SQLiteDatabase(DatabaseInterface):
     def update_section_outcome(
         self, section_outcome_id: str, outcome_data: Dict[str, Any]
     ) -> bool:
-        """Update section outcome details (status, assessment data, workflow fields)."""
+        """Update section outcome details (status, assessment data, workflow fields).
+
+        If status changes, a history entry is recorded in the same transaction.
+        """
         try:
             with self.sqlite.session_scope() as session:
                 section_outcome = session.get(CourseSectionOutcome, section_outcome_id)
                 if not section_outcome:
                     return False
 
+                # Capture old status before update
+                old_status = section_outcome.status
+                new_status = outcome_data.get("status", old_status)
+
+                # Apply updates
                 for key, value in outcome_data.items():
                     if hasattr(section_outcome, key) and key != "id":
                         setattr(section_outcome, key, value)
 
                 section_outcome.updated_at = datetime.now(timezone.utc)
+
+                # If status changed, record history entry (same transaction)
+                if new_status != old_status:
+                    from src.models.models_sql import OutcomeHistory
+
+                    event_label = self._status_to_event_label(new_status)
+                    history_entry = OutcomeHistory(
+                        section_outcome_id=section_outcome_id,
+                        event=event_label,
+                        occurred_at=datetime.now(timezone.utc),
+                    )
+                    session.add(history_entry)
+                    logger.info(
+                        f"[SQLiteDatabase] Recorded history: {event_label} for {section_outcome_id}"
+                    )
+
                 return True
         except Exception as e:
             logger.error(f"Failed to update section outcome: {e}")
             return False
+
+    def _status_to_event_label(self, status: str) -> str:
+        """Map status codes to human-readable event labels."""
+        labels = {
+            "awaiting_approval": "Submitted",
+            "approval_pending": "Rework Requested",
+            "approved": "Approved",
+            "never_coming_in": "Marked NCI",
+            "assigned": "Assigned",
+            "in_progress": "In Progress",
+        }
+        return labels.get(status, status.replace("_", " ").title())
 
     def get_outcomes_by_status(
         self,
@@ -1963,6 +1999,128 @@ class SQLiteDatabase(DatabaseInterface):
             "session_id": log.session_id,
             "institution_id": log.institution_id,
         }
+
+    # ------------------------------------------------------------------
+    # Instructor Reminder operations
+    # ------------------------------------------------------------------
+    def create_reminder(
+        self,
+        section_id: str,
+        instructor_id: str,
+        sent_by: Optional[str] = None,
+        reminder_type: str = "individual",
+        message_preview: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Record a reminder email sent to an instructor.
+
+        Args:
+            section_id: The section the reminder is about
+            instructor_id: The instructor who received the reminder
+            sent_by: The admin who sent the reminder (user_id)
+            reminder_type: 'individual' or 'bulk'
+            message_preview: First ~100 chars of the message
+
+        Returns:
+            The reminder ID if created, None on failure
+        """
+        from src.models.models_sql import InstructorReminder
+
+        with self.sqlite.session_scope() as session:
+            reminder = InstructorReminder(
+                section_id=section_id,
+                instructor_id=instructor_id,
+                sent_by=sent_by,
+                reminder_type=reminder_type,
+                message_preview=message_preview[:100] if message_preview else None,
+            )
+            session.add(reminder)
+            session.flush()
+            reminder_id = str(reminder.id)
+            logger.info(
+                f"[SQLiteDatabase] Created reminder {reminder_id} for section {section_id}"
+            )
+            return reminder_id
+
+    def get_reminders_by_section(self, section_id: str) -> List[Dict[str, Any]]:
+        """Get all reminders sent for a specific section."""
+        from src.models.models_sql import InstructorReminder
+
+        with self.sqlite.session_scope() as session:
+            reminders = (
+                session.query(InstructorReminder)
+                .filter(InstructorReminder.section_id == section_id)
+                .order_by(InstructorReminder.sent_at.desc())
+                .all()
+            )
+            return [self._reminder_to_dict(r) for r in reminders]
+
+    def get_reminders_by_instructor(self, instructor_id: str) -> List[Dict[str, Any]]:
+        """Get all reminders sent to a specific instructor."""
+        from src.models.models_sql import InstructorReminder
+
+        with self.sqlite.session_scope() as session:
+            reminders = (
+                session.query(InstructorReminder)
+                .filter(InstructorReminder.instructor_id == instructor_id)
+                .order_by(InstructorReminder.sent_at.desc())
+                .all()
+            )
+            return [self._reminder_to_dict(r) for r in reminders]
+
+    def _reminder_to_dict(self, reminder: Any) -> Dict[str, Any]:
+        """Convert InstructorReminder model to dictionary."""
+        return {
+            "id": reminder.id,
+            "section_id": reminder.section_id,
+            "instructor_id": reminder.instructor_id,
+            "sent_at": reminder.sent_at,
+            "sent_by": reminder.sent_by,
+            "reminder_type": reminder.reminder_type,
+            "message_preview": reminder.message_preview,
+            "created_at": reminder.created_at,
+        }
+
+    # ------------------------------------------------------------------
+    # Outcome History operations
+    # ------------------------------------------------------------------
+    def add_outcome_history(self, section_outcome_id: str, event: str) -> bool:
+        """
+        Add a history entry for manual events (reminders, etc).
+
+        Use this for events not triggered by status changes (which are
+        automatically recorded in update_section_outcome).
+        """
+        from src.models.models_sql import OutcomeHistory
+
+        try:
+            with self.sqlite.session_scope() as session:
+                entry = OutcomeHistory(
+                    section_outcome_id=section_outcome_id,
+                    event=event,
+                    occurred_at=datetime.now(timezone.utc),
+                )
+                session.add(entry)
+                logger.info(
+                    f"[SQLiteDatabase] Added history: {event} for {section_outcome_id}"
+                )
+                return True
+        except Exception as e:
+            logger.error(f"Failed to add outcome history: {e}")
+            return False
+
+    def get_outcome_history(self, section_outcome_id: str) -> List[Dict[str, Any]]:
+        """Get history entries for a section outcome, sorted by date DESC."""
+        from src.models.models_sql import OutcomeHistory
+
+        with self.sqlite.session_scope() as session:
+            entries = (
+                session.query(OutcomeHistory)
+                .filter(OutcomeHistory.section_outcome_id == section_outcome_id)
+                .order_by(OutcomeHistory.occurred_at.desc())
+                .all()
+            )
+            return [{"event": e.event, "occurred_at": e.occurred_at} for e in entries]
 
     # ------------------------------------------------------------------
     # Delete operations (for testing/cleanup)

@@ -14,32 +14,13 @@
 <button class="nav-link btn btn-link" type="button" id="dashboard-faculty" onclick="filterDashboard('faculty')"><i
         class="fas fa-users me-1"></i>Faculty</button>
 <button class="nav-link btn btn-link" type="button" id="dashboard-clos" onclick="filterDashboard('clos')"><i
-        class="fas fa-bullseye me-1"></i>CLOs</button>
+        class="fas fa-bullseye me-1"></i>Outcomes</button>
 {% endblock %}
 
 {% block page_title %}📚 Program Administration{% endblock %}
 {% block page_subtitle %}Manage curriculum and assessment outcomes{% endblock %}
 
 {% block content %}
-<div class="header-stats">
-    <span id="programAdminTitle">Program Overview</span>
-    <div class="stat-item" data-stat="courses">
-        [<span class="stat-number" id="programCourseCount">0</span> Courses]
-    </div>
-    <div class="stat-item" data-stat="faculty">
-        [<span class="stat-number" id="programFacultyCount">0</span> Faculty]
-    </div>
-    <div class="stat-item" data-stat="students">
-        [<span class="stat-number" id="programStudentCount">0</span> Students]
-    </div>
-    <div class="stat-item" data-stat="sections">
-        [<span class="stat-number" id="programSectionCount">0</span> Sections]
-    </div>
-    <div class="header-actions ms-auto">
-        <!-- Removed manual refresh - data auto-refreshes after mutations -->
-    </div>
-</div>
-
 <!-- Panel 1: Course Management -->
 <div class="dashboard-panel" id="program-courses-panel">
     <div class="panel-header">
@@ -109,7 +90,8 @@
             <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/faculty'">
                 <i class="fas fa-list"></i> Manage Faculty
             </button>
-            <button class="btn btn-sm btn-outline-primary" id="bulkReminderLauncher" data-bs-toggle="modal" data-bs-target="#bulkReminderModal">
+            <button class="btn btn-sm btn-outline-primary" id="bulkReminderLauncher" data-bs-toggle="modal"
+                data-bs-target="#bulkReminderModal">
                 <i class="fas fa-bell"></i> Send Reminders
             </button>
         </div>
@@ -134,10 +116,10 @@
         </h5>
         <div class="panel-actions">
             <button class="btn btn-sm btn-primary" title="Coming soon" onclick="return false;">
-                <i class="fas fa-plus"></i> Add CLO
+                <i class="fas fa-plus"></i> Add Outcome
             </button>
             <button class="btn btn-sm btn-outline-secondary" title="Coming soon" onclick="return false;">
-                <i class="fas fa-list"></i> Manage CLOs
+                <i class="fas fa-list"></i> Manage Outcomes
             </button>
         </div>
         <button class="panel-toggle">▼</button>
@@ -181,7 +163,7 @@
     <div class="panel-header">
         <h5 class="panel-title">
             <span class="panel-icon">✓</span>
-            CLO Audit & Approval
+            Learning Outcome Audit & Approval
         </h5>
         <div class="panel-actions">
             <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/audit-clo'">

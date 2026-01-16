@@ -359,7 +359,7 @@ function renderOutcomesTable(outcomes, container) {
               <thead class="table-light">
                   <tr>
                       <th style="width: 15%">Course</th>
-                      <th style="width: 10%">CLO #</th>
+                      <th style="width: 10%">Outcome #</th>
                       <th style="width: 40%">Description</th>
                       <th style="width: 20%">Assessment Method</th>
                       <th style="width: 10%">Status</th>
@@ -409,7 +409,7 @@ function renderOutcomesTable(outcomes, container) {
                                   <button class="btn btn-outline-danger" 
                                           onclick='deleteOutcome("${
                                             outcome.outcome_id
-                                          }", "${courseName}", "CLO ${
+                                          }", "${courseName}", "Outcome ${
                                             outcome.clo_number
                                           }")'
                                           title="Delete">

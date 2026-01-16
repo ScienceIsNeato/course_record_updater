@@ -536,7 +536,7 @@ class TestCLOAuditEndpoints:
             json={"reason": "Instructor left institution"},
         )
         assert_json_response(response, 200, True)
-        assert response.json["message"] == "CLO marked as Never Coming In (NCI)"
+        assert response.json["message"] == "Outcome marked as Never Coming In (NCI)"
 
     @patch("src.api.routes.clo_workflow.get_current_user")
     @patch("src.api.routes.clo_workflow.get_section_outcome")

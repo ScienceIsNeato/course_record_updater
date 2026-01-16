@@ -779,6 +779,49 @@ def get_section_outcome_by_course_outcome_and_section(
     )
 
 
+# ---------------------------------------------------------------------------
+# Instructor Reminder operations
+# ---------------------------------------------------------------------------
+
+
+def create_reminder(
+    section_id: str,
+    instructor_id: str,
+    sent_by: Optional[str] = None,
+    reminder_type: str = "individual",
+    message_preview: Optional[str] = None,
+) -> Optional[str]:
+    """Record a reminder email sent to an instructor."""
+    return _db_service.create_reminder(
+        section_id, instructor_id, sent_by, reminder_type, message_preview
+    )
+
+
+def get_reminders_by_section(section_id: str) -> List[Dict[str, Any]]:
+    """Get all reminders sent for a specific section."""
+    return _db_service.get_reminders_by_section(section_id)
+
+
+def get_reminders_by_instructor(instructor_id: str) -> List[Dict[str, Any]]:
+    """Get all reminders sent to a specific instructor."""
+    return _db_service.get_reminders_by_instructor(instructor_id)
+
+
+# ---------------------------------------------------------------------------
+# Outcome History operations
+# ---------------------------------------------------------------------------
+
+
+def add_outcome_history(section_outcome_id: str, event: str) -> bool:
+    """Add a history entry for a section outcome (for manual events like reminders)."""
+    return _db_service.add_outcome_history(section_outcome_id, event)
+
+
+def get_outcome_history(section_outcome_id: str) -> List[Dict[str, Any]]:
+    """Get history entries for a section outcome, sorted by date DESC."""
+    return _db_service.get_outcome_history(section_outcome_id)
+
+
 __all__ = [
     "COURSE_OFFERINGS_COLLECTION",
     "COURSE_OUTCOMES_COLLECTION",
@@ -858,4 +901,11 @@ __all__ = [
     "update_section_outcome",
     "get_section_outcome_by_course_outcome_and_section",
     "get_section_outcomes_by_criteria",
+    # Reminder operations
+    "create_reminder",
+    "get_reminders_by_section",
+    "get_reminders_by_instructor",
+    # Outcome history operations
+    "add_outcome_history",
+    "get_outcome_history",
 ]

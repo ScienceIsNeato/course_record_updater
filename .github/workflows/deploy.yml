@@ -77,7 +77,7 @@ jobs:
 
     - name: Deploy to Cloud Run
       run: |  # nosemgrep
-        ENV_VARS="APP_ENV=${{ github.event.inputs.environment }},DATABASE_URL=sqlite:////tmp/loopcloser.db,SESSION_COOKIE_SECURE=true,SESSION_COOKIE_HTTPONLY=true,SESSION_COOKIE_SAMESITE=Lax"
+        ENV_VARS="ENV=${{ github.event.inputs.environment }},APP_ENV=${{ github.event.inputs.environment }},DATABASE_URL=sqlite:////tmp/loopcloser.db,SESSION_COOKIE_SECURE=true,SESSION_COOKIE_HTTPONLY=true,SESSION_COOKIE_SAMESITE=Lax"
         if [[ -n "${{ steps.config.outputs.email_whitelist }}" ]]; then
           ENV_VARS="${ENV_VARS},EMAIL_WHITELIST=${{ steps.config.outputs.email_whitelist }}"
         fi

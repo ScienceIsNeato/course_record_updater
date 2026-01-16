@@ -110,8 +110,6 @@ describe("PanelManager", () => {
           <tr><td data-sort="a">Alpha</td></tr>
         </tbody>
       </table>
-      <div class="stat-item" data-stat="programs"></div>
-      <div class="stat-item" data-stat="students"></div>
     `);
     global.requestAnimationFrame = (cb) => cb();
   });
@@ -158,20 +156,6 @@ describe("PanelManager", () => {
     );
   });
 
-  it("builds stat previews from cached data", () => {
-    const manager = new PanelManager();
-    const cache = {
-      program_overview: [{ program_name: "Chemistry", course_count: 6 }],
-    };
-
-    const preview = manager.buildPreviewFromCache("programs", cache);
-    expect(preview.title).toBe("Programs");
-    expect(preview.items[0]).toEqual({
-      label: "Chemistry",
-      value: "6 courses",
-    });
-  });
-
   it("focuses and unfocuses panels", () => {
     const manager = new PanelManager();
     manager.focusPanel("panel-1");
@@ -181,87 +165,6 @@ describe("PanelManager", () => {
 
     manager.unfocusPanel();
     expect(panel.classList.contains("panel-focused")).toBe(false);
-  });
-
-  it("shows and hides stat previews from cache", async () => {
-    jest.useFakeTimers();
-    const manager = new PanelManager();
-    window.dashboardDataCache = {
-      program_overview: [{ program_name: "Nursing", course_count: 3 }],
-      summary: { students: 120, sections: 10, courses: 5 },
-    };
-
-    await manager.showStatPreview("programs");
-    expect(document.querySelector(".stat-preview")).not.toBeNull();
-
-    manager.hideStatPreview("programs");
-    jest.advanceTimersByTime(300);
-    expect(document.querySelector(".stat-preview")).toBeNull();
-
-    const preview = manager.buildPreviewFromCache(
-      "students",
-      window.dashboardDataCache,
-    );
-    expect(preview.items[0].value).toBe("120");
-    jest.useRealTimers();
-  });
-
-  it("loads stat preview data via fetch when cache missing", async () => {
-    const manager = new PanelManager();
-    const originalFetch = global.fetch;
-    window.dashboardDataCache = null;
-    const responsePayload = {
-      programs: [{ name: "History", course_count: 4 }],
-    };
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: async () => responsePayload,
-      }),
-    );
-
-    const data = await manager.loadStatPreviewData("programs");
-    expect(global.fetch).toHaveBeenCalledWith(
-      "/api/programs",
-      expect.any(Object),
-    );
-    expect(data.items[0].label).toBe("History");
-    global.fetch = originalFetch;
-  });
-
-  it("handles stat preview fetch errors gracefully", async () => {
-    const manager = new PanelManager();
-    const originalFetch = global.fetch;
-    window.dashboardDataCache = null;
-    global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 500 }));
-
-    await expect(manager.loadStatPreviewData("programs")).rejects.toThrow(
-      "Failed to load programs data",
-    );
-    global.fetch = originalFetch;
-  });
-
-  it("hides all stat previews and clears pending timers", () => {
-    jest.useFakeTimers();
-    setBody(`
-      <div class="stat-item" data-stat="programs"></div>
-      <div class="stat-item" data-stat="users"></div>
-    `);
-    const manager = new PanelManager();
-    manager.statPreviews.set("programs", {
-      preview: document.createElement("div"),
-      timeout: setTimeout(() => { }, 500),
-    });
-    manager.statPreviews.set("users", {
-      preview: document.createElement("div"),
-      timeout: setTimeout(() => { }, 500),
-    });
-
-    manager.hideAllStatPreviews();
-    jest.runOnlyPendingTimers();
-    expect(manager.statPreviews.get("programs").preview).toBeNull();
-    expect(manager.statPreviews.get("users").preview).toBeNull();
-    jest.useRealTimers();
   });
 
   it("computes cell values with fractions and dataset overrides", () => {
@@ -310,26 +213,6 @@ describe("PanelManager", () => {
       expect(() => manager.sortTable("non-existent-table")).not.toThrow();
     });
 
-    it("handles empty data in stat previews", () => {
-      const manager = new PanelManager();
-
-      // The function expects cache to have properties, so null/empty cache will cause errors
-      // Let's test with valid cache structure but empty data
-      const emptyDataCache = {
-        program_overview: [],
-        programs: [],
-        courses: [],
-        sections: [],
-      };
-
-      const emptyPreview = manager.buildPreviewFromCache(
-        "programs",
-        emptyDataCache,
-      );
-      // buildPreviewFromCache returns null when data array is empty
-      expect(emptyPreview).toBeNull();
-    });
-
     it("handles different data types in createSortableTable", () => {
       const manager = new PanelManager();
 
@@ -371,41 +254,6 @@ describe("PanelManager", () => {
       const zeroDenomCell = document.createElement("td");
       zeroDenomCell.textContent = "5/0";
       expect(manager.getCellValue(zeroDenomCell)).toBe("5/0");
-    });
-
-    it("handles stat preview with different data structures", () => {
-      const manager = new PanelManager();
-
-      // Test sections preview
-      const sectionsCache = {
-        sections: [
-          { course_number: "MATH101", enrollment: 25, status: "active" },
-          { course_number: "PHYS201", enrollment: 30, status: "completed" },
-        ],
-      };
-      const sectionsPreview = manager.buildPreviewFromCache(
-        "sections",
-        sectionsCache,
-      );
-      expect(sectionsPreview.items).toHaveLength(2);
-      expect(sectionsPreview.items[0].label).toContain("MATH101");
-      expect(sectionsPreview.items[0].value).toContain("25 students");
-
-      // Test courses preview
-      const coursesCache = {
-        courses: [
-          {
-            course_number: "BIO101",
-            course_title: "Biology Basics",
-            sections: [{}, {}],
-          },
-        ],
-      };
-      const coursesPreview = manager.buildPreviewFromCache(
-        "courses",
-        coursesCache,
-      );
-      expect(coursesPreview.items[0].value).toBe("Biology Basics");
     });
 
     it("handles multiple panel toggles correctly", () => {
@@ -469,37 +317,6 @@ describe("PanelManager", () => {
       expect(sortedValues).toEqual(["2", "10", "100"]);
     });
 
-    it("handles stat preview positioning edge cases", async () => {
-      jest.useFakeTimers();
-      setBody(`
-        <div class="stat-item" data-stat="programs" style="position: absolute; top: 10px; left: 10px; width: 100px; height: 50px;"></div>
-      `);
-
-      const manager = new PanelManager();
-      window.dashboardDataCache = {
-        program_overview: [{ program_name: "Test", course_count: 1 }],
-      };
-
-      // Mock getBoundingClientRect for positioning
-      const mockGetBoundingClientRect = jest.fn(() => ({
-        top: 10,
-        left: 10,
-        width: 100,
-        height: 50,
-        right: 110,
-        bottom: 60,
-      }));
-      document.querySelector(".stat-item").getBoundingClientRect =
-        mockGetBoundingClientRect;
-
-      await manager.showStatPreview("programs");
-
-      const preview = document.querySelector(".stat-preview");
-      expect(preview).not.toBeNull();
-      // Just test that the preview was created and positioned, don't check specific style values
-
-      jest.useRealTimers();
-    });
   });
 });
 
@@ -1094,162 +911,5 @@ describe("createAuditLogRow - ACTUAL INTEGRATION", () => {
       }).not.toThrow();
     });
 
-    it("should handle mouseenter on stat items with closest method", () => {
-      const { PanelManager } = require("../../../static/panels");
-
-      setBody(`
-        <div class="dashboard-panel" id="test-panel">
-          <div class="panel-header">Header</div>
-          <div class="panel-content">
-            <div class="stat-item" data-stat="test-stat">Stat Item</div>
-          </div>
-        </div>
-      `);
-
-      const manager = new PanelManager();
-      const statItem = document.querySelector(".stat-item");
-
-      // Create and dispatch mouseenter event
-      // This exercises line 164: target?.closest?.('.stat-item')
-      const mouseenterEvent = new MouseEvent("mouseenter", { bubbles: true });
-      expect(() => {
-        statItem.dispatchEvent(mouseenterEvent);
-      }).not.toThrow();
-    });
-
-    it("should call transform with institutions data when loadStatPreviewData is called", async () => {
-      const { PanelManager } = require("../../../static/panels");
-      const manager = new PanelManager();
-
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          institutions: [
-            { name: "MIT", user_count: 100 },
-            { name: "Stanford", user_count: 200 },
-          ],
-        }),
-      });
-
-      const result = await manager.loadStatPreviewData("institutions");
-
-      // Line 475: data.institutions?.map(...) should have been executed
-      expect(result.items).toEqual([
-        { label: "MIT", value: "100 users" },
-        { label: "Stanford", value: "200 users" },
-      ]);
-
-      global.fetch.mockRestore();
-    });
-
-    it("should call transform with courses data when loadStatPreviewData is called", async () => {
-      const { PanelManager } = require("../../../static/panels");
-      const manager = new PanelManager();
-
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          courses: [
-            { course_number: "CS101", title: "Intro to CS" },
-            { course_number: "CS201", title: "Data Structures" },
-          ],
-        }),
-      });
-
-      const result = await manager.loadStatPreviewData("courses");
-
-      // Line 493: data.courses?.map(...) should have been executed
-      expect(result.items).toEqual([
-        { label: "CS101", value: "Intro to CS" },
-        { label: "CS201", value: "Data Structures" },
-      ]);
-
-      global.fetch.mockRestore();
-    });
-
-    it("should call transform with faculty data when loadStatPreviewData is called", async () => {
-      const { PanelManager } = require("../../../static/panels");
-      const manager = new PanelManager();
-
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          users: [
-            {
-              full_name: "John Doe",
-              email: "john@example.com",
-              department: "CS",
-              role: "instructor",
-            },
-            {
-              first_name: "Jane",
-              last_name: "Smith",
-              email: "jane@example.com",
-              role: "instructor",
-            },
-          ],
-        }),
-      });
-
-      const result = await manager.loadStatPreviewData("faculty");
-
-      // Line 502: data.users?.map(...) should have been executed
-      expect(result.items).toEqual([
-        { label: "John Doe", value: "CS" },
-        { label: "Jane Smith", value: "instructor" },
-      ]);
-
-      global.fetch.mockRestore();
-    });
-
-    it("should call transform with sections data when loadStatPreviewData is called", async () => {
-      const { PanelManager } = require("../../../static/panels");
-      const manager = new PanelManager();
-
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          sections: [
-            { course_number: "CS101", section_number: "A", enrollment: 30 },
-            { section_id: "123", enrollment: 25 },
-          ],
-        }),
-      });
-
-      const result = await manager.loadStatPreviewData("sections");
-
-      // Line 513: data.sections?.map(...) should have been executed
-      expect(result.items).toEqual([
-        { label: "CS101 Section A", value: "30 students" },
-        { label: "Section 123", value: "25 students" },
-      ]);
-
-      global.fetch.mockRestore();
-    });
-
-    it("should call transform with users data when loadStatPreviewData is called", async () => {
-      const { PanelManager } = require("../../../static/panels");
-      const manager = new PanelManager();
-
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          users: [
-            { first_name: "Alice", last_name: "Johnson", role: "site_admin" },
-            { first_name: "Bob", last_name: "Williams", role: "instructor" },
-          ],
-        }),
-      });
-
-      const result = await manager.loadStatPreviewData("users");
-
-      // Line 524: data.users?.map(...) should have been executed
-      expect(result.items).toEqual([
-        { label: "Alice Johnson", value: "site admin" },
-        { label: "Bob Williams", value: "instructor" },
-      ]);
-
-      global.fetch.mockRestore();
-    });
   });
 });

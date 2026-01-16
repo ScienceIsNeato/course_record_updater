@@ -39,7 +39,6 @@ function generateSecureId(prefix = "id") {
 class PanelManager {
   constructor() {
     this.panels = new Map();
-    this.statPreviews = new Map();
     this.sortStates = new Map();
     this.focusedPanel = null;
     this.init();
@@ -47,7 +46,6 @@ class PanelManager {
 
   init() {
     this.initializePanels();
-    this.initializeStatPreviews();
     this.initializeSortableTables();
     this.bindEvents();
   }
@@ -76,23 +74,6 @@ class PanelManager {
 
         // Set initial state
         this.updatePanelState(panelId);
-      }
-    });
-  }
-
-  /**
-   * Initialize interactive header stats
-   */
-  initializeStatPreviews() {
-    const statItems = document.querySelectorAll(".stat-item");
-    statItems.forEach((item) => {
-      const statId = item.dataset.stat;
-      if (statId) {
-        this.statPreviews.set(statId, {
-          element: item,
-          preview: null,
-          timeout: null,
-        });
       }
     });
   }
@@ -152,58 +133,13 @@ class PanelManager {
           this.focusPanel(panel.id);
         }
       }
-
-      // Close stat previews when clicking outside
-      if (!target?.closest?.(".stat-item")) {
-        this.hideAllStatPreviews();
-      }
     });
-
-    // Stat preview events
-    document.addEventListener(
-      "mouseenter",
-      (e) => {
-        // Ensure we have an Element before calling closest()
-        const target =
-          e.target instanceof Element ? e.target : e.target.parentElement;
-        if (target?.closest?.(".stat-item")) {
-          const statItem = target.closest(".stat-item");
-          const statId = statItem.dataset.stat;
-          if (statId) {
-            this.showStatPreview(statId);
-          }
-        }
-      },
-      true,
-    );
-
-    document.addEventListener(
-      "mouseleave",
-      (e) => {
-        // Ensure we have an Element before calling closest()
-        const target =
-          e.target instanceof Element ? e.target : e.target.parentElement;
-        if (target?.closest?.(".stat-item")) {
-          const statItem = target.closest(".stat-item");
-          const statId = statItem.dataset.stat;
-          if (statId) {
-            this.scheduleHideStatPreview(statId);
-          }
-        }
-      },
-      true,
-    );
 
     // Keyboard events
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && this.focusedPanel) {
         this.unfocusPanel();
       }
-    });
-
-    // Window resize events
-    globalThis.addEventListener("resize", () => {
-      this.hideAllStatPreviews();
     });
   }
 
@@ -234,109 +170,6 @@ class PanelManager {
       panel.toggle.classList.remove("collapsed");
       panel.toggle.innerHTML = "▼"; // nosemgrep
     }
-  }
-
-  /**
-   * Show stat preview
-   */
-  async showStatPreview(statId) {
-    const stat = this.statPreviews.get(statId);
-    if (!stat) return;
-
-    // Clear any pending hide timeout
-    if (stat.timeout) {
-      clearTimeout(stat.timeout);
-      stat.timeout = null;
-    }
-
-    // If preview already exists, show it
-    if (stat.preview) {
-      stat.preview.classList.add("show");
-      return;
-    }
-
-    // Create preview element
-    const preview = document.createElement("div");
-    preview.className = "stat-preview";
-
-    // Load preview data
-    try {
-      const data = await this.loadStatPreviewData(statId);
-      // nosemgrep
-      // nosemgrep
-      preview.innerHTML = `
-                <div class="stat-preview-header">${data.title}</div>
-                <div class="stat-preview-content">
-                    ${data.items
-                      .map(
-                        (item) => `
-                        <div class="stat-preview-item">
-                            <span>${item.label}</span>
-                            <span>${item.value}</span>
-                        </div>
-                    `,
-                      )
-                      .join("")}
-                </div>
-            `;
-    } catch (error) {
-      // nosemgrep
-      preview.innerHTML = `
-                <div class="stat-preview-header">Error</div>
-                <div class="stat-preview-content">
-                    <div class="text-danger">Failed to load preview data</div>
-                </div>
-            `;
-    }
-
-    stat.element.appendChild(preview);
-    stat.preview = preview;
-
-    // Show with animation
-    requestAnimationFrame(() => {
-      preview.classList.add("show");
-    });
-  }
-
-  /**
-   * Schedule hiding stat preview
-   */
-  scheduleHideStatPreview(statId) {
-    const stat = this.statPreviews.get(statId);
-    if (!stat) return;
-
-    stat.timeout = setTimeout(() => {
-      this.hideStatPreview(statId);
-    }, 500);
-  }
-
-  /**
-   * Hide stat preview
-   */
-  hideStatPreview(statId) {
-    const stat = this.statPreviews.get(statId);
-    if (!stat?.preview) return;
-
-    stat.preview.classList.remove("show");
-    setTimeout(() => {
-      if (stat.preview?.remove) {
-        stat.preview.remove();
-      }
-      stat.preview = null;
-    }, 300);
-  }
-
-  /**
-   * Hide all stat previews
-   */
-  hideAllStatPreviews() {
-    this.statPreviews.forEach((stat, statId) => {
-      if (stat.timeout) {
-        clearTimeout(stat.timeout);
-        stat.timeout = null;
-      }
-      this.hideStatPreview(statId);
-    });
   }
 
   /**
@@ -473,199 +306,6 @@ class PanelManager {
 
     document.body.style.overflow = "";
     this.focusedPanel = null;
-  }
-
-  /**
-   * Load stat preview data based on stat type
-   */
-  async loadStatPreviewData(statId) {
-    const cache = globalThis.dashboardDataCache;
-    if (cache) {
-      const cached = this.buildPreviewFromCache(statId, cache);
-      if (cached) {
-        return cached;
-      }
-    }
-
-    const statConfigs = {
-      institutions: {
-        endpoint: "/api/institutions",
-        title: "Institutions",
-        transform: (data) =>
-          data.institutions?.map((inst) => ({
-            label: inst.name,
-            value: `${inst.user_count || 0} users`,
-          })) || [],
-      },
-      programs: {
-        endpoint: "/api/programs",
-        title: "Programs",
-        transform: (data) =>
-          data.programs?.map((prog) => ({
-            label: prog.name,
-            value: `${prog.course_count || 0} courses`,
-          })) || [],
-      },
-      courses: {
-        endpoint: "/api/courses",
-        title: "Active Courses",
-        transform: (data) =>
-          data.courses?.map((course) => ({
-            label: `${course.course_number}`,
-            value: course.title,
-          })) || [],
-      },
-      faculty: {
-        endpoint: "/api/users?role=instructor",
-        title: "Faculty",
-        transform: (data) =>
-          data.users?.map((user) => ({
-            label:
-              (
-                user.full_name ||
-                `${user.first_name || ""} ${user.last_name || ""}`
-              ).trim() || user.email,
-            value: (user.department || user.role || "instructor").replaceAll(
-              "_",
-              " ",
-            ),
-          })) || [],
-      },
-      sections: {
-        endpoint: "/api/sections",
-        title: "Sections",
-        transform: (data) =>
-          data.sections?.map((section) => ({
-            label: section.course_number
-              ? `${section.course_number} Section ${section.section_number || section.section_id || ""}`
-              : `Section ${section.section_number || section.section_id || ""}`,
-            value: `${section.enrollment || 0} students`,
-          })) || [],
-      },
-      users: {
-        endpoint: "/api/users",
-        title: "Recent Users",
-        transform: (data) =>
-          data.users?.map((user) => ({
-            label: `${user.first_name} ${user.last_name}`,
-            value: user.role.replaceAll("_", " "),
-          })) || [],
-      },
-    };
-
-    const config = statConfigs[statId];
-    if (!config) {
-      throw new Error(`Unknown stat type: ${statId}`);
-    }
-
-    const response = await fetch(config.endpoint, {
-      credentials: "include",
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to load ${statId} data`);
-    }
-
-    const data = await response.json();
-
-    return {
-      title: config.title,
-      items: config.transform(data),
-    };
-  }
-
-  buildPreviewFromCache(statId, cache) {
-    const formatItems = (items, labelFn, valueFn) =>
-      items
-        .slice(0, 5)
-        .map((item) => ({ label: labelFn(item), value: valueFn(item) }))
-        .filter((entry) => entry.label);
-
-    // Configuration for cache preview builders
-    const cacheConfigs = {
-      institutions: {
-        title: "Institutions",
-        getData: (cache) => cache.institutions || [],
-        labelFn: (inst) => inst.name || inst.institution_id,
-        valueFn: (inst) => `${inst.user_count || 0} users`,
-      },
-      programs: {
-        title: "Programs",
-        getData: (cache) => cache.program_overview || cache.programs || [],
-        labelFn: (prog) => prog.program_name || prog.name || prog.program_id,
-        valueFn: (prog) => `${prog.course_count || 0} courses`,
-      },
-      courses: {
-        title: "Courses",
-        getData: (cache) => cache.courses || [],
-        labelFn: (course) => course.course_number || course.course_id,
-        valueFn: (course) => course.course_title || course.title || "—",
-      },
-      users: {
-        title: "Users",
-        getData: (cache) => cache.users || cache.faculty || [],
-        labelFn: (user) =>
-          (
-            user.full_name || `${user.first_name || ""} ${user.last_name || ""}`
-          ).trim() || user.email,
-        valueFn: (user) => (user.role || "user").replaceAll("_", " "),
-      },
-      faculty: {
-        title: "Faculty",
-        getData: (cache) =>
-          cache.faculty_assignments || cache.faculty || cache.instructors || [],
-        labelFn: (member) => member.full_name || member.name || "Instructor",
-        valueFn: (member) => `${member.course_count || 0} courses`,
-      },
-      sections: {
-        title: "Sections",
-        getData: (cache) => cache.sections || [],
-        labelFn: (section) => {
-          const courseNumber = section.course_number || "";
-          const sectionNumber =
-            section.section_number || section.section_id || "Section";
-          return courseNumber
-            ? `${courseNumber} Section ${sectionNumber}`
-            : `Section ${sectionNumber}`;
-        },
-        valueFn: (section) => `${section.enrollment || 0} students`,
-      },
-      assessments: {
-        title: "Assessments",
-        getData: (cache) => cache.assessment_tasks || [],
-        labelFn: (task) =>
-          task.course_number ||
-          task.course_title ||
-          task.section_number ||
-          task.section_id,
-        valueFn: (task) => (task.status || "pending").replaceAll("_", " "),
-      },
-    };
-
-    // Special case for students (different data structure)
-    if (statId === "students") {
-      const summary = cache.summary || {};
-      if (typeof summary.students === "undefined") return null;
-      return {
-        title: "Students",
-        items: [
-          { label: "Total Students", value: summary.students.toString() },
-          { label: "Sections", value: (summary.sections ?? 0).toString() },
-          { label: "Courses", value: (summary.courses ?? 0).toString() },
-        ],
-      };
-    }
-
-    const config = cacheConfigs[statId];
-    if (!config) return null;
-
-    const data = config.getData(cache);
-    if (!data.length) return null;
-
-    return {
-      title: config.title,
-      items: formatItems(data, config.labelFn, config.valueFn),
-    };
   }
 
   /**

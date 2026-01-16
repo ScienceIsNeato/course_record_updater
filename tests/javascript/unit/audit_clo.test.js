@@ -79,7 +79,7 @@ describe("audit_clo.js - Utility Functions", () => {
       const result = auditCloModule.exportCurrentViewToCsv([]);
       expect(result).toBe(false);
       expect(global.alert).toHaveBeenCalledWith(
-        "No CLO records available to export for the selected filters.",
+        "No Outcome records available to export for the selected filters.",
       );
     });
 
@@ -942,7 +942,7 @@ describe("audit_clo.js - DOM Integration", () => {
 
     exportButton.click();
     expect(alert).toHaveBeenCalledWith(
-      "No CLO records available to export for the selected filters.",
+      "No Outcome records available to export for the selected filters.",
     );
   });
 
@@ -1314,7 +1314,7 @@ describe("audit_clo.js - DOM Integration", () => {
       expect(mockModalInstance.hide).toHaveBeenCalled();
 
       // Verify success alert
-      expect(alert).toHaveBeenCalledWith("CLO marked as Never Coming In (NCI)");
+      expect(alert).toHaveBeenCalledWith("Outcome marked as Never Coming In (NCI)");
 
       // Verify reload functions called
       expect(global.window.loadCLOs).toHaveBeenCalled();
@@ -1369,7 +1369,7 @@ describe("audit_clo.js - DOM Integration", () => {
 
       // Verify error alert
       expect(alert).toHaveBeenCalledWith(
-        "Failed to mark CLO as NCI: Database error",
+        "Failed to mark Outcome as NCI: Database error",
       );
 
       // Verify modal was not closed
@@ -1387,7 +1387,7 @@ describe("audit_clo.js - DOM Integration", () => {
 
       // Verify error alert
       expect(alert).toHaveBeenCalledWith(
-        "Failed to mark CLO as NCI: Network error",
+        "Failed to mark Outcome as NCI: Network error",
       );
     });
 
@@ -1482,7 +1482,7 @@ describe("audit_clo.js - DOM Integration", () => {
 
       // Verify error alert
       expect(alert).toHaveBeenCalledWith(
-        "Failed to approve CLO: Database error",
+        "Failed to approve Outcome: Database error",
       );
 
       // Verify modal was not closed
@@ -1499,7 +1499,7 @@ describe("audit_clo.js - DOM Integration", () => {
       await approveCLO();
 
       // Verify error alert
-      expect(alert).toHaveBeenCalledWith("Error: CLO ID not found");
+      expect(alert).toHaveBeenCalledWith("Error: Outcome ID not found");
 
       // Verify no API call
       expect(fetch).not.toHaveBeenCalled();
@@ -1723,6 +1723,43 @@ describe("audit_clo.js - DOM Integration", () => {
       expect(node.innerHTML).toContain("&amp; Co.");
       // Email should be present
       expect(node.textContent).toContain("jane+test@example.com");
+    });
+
+    it("should render history section when history is present", () => {
+      const clo = {
+        status: "awaiting_approval",
+        course_number: "CS101",
+        clo_number: 1,
+        description: "Test CLO",
+        students_took: 10,
+        students_passed: 8,
+        history: [
+          { event: "Assigned", occurred_at: "2024-01-10T10:00:00Z" },
+          { event: "Submitted", occurred_at: "2024-01-15T10:00:00Z" },
+        ],
+      };
+
+      const node = renderCLODetails(clo);
+
+      expect(node.textContent).toContain("History:");
+      expect(node.textContent).toContain("Assigned");
+      expect(node.textContent).toContain("Submitted");
+    });
+
+    it("should not render history section when history is empty", () => {
+      const clo = {
+        status: "awaiting_approval",
+        course_number: "CS101",
+        clo_number: 1,
+        description: "Test CLO",
+        students_took: 10,
+        students_passed: 8,
+        history: [],
+      };
+
+      const node = renderCLODetails(clo);
+
+      expect(node.textContent).not.toContain("History:");
     });
   });
 

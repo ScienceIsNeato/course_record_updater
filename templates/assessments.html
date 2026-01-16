@@ -39,7 +39,7 @@
 {% endblock %}
 
 {% block page_title %}Course Assessments{% endblock %}
-{% block page_subtitle %}View and update outcome assessments for your sections{% endblock %}
+{% block page_subtitle %}View and manage Course Assessments on a per-course-section basis, holistically{% endblock %}
 
 {% block content %}
 {% set can_edit_due_date = user.role in ['institution_admin', 'site_admin'] %}
@@ -413,7 +413,8 @@
 
                     courseSections.forEach(section => {
                         const option = document.createElement('option');
-                        option.value = course.course_id;
+                        // Include section_id in value so we can filter outcomes to this section
+                        option.value = `${course.course_id}::${section.section_id}`;
                         const termName = section.term_name || 'Unknown Term';
                         const sectionNumber = section.section_number || '001';
                         const percentLabel = percent === 100 ? '✓' : `${percent}%`;
@@ -484,11 +485,14 @@
         }
 
         // Load outcomes for selected course - INLINE EDITABLE VERSION
-        async function loadOutcomes(courseId) {
-            if (!courseId) {
+        async function loadOutcomes(compositeId) {
+            if (!compositeId) {
                 outcomesContainer.innerHTML = '<p class="text-muted">Select a course to view its outcomes</p>';
                 return;
             }
+
+            // Parse composite ID: "courseId::sectionId"
+            const [courseId, sectionId] = compositeId.split('::');
 
             outcomesContainer.innerHTML = '<p>Loading outcomes...</p>';
 
@@ -497,7 +501,12 @@
                 if (!response.ok) throw new Error('Failed to load outcomes');
 
                 const data = await response.json();
-                const outcomes = data.outcomes || [];
+                let outcomes = data.outcomes || [];
+
+                // Filter outcomes to only this section
+                if (sectionId) {
+                    outcomes = outcomes.filter(o => o.section_id === sectionId);
+                }
 
                 if (outcomes.length === 0) {
                     outcomesContainer.innerHTML = `
@@ -508,9 +517,10 @@
                     return;
                 }
 
-                // Get section info for this course
-                const courseSections = instructorSections.filter(s => s.course_id === courseId);
-                const section = courseSections.length > 0 ? courseSections[0] : null;
+                // Get section info for the selected section
+                const section = sectionId
+                    ? instructorSections.find(s => s.section_id === sectionId)
+                    : instructorSections.find(s => s.course_id === courseId);
                 let termName = section?.term_name || 'Unknown Term';
 
                 const courseHeader = section
@@ -545,7 +555,6 @@
             `;
 
                 outcomes.forEach((outcome, index) => {
-                    console.log('DEBUG OUTCOME:', outcome);
                     const studentsTook = outcome.students_took ?? '';
                     const studentsPassed = outcome.students_passed ?? '';
                     const assessmentTool = outcome.assessment_tool || '';
@@ -629,7 +638,6 @@
                 });
 
                 // Add submit course handler
-                const sectionId = section?.section_id || section?.id;
                 const submitBtn = document.getElementById('submitCourseBtn');
 
                 // Update button text based on whether assessments were previously submitted
@@ -763,7 +771,9 @@
 
                 if (response.ok && data.success) {
                     alert('Course submitted for approval successfully!');
-                    loadOutcomes(courseId); // Reload to show updated status
+                    // Reconstruct composite ID for reload
+                    const compositeId = sectionId ? `${courseId}::${sectionId}` : courseId;
+                    loadOutcomes(compositeId); // Reload to show updated status with section filter
                     loadCourses(); // Reload to update status summary counts
                 } else {
                     // Show validation errors
@@ -806,7 +816,7 @@
                     throw new Error(error.error || 'Failed to submit for approval');
                 }
 
-                alert('CLO submitted for approval successfully!');
+                alert('Outcome submitted for approval successfully!');
 
                 // Reload outcomes for current course
                 const currentCourseId = courseSelect.value;
@@ -1019,7 +1029,11 @@
 
         // Save current course data
         async function saveCurrentCourseData() {
-            const section = instructorSections.find(s => s.course_id === currentCourseId);
+            // Parse composite ID to get actual course ID
+            const [courseId, sectionId] = currentCourseId.split('::');
+            const section = sectionId
+                ? instructorSections.find(s => s.section_id === sectionId)
+                : instructorSections.find(s => s.course_id === courseId);
 
             if (!section) {
                 throw new Error('No section found for current course');
@@ -1082,10 +1096,14 @@
     }
 
     // Load course-level data when course is selected
-    async function loadCourseLevelData(courseId) {
+    async function loadCourseLevelData(compositeId) {
         try {
-            // For now, use section data - in full implementation, this would be course-level
-            const section = instructorSections.find(s => s.course_id === courseId);
+            // Parse composite ID: "courseId::sectionId"
+            const [courseId, sectionId] = compositeId.split('::');
+            // Find the specific section selected
+            const section = sectionId
+                ? instructorSections.find(s => s.section_id === sectionId)
+                : instructorSections.find(s => s.course_id === courseId);
             if (section) {
                 // Populate read-only enrollment fields
                 document.getElementById('courseEnrollment').value = section.enrollment || 'Not set';
@@ -1146,15 +1164,20 @@
     // Save course-level data
     if (saveCourseDataBtn) {
         saveCourseDataBtn.addEventListener('click', async function () {
-            const courseId = courseSelect.value;
-            if (!courseId) {
+            const compositeId = courseSelect.value;
+            if (!compositeId) {
                 alert('Please select a course first');
                 return;
             }
 
+            // Parse composite ID: "courseId::sectionId"
+            const [courseId, sectionId] = compositeId.split('::');
+
             try {
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-                const section = instructorSections.find(s => s.course_id === courseId);
+                const section = sectionId
+                    ? instructorSections.find(s => s.section_id === sectionId)
+                    : instructorSections.find(s => s.course_id === courseId);
 
                 if (!section) {
                     alert('No section found for this course');
@@ -1238,11 +1261,17 @@
         const urlParams = new URLSearchParams(globalThis.location.search);
         const courseParam = urlParams.get('course');
         if (courseParam && courseSelect) {
-            courseSelect.value = courseParam;
-            loadOutcomes(courseParam);
-            loadCourseLevelData(courseParam); // NEW: Load course-level data on auto-select
+            // Find the first option that matches this course ID (may have multiple sections)
+            const matchingOption = Array.from(courseSelect.options).find(opt => 
+                opt.value.startsWith(courseParam + '::')
+            );
+            if (matchingOption) {
+                courseSelect.value = matchingOption.value;
+                loadOutcomes(matchingOption.value);
+                loadCourseLevelData(matchingOption.value);
+            }
         }
     }).catch(err => console.error('Failed to load courses:', err));
-    });
+    }); // Close DOMContentLoaded event listener
 </script>
 {% endblock %}
