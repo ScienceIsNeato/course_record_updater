@@ -10,6 +10,7 @@
 8. **Additional**: Any other features or improvements you'd like to see?
 9. currently, CLOs are all being managed one by one for each section. Would it be more likely that they would be preocessed as a batch, all having the same results? Is that flow common enough that batch processing should be implemented? If so, which levels would you want to be able to batch by - instructor? course? course offering (ie biology 101 spring 25) or even course offering section ()
 10. Do we need to be able to track the exams/syllabai/etc for each... CLO? section? course? what all would be nice to be able to specify and manage onthe site?
+11. Currenlty Admins do not receive notifications via email when instructors submit assessments. Is this something that should be implemented, or would that just be noise?
 **Rate 1-10**: Overall system satisfaction
 
 

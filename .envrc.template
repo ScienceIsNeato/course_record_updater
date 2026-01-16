@@ -121,12 +121,6 @@ export LOOPCLOSER_DEFAULT_PORT_E2E="3002"
 # =============================================================================
 export EMAIL_PROVIDER="brevo"  # Options: "brevo" (production), "ethereal" (testing)
 
-# Email Whitelist (REQUIRED for non-production environments)
-# Comma-separated list of allowed recipient addresses
-# Supports wildcards: *@ethereal.email allows all ethereal addresses
-# Default allows common test domains, ethereal, and seeded test accounts
-export EMAIL_WHITELIST="*@ethereal.email,*@example.com,*@test.com,*@test.edu,*@system.local,*@mocku.test,*@inst.test,*@riverside.edu,*@pactech.edu"
-
 # =============================================================================
 # BREVO EMAIL CONFIGURATION (Production Email Provider)
 # =============================================================================

@@ -424,6 +424,11 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def get_program_admins(self, program_id: str) -> List[Dict[str, Any]]:
+        """Get all users with program_admin role for a specific program"""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_unassigned_courses(self, institution_id: str) -> List[Dict[str, Any]]:
         raise NotImplementedError
 

@@ -26,7 +26,7 @@ Brevo and Ethereal share the same `EmailService` API surface, so the rest of the
 
 ## Key layers
 
-1. `EmailService` (`src/services/email_service.py`): central API for sending verification, reset, and invitation emails. It enforces protected-domain checks, enforces the whitelist, picks the provider via `create_email_provider`, and handles fallback logging.
+1. `EmailService` (`src/services/email_service.py`): central API for sending verification, reset, and invitation emails. It enforces protected-domain checks, picks the provider via `create_email_provider`, and handles fallback logging.
 2. Provider factory (`src/email_providers/factory.py`): chooses Brevo or Ethereal based on `EMAIL_PROVIDER`, `ENV`, and `TESTING` flags. All configuration is pulled from environment variables.
 3. Provider implementations (`src/email_providers/brevo_provider.py` and `src/email_providers/ethereal_provider.py`): handle the actual HTTP/SMTP calls.
 

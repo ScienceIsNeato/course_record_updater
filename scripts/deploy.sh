@@ -2,9 +2,6 @@
 # Loopcloser Deployment Script
 # Usage: ./scripts/deploy.sh [dev|staging|prod]
 #
-# Environment Variables:
-#   EMAIL_WHITELIST - Override default email whitelist (semicolon-separated)
-#                     Example: EMAIL_WHITELIST="user@example.com;*@test.com" ./scripts/deploy.sh dev
 
 set -e
 
@@ -48,21 +45,18 @@ case $ENVIRONMENT in
         MAX_INSTANCES=2
         MEMORY="512Mi"
         CPU=1
-        EMAIL_WHITELIST="${EMAIL_WHITELIST:-*@ethereal.email;*@mocku.test;*@loopclosertests.mailtrap.io}"
         ;;
     staging)
         MIN_INSTANCES=0
         MAX_INSTANCES=4
         MEMORY="512Mi"
         CPU=1
-        EMAIL_WHITELIST="${EMAIL_WHITELIST:-*@ethereal.email;*@mocku.test;*@loopclosertests.mailtrap.io}"
         ;;
     prod)
         MIN_INSTANCES=1
         MAX_INSTANCES=10
         MEMORY="1Gi"
         CPU=2
-        EMAIL_WHITELIST=""  # No whitelist in prod - all emails allowed
         ;;
 esac
 
@@ -70,9 +64,6 @@ echo "☁️  Deploying to Cloud Run..."
 
 # Build env vars string
 ENV_VARS="APP_ENV=${ENVIRONMENT},DATABASE_URL=sqlite:////tmp/loopcloser.db,SESSION_COOKIE_SECURE=true,SESSION_COOKIE_HTTPONLY=true,SESSION_COOKIE_SAMESITE=Lax"
-if [[ -n "$EMAIL_WHITELIST" ]]; then
-    ENV_VARS="${ENV_VARS},EMAIL_WHITELIST=${EMAIL_WHITELIST}"
-fi
 
 gcloud run deploy ${SERVICE_NAME} \
     --image=${REGISTRY}:${ENVIRONMENT} \

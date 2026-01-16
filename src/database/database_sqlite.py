@@ -1653,6 +1653,34 @@ class SQLiteDatabase(DatabaseInterface):
                 return []
             return [to_dict(program) for program in course.programs]
 
+    def get_program_admins(self, program_id: str) -> List[Dict[str, Any]]:
+        """Get all users with program_admin role for a specific program."""
+        with self.sqlite.session_scope() as session:
+            # Query users who are program_admins and have this program_id in their program_ids JSON array
+            # Note: SQLite's JSON support uses json_each() for querying arrays
+            from sqlalchemy import text
+
+            # Get all program admins who have access to this program
+            users = (
+                session.execute(
+                    select(User).where(
+                        and_(
+                            User.role == "program_admin",
+                            # Check if program_id exists in the extras JSON array under 'program_ids'
+                            # SQLite JSON contains check
+                            text(
+                                f"EXISTS (SELECT 1 FROM json_each(users.extras, '$.program_ids') WHERE value = :program_id)"
+                            ),
+                        )
+                    ),
+                    {"program_id": program_id},
+                )
+                .scalars()
+                .all()
+            )
+
+            return [to_dict(user) for user in users]
+
     def get_unassigned_courses(self, institution_id: str) -> List[Dict[str, Any]]:
         with self.sqlite.session_scope() as session:
             courses = (

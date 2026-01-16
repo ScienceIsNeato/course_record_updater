@@ -414,7 +414,6 @@ curl https://loopcloser.io/health
 - [ ] Database buckets have versioning enabled
 - [ ] IAM roles follow principle of least privilege
 - [ ] GitHub repository secrets are configured
-- [ ] Email whitelist configured for non-production
 
 ---
 

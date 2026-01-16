@@ -4,7 +4,7 @@ Email Provider Factory
 Creates appropriate email provider based on configuration or environment.
 
 Simplified architecture:
-- Brevo: All real email sending (dev, staging, prod with whitelist protection)
+- Brevo: All real email sending (dev, staging, prod)
 - Ethereal: Automated E2E testing only (with IMAP verification)
 """
 

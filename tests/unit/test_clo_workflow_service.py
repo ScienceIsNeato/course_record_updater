@@ -206,7 +206,7 @@ class TestRequestRework:
             outcome_id, reviewer_id, comments, send_email=False
         )
 
-        assert result is True
+        assert result == {"success": True, "email_sent": False}
         update_call = mock_db.update_section_outcome.call_args[0]
         update_data = update_call[1]
         assert (
@@ -240,7 +240,7 @@ class TestRequestRework:
             outcome_id, reviewer_id, comments, send_email=True
         )
 
-        assert result is True
+        assert result == {"success": True, "email_sent": True}
         mock_send_email.assert_called_once_with(outcome_id, comments)
 
     @patch("src.services.clo_workflow_service.db")
@@ -252,10 +252,10 @@ class TestRequestRework:
         }
 
         result = CLOWorkflowService.request_rework(
-            "outcome-123", "admin-456", "Comments"
+            "outcome-123", "admin-456", "Comments", send_email=False
         )
 
-        assert result is False
+        assert result == {"success": False, "email_sent": False}
         mock_db.update_section_outcome.assert_not_called()
 
     @patch("src.services.clo_workflow_service.db")
@@ -264,10 +264,10 @@ class TestRequestRework:
         mock_db.get_section_outcome.return_value = None
 
         result = CLOWorkflowService.request_rework(
-            "nonexistent", "admin-123", "Comments"
+            "nonexistent", "admin-123", "Comments", send_email=False
         )
 
-        assert result is False
+        assert result == {"success": False, "email_sent": False}
 
     @patch("src.services.clo_workflow_service.db")
     def test_request_rework_update_fails(self, mock_db):
@@ -279,10 +279,10 @@ class TestRequestRework:
         mock_db.update_section_outcome.return_value = False
 
         result = CLOWorkflowService.request_rework(
-            "outcome-123", "admin-456", "Comments"
+            "outcome-123", "admin-456", "Comments", send_email=False
         )
 
-        assert result is False
+        assert result == {"success": False, "email_sent": False}
 
     @patch("src.services.clo_workflow_service.db")
     def test_request_rework_database_error(self, mock_db):
@@ -294,10 +294,10 @@ class TestRequestRework:
         mock_db.update_section_outcome.side_effect = Exception("Database error")
 
         result = CLOWorkflowService.request_rework(
-            "outcome-123", "admin-456", "Comments"
+            "outcome-123", "admin-456", "Comments", send_email=False
         )
 
-        assert result is False
+        assert result == {"success": False, "email_sent": False}
 
 
 class TestMarkAsNCI:

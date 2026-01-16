@@ -374,6 +374,62 @@ class EmailService:
             to_email=to_email, subject=subject, html_body=html_body, text_body=text_body
         )
 
+    @staticmethod
+    def send_admin_submission_alert(
+        to_email: str,
+        admin_name: str,
+        instructor_name: str,
+        course_code: str,
+        clo_count: int = 1,
+    ) -> bool:
+        """Send notification to program admin about new CLO submission
+
+        Args:
+            to_email: Admin's email address
+            admin_name: Admin's display name
+            instructor_name: Instructor who submitted
+            course_code: Course identifier (e.g., "CS101-001")
+            clo_count: Number of CLOs submitted (default: 1)
+
+        Returns:
+            True if email sent successfully, False otherwise
+        """
+        logger.info(
+            f"[Email Service] Sending admin submission alert to {logger.sanitize(to_email)} for {course_code}"
+        )
+
+        from flask import render_template
+
+        subject = f"New Assessment Submission: {course_code}"
+
+        # Build audit URL (points to Awaiting Approval filter)
+        base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
+        audit_url = urljoin(base_url, "/audit/clo?status=awaiting_approval")
+
+        # Prepare template context
+        clo_text = "CLO" if clo_count == 1 else f"{clo_count} CLOs"
+        template_context = {
+            "admin_name": admin_name,
+            "instructor_name": instructor_name,
+            "course_code": course_code,
+            "clo_text": clo_text,
+            "audit_url": audit_url,
+            "to_email": to_email,
+            "current_year": get_current_time().year,
+        }
+
+        # Render templates
+        text_body = render_template(
+            "emails/admin_submission_alert.txt", **template_context
+        )
+        html_body = render_template(
+            "emails/admin_submission_alert.html", **template_context
+        )
+
+        return EmailService._send_email(
+            to_email=to_email, subject=subject, html_body=html_body, text_body=text_body
+        )
+
     # Private helper methods
 
     @staticmethod
@@ -413,18 +469,6 @@ class EmailService:
                     f"{current_app.config.get('ENV', 'development')} environment: {to_email}"
                 )
                 raise EmailServiceError(error_message)
-
-            # WHITELIST PROTECTION: In local/test environments, only allow whitelisted emails
-            from src.email_providers import get_email_whitelist
-
-            whitelist = get_email_whitelist()
-            if not whitelist.is_allowed(to_email):
-                blocked_reason = whitelist.get_blocked_reason(to_email)
-                logger.error(
-                    f"[Email Service] BLOCKED by whitelist: {to_email} in "
-                    f"{current_app.config.get('ENV', 'local')} environment"
-                )
-                raise EmailServiceError(blocked_reason)
 
             # Get email provider (console or gmail based on config)
             provider = EmailService._get_email_provider()

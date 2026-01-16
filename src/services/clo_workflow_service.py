@@ -20,7 +20,9 @@ class CLOWorkflowService:
     """Service for managing CLO submission and approval workflows."""
 
     @staticmethod
-    def submit_clo_for_approval(section_outcome_id: str, user_id: str) -> bool:
+    def submit_clo_for_approval(
+        section_outcome_id: str, user_id: str, notify_admins: bool = False
+    ) -> bool:
         """
         Submit a section-level CLO for approval review.
 
@@ -58,6 +60,11 @@ class CLOWorkflowService:
                 logger.info(
                     f"Section CLO {logger.sanitize(section_outcome_id)} submitted for approval by user {logger.sanitize(user_id)}"
                 )
+                # Send admin notification if requested
+                if notify_admins:
+                    CLOWorkflowService._notify_program_admins(
+                        section_outcome_id, user_id
+                    )
             else:
                 logger.error(
                     f"Failed to update section CLO {logger.sanitize(section_outcome_id)} status"
@@ -128,7 +135,7 @@ class CLOWorkflowService:
         reviewer_id: str,
         comments: str,
         send_email: bool = False,
-    ) -> bool:
+    ) -> dict:
         """
         Request rework on a submitted section-level CLO with feedback comments.
 
@@ -139,13 +146,13 @@ class CLOWorkflowService:
             send_email: Whether to send email notification to the instructor
 
         Returns:
-            bool: True if rework request successful, False otherwise
+            dict: {"success": bool, "email_sent": bool} - success indicates if rework was recorded, email_sent indicates if notification was delivered
         """
         try:
             outcome = db.get_section_outcome(section_outcome_id)
             if not outcome:
                 logger.error(f"Section outcome not found: {section_outcome_id}")
-                return False
+                return {"success": False, "email_sent": False}
 
             # Verify CLO is in a state that can be sent back for rework
             if outcome.get("status") not in [
@@ -156,7 +163,7 @@ class CLOWorkflowService:
                     f"Section CLO {section_outcome_id} is in {outcome.get('status')} state, "
                     f"cannot request rework"
                 )
-                return False
+                return {"success": False, "email_sent": False}
 
             # Update status and feedback
             # NOTE: Using "approval_pending" string because the UI expects this for
@@ -175,23 +182,28 @@ class CLOWorkflowService:
                 logger.error(
                     f"Failed to request rework for section CLO {section_outcome_id}"
                 )
-                return False
+                return {"success": False, "email_sent": False}
 
             logger.info(
                 f"Section CLO {section_outcome_id} sent back for rework by reviewer {reviewer_id}"
             )
 
             # Send email notification if requested
+            email_sent = False
             if send_email:
-                CLOWorkflowService._send_rework_notification(
+                email_sent = CLOWorkflowService._send_rework_notification(
                     section_outcome_id, comments
                 )
+                if not email_sent:
+                    logger.warning(
+                        f"Rework recorded for {section_outcome_id} but email notification failed"
+                    )
 
-            return True
+            return {"success": True, "email_sent": email_sent}
 
         except Exception as e:
             logger.error(f"Error requesting rework for CLO: {e}")
-            return False
+            return {"success": False, "email_sent": False}
 
     @staticmethod
     def reopen_clo(section_outcome_id: str, reviewer_id: str) -> bool:
@@ -1220,3 +1232,61 @@ class CLOWorkflowService:
             final_details["history"] = history
         else:
             final_details["history"] = []
+
+    @staticmethod
+    def _notify_program_admins(section_outcome_id: str, user_id: str) -> None:
+        """Send email alert to program admins about new submission."""
+        try:
+            from src.services.email_service import EmailService
+
+            outcome = db.get_section_outcome(section_outcome_id)
+            if not outcome:
+                logger.warning(
+                    f"Outcome not found for notification: {section_outcome_id}"
+                )
+                return
+
+            course = db.get_course_by_id(outcome["course_id"])
+            if not course:
+                logger.warning(
+                    f"Course not found for notification: {outcome['course_id']}"
+                )
+                return
+
+            instructor = db.get_user_by_id(user_id)
+            if not instructor:
+                logger.warning(f"Instructor not found for notification: {user_id}")
+                return
+
+            # Get program admins only
+            program_id = course.get("program_id")
+            if not program_id:
+                logger.warning(f"No program ID for course {course['id']}")
+                return
+
+            admins = db.get_program_admins(program_id)
+            if not admins:
+                logger.info(f"No program admins found for program {program_id}")
+                return
+
+            # Send email to each admin
+            instructor_name = f"{instructor['first_name']} {instructor['last_name']}"
+            course_code = f"{course['course_number']}-{outcome['section_number']}"
+
+            for admin in admins:
+                try:
+                    EmailService.send_admin_submission_alert(
+                        to_email=admin["email"],
+                        admin_name=admin.get("first_name", "Admin"),
+                        instructor_name=instructor_name,
+                        course_code=course_code,
+                        clo_count=1,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send email to {admin['email']}: {e}")
+
+            logger.info(f"Sent admin alerts to {len(admins)} program admins")
+
+        except Exception as e:
+            logger.error(f"Failed to notify admins: {e}")
+            # Don't fail submission if email fails

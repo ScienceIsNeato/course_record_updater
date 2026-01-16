@@ -135,10 +135,6 @@ def _start_e2e_server(worker_port, db_path, env_overrides, log_file=None):
 
     # Common overrides
     env.pop("EMAIL_PROVIDER", None)
-    env["EMAIL_WHITELIST"] = (
-        "*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,"
-        "*@test.local,*@example.com,*@loopclosertests.mailtrap.io,*@system.local"
-    )
 
     # Apply specific overrides
     env.update(env_overrides)

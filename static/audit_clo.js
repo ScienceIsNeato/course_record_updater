@@ -117,7 +117,7 @@ function exportCurrentViewToCsv(cloList) {
     "Outcome Number",
     "Status",
     "Instructor",
-    "Submitted At",
+    "History",
     "Students Took",
     "Students Passed",
     "Success Rate (%)",
@@ -256,6 +256,39 @@ async function markAsNCI() {
   } catch (error) {
     alert("Failed to mark Outcome as NCI: " + error.message);
   }
+}
+
+/**
+ * Render history cell content (extracted for testability)
+ */
+function renderHistoryCellContent(clo) {
+  const historyContainer = document.createElement("div");
+  historyContainer.className = "small text-muted";
+
+  if (clo.history && clo.history.length > 0) {
+    // Show first 2 events
+    const eventsToShow = clo.history.slice(0, 2);
+    eventsToShow.forEach((entry) => {
+      const eventDiv = document.createElement("div");
+      eventDiv.className = "history-event";
+      eventDiv.textContent = `${entry.event} - ${formatDate(entry.occurred_at)}`;
+      historyContainer.appendChild(eventDiv);
+    });
+
+    // Show "and X more" if there are additional events
+    if (clo.history.length > 2) {
+      const moreDiv = document.createElement("div");
+      moreDiv.className = "text-primary";
+      moreDiv.style.cursor = "pointer";
+      moreDiv.textContent = `and ${clo.history.length - 2} more...`;
+      moreDiv.title = "Click to view full history";
+      historyContainer.appendChild(moreDiv);
+    }
+  } else {
+    historyContainer.textContent = "No history";
+  }
+
+  return historyContainer;
 }
 
 /**
@@ -1309,7 +1342,7 @@ document.addEventListener("DOMContentLoaded", () => {
       "Outcome #",
       "Description",
       "Instructor",
-      "Submitted",
+      "History",
       "Actions",
     ].forEach((text) => {
       const th = document.createElement("th");
@@ -1467,14 +1500,11 @@ document.addEventListener("DOMContentLoaded", () => {
               tdInst.textContent = clo.instructor_name || "N/A";
               tr.appendChild(tdInst);
 
-              // Submitted
-              const tdSub = document.createElement("td");
-              const small = document.createElement("small");
-              small.textContent = clo.submitted_at
-                ? formatDate(clo.submitted_at)
-                : "N/A";
-              tdSub.appendChild(small);
-              tr.appendChild(tdSub);
+              // History (up to 2 events inline + "and X more")
+              const tdHistory = document.createElement("td");
+              const historyContainer = renderHistoryCellContent(clo);
+              tdHistory.appendChild(historyContainer);
+              tr.appendChild(tdHistory);
 
               // Actions (same as before)
               const tdActions = document.createElement("td");
@@ -1791,11 +1821,22 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error(error.error || "Failed to request rework");
       }
 
-      showReworkAlert(
-        "Rework request sent successfully!" +
-          (sendEmail ? " Email notification sent." : ""),
-        "success",
-      );
+      const result = await response.json();
+      console.log("[Rework Request] Response:", result);
+
+      let message = "Rework request recorded successfully!";
+      let alertType = "success";
+
+      if (sendEmail) {
+        if (result.email_sent) {
+          message += " Email notification sent to instructor.";
+        } else {
+          message += " WARNING: Email notification failed to send.";
+          alertType = "warning";
+        }
+      }
+
+      showReworkAlert(message, alertType);
 
       toggleReworkMode(false);
       const modalInstance = bootstrap.Modal.getInstance(cloDetailModal);
@@ -1824,6 +1865,7 @@ if (typeof module !== "undefined" && module.exports) {
     formatDate,
     truncateText,
     escapeHtml,
+    renderHistoryCellContent,
     renderCLODetails,
     approveCLO,
     markAsNCI,
