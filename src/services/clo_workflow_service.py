@@ -611,7 +611,10 @@ class CLOWorkflowService:
 
     @staticmethod
     def submit_course_for_approval(
-        course_id: str, user_id: str, section_id: Optional[str] = None
+        course_id: str,
+        user_id: str,
+        section_id: Optional[str] = None,
+        notify_admins: bool = False,
     ) -> Dict[str, Any]:
         """
         Submit all CLOs for a course for approval after validation.
@@ -680,10 +683,21 @@ class CLOWorkflowService:
                 ):
                     submitted_count += 1
 
+            admin_alert_sent = False
+            admin_alert_error = None
+            if notify_admins and submitted_count > 0:
+                admin_alert_sent, admin_alert_error = (
+                    CLOWorkflowService._notify_program_admins_for_course(
+                        course_id, user_id, submitted_count
+                    )
+                )
+
             return {
                 "success": True,
                 "submitted_count": submitted_count,
                 "errors": [],
+                "admin_alert_sent": admin_alert_sent,
+                "admin_alert_error": admin_alert_error,
             }
 
         except Exception as e:
@@ -697,6 +711,8 @@ class CLOWorkflowService:
                         "message": f"Error submitting course: {str(e)}",
                     }
                 ],
+                "admin_alert_sent": False,
+                "admin_alert_error": None,
             }
 
     @staticmethod
@@ -1290,3 +1306,61 @@ class CLOWorkflowService:
         except Exception as e:
             logger.error(f"Failed to notify admins: {e}")
             # Don't fail submission if email fails
+
+    @staticmethod
+    def _notify_program_admins_for_course(
+        course_id: str, user_id: str, clo_count: int
+    ) -> tuple[bool, Optional[str]]:
+        """
+        Send aggregated notification to program admins after course submission.
+        Returns (success, error_message)
+        """
+        try:
+            course = db.get_course_by_id(course_id)
+            if not course:
+                error_msg = f"Course not found: {course_id}"
+                logger.warning(error_msg)
+                return False, error_msg
+
+            instructor = db.get_user_by_id(user_id)
+            if not instructor:
+                error_msg = f"Instructor not found: {user_id}"
+                logger.warning(error_msg)
+                return False, error_msg
+
+            program_id = course.get("program_id")
+            if not program_id:
+                error_msg = f"No program ID for course {course_id}"
+                logger.warning(error_msg)
+                return False, error_msg
+
+            admins = db.get_program_admins(program_id)
+            if not admins:
+                error_msg = f"No program admins found for program {program_id}"
+                logger.info(error_msg)
+                return False, error_msg
+
+            instructor_name = f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip()
+            if not instructor_name:
+                instructor_name = instructor.get("email", "Instructor")
+
+            course_code = course.get("course_number") or course_id
+
+            for admin in admins:
+                try:
+                    EmailService.send_admin_submission_alert(
+                        to_email=admin["email"],
+                        admin_name=admin.get("first_name", "Admin"),
+                        instructor_name=instructor_name,
+                        course_code=course_code,
+                        clo_count=clo_count,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send email to {admin['email']}: {e}")
+
+            logger.info(f"Sent admin submission alerts to {len(admins)} program admins")
+            return True, None
+        except Exception as e:
+            error_msg = f"Failed to notify admins: {e}"
+            logger.error(error_msg)
+            return False, str(e)

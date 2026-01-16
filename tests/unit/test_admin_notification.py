@@ -95,3 +95,29 @@ class TestAdminNotificationOnSubmission:
         # Verify
         assert result is True
         mock_send_alert.assert_not_called()
+
+    @patch("src.services.clo_workflow_service.EmailService.send_admin_submission_alert")
+    @patch("src.services.clo_workflow_service.db")
+    def test_notify_program_admins_for_course(self, mock_db, mock_send_alert):
+        """Test aggregated admin notification after course submission."""
+        mock_db.get_course_by_id.return_value = {
+            "id": "course-789",
+            "course_number": "CS101",
+            "program_id": "program-111",
+        }
+        mock_db.get_user_by_id.return_value = {
+            "first_name": "Emily",
+            "last_name": "Jones",
+            "email": "emily.jones@example.com",
+        }
+        mock_db.get_program_admins.return_value = [
+            {"email": "admin1@test.edu", "first_name": "Admin"}
+        ]
+
+        result, error = CLOWorkflowService._notify_program_admins_for_course(
+            "course-789", "instructor-456", 3
+        )
+
+        assert result is True
+        assert error is None
+        mock_send_alert.assert_called_once()

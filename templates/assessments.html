@@ -654,7 +654,8 @@
                 }
 
                 submitBtn?.addEventListener('click', function () {
-                    submitCourseForApproval(courseId, sectionId);
+                    const alertProgramAdmins = document.getElementById('alertProgramAdmins')?.checked || false;
+                    submitCourseForApproval(courseId, sectionId, alertProgramAdmins);
                 });
 
             } catch (error) {
@@ -732,7 +733,7 @@
         }
 
         // Submit entire course for approval
-        async function submitCourseForApproval(courseId, sectionId) {
+        async function submitCourseForApproval(courseId, sectionId, alertProgramAdmins = false) {
             try {
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
 
@@ -770,13 +771,27 @@
                         'Content-Type': 'application/json',
                         'X-CSRF-Token': csrfToken
                     },
-                    body: JSON.stringify({ section_id: sectionId })
+                    body: JSON.stringify({
+                        section_id: sectionId,
+                        alert_program_admins: alertProgramAdmins
+                    })
                 });
 
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    alert('Course submitted for approval successfully!');
+                    let successMessage = 'Course submitted for approval successfully!';
+                    if (alertProgramAdmins) {
+                        if (data.admin_alert_sent) {
+                            successMessage =
+                                'Course submitted for approval successfully! Program admins have been notified.';
+                        } else {
+                            const alertError = data.admin_alert_error || 'Unable to notify program admins.';
+                            successMessage =
+                                'Course submitted for approval, but failed to notify program admins: ' + alertError;
+                        }
+                    }
+                    alert(successMessage);
                     // Reconstruct composite ID for reload
                     const compositeId = sectionId ? `${courseId}::${sectionId}` : courseId;
                     loadOutcomes(compositeId); // Reload to show updated status with section filter
