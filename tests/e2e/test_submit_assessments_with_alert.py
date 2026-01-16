@@ -24,26 +24,10 @@ from tests.e2e.test_helpers import (
 from tests.test_credentials import TEST_USER_PASSWORD
 
 
-@pytest.mark.e2e
-def test_submit_assessments_with_alert_checkbox(
-    authenticated_institution_admin_page: Page,
-):
-    """
-    Test complete assessment submission flow including:
-    - Mixed populated/unpopulated optional fields
-    - Alert Program Admins checkbox
-    - Verify single submission (no duplicates)
-    """
-    admin_page = authenticated_institution_admin_page
-
-    # Get institution ID
-    institution_id = get_institution_id_from_user(admin_page)
-
-    # Get CSRF token
-    csrf_token = admin_page.evaluate(
-        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
-    )
-
+def _create_test_course_with_sections(
+    admin_page: Page, institution_id: str, csrf_token: str
+) -> tuple[str, str, str, str]:
+    """Create test course with 2 sections for same instructor."""
     # Create program
     program_response = admin_page.request.post(
         f"{BASE_URL}/api/programs",
@@ -114,42 +98,43 @@ def test_submit_assessments_with_alert_checkbox(
     assert term_response.ok
     term_id = term_response.json()["term_id"]
 
-    # Create offering and section
-    offering_response = admin_page.request.post(
-        f"{BASE_URL}/api/offerings",
-        headers={
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token if csrf_token else "",
-        },
-        data=json.dumps(
-            {
-                "course_id": course_id,
-                "term_id": term_id,
-                "instructor_id": instructor_id,
-                "institution_id": institution_id,
-            }
-        ),
-    )
-    assert offering_response.ok
-    offering_id = offering_response.json()["offering_id"]
+    # Create 2 offerings + sections for same course/instructor
+    for section_num in ["001", "002"]:
+        offering_response = admin_page.request.post(
+            f"{BASE_URL}/api/offerings",
+            headers={
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrf_token if csrf_token else "",
+            },
+            data=json.dumps(
+                {
+                    "course_id": course_id,
+                    "term_id": term_id,
+                    "instructor_id": instructor_id,
+                    "institution_id": institution_id,
+                }
+            ),
+        )
+        assert offering_response.ok
+        offering_id = offering_response.json()["offering_id"]
 
-    section_response = admin_page.request.post(
-        f"{BASE_URL}/api/sections",
-        headers={
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token if csrf_token else "",
-        },
-        data=json.dumps(
-            {
-                "offering_id": offering_id,
-                "section_number": "001",
-                "instructor_id": instructor_id,
-                "status": "open",
-                "enrollment": 25,
-            }
-        ),
-    )
-    assert section_response.ok
+        section_response = admin_page.request.post(
+            f"{BASE_URL}/api/sections",
+            headers={
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrf_token if csrf_token else "",
+            },
+            data=json.dumps(
+                {
+                    "offering_id": offering_id,
+                    "section_number": section_num,
+                    "instructor_id": instructor_id,
+                    "status": "open",
+                    "enrollment": 25 if section_num == "001" else 18,
+                }
+            ),
+        )
+        assert section_response.ok
 
     # Create 3 CLOs
     for clo_num in [1, 2, 3]:
@@ -170,57 +155,90 @@ def test_submit_assessments_with_alert_checkbox(
         )
         assert clo_response.ok
 
-    # === STEP 1: Instructor logs in ===
-    instructor_page = admin_page.context.new_page()
-    login_as_user(instructor_page, BASE_URL, "test.submit.alert@test.com", TEST_USER_PASSWORD)
+    return course_id, instructor_id, program_id, term_id
 
-    # Track console messages
+
+def _fill_clo_data(instructor_page: Page) -> None:
+    """Fill in all 3 CLOs with complete data."""
+    for i in range(3):
+        took = instructor_page.locator('input[data-field="students_took"]').nth(i)
+        passed = instructor_page.locator('input[data-field="students_passed"]').nth(i)
+        tool = instructor_page.locator('input[data-field="assessment_tool"]').nth(i)
+
+        took.fill(str(25 - i))
+        took.blur()
+        instructor_page.wait_for_timeout(500)
+
+        passed.fill(str(23 - i))
+        passed.blur()
+        instructor_page.wait_for_timeout(500)
+
+        tool_name = ["Final Exam", "Midterm Exam", "Final Project"][i]
+        tool.fill(tool_name)
+        tool.blur()
+        instructor_page.wait_for_timeout(500)
+
+
+@pytest.mark.e2e
+def test_submit_assessments_with_alert_checkbox(
+    authenticated_institution_admin_page: Page,
+):
+    """
+    Test complete assessment submission flow including:
+    - Mixed populated/unpopulated optional fields
+    - Alert Program Admins checkbox
+    - Verify single submission (no duplicates)
+    """
+    admin_page = authenticated_institution_admin_page
+    institution_id = get_institution_id_from_user(admin_page)
+    csrf_token = admin_page.evaluate(
+        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
+    )
+
+    # Create test data
+    course_id, instructor_id, program_id, term_id = _create_test_course_with_sections(
+        admin_page, institution_id, csrf_token
+    )
+
+    # Instructor logs in
+    instructor_page = admin_page.context.new_page()
+    login_as_user(
+        instructor_page, BASE_URL, "test.submit.alert@test.com", TEST_USER_PASSWORD
+    )
     instructor_page.on("console", lambda msg: print(f"BROWSER: {msg.text}"))
 
     # === STEP 2: Navigate to assessments ===
     instructor_page.goto(f"{BASE_URL}/assessments")
     instructor_page.wait_for_load_state("networkidle")
 
-    # === STEP 3: Select the course ===
+    # === STEP 3: Select SECTION 1 (we'll fill this one) ===
     course_select = instructor_page.locator("#courseSelect")
     expect(course_select).to_be_visible()
 
-    # Wait for course option with composite ID to load
+    # Wait for course options with composite ID to load
     instructor_page.wait_for_selector(
         f"#courseSelect option[value^='{course_id}::']", state="attached", timeout=10000
     )
-    
-    # Select the course
-    composite_value = instructor_page.locator(
+
+    # Verify we have 2 sections in the dropdown for this course
+    section_options = instructor_page.locator(
         f"#courseSelect option[value^='{course_id}::']"
-    ).first.get_attribute("value")
-    course_select.select_option(value=composite_value)
+    )
+    option_count = section_options.count()
+    print(f"✅ Found {option_count} section options for course {course_id}")
+    assert option_count == 2, f"Expected 2 sections, found {option_count}"
+
+    # Select the FIRST section (Section 001)
+    section1_composite = section_options.nth(0).get_attribute("value")
+    print(f"✅ Selecting section 1: {section1_composite}")
+    course_select.select_option(value=section1_composite)
     instructor_page.wait_for_load_state("networkidle")
 
     # Wait for outcomes to load
     instructor_page.wait_for_selector(".outcomes-list .row", timeout=5000)
 
-    # === STEP 4: Fill in CLO data (mixture of populated and unpopulated) ===
-    # Fill in first CLO completely
-    clo1_took = instructor_page.locator('input[data-field="students_took"]').first
-    clo1_passed = instructor_page.locator('input[data-field="students_passed"]').first
-    clo1_tool = instructor_page.locator('input[data-field="assessment_tool"]').first
-
-    expect(clo1_took).to_be_visible()
-    clo1_took.fill("25")
-    clo1_passed.fill("23")
-    clo1_tool.fill("Final Exam")
-
-    # Fill in second CLO partially (leave assessment_tool empty)
-    if instructor_page.locator('input[data-field="students_took"]').count() > 1:
-        clo2_took = instructor_page.locator('input[data-field="students_took"]').nth(1)
-        clo2_passed = instructor_page.locator('input[data-field="students_passed"]').nth(1)
-
-        clo2_took.fill("24")
-        clo2_passed.fill("20")
-        # Intentionally leave assessment_tool empty
-
-    # Leave third CLO completely empty (if exists) - testing optional fields
+    # === STEP 4: Fill in CLO data for selected section ===
+    _fill_clo_data(instructor_page)
 
     # === STEP 5: Fill in course-level data ===
     students_passed = instructor_page.locator("#courseStudentsPassed")
@@ -254,34 +272,55 @@ def test_submit_assessments_with_alert_checkbox(
     alert_checkbox.check()
     expect(alert_checkbox).to_be_checked()
 
-    # === STEP 7: Set up request listener to count submissions ===
-    # Track how many POST requests are made to /api/courses/.../submit
+    # === STEP 7: Set up request/response listeners to verify submission ===
+    # Track POST requests and their responses
     submit_requests = []
+    submit_responses = []
 
     def track_request(request):
         if "/api/courses/" in request.url and "/submit" in request.url:
             submit_requests.append(request.url)
 
+    def track_response(response):
+        if "/api/courses/" in response.url and "/submit" in response.url:
+            submit_responses.append({"url": response.url, "status": response.status})
+
     instructor_page.on("request", track_request)
+    instructor_page.on("response", track_response)
 
     # === STEP 8: Click Submit Assessments ===
     submit_btn = instructor_page.locator("#submitCourseBtn")
     expect(submit_btn).to_be_visible()
     expect(submit_btn).to_be_enabled()
 
+    # Handle alert dialog (will show success or error message)
+    alert_messages = []
+    instructor_page.on(
+        "dialog",
+        lambda dialog: (alert_messages.append(dialog.message), dialog.accept()),
+    )
+
     submit_btn.click()
 
-    # Handle alert dialog
-    instructor_page.once("dialog", lambda dialog: dialog.accept())
-
-    # Give a moment for any duplicate requests to fire (if bug still exists)
+    # Wait for response
     instructor_page.wait_for_timeout(2000)
 
-    # === STEP 9: Verify only ONE submission occurred ===
+    # === STEP 9: Verify submission succeeded ===
     assert (
         len(submit_requests) == 1
     ), f"Expected 1 submission, got {len(submit_requests)}: {submit_requests}"
 
+    assert (
+        len(submit_responses) == 1
+    ), f"Expected 1 response, got {len(submit_responses)}: {submit_responses}"
+
+    response_status = submit_responses[0]["status"]
+    assert (
+        response_status == 200
+    ), f"Expected 200 success, got {response_status}. Alert: {alert_messages}"
+
     print(f"✅ Single submission confirmed: {submit_requests[0]}")
+    print(f"✅ Submission succeeded with status {response_status}")
     print("✅ Alert Program Admins checkbox working")
     print("✅ Mixed populated/unpopulated fields handled correctly")
+    print("✅ Only selected section validated (not all instructor sections for course)")

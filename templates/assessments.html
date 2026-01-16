@@ -752,6 +752,8 @@
                         narrative_changes: document.getElementById('narrativeChanges')?.value?.trim() || null
                     };
 
+                    console.log('[Submit] Course data to save:', courseData);
+
                     const saveResponse = await fetch(`/api/sections/${sectionId}`, {
                         method: 'PUT',
                         headers: {
