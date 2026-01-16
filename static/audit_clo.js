@@ -1644,11 +1644,10 @@ document.addEventListener("DOMContentLoaded", () => {
       cloDetailContainer.replaceChildren(renderCLODetails(clo));
 
       // Show/hide action buttons based on status
-      const canApprove = [
-        "awaiting_approval",
-        "approval_pending",
-        "in_progress",
-      ].includes(clo.status);
+      // Only show approve/rework for outcomes that backend can process
+      const canApprove = ["awaiting_approval", "approval_pending"].includes(
+        clo.status,
+      );
       const canMarkNCI = [
         "awaiting_approval",
         "approval_pending",
