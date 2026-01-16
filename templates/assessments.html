@@ -66,7 +66,7 @@
     <!-- Course-Level Assessment Section (shown AFTER CLOs) -->
     <div id="courseLevelSection" style="display: none;" class="card mb-4 border-primary">
         <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="fas fa-chart-line"></i> Course-Level Assessment Data</h5>
+            <h5 class="mb-0"><i class="fas fa-chart-line"></i> Course-Section-Level Assessment Data</h5>
         </div>
         <div class="card-body">
             <!-- Enrollment Information (Read-Only) -->
@@ -289,6 +289,10 @@
 
         const courseSelect = document.getElementById('courseSelect');
         const outcomesContainer = document.getElementById('outcomesContainer');
+        const parseOptionalInt = (value) => {
+            const parsed = Number.parseInt(value);
+            return Number.isNaN(parsed) ? null : parsed;
+        };
         const updateAssessmentModal = document.getElementById('updateAssessmentModal');
         const updateAssessmentForm = document.getElementById('updateAssessmentForm');
 
@@ -643,20 +647,14 @@
                     });
                 });
 
-                // Add submit course handler
+                // Update submit button text based on whether assessments were previously submitted
                 const submitBtn = document.getElementById('submitCourseBtn');
-
-                // Update button text based on whether assessments were previously submitted
                 if (submitBtn) {
                     const hasPreviousSubmission = Boolean(data.has_previous_submission);
                     const label = hasPreviousSubmission ? 'Re-Submit Assessments' : 'Submit Assessments';
                     submitBtn.innerHTML = `<i class="fas fa-upload"></i> ${label}`;
                 }
-
-                submitBtn?.addEventListener('click', function () {
-                    const alertProgramAdmins = document.getElementById('alertProgramAdmins')?.checked || false;
-                    submitCourseForApproval(courseId, sectionId, alertProgramAdmins);
-                });
+                // Note: Submit button handler is added ONCE in DOMContentLoaded, not here
 
             } catch (error) {
                 console.error('Error loading outcomes:', error);
@@ -739,9 +737,9 @@
 
                 // First, save the course-level form data
                 if (sectionId) {
-                    const courseData = {
-                        students_passed: Number.parseInt(document.getElementById('courseStudentsPassed')?.value) || null,
-                        students_dfic: Number.parseInt(document.getElementById('courseStudentsDFIC')?.value) || null,
+                const courseData = {
+                    students_passed: parseOptionalInt(document.getElementById('courseStudentsPassed')?.value),
+                    students_dfic: parseOptionalInt(document.getElementById('courseStudentsDFIC')?.value),
                         cannot_reconcile: document.getElementById('cannotReconcile')?.checked || false,
                         reconciliation_note: document.getElementById('reconciliationNote')?.value?.trim() || null,
                         narrative_celebrations: document.getElementById('narrativeCelebrations')?.value?.trim() || null,
@@ -1105,6 +1103,21 @@
         const reconciliationNoteContainer = document.getElementById('reconciliationNoteContainer');
         const saveCourseDataBtn = document.getElementById('saveCourseData');
         const canEditDueDate = {{ 'true' if can_edit_due_date else 'false' }};
+
+    // Submit Course Button Handler (ONCE - prevents duplicate submissions)
+    const submitCourseBtn = document.getElementById('submitCourseBtn');
+    if (submitCourseBtn) {
+        submitCourseBtn.addEventListener('click', function () {
+            const compositeId = courseSelect.value;
+            if (!compositeId) {
+                alert('Please select a course first');
+                return;
+            }
+            const [courseId, sectionId] = compositeId.split('::');
+            const alertProgramAdmins = document.getElementById('alertProgramAdmins')?.checked || false;
+            submitCourseForApproval(courseId, sectionId, alertProgramAdmins);
+        });
+    }
 
     // Toggle reconciliation note visibility
     if (cannotReconcileCheckbox) {
