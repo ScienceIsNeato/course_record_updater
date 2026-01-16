@@ -1353,8 +1353,21 @@ class CLOWorkflowService:
                 return False, error_msg
 
             admins = db.get_program_admins(program_id)
+
+            # Fall back to institution admins if no program admins
             if not admins:
-                error_msg = f"No program admins found for program {program_id}"
+                logger.info(
+                    f"No program admins for program {program_id}, falling back to institution admins"
+                )
+                institution_id = course.get("institution_id")
+                if institution_id:
+                    all_users = db.get_all_users(institution_id)
+                    admins = [
+                        u for u in all_users if u.get("role") == "institution_admin"
+                    ]
+
+            if not admins:
+                error_msg = f"No program or institution admins found for notifications"
                 logger.info(error_msg)
                 return False, error_msg
 

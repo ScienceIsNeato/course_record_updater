@@ -38,14 +38,10 @@ class TestInstitutionAdminDashboardWorkflow:
         page.wait_for_load_state("networkidle")
 
         expected_nav = [
-            "Dashboard",
-            "Audit",
-            "Assessments",
-            "Outcomes",
-            "Users",
-            "Courses",
-            "Offerings",
-            "Sections",
+            "Main Dashboard",
+            "Program Management",
+            "Faculty Management",
+            "Outcome Management",
         ]
         navigator = HeaderNavigator(page)
         labels = navigator.labels()
