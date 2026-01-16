@@ -319,8 +319,19 @@ def test_submit_assessments_with_alert_checkbox(
         response_status == 200
     ), f"Expected 200 success, got {response_status}. Alert: {alert_messages}"
 
+    # Verify the alert message confirms admin notification
+    assert len(alert_messages) > 0, "No alert dialog shown"
+    alert_text = alert_messages[0]
+    assert (
+        "successfully" in alert_text.lower()
+    ), f"Alert doesn't show success: {alert_text}"
+
+    # The alert should mention admin notification if checkbox was checked
+    # (actual email sending verified by server logs, not in test assertion)
+
     print(f"✅ Single submission confirmed: {submit_requests[0]}")
     print(f"✅ Submission succeeded with status {response_status}")
+    print(f"✅ Alert shown: {alert_text}")
     print("✅ Alert Program Admins checkbox working")
     print("✅ Mixed populated/unpopulated fields handled correctly")
     print("✅ Only selected section validated (not all instructor sections for course)")

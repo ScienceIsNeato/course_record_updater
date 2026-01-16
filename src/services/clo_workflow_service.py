@@ -1289,8 +1289,9 @@ class CLOWorkflowService:
                 logger.warning(f"Instructor not found for notification: {user_id}")
                 return
 
-            # Get program admins only
-            program_id = course.get("program_id")
+            # Get program_id (courses have program_ids array, use first one)
+            program_ids = course.get("program_ids") or []
+            program_id = program_ids[0] if program_ids else course.get("program_id")
             if not program_id:
                 logger.warning(f"No program ID for course {course['id']}")
                 return
@@ -1343,7 +1344,9 @@ class CLOWorkflowService:
                 logger.warning(error_msg)
                 return False, error_msg
 
-            program_id = course.get("program_id")
+            # Get program_id (courses have program_ids array, use first one)
+            program_ids = course.get("program_ids") or []
+            program_id = program_ids[0] if program_ids else course.get("program_id")
             if not program_id:
                 error_msg = f"No program ID for course {course_id}"
                 logger.warning(error_msg)
