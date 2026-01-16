@@ -404,7 +404,7 @@ class EmailService:
 
         # Build audit URL (points to Awaiting Approval filter)
         base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
-        audit_url = urljoin(base_url, "/audit/clo?status=awaiting_approval")
+        audit_url = urljoin(base_url, "/audit-clo?status=awaiting_approval")
 
         # Prepare template context
         clo_text = "CLO" if clo_count == 1 else f"{clo_count} CLOs"

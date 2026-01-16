@@ -658,31 +658,41 @@ class CLOWorkflowService:
             return {"success": False, "errors": validation["errors"]}
 
         try:
-            # Get sections for this course (same logic as validation)
-            if user_id:
-                # Get user info to determine role
-                from src.database.database_service import get_user_by_id
-
-                user = get_user_by_id(user_id)
-                if user and user.get("role") == "instructor":
-                    # Instructors can only see their own sections
-                    sections = db.get_sections_by_instructor(user_id)
-                    # Filter to only sections for this course
-                    sections = [s for s in sections if s.get("course_id") == course_id]
-                else:
-                    # Admins and other roles can see all sections
-                    sections = db.get_sections_by_course(course_id)
+            # If section_id provided, only submit outcomes for that section
+            # Otherwise, submit all sections (legacy behavior)
+            if section_id:
+                logger.info(
+                    f"DEBUG: Submitting ONLY section {section_id} for course {course_id}"
+                )
+                section_outcomes = db.get_section_outcomes_by_section(section_id)
             else:
-                # Fallback to all sections
-                sections = db.get_sections_by_course(course_id)
+                # Get sections for this course (same logic as validation)
+                if user_id:
+                    # Get user info to determine role
+                    from src.database.database_service import get_user_by_id
 
-            # Get all section outcomes for this course
-            section_outcomes = []
-            for section in sections:
-                section_id = section.get("section_id")
-                if section_id:
-                    outcomes = db.get_section_outcomes_by_section(section_id)
-                    section_outcomes.extend(outcomes)
+                    user = get_user_by_id(user_id)
+                    if user and user.get("role") == "instructor":
+                        # Instructors can only see their own sections
+                        sections = db.get_sections_by_instructor(user_id)
+                        # Filter to only sections for this course
+                        sections = [
+                            s for s in sections if s.get("course_id") == course_id
+                        ]
+                    else:
+                        # Admins and other roles can see all sections
+                        sections = db.get_sections_by_course(course_id)
+                else:
+                    # Fallback to all sections
+                    sections = db.get_sections_by_course(course_id)
+
+                # Get all section outcomes for this course
+                section_outcomes = []
+                for section in sections:
+                    sect_id = section.get("section_id")
+                    if sect_id:
+                        outcomes = db.get_section_outcomes_by_section(sect_id)
+                        section_outcomes.extend(outcomes)
 
             # Submit each section outcome
             submitted_count = 0
