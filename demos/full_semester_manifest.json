@@ -36,7 +36,7 @@
     ],
     "users": [
         {
-            "email": "demo2025.admin@example.com",
+            "email": "quarkswithforks@gmail.com",
             "first_name": "Demo",
             "last_name": "Admin",
             "role": "institution_admin",
@@ -67,11 +67,12 @@
             "program_code": "BIOL"
         },
         {
-            "email": "dr.patel@demo.example.com",
+            "email": "prof.raj.patel@gmail.com",
             "first_name": "Raj",
             "last_name": "Patel",
             "role": "instructor",
-            "program_code": "ZOOL"
+            "program_code": "ZOOL",
+            "password_env_var": "DEMO_PASSWORD"
         }
     ],
     "courses": [

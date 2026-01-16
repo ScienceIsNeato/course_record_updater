@@ -6562,7 +6562,7 @@ def send_course_reminder_api() -> ResponseReturnValue:
         sections = database_service.get_sections_by_course(course_id)
         reminder_count = 0
         for section in sections:
-            if section.get("instructor_id") == instructor_id:
+            if str(section.get("instructor_id")) == str(instructor_id):
                 section_id = section.get("section_id") or section.get("id")
                 if section_id:
                     database_service.create_reminder(

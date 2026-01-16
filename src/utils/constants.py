@@ -33,7 +33,7 @@ INVALID_PASSWORD_NO_COMPLEXITY = "password123"
 STRONG_PASSWORD_1 = "Str0ng!Pass"
 STRONG_PASSWORD_2 = "StrongPass1!"
 LONG_PASSWORD = "A" * 129 + "1!"
-DEMO_PASSWORD = "Demo2025!"
+DEMO_PASSWORD = "Demo123!"
 
 # Backwards-compatible aliases for test credentials module
 SITE_ADMIN_PASSWORD = "SiteAdmin123!"
