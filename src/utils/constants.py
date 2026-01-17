@@ -18,21 +18,27 @@ DEFAULT_EXPORT_LIMIT = 1000
 
 # Test secrets (placeholders used only in test environments)
 # NOTE: Do NOT hardcode passwords in tests. Add new test passwords here
-# and regenerate the .secrets.baseline when intentionally adding a new test secret.
-TEST_USER_PASSWORD = "TestUser123!"
-# Additional centralized test passwords (keep in sync with tests/test_credentials.py)
-TEST_PASSWORD = "TestPass123!"
-SECURE_PASSWORD = "SecurePassword123!"
-NEW_PASSWORD = "NewSecurePassword123!"
-NEW_SECURE_PASSWORD = "NewSecurePassword123!"
-VALID_PASSWORD = "ValidPassword123!"
-WRONG_PASSWORD = "WrongPass123!"
-WEAK_PASSWORD = "weak"
+# Test user credentials - ONLY for automated testing
+# These are intentionally simple and MUST NOT be used in production
+TEST_USER_EMAIL = "test@example.com"
+TEST_USER_PASSWORD = "TestUser123!"  # pragma: allowlist secret
+TEST_ADMIN_EMAIL = "admin@example.com"
+TEST_ADMIN_PASSWORD = "TestPass123!"  # pragma: allowlist secret
+
+# Additional test passwords  # pragma: allowlist secret
+TEST_PASSWORD = "TestPass123!"  # pragma: allowlist secret
+SECURE_PASSWORD = "SecurePassword123!"  # pragma: allowlist secret
+NEW_PASSWORD = "NewSecurePassword123!"  # pragma: allowlist secret
+NEW_SECURE_PASSWORD = "NewSecurePassword123!"  # pragma: allowlist secret
+VALID_PASSWORD = "ValidPassword123!"  # pragma: allowlist secret
+WRONG_PASSWORD = "WrongPass123!"  # pragma: allowlist secret
+WEAK_PASSWORD = "weak"  # pragma: allowlist secret
 INVALID_PASSWORD_SHORT = "a"
 INVALID_PASSWORD_NO_COMPLEXITY = "password123"
-STRONG_PASSWORD_1 = "Str0ng!Pass"
-STRONG_PASSWORD_2 = "StrongPass1!"
-LONG_PASSWORD = "A" * 129 + "1!"
+STRONG_PASSWORD_1 = "Str0ng!Pass"  # pragma: allowlist secret
+STRONG_PASSWORD_2 = "StrongPass1!"  # pragma: allowlist secret
+LONG_PASSWORD = "A" * 129 + "1!"  # pragma: allowlist secret
+DEMO_PASSWORD = "Demo123!"  # pragma: allowlist secret
 DEMO_PASSWORD = "Demo123!"
 
 # Backwards-compatible aliases for test credentials module

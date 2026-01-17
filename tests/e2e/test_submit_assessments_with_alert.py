@@ -276,20 +276,16 @@ def test_submit_assessments_with_alert_checkbox(
     # Use response listener BEFORE clicking submit
     submit_response_status = []
 
-    def track_response(response):
-        if (
-            "/api/courses/" in response.url
-            and "/submit" in response.url
-            and response.request.method == "POST"
-        ):
+    def response_handler(response):
+        if "submit-course" in response.url and response.request.method == "POST":
             submit_response_status.append(response.status)
+            print(f"✅ Captured submit response: {response.status}")
 
-    instructor_page.on("response", track_response)
+    instructor_page.on("response", response_handler)
 
     # === STEP 8: Click Submit Assessments ===
-    submit_btn = instructor_page.locator("#submitCourseBtn")
-    expect(submit_btn).to_be_visible()
-    expect(submit_btn).to_be_enabled()
+    submit_button = instructor_page.locator("#submitCourseBtn")
+    submit_button.wait_for(state="visible", timeout=10000)
 
     # Handle alert dialog (will show success or error message)
     alert_messages = []
@@ -298,18 +294,21 @@ def test_submit_assessments_with_alert_checkbox(
         lambda dialog: (alert_messages.append(dialog.message), dialog.accept()),
     )
 
-    submit_btn.click()
+    # Use expect_response to ensure we capture it
+    # Actual endpoint is /api/courses/{course_id}/submit
+    with instructor_page.expect_response("**/api/courses/**/submit") as response_info:
+        submit_button.click()
 
     # Wait for response
-    instructor_page.wait_for_timeout(2000)
+    response = response_info.value
+    submit_response_status.append(response.status)
 
     # === STEP 9: Verify submission succeeded ===
+    # Verify we got a response
     assert len(submit_response_status) > 0, "No response received from submit endpoint"
-
-    response_status = submit_response_status[0]
-    assert (
-        response_status == 200
-    ), f"Expected 200 success, got {response_status}. Alert: {alert_messages}"
+    assert submit_response_status[0] == 200, (
+        f"Submit failed with status {submit_response_status[0]}"
+    )
 
     # Verify the alert message confirms admin notification
     assert len(alert_messages) > 0, "No alert dialog shown"
