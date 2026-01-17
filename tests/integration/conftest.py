@@ -43,9 +43,6 @@ def seeded_integration_db(tmp_path_factory):
 
     os.environ["DATABASE_URL"] = f"sqlite:///{session_db}"
     os.environ["DATABASE_TYPE"] = "sqlite"
-    os.environ["EMAIL_WHITELIST"] = (
-        "*@inst.test,*@example.com,*@testu.edu,*@eu.edu,*@mocku.test,*@ethereal.email,*@system.local"
-    )
     database_service.refresh_connection()
 
     # Load E2E manifest

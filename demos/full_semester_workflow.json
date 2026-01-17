@@ -28,12 +28,12 @@
       "purpose": "Introduce the LoopCloser interface, header elements, and dashboard panel organization",
       "pre_commands": [],
       "instructions": {
-        "human": "Login as Institution Admin (quarkswithforks@gmail.com / Demo123!).\n\n**Header Tour (Left to Right):**\n- LoopCloser Logo (optional branding)\n- Quick Links: Dashboard, Programs, Courses, etc.\n- Current Term Indicator: 'Fall 2025 (Active)'\n- System Date Override Banner: 'Dec 23, 2025' (admin-only feature for demo/testing)\n- Profile Dropdown: Account Settings, Logout\n- Home Button: Returns to main dashboard\n\n**Dashboard Panels:**\nNotice the panels are grouped by concept:\n- **Programs Panel:** Quick view of program metrics, 'Add Program' button, 'Manage Programs' opens data grid\n- **Courses Panel:** Course summary, quick add, manage\n- **Faculty Panel:** Instructor assignments, invite button\n- **Outcomes Panel:** CLO status summary with filters\n- **Terms Panel:** Active/upcoming terms, create new term\n\nEach panel follows the pattern: Summary stats → Quick action button (opens dialog) → Manage button (opens full page).",
+        "human": "Login as Institution Admin (loopcloser_demo_admin@proton.me / Demo123!).\n\n**Header Tour (Left to Right):**\n- LoopCloser Logo (optional branding)\n- Quick Links: Dashboard, Programs, Courses, etc.\n- Current Term Indicator: 'Fall 2025 (Active)'\n- System Date Override Banner: 'Dec 23, 2025' (admin-only feature for demo/testing)\n- Profile Dropdown: Account Settings, Logout\n- Home Button: Returns to main dashboard\n\n**Dashboard Panels:**\nNotice the panels are grouped by concept:\n- **Programs Panel:** Quick view of program metrics, 'Add Program' button, 'Manage Programs' opens data grid\n- **Courses Panel:** Course summary, quick add, manage\n- **Faculty Panel:** Instructor assignments, invite button\n- **Outcomes Panel:** CLO status summary with filters\n- **Terms Panel:** Active/upcoming terms, create new term\n\nEach panel follows the pattern: Summary stats → Quick action button (opens dialog) → Manage button (opens full page).",
         "automated": {
           "action": "api_post",
           "endpoint": "/api/auth/login",
           "data": {
-            "email": "quarkswithforks@gmail.com",
+            "email": "loopcloser_demo_admin@proton.me",
             "password": "Demo123!"
           },
           "description": "Login as Institution Admin"
@@ -50,7 +50,7 @@
         }
       ],
       "inputs": {
-        "email": "quarkswithforks@gmail.com",
+        "email": "loopcloser_demo_admin@proton.me",
         "password": "Demo123!"
       },
       "expected_results": [
@@ -92,11 +92,11 @@
     {
       "step_number": 3,
       "phase": "Section 2: Audit Flow",
-      "name": "Approve an Outcome",
-      "purpose": "Demonstrate the approval workflow for a submitted outcome",
+      "name": "Approve Outcomes (BIOL-101 Sec 004)",
+      "purpose": "Demonstrate the approval workflow for submitted outcomes",
       "pre_commands": [],
       "instructions": {
-        "human": "Find an outcome with status 'Awaiting Approval' (e.g., BIOL-101 Section 1, CLO #1).\n\nClick on the card to open the detail modal.\n\nReview:\n- Description\n- Assessment methods\n- Submission history\n\nClick 'Approve' button.\n\nThe outcome should move to 'Approved' status and disappear from the 'Awaiting Approval' filter.\n\n**Key Point:** This closes the loop for this outcome—the faculty member receives confirmation and the data is locked for reporting.",
+        "human": "Filter to 'Awaiting Approval' status.\n\nFind **BIOL-101 Section 004, CLO #1**.\n\nClick on the card to open the detail modal.\n\nReview the description, assessment methods, and submission history.\n\nClick 'Approve' button. The outcome moves to 'Approved' status.\n\n**Repeat for BIOL-101 Section 004, CLO #2.** Approve it as well.\n\n**Note:** We'll handle CLO #3 in the next step—it needs some corrections.\n\n**Key Point:** Approving closes the loop—faculty receives confirmation and data is locked for reporting.",
         "automated": {
           "action": "none"
         }
@@ -115,11 +115,11 @@
     {
       "step_number": 4,
       "phase": "Section 2: Audit Flow",
-      "name": "Request Rework on an Outcome",
+      "name": "Request Rework (BIOL-101 Sec 004, CLO 3)",
       "purpose": "Flag an outcome that needs corrections from the instructor",
       "pre_commands": [],
       "instructions": {
-        "human": "Find another outcome in 'Awaiting Approval' status (e.g., BIOL-101 Section 2, CLO #2).\n\nOpen the detail modal and notice there's an issue (e.g., vague description, incomplete assessment method).\n\nClick 'Request Rework'.\n\nEnter a comment explaining what needs to be fixed:\n\"Please clarify the assessment method and make the description more specific to the course content.\"\n\nConfirm.\n\n**Result:** The outcome status changes to 'Needs Rework' and the instructor receives an email notification with your comments.",
+        "human": "Still in 'Awaiting Approval' filter, find **BIOL-101 Section 004, CLO #3**.\n\nOpen the detail modal. Notice the description is vague or the assessment method is incomplete.\n\nClick 'Request Rework'.\n\nEnter feedback:\n\"Please provide more specific details on the assessment method. The current description is too general for our accreditation reporting.\"\n\nConfirm.\n\n**Result:** Status changes to 'Needs Rework' and the instructor receives an email notification with your feedback.",
         "automated": {
           "action": "none"
         }
@@ -140,11 +140,11 @@
     {
       "step_number": 5,
       "phase": "Section 2: Audit Flow",
-      "name": "Reopen a Previously Approved Outcome",
-      "purpose": "Demonstrate the ability to reopen outcomes if issues are discovered later",
+      "name": "Reopen NCI Outcome (HIST-101 Sec 001, CLO 2)",
+      "purpose": "Correct a mistaken 'Never Coming In' marking from a previous audit session",
       "pre_commands": [],
       "instructions": {
-        "human": "Switch to the 'Approved' filter.\n\nFind an approved outcome (e.g., BIOL-201 Section 1, CLO #1).\n\nImagine you discovered an error after approval. Click 'Reopen'.\n\nAdd a reason: \"Discovered assessment rubric mismatch with program standards.\"\n\n**Result:** The outcome returns to 'In Progress' or 'Needs Rework' status, allowing the instructor to make corrections.\n\nThis demonstrates the platform's flexibility for quality assurance even after initial approval.",
+        "human": "Switch to the 'Never Coming In' (NCI) filter.\n\nFind **HIST-101 Section 001, CLO #2** (marked as NCI).\n\nNotice that CLO #1 for the same section is 'Approved'—this suggests CLO #2 being marked NCI was likely a mistake from the last audit session.\n\nClick 'Reopen'.\n\nAdd a reason: \"Likely marked NCI in error during previous session. CLO #1 is approved, so instructor was clearly active. Reopening for proper review.\"\n\nConfirm.\n\n**Result:** The outcome returns to 'In Progress' status, allowing the instructor to submit it properly.\n\n**Key Point:** This demonstrates the platform's flexibility to correct administrative errors even after final disposition.",
         "automated": {
           "action": "none"
         }
@@ -283,7 +283,7 @@
       "purpose": "Tie up the loop by reviewing and approving the faculty submissions",
       "pre_commands": [],
       "instructions": {
-        "human": "Logout as prof.raj.patel@gmail.com.\n\nLogin again as quarkswithforks@gmail.com / Demo123!.\n\nGo to the Audit page.\n\nYou should now see:\n- ZOOL-101 CLO #1: Fresh submission from Dr. Patel\n- BIOL-101 Section 2, CLO #2: Reworked submission\n\nReview both and click 'Approve' on each.\n\n**Result:** Both outcomes are now closed out for Fall 2025. Dr. Patel receives approval notifications.\n\n**Key Point:** This completes the full closed-loop workflow: Admin requests work → Faculty receives email → Faculty submits → Admin reviews → Loop closed.",
+        "human": "Logout as prof.raj.patel@gmail.com.\n\nLogin again as loopcloser_demo_admin@proton.me / Demo123!.\n\nGo to the Audit page.\n\nYou should now see:\n- ZOOL-101 CLO #1: Fresh submission from Dr. Patel\n- BIOL-101 Section 2, CLO #2: Reworked submission\n\nReview both and click 'Approve' on each.\n\n**Result:** Both outcomes are now closed out for Fall 2025. Dr. Patel receives approval notifications.\n\n**Key Point:** This completes the full closed-loop workflow: Admin requests work → Faculty receives email → Faculty submits → Admin reviews → Loop closed.",
         "automated": {
           "action": "none"
         }

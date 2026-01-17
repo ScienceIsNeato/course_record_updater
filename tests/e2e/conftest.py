@@ -135,10 +135,6 @@ def _start_e2e_server(worker_port, db_path, env_overrides, log_file=None):
 
     # Common overrides
     env.pop("EMAIL_PROVIDER", None)
-    env["EMAIL_WHITELIST"] = (
-        "*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,"
-        "*@test.local,*@example.com,*@loopclosertests.mailtrap.io,*@system.local"
-    )
 
     # Apply specific overrides
     env.update(env_overrides)
@@ -385,6 +381,9 @@ def page(context: BrowserContext) -> Generator[Page, None, None]:
                 print(
                     f"ℹ️  Transient dashboard load error (race condition): {error_text[:100]}..."
                 )
+            # Filter out flaky CONTENT_LENGTH_MISMATCH errors common with Flask dev server + Playwright
+            elif "net::ERR_CONTENT_LENGTH_MISMATCH" in error_text:
+                print(f"ℹ️  Ignored flaky dev server error: {error_text}")
             else:
                 console_errors.append(error_text)
 

@@ -4011,10 +4011,11 @@ def submit_course_for_approval_endpoint(course_id: str) -> ResponseReturnValue:
         # Get optional section_id from request body
         data = request.get_json(silent=True) or {} or {}
         section_id = data.get("section_id")
+        alert_program_admins = bool(data.get("alert_program_admins"))
 
         # Submit course (validates first)
         result = CLOWorkflowService.submit_course_for_approval(
-            course_id, user_id, section_id
+            course_id, user_id, section_id, notify_admins=alert_program_admins
         )
 
         if result["success"]:

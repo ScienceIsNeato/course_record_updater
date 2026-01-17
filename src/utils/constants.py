@@ -18,22 +18,37 @@ DEFAULT_EXPORT_LIMIT = 1000
 
 # Test secrets (placeholders used only in test environments)
 # NOTE: Do NOT hardcode passwords in tests. Add new test passwords here
-# and regenerate the .secrets.baseline when intentionally adding a new test secret.
-TEST_USER_PASSWORD = "TestUser123!"
-# Additional centralized test passwords (keep in sync with tests/test_credentials.py)
-TEST_PASSWORD = "TestPass123!"
-SECURE_PASSWORD = "SecurePassword123!"
-NEW_PASSWORD = "NewSecurePassword123!"
-NEW_SECURE_PASSWORD = "NewSecurePassword123!"
-VALID_PASSWORD = "ValidPassword123!"
-WRONG_PASSWORD = "WrongPass123!"
-WEAK_PASSWORD = "weak"
+# Test user credentials - ONLY for automated testing
+# These are intentionally simple and MUST NOT be used in production
+TEST_USER_EMAIL = "test@example.com"
+TEST_USER_PASSWORD = "TestUser123!"  # nosec B105 - Test-only credential, not used in production  # pragma: allowlist secret
+TEST_ADMIN_EMAIL = "admin@example.com"
+TEST_ADMIN_PASSWORD = "TestPass123!"  # nosec B105 - Test-only credential, not used in production  # pragma: allowlist secret
+
+# Additional test passwords
+TEST_PASSWORD = "TestPass123!"  # nosec B105 - Test-only credential, not used in production  # pragma: allowlist secret
+SECURE_PASSWORD = "SecurePassword123!"  # nosec B105 - Test-only credential  # pragma: allowlist secret
+NEW_PASSWORD = "NewSecurePassword123!"  # nosec B105 - Test-only credential  # pragma: allowlist secret
+NEW_SECURE_PASSWORD = "NewSecurePassword123!"  # nosec B105 - Test-only credential  # pragma: allowlist secret
+VALID_PASSWORD = (
+    "ValidPassword123!"  # nosec B105 - Test-only credential  # pragma: allowlist secret
+)
+WRONG_PASSWORD = (
+    "WrongPass123!"  # nosec B105 - Test-only credential  # pragma: allowlist secret
+)
+WEAK_PASSWORD = "weak"  # nosec B105 - Test-only credential  # pragma: allowlist secret
 INVALID_PASSWORD_SHORT = "a"
 INVALID_PASSWORD_NO_COMPLEXITY = "password123"
-STRONG_PASSWORD_1 = "Str0ng!Pass"
-STRONG_PASSWORD_2 = "StrongPass1!"
-LONG_PASSWORD = "A" * 129 + "1!"
-DEMO_PASSWORD = "Demo123!"
+STRONG_PASSWORD_1 = (
+    "Str0ng!Pass"  # nosec B105 - Test-only credential  # pragma: allowlist secret
+)
+STRONG_PASSWORD_2 = (
+    "StrongPass1!"  # nosec B105 - Test-only credential  # pragma: allowlist secret
+)
+LONG_PASSWORD = (
+    "A" * 129 + "1!"
+)  # nosec B105 - Test-only credential  # pragma: allowlist secret
+DEMO_PASSWORD = "Demo123!"  # nosec B105 - Test-only credential for local development  # pragma: allowlist secret
 
 # Backwards-compatible aliases for test credentials module
 SITE_ADMIN_PASSWORD = "SiteAdmin123!"
@@ -181,6 +196,19 @@ class CLOApprovalStatus:
     NEVER_COMING_IN = (
         "never_coming_in"  # Instructor non-responsive/left (CEI demo feedback)
     )
+
+
+# Section Assessment Status constants
+class SectionAssessmentStatus:
+    """Overall assessment status for a course section based on CLO states."""
+
+    NOT_STARTED = "not_started"  # All CLOs in UNASSIGNED or ASSIGNED
+    IN_PROGRESS = "in_progress"  # At least one CLO is IN_PROGRESS
+    NEEDS_REWORK = "needs_rework"  # ANY CLO needs rework (highest priority)
+    SUBMITTED = "submitted"  # All CLOs AWAITING_APPROVAL
+    APPROVED = "approved"  # All CLOs APPROVED
+    NCI = "nci"  # All CLOs are NEVER_COMING_IN
+    UNKNOWN = "unknown"  # Fallback for edge cases
 
 
 # Permission constants

@@ -36,7 +36,7 @@
     ],
     "users": [
         {
-            "email": "quarkswithforks@gmail.com",
+            "email": "loopcloser_demo_admin@proton.me",
             "first_name": "Demo",
             "last_name": "Admin",
             "role": "institution_admin",
@@ -377,9 +377,10 @@
                 },
                 {
                     "section_number": "004",
-                    "enrollment": 0,
-                    "status": "unassigned",
-                    "instructor_idx": null
+                    "enrollment": 15,
+                    "status": "assigned",
+                    "instructor_idx": 4,
+                    "_comment": "Raj Patel teaches this section - used for email demo"
                 }
             ]
         },

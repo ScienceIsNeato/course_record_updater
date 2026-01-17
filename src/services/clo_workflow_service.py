@@ -20,7 +20,9 @@ class CLOWorkflowService:
     """Service for managing CLO submission and approval workflows."""
 
     @staticmethod
-    def submit_clo_for_approval(section_outcome_id: str, user_id: str) -> bool:
+    def submit_clo_for_approval(
+        section_outcome_id: str, user_id: str, notify_admins: bool = False
+    ) -> bool:
         """
         Submit a section-level CLO for approval review.
 
@@ -58,6 +60,11 @@ class CLOWorkflowService:
                 logger.info(
                     f"Section CLO {logger.sanitize(section_outcome_id)} submitted for approval by user {logger.sanitize(user_id)}"
                 )
+                # Send admin notification if requested
+                if notify_admins:
+                    CLOWorkflowService._notify_program_admins(
+                        section_outcome_id, user_id
+                    )
             else:
                 logger.error(
                     f"Failed to update section CLO {logger.sanitize(section_outcome_id)} status"
@@ -128,7 +135,7 @@ class CLOWorkflowService:
         reviewer_id: str,
         comments: str,
         send_email: bool = False,
-    ) -> bool:
+    ) -> dict:
         """
         Request rework on a submitted section-level CLO with feedback comments.
 
@@ -139,13 +146,13 @@ class CLOWorkflowService:
             send_email: Whether to send email notification to the instructor
 
         Returns:
-            bool: True if rework request successful, False otherwise
+            dict: {"success": bool, "email_sent": bool} - success indicates if rework was recorded, email_sent indicates if notification was delivered
         """
         try:
             outcome = db.get_section_outcome(section_outcome_id)
             if not outcome:
                 logger.error(f"Section outcome not found: {section_outcome_id}")
-                return False
+                return {"success": False, "email_sent": False}
 
             # Verify CLO is in a state that can be sent back for rework
             if outcome.get("status") not in [
@@ -156,7 +163,7 @@ class CLOWorkflowService:
                     f"Section CLO {section_outcome_id} is in {outcome.get('status')} state, "
                     f"cannot request rework"
                 )
-                return False
+                return {"success": False, "email_sent": False}
 
             # Update status and feedback
             # NOTE: Using "approval_pending" string because the UI expects this for
@@ -175,23 +182,28 @@ class CLOWorkflowService:
                 logger.error(
                     f"Failed to request rework for section CLO {section_outcome_id}"
                 )
-                return False
+                return {"success": False, "email_sent": False}
 
             logger.info(
                 f"Section CLO {section_outcome_id} sent back for rework by reviewer {reviewer_id}"
             )
 
             # Send email notification if requested
+            email_sent = False
             if send_email:
-                CLOWorkflowService._send_rework_notification(
+                email_sent = CLOWorkflowService._send_rework_notification(
                     section_outcome_id, comments
                 )
+                if not email_sent:
+                    logger.warning(
+                        f"Rework recorded for {section_outcome_id} but email notification failed"
+                    )
 
-            return True
+            return {"success": True, "email_sent": email_sent}
 
         except Exception as e:
             logger.error(f"Error requesting rework for CLO: {e}")
-            return False
+            return {"success": False, "email_sent": False}
 
     @staticmethod
     def reopen_clo(section_outcome_id: str, reviewer_id: str) -> bool:
@@ -518,47 +530,62 @@ class CLOWorkflowService:
         course_id: str, section_id: Optional[str] = None, user_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Validate all CLOs and course-level data are complete before submission.
+        Validate CLOs and course-level data for the specified section before submission.
 
         Args:
             course_id: The course ID to validate
-            section_id: Optional section ID to validate course-level data
+            section_id: Section ID to validate (REQUIRED for scoped validation)
             user_id: Optional user ID to determine appropriate sections to check
 
         Returns:
             Dict with 'valid' bool and 'errors' list of error details
         """
         try:
-            # Get sections for this course
-            if user_id:
-                # Get user info to determine role
-                from src.database.database_service import get_user_by_id
-
-                user = get_user_by_id(user_id)
-                if user and user.get("role") == "instructor":
-                    # Instructors can only see their own sections
-                    sections = db.get_sections_by_instructor(user_id)
-                    # Filter to only sections for this course
-                    sections = [s for s in sections if s.get("course_id") == course_id]
-                else:
-                    # Admins and other roles can see all sections
-                    sections = db.get_sections_by_course(course_id)
+            # If section_id provided, validate ONLY that section
+            # This supports per-section submission workflow
+            if section_id:
+                logger.info(
+                    f"DEBUG: Validating ONLY section {section_id} for course {course_id}"
+                )
+                section_outcomes = db.get_section_outcomes_by_section(section_id)
+                logger.info(
+                    f"DEBUG: Section {section_id} has {len(section_outcomes)} outcomes"
+                )
             else:
-                # Fallback to all sections
-                sections = db.get_sections_by_course(course_id)
+                # No section_id: validate ALL sections (legacy behavior for batch submission)
+                if user_id:
+                    # Get user info to determine role
+                    from src.database.database_service import get_user_by_id
 
-            # Get all section outcomes for this course
-            section_outcomes = []
-            logger.info(f"DEBUG: Found {len(sections)} sections for course {course_id}")
-            for section in sections:
-                section_id = section.get("section_id")
-                logger.info(f"DEBUG: Processing section {section_id}")
-                if section_id:
-                    outcomes = db.get_section_outcomes_by_section(section_id)
-                    logger.info(
-                        f"DEBUG: Section {section_id} has {len(outcomes)} outcomes"
-                    )
-                    section_outcomes.extend(outcomes)
+                    user = get_user_by_id(user_id)
+                    if user and user.get("role") == "instructor":
+                        # Instructors can only see their own sections
+                        sections = db.get_sections_by_instructor(user_id)
+                        # Filter to only sections for this course
+                        sections = [
+                            s for s in sections if s.get("course_id") == course_id
+                        ]
+                    else:
+                        # Admins and other roles can see all sections
+                        sections = db.get_sections_by_course(course_id)
+                else:
+                    # Fallback to all sections
+                    sections = db.get_sections_by_course(course_id)
+
+                # Get all section outcomes for this course
+                section_outcomes = []
+                logger.info(
+                    f"DEBUG: Found {len(sections)} sections for course {course_id}"
+                )
+                for section in sections:
+                    sect_id = section.get("section_id")
+                    logger.info(f"DEBUG: Processing section {sect_id}")
+                    if sect_id:
+                        outcomes = db.get_section_outcomes_by_section(sect_id)
+                        logger.info(
+                            f"DEBUG: Section {sect_id} has {len(outcomes)} outcomes"
+                        )
+                        section_outcomes.extend(outcomes)
 
             if not section_outcomes:
                 return {
@@ -598,8 +625,90 @@ class CLOWorkflowService:
             }
 
     @staticmethod
+    def get_section_assessment_status(section_id: str) -> str:
+        """
+        Calculate overall assessment status for a section based on its CLO states.
+
+        This mirrors the frontend JavaScript logic in templates/assessments.html
+        and follows a strict precedence order to determine the section's status.
+
+        Precedence (highest to lowest priority):
+        1. NEEDS_REWORK - if ANY CLO is in approval_pending status
+        2. NCI - if ALL CLOs are never_coming_in
+        3. APPROVED - if ALL CLOs are approved
+        4. SUBMITTED - if ALL CLOs are awaiting_approval
+        5. IN_PROGRESS - if at least one CLO has assessment data OR is in_progress status
+        6. NOT_STARTED - if all CLOs are unassigned/assigned with NO data
+        7. UNKNOWN - fallback for edge cases
+
+        Args:
+            section_id: The ID of the course section
+
+        Returns:
+            str: One of the SectionAssessmentStatus constants
+        """
+        from src.utils.constants import SectionAssessmentStatus
+
+        try:
+            outcomes = db.get_section_outcomes_by_section(section_id)
+
+            if not outcomes or len(outcomes) == 0:
+                return SectionAssessmentStatus.NOT_STARTED
+
+            statuses = [o.get("status", "assigned") for o in outcomes]
+
+            # 1. NEEDS_REWORK - highest priority (any CLO needs rework)
+            if any(s == "approval_pending" for s in statuses):
+                return SectionAssessmentStatus.NEEDS_REWORK
+
+            # 2. NCI - all CLOs marked as never coming in
+            if all(s == "never_coming_in" for s in statuses):
+                return SectionAssessmentStatus.NCI
+
+            # 3. APPROVED - all CLOs approved
+            if all(s == "approved" for s in statuses):
+                return SectionAssessmentStatus.APPROVED
+
+            # 4. SUBMITTED - all CLOs awaiting approval
+            if all(s == "awaiting_approval" for s in statuses):
+                return SectionAssessmentStatus.SUBMITTED
+
+            # 5. IN_PROGRESS - check both explicit status AND populated data
+            # A CLO is "in progress" if it has a status of 'in_progress' OR
+            # if it has assessment data populated (students_took, students_passed, assessment_tool)
+            def has_assessment_data(outcome: Dict[str, Any]) -> bool:
+                return bool(
+                    outcome.get("students_took") is not None
+                    or outcome.get("students_passed") is not None
+                    or (
+                        outcome.get("assessment_tool")
+                        and len(outcome.get("assessment_tool", "").strip()) > 0
+                    )
+                )
+
+            if any(
+                o.get("status") == "in_progress" or has_assessment_data(o)
+                for o in outcomes
+            ):
+                return SectionAssessmentStatus.IN_PROGRESS
+
+            # 6. NOT_STARTED - all CLOs unassigned or assigned with no data
+            if all(s in ("assigned", "unassigned") for s in statuses):
+                return SectionAssessmentStatus.NOT_STARTED
+
+            # 7. UNKNOWN - fallback for mixed/unexpected states
+            return SectionAssessmentStatus.UNKNOWN
+
+        except Exception as e:
+            logger.error(f"Error calculating section assessment status: {e}")
+            return SectionAssessmentStatus.UNKNOWN
+
+    @staticmethod
     def submit_course_for_approval(
-        course_id: str, user_id: str, section_id: Optional[str] = None
+        course_id: str,
+        user_id: str,
+        section_id: Optional[str] = None,
+        notify_admins: bool = False,
     ) -> Dict[str, Any]:
         """
         Submit all CLOs for a course for approval after validation.
@@ -628,31 +737,41 @@ class CLOWorkflowService:
             return {"success": False, "errors": validation["errors"]}
 
         try:
-            # Get sections for this course (same logic as validation)
-            if user_id:
-                # Get user info to determine role
-                from src.database.database_service import get_user_by_id
-
-                user = get_user_by_id(user_id)
-                if user and user.get("role") == "instructor":
-                    # Instructors can only see their own sections
-                    sections = db.get_sections_by_instructor(user_id)
-                    # Filter to only sections for this course
-                    sections = [s for s in sections if s.get("course_id") == course_id]
-                else:
-                    # Admins and other roles can see all sections
-                    sections = db.get_sections_by_course(course_id)
+            # If section_id provided, only submit outcomes for that section
+            # Otherwise, submit all sections (legacy behavior)
+            if section_id:
+                logger.info(
+                    f"DEBUG: Submitting ONLY section {section_id} for course {course_id}"
+                )
+                section_outcomes = db.get_section_outcomes_by_section(section_id)
             else:
-                # Fallback to all sections
-                sections = db.get_sections_by_course(course_id)
+                # Get sections for this course (same logic as validation)
+                if user_id:
+                    # Get user info to determine role
+                    from src.database.database_service import get_user_by_id
 
-            # Get all section outcomes for this course
-            section_outcomes = []
-            for section in sections:
-                section_id = section.get("section_id")
-                if section_id:
-                    outcomes = db.get_section_outcomes_by_section(section_id)
-                    section_outcomes.extend(outcomes)
+                    user = get_user_by_id(user_id)
+                    if user and user.get("role") == "instructor":
+                        # Instructors can only see their own sections
+                        sections = db.get_sections_by_instructor(user_id)
+                        # Filter to only sections for this course
+                        sections = [
+                            s for s in sections if s.get("course_id") == course_id
+                        ]
+                    else:
+                        # Admins and other roles can see all sections
+                        sections = db.get_sections_by_course(course_id)
+                else:
+                    # Fallback to all sections
+                    sections = db.get_sections_by_course(course_id)
+
+                # Get all section outcomes for this course
+                section_outcomes = []
+                for section in sections:
+                    sect_id = section.get("section_id")
+                    if sect_id:
+                        outcomes = db.get_section_outcomes_by_section(sect_id)
+                        section_outcomes.extend(outcomes)
 
             # Submit each section outcome
             submitted_count = 0
@@ -668,10 +787,21 @@ class CLOWorkflowService:
                 ):
                     submitted_count += 1
 
+            admin_alert_sent = False
+            admin_alert_error = None
+            if notify_admins and submitted_count > 0:
+                admin_alert_sent, admin_alert_error = (
+                    CLOWorkflowService._notify_program_admins_for_course(
+                        course_id, user_id, submitted_count
+                    )
+                )
+
             return {
                 "success": True,
                 "submitted_count": submitted_count,
                 "errors": [],
+                "admin_alert_sent": admin_alert_sent,
+                "admin_alert_error": admin_alert_error,
             }
 
         except Exception as e:
@@ -685,6 +815,8 @@ class CLOWorkflowService:
                         "message": f"Error submitting course: {str(e)}",
                     }
                 ],
+                "admin_alert_sent": False,
+                "admin_alert_error": None,
             }
 
     @staticmethod
@@ -1220,3 +1352,144 @@ class CLOWorkflowService:
             final_details["history"] = history
         else:
             final_details["history"] = []
+
+    @staticmethod
+    def _notify_program_admins(section_outcome_id: str, user_id: str) -> None:
+        """Send email alert to program admins about new submission."""
+        try:
+            from src.services.email_service import EmailService
+
+            outcome = db.get_section_outcome(section_outcome_id)
+            if not outcome:
+                logger.warning(
+                    f"Outcome not found for notification: {section_outcome_id}"
+                )
+                return
+
+            course = db.get_course_by_id(outcome["course_id"])
+            if not course:
+                logger.warning(
+                    f"Course not found for notification: {outcome['course_id']}"
+                )
+                return
+
+            instructor = db.get_user_by_id(user_id)
+            if not instructor:
+                logger.warning(f"Instructor not found for notification: {user_id}")
+                return
+
+            # Get program_id (courses have program_ids array, use first one)
+            program_ids = course.get("program_ids") or []
+            program_id = program_ids[0] if program_ids else course.get("program_id")
+            if not program_id:
+                logger.warning(f"No program ID for course {course['id']}")
+                return
+
+            admins = db.get_program_admins(program_id)
+            if not admins:
+                logger.info(f"No program admins found for program {program_id}")
+                return
+
+            # Send email to each admin
+            instructor_name = f"{instructor['first_name']} {instructor['last_name']}"
+
+            # Fetch section data to get section_number (outcome doesn't have this field)
+            section_id = outcome.get("section_id")
+            section_number = "Unknown"
+            if section_id:
+                section_data = db.get_section_by_id(section_id)
+                if section_data:
+                    section_number = section_data.get("section_number", "Unknown")
+
+            course_code = f"{course['course_number']}-{section_number}"
+
+            for admin in admins:
+                try:
+                    EmailService.send_admin_submission_alert(
+                        to_email=admin["email"],
+                        admin_name=admin.get("first_name", "Admin"),
+                        instructor_name=instructor_name,
+                        course_code=course_code,
+                        clo_count=1,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send email to {admin['email']}: {e}")
+
+            logger.info(f"Sent admin alerts to {len(admins)} program admins")
+
+        except Exception as e:
+            logger.error(f"Failed to notify admins: {e}")
+            # Don't fail submission if email fails
+
+    @staticmethod
+    def _notify_program_admins_for_course(
+        course_id: str, user_id: str, clo_count: int
+    ) -> tuple[bool, Optional[str]]:
+        """
+        Send aggregated notification to program admins after course submission.
+        Returns (success, error_message)
+        """
+        try:
+            course = db.get_course_by_id(course_id)
+            if not course:
+                error_msg = f"Course not found: {course_id}"
+                logger.warning(error_msg)
+                return False, error_msg
+
+            instructor = db.get_user_by_id(user_id)
+            if not instructor:
+                error_msg = f"Instructor not found: {user_id}"
+                logger.warning(error_msg)
+                return False, error_msg
+
+            # Get program_id (courses have program_ids array, use first one)
+            program_ids = course.get("program_ids") or []
+            program_id = program_ids[0] if program_ids else course.get("program_id")
+            if not program_id:
+                error_msg = f"No program ID for course {course_id}"
+                logger.warning(error_msg)
+                return False, error_msg
+
+            admins = db.get_program_admins(program_id)
+
+            # Fall back to institution admins if no program admins
+            if not admins:
+                logger.info(
+                    f"No program admins for program {program_id}, falling back to institution admins"
+                )
+                institution_id = course.get("institution_id")
+                if institution_id:
+                    all_users = db.get_all_users(institution_id)
+                    admins = [
+                        u for u in all_users if u.get("role") == "institution_admin"
+                    ]
+
+            if not admins:
+                error_msg = f"No program or institution admins found for notifications"
+                logger.info(error_msg)
+                return False, error_msg
+
+            instructor_name = f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip()
+            if not instructor_name:
+                instructor_name = instructor.get("email", "Instructor")
+
+            course_code = course.get("course_number") or course_id
+
+            for admin in admins:
+                try:
+                    EmailService.send_admin_submission_alert(
+                        to_email=admin["email"],
+                        admin_name=admin.get("first_name", "Admin"),
+                        instructor_name=instructor_name,
+                        course_code=course_code,
+                        clo_count=clo_count,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send email to {admin['email']}: {e}")
+
+            logger.info(f"Sent admin submission alerts to {len(admins)} program admins")
+            return True, None
+        except Exception as e:
+            error_msg = f"Failed to notify admins: {e}"
+            logger.error(error_msg)
+            return False, str(e)

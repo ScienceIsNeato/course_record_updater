@@ -74,7 +74,7 @@ class EmailProvider(ABC):
         Configure the provider with settings
 
         Args:
-            config: Dictionary of configuration values (e.g., SMTP credentials, whitelist)
+            config: Dictionary of configuration values (e.g., SMTP credentials)
         """
         ...
 

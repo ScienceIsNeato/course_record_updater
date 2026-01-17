@@ -379,7 +379,6 @@ See `.envrc.template` for all configuration options. Key variables:
 - `DB_PATH` (database file path)
 - `SECRET_KEY` (Flask session secret)
 - `FLASK_DEBUG` (true|false)
-- `EMAIL_WHITELIST` (comma-separated, for testing)
 - `WTF_CSRF_ENABLED` (true|false, default: true)
 
 **Security Notes:**

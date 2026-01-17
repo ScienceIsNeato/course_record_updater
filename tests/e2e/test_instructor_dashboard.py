@@ -33,15 +33,6 @@ class TestInstructorDashboardWorkflow:
         page.wait_for_load_state("networkidle")
 
         navigator = HeaderNavigator(page)
-        expected_texts = [
-            "Dashboard",
-            "Audit",
-            "Progress",
-            "CLOs",
-            "Users",
-            "Courses",
-            "Offerings",
-            "Sections",
-        ]
+        expected_texts = ["Dashboard", "Assessments"]
         labels = navigator.labels()
         assert labels[: len(expected_texts)] == expected_texts

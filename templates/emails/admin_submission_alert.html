@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Assessment Submission</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: #27ae60;
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .content {
+            padding: 30px 20px;
+        }
+
+        .content h2 {
+            color: #27ae60;
+            margin-top: 0;
+        }
+
+        .highlight {
+            background: #ecf0f1;
+            padding: 15px;
+            border-left: 4px solid #27ae60;
+            margin: 20px 0;
+        }
+
+        .highlight p {
+            margin: 8px 0;
+        }
+
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 14px 28px;
+            background: #27ae60;
+            color: white !important;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .button:hover {
+            background: #229954;
+        }
+
+        .footer {
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            background: #f9f9f9;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 New Assessment Submission</h1>
+        </div>
+        <div class="content">
+            <h2>Hello, {{ admin_name }}</h2>
+            <p><strong>{{ instructor_name }}</strong> has submitted {{ clo_text }} for <strong>{{ course_code
+                    }}</strong> and requested admin review.</p>
+
+            <div class="highlight">
+                <p><strong>Course:</strong> {{ course_code }}</p>
+                <p><strong>Instructor:</strong> {{ instructor_name }}</p>
+                <p><strong>Items Submitted:</strong> {{ clo_text }}</p>
+            </div>
+
+            <div class="button-container">
+                <a href="{{ audit_url }}" class="button">Review Submissions</a>
+            </div>
+
+            <p>Click the button above to view all pending submissions in the CLO audit page.</p>
+        </div>
+        <div class="footer">
+            <p>This email was sent to {{ to_email }}</p>
+            <p>&copy; {{ current_year }} LoopCloser. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+
+</html>

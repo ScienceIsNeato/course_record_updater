@@ -312,22 +312,46 @@ def request_clo_rework(section_outcome_id: str):
             return jsonify({"success": False, "error": "User not authenticated"}), 401
 
         # Request rework
-        success = CLOWorkflowService.request_rework(
+        logger.info(
+            f"[Rework Request] Calling CLOWorkflowService.request_rework for outcome {section_outcome_id}"
+        )
+        result = CLOWorkflowService.request_rework(
             section_outcome_id, user_id, comments, send_email
         )
+        logger.info(f"[Rework Request] Service returned: {result}")
 
-        if success:
-            return (
-                jsonify(
-                    {
-                        "success": True,
-                        "message": "Rework requested successfully",
-                        "section_outcome_id": section_outcome_id,
-                    }
-                ),
-                200,
-            )
+        if result.get("success"):
+            response_data = {
+                "success": True,
+                "message": "Rework requested successfully",
+                "section_outcome_id": section_outcome_id,
+            }
+
+            # Add email status information
+            if send_email:
+                email_sent = result.get("email_sent", False)
+                response_data["email_sent"] = email_sent
+                if email_sent:
+                    logger.info(
+                        f"[Rework Request] SUCCESS: Outcome {section_outcome_id} marked for rework AND email sent"
+                    )
+                else:
+                    logger.warning(
+                        f"[Rework Request] PARTIAL SUCCESS: Outcome {section_outcome_id} marked for rework BUT email failed"
+                    )
+                    response_data["warning"] = (
+                        "Rework recorded but email notification failed to send"
+                    )
+            else:
+                logger.info(
+                    f"[Rework Request] SUCCESS: Outcome {section_outcome_id} marked for rework (no email requested)"
+                )
+
+            return jsonify(response_data), 200
         else:
+            logger.error(
+                f"[Rework Request] FAILED: Unable to mark outcome {section_outcome_id} for rework"
+            )
             return (
                 jsonify({"success": False, "error": "Failed to request rework"}),
                 500,

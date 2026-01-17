@@ -263,7 +263,10 @@ class TestCLOAuditEndpoints:
             "status": "awaiting_approval",
         }
         mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
-        mock_workflow.request_rework.return_value = True
+        mock_workflow.request_rework.return_value = {
+            "success": True,
+            "email_sent": True,
+        }
 
         response = client.post(
             "/api/outcomes/outcome-1/request-rework",

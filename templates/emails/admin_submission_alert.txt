@@ -1,0 +1,21 @@
+LoopCloser - New Assessment Submission
+========================================
+
+Hello, {{ admin_name }}
+
+{{ instructor_name }} has submitted {{ clo_text }} for {{ course_code }} and requested admin review.
+
+SUBMISSION DETAILS
+------------------
+Course: {{ course_code }}
+Instructor: {{ instructor_name }}
+Items Submitted: {{ clo_text }}
+
+NEXT STEPS
+----------
+Review all pending submissions at:
+{{ audit_url }}
+
+---
+This email was sent to {{ to_email }}
+© {{ current_year }} LoopCloser. All rights reserved.

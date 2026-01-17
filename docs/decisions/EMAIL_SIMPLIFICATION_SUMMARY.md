@@ -17,18 +17,6 @@
   - Used in automated tests to verify email delivery
   - NOT for manual sending
 
-### Security: Whitelist Protection
-**New feature:** `EMAIL_WHITELIST` environment variable
-
-- **Non-production**: Only whitelisted emails can receive emails
-- **Production**: No whitelist, send to anyone
-- **Supports wildcards**: `*@ethereal.email` allows all Ethereal addresses
-
-**Current whitelist:**
-```bash
-export EMAIL_WHITELIST="quarkswithforks@gmail.com,unique.will.martin@gmail.com,lassie.tests.instructor1.test@gmail.com,*@ethereal.email"
-```
-
 ### Files Deleted
 - `email_providers/console_provider.py` - No longer needed
 - `email_providers/gmail_provider.py` - Replaced by Brevo
@@ -45,7 +33,6 @@ export EMAIL_WHITELIST="quarkswithforks@gmail.com,unique.will.martin@gmail.com,l
 - `email_providers/base_provider.py` - Extended with `read_email()` method
 - `email_providers/ethereal_provider.py` - Implemented `read_email()` via IMAP
 - `email_providers/brevo_provider.py` - Created Brevo API integration
-- `email_service.py` - Replaced hardcoded protection with whitelist
 - `.envrc` - Simplified email configuration
 - `tests/unit/test_email_factory.py` - Added Brevo tests
 
@@ -67,9 +54,6 @@ export EMAIL_WHITELIST="quarkswithforks@gmail.com,unique.will.martin@gmail.com,l
 # Explicit provider selection (recommended)
 export EMAIL_PROVIDER="brevo"
 
-# Whitelist for safety
-export EMAIL_WHITELIST="your-email@example.com,*@ethereal.email"
-
 # Brevo configuration (always configure both providers)
 export BREVO_API_KEY="your-api-key"
 export BREVO_SENDER_EMAIL="your-email@example.com"
@@ -85,15 +69,12 @@ export ETHEREAL_IMAP_PORT="993"
 ```
 
 ### Staging
-Same as local, but with production Brevo API key and expanded whitelist (QA team emails).
+Same as local, but with production Brevo API key
 
 ### Production
 ```bash
 # Explicit provider selection
 export EMAIL_PROVIDER="brevo"
-
-# NO whitelist (or empty) - allow all recipients
-export EMAIL_WHITELIST=""
 
 # Brevo for real email sending
 export BREVO_API_KEY="production-api-key"
@@ -129,7 +110,6 @@ export ETHEREAL_PASS="password"
 - Protected domain detection tests
 
 ### ⚠️ Needs Fixing
-- Tests using `test@example.com` (not whitelisted)
 - Tests mocking `gmail_provider` (no longer exists)
 - SMTP configuration tests (no longer using SMTP config)
 
@@ -145,7 +125,6 @@ export ETHEREAL_PASS="password"
 
 1. **Simpler**: 2 providers instead of 5
 2. **Reliable**: Brevo is a production-grade service
-3. **Safer**: Whitelist prevents accidental emails in non-prod
 4. **Cheaper**: 300 emails/day free tier (vs Gmail app password complexity)
 5. **Testable**: Ethereal provides full IMAP verification for E2E tests
 6. **Maintainable**: Less code, fewer dependencies, clearer architecture

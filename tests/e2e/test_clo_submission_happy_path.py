@@ -25,9 +25,266 @@ from tests.e2e.test_helpers import (
     login_as_user,
 )
 
+# === Helper Functions for Test Data Setup ===
+
+
+def _create_test_program(admin_page, csrf_token, institution_id):
+    """Create test program via API."""
+    program_response = admin_page.request.post(
+        f"{BASE_URL}/api/programs",
+        headers={"Content-Type": "application/json", "X-CSRFToken": csrf_token or ""},
+        data=json.dumps(
+            {
+                "name": "UAT-007 Computer Science",
+                "short_name": "UAT007-CS",
+                "institution_id": institution_id,
+            }
+        ),
+    )
+    assert program_response.ok, f"Failed to create program: {program_response.text()}"
+    return program_response.json()["program_id"]
+
+
+def _create_test_course(admin_page, csrf_token, institution_id, program_id):
+    """Create test course via API."""
+    course_response = admin_page.request.post(
+        f"{BASE_URL}/api/courses",
+        headers={"Content-Type": "application/json", "X-CSRFToken": csrf_token or ""},
+        data=json.dumps(
+            {
+                "course_number": "UAT007-SE101",
+                "course_title": "UAT-007 Software Engineering",
+                "department": "Computer Science",
+                "institution_id": institution_id,
+                "program_id": program_id,
+            }
+        ),
+    )
+    assert course_response.ok, f"Failed to create course: {course_response.text()}"
+    return course_response.json()["course_id"]
+
+
+def _create_test_term(admin_page, csrf_token, institution_id):
+    """Create test term via API."""
+    term_response = admin_page.request.post(
+        f"{BASE_URL}/api/terms",
+        headers={"Content-Type": "application/json", "X-CSRFToken": csrf_token or ""},
+        data=json.dumps(
+            {
+                "name": "Fall 2024",
+                "start_date": "2024-08-15",
+                "end_date": "2024-12-15",
+                "assessment_due_date": "2024-12-20",
+                "institution_id": institution_id,
+            }
+        ),
+    )
+    assert term_response.ok, f"Failed to create term: {term_response.text()}"
+    return term_response.json()["term_id"]
+
+
+def _create_test_offering(
+    admin_page, csrf_token, course_id, term_id, instructor_id, institution_id
+):
+    """Create test offering via API."""
+    section_response = admin_page.request.post(
+        f"{BASE_URL}/api/offerings",
+        headers={"Content-Type": "application/json", "X-CSRFToken": csrf_token or ""},
+        data=json.dumps(
+            {
+                "course_id": course_id,
+                "term_id": term_id,
+                "instructor_id": instructor_id,
+                "institution_id": institution_id,
+            }
+        ),
+    )
+    assert section_response.ok, f"Failed to create offering: {section_response.text()}"
+    return section_response.json()["offering_id"]
+
+
+def _create_test_section(
+    admin_page, csrf_token, offering_id, section_number, instructor_id
+):
+    """Create test section via API."""
+    section_response = admin_page.request.post(
+        f"{BASE_URL}/api/sections",
+        headers={"Content-Type": "application/json", "X-CSRFToken": csrf_token or ""},
+        data=json.dumps(
+            {
+                "offering_id": offering_id,
+                "section_number": section_number,
+                "instructor_id": instructor_id,
+                "status": "open",
+            }
+        ),
+    )
+    assert section_response.ok, f"Failed to create section: {section_response.text()}"
+    return section_response.json()["section_id"]
+
+
+def _create_test_clos(admin_page, csrf_token, course_id, section_ids):
+    """Create test CLOs for all sections."""
+    clo_responses = []
+    for section_id in section_ids:
+        clo_response = admin_page.request.post(
+            f"{BASE_URL}/api/course-outcomes",
+            headers={
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrf_token or "",
+            },
+            data=json.dumps(
+                {
+                    "course_id": course_id,
+                    "section_id": section_id,
+                    "description": "Identify key biological processes and systems in living organisms.",
+                    "status": "assigned",
+                }
+            ),
+        )
+        assert clo_response.ok, f"Failed to create CLO: {clo_response.text()}"
+        clo_responses.append(clo_response.json())
+    return clo_responses
+
+
+def _login_as_instructor(admin_page, instructor_email, csrf_token):
+    """Login as instructor."""
+    admin_page.goto(f"{BASE_URL}/logout")
+    admin_page.wait_for_timeout(500)
+    admin_page.goto(f"{BASE_URL}/login")
+    admin_page.wait_for_selector("input[name='email']")
+    admin_page.fill("input[name='email']", instructor_email)
+    admin_page.fill("input[name='password']", "Password123!")
+    admin_page.click("#login-form button[type='submit']")
+    admin_page.wait_for_selector("text=Dashboard")
+
+
+def _navigate_to_assessments_and_select_section(instructor_page, section_id):
+    """Navigate to assessments page and select specific section."""
+    instructor_page.goto(f"{BASE_URL}/assessments")
+    instructor_page.wait_for_selector("#courseSelect")
+    instructor_page.select_option("#courseSelect", f".*::{section_id}")
+    instructor_page.wait_for_selector(".outcomes-list")
+
 
 @pytest.mark.e2e
 @pytest.mark.e2e
+def _navigate_and_login(instructor_page, live_server):
+    """Helper: Navigate to audit page and login."""
+    instructor_page.goto(f"{live_server.url}/audit/clo")
+    instructor_page.wait_for_selector('h2:has-text("Outcome Audit")')
+
+
+def _verify_initial_state(instructor_page):
+    """Helper: Verify initial CLO state."""
+    row = instructor_page.locator("tr").filter(has_text="Identify key biological").first
+    assert row.locator('.badge:has-text("Assigned")').is_visible()
+
+
+def _fill_assessment_data(instructor_page, students_took, students_passed, tool):
+    """Helper: Fill assessment form data."""
+    instructor_page.locator('input[name="students_took"]').fill(str(students_took))
+    instructor_page.locator('input[name="students_passed"]').fill(str(students_passed))
+    instructor_page.locator('input[name="assessment_tool"]').fill(tool)
+
+
+def _submit_for_approval(instructor_page):
+    """Helper: Submit CLO for approval."""
+    with instructor_page.expect_response("**/api/outcomes/*/submit") as response_info:
+        instructor_page.locator('button:has-text("Submit for Approval")').click()
+    response = response_info.value
+    assert response.status == 200
+
+
+def _verify_submitted_state(instructor_page):
+    """Helper: Verify CLO is in awaiting approval state."""
+    instructor_page.wait_for_selector(
+        '.badge:has-text("Awaiting Approval")', timeout=5000
+    )
+    row = instructor_page.locator("tr").filter(has_text="Identify key biological").first
+    assert row.locator('.badge:has-text("Awaiting Approval")').is_visible()
+
+
+def _execute_clo_submission_workflow(
+    admin_page, instructor_page, course_id, section_002_id, clo1_id
+):
+    """Execute the entire CLO submission workflow."""
+    # Navigate to assessments
+    instructor_page.goto(f"{BASE_URL}/assessments")
+    instructor_page.wait_for_selector("#courseSelect")
+    instructor_page.select_option("#courseSelect", f".*::{section_002_id}")
+    instructor_page.wait_for_selector(".outcomes-list", timeout=10000)
+
+    # Fill assessment data
+    clo_row = instructor_page.locator(f".row[data-course-outcome-id='{clo1_id}']").first
+    clo_row.wait_for(state="attached", timeout=5000)
+
+    took_input = clo_row.locator("input[data-field='students_took']")
+    passed_input = clo_row.locator("input[data-field='students_passed']")
+    tool_input = clo_row.locator("input[data-field='assessment_tool']")
+
+    took_input.fill("30")
+    passed_input.fill("27")
+    tool_input.fill("Final Project")
+    tool_input.blur()
+    instructor_page.wait_for_timeout(2000)
+
+    # Verify rate calculated
+    rate_span = clo_row.locator(".col-md-1.text-center span.fw-bold")
+    assert "90%" in rate_span.text_content()
+
+    # Fill course-level data and submit
+    instructor_page.fill("#courseStudentsPassed", "28")
+    instructor_page.fill("#courseStudentsDFIC", "2")
+    instructor_page.fill("#narrativeCelebrations", "Great engagement")
+    instructor_page.fill("#narrativeChallenges", "Time management")
+    instructor_page.fill("#narrativeChanges", "More group work")
+
+    submit_btn = instructor_page.locator("#submitCourseBtn")
+    with instructor_page.expect_response("**/api/courses/*/submit") as response_info:
+        submit_btn.click()
+
+    response = response_info.value
+    assert response.status == 200
+
+
+def _verify_section_isolation(
+    admin_page, csrf_token, course_id, section_002_id, section_001_id, section_003_id
+):
+    """Verify that only section 002 was submitted, not 001 or 003."""
+    outcomes_response = admin_page.request.get(
+        f"{BASE_URL}/api/courses/{course_id}/outcomes",
+        headers={"X-CSRFToken": csrf_token or ""},
+    )
+    assert outcomes_response.ok
+    outcomes_data = outcomes_response.json()
+
+    sec_002_outcomes = [
+        o for o in outcomes_data["outcomes"] if o["section_id"] == section_002_id
+    ]
+    sec_001_outcomes = [
+        o for o in outcomes_data["outcomes"] if o["section_id"] == section_001_id
+    ]
+    sec_003_outcomes = [
+        o for o in outcomes_data["outcomes"] if o["section_id"] == section_003_id
+    ]
+
+    for outcome in sec_002_outcomes:
+        assert (
+            outcome["status"] == "awaiting_approval"
+        ), f"Section 002: Expected awaiting_approval, got {outcome['status']}"
+
+    for outcome in sec_001_outcomes:
+        assert (
+            outcome["status"] != "awaiting_approval"
+        ), f"Section 001 wrongly submitted!"
+
+    for outcome in sec_003_outcomes:
+        assert (
+            outcome["status"] != "awaiting_approval"
+        ), f"Section 003 wrongly submitted!"
+
+
 def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
     """
     Test full CLO submission workflow for instructor.
@@ -51,45 +308,9 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
         "document.querySelector('meta[name=\"csrf-token\"]')?.content"
     )
 
-    # Create program
-    program_response = admin_page.request.post(
-        f"{BASE_URL}/api/programs",
-        headers={
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token if csrf_token else "",
-        },
-        data=json.dumps(
-            {
-                "name": "UAT-007 Computer Science",
-                "short_name": "UAT007-CS",
-                "institution_id": institution_id,
-            }
-        ),
-    )
-    assert program_response.ok, f"Failed to create program: {program_response.text()}"
-    program_data = program_response.json()
-    program_id = program_data["program_id"]
-
-    # Create course
-    course_response = admin_page.request.post(
-        f"{BASE_URL}/api/courses",
-        headers={
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token if csrf_token else "",
-        },
-        data=json.dumps(
-            {
-                "course_number": "UAT007-SE101",
-                "course_title": "UAT-007 Software Engineering",
-                "department": "Computer Science",
-                "institution_id": institution_id,
-                "program_id": program_id,
-            }
-        ),
-    )
-    assert course_response.ok, f"Failed to create course: {course_response.text()}"
-    course_data = course_response.json()
-    course_id = course_data["course_id"]
+    # Create test data using helpers
+    program_id = _create_test_program(admin_page, csrf_token, institution_id)
+    course_id = _create_test_course(admin_page, csrf_token, institution_id, program_id)
 
     # Create instructor
     instructor = create_test_user_via_api(
@@ -104,208 +325,76 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
     )
     instructor_id = instructor["user_id"]
 
-    # Create term for the offering
-    term_response = admin_page.request.post(
-        f"{BASE_URL}/api/terms",
-        headers={
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token if csrf_token else "",
-        },
-        data=json.dumps(
-            {
-                "name": "Fall 2024",
-                "start_date": "2024-08-15",
-                "end_date": "2024-12-15",
-                "assessment_due_date": "2024-12-20",
-                "institution_id": institution_id,
-            }
-        ),
+    # Create term and offering
+    term_id = _create_test_term(admin_page, csrf_token, institution_id)
+    section_id = _create_test_offering(
+        admin_page, csrf_token, course_id, term_id, instructor_id, institution_id
     )
-    assert term_response.ok, f"Failed to create term: {term_response.text()}"
-    term_id = term_response.json()["term_id"]
 
-    # Create course offering
-    section_response = admin_page.request.post(
-        f"{BASE_URL}/api/offerings",
-        headers={
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token if csrf_token else "",
-        },
-        data=json.dumps(
-            {
-                "course_id": course_id,
-                "term_id": term_id,
-                "instructor_id": instructor_id,
-                "institution_id": institution_id,
-            }
-        ),
+    # Create sections using helper
+    section_001_id = _create_test_section(
+        admin_page, csrf_token, section_id, "001", instructor_id
     )
-    assert section_response.ok, f"Failed to create offering: {section_response.text()}"
-    section_data = section_response.json()
-    section_id = section_data["offering_id"]
-
-    # Create explicit section linked to offering and instructor
-    create_section_response = admin_page.request.post(
-        f"{BASE_URL}/api/sections",
-        headers={
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token if csrf_token else "",
-        },
-        data=json.dumps(
-            {
-                "offering_id": section_id,
-                "section_number": "001",
-                "instructor_id": instructor_id,
-                "status": "open",
-            }
-        ),
+    section_002_id = _create_test_section(
+        admin_page, csrf_token, section_id, "002", instructor_id
     )
-    assert (
-        create_section_response.ok
-    ), f"Failed to create section: {create_section_response.text()}"
+    section_003_id = _create_test_section(
+        admin_page, csrf_token, section_id, "003", instructor_id
+    )
 
-    # Create CLOs for the course in ASSIGNED status
+    # Create CLO for section 002
     clo1_response = admin_page.request.post(
         f"{BASE_URL}/api/courses/{course_id}/outcomes",
-        headers={
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token if csrf_token else "",
-        },
+        headers={"Content-Type": "application/json", "X-CSRFToken": csrf_token or ""},
         data=json.dumps(
             {
                 "course_id": course_id,
                 "clo_number": 1,
                 "description": "Understand software design patterns",
-                "status": "assigned",  # ASSIGNED status
+                "status": "assigned",
             }
         ),
     )
-    assert clo1_response.ok, f"Failed to create CLO 1: {clo1_response.text()}"
-    clo1_data = clo1_response.json()
-    clo1_id = clo1_data["outcome_id"]
+    assert clo1_response.ok
+    clo1_id = clo1_response.json()["outcome_id"]
 
-    # === STEP 2: Instructor logs in ===
+    # Assign CLO to section 002
+    assign_response = admin_page.request.post(
+        f"{BASE_URL}/api/outcomes/{clo1_id}/assign",
+        headers={"Content-Type": "application/json", "X-CSRFToken": csrf_token or ""},
+        data=json.dumps({"section_id": section_002_id}),
+    )
+    assert assign_response.ok
+
+    # Login as instructor and execute workflow
     instructor_page = admin_page.context.new_page()
     login_as_user(
         instructor_page, BASE_URL, "uat007.instructor@test.com", TEST_USER_PASSWORD
     )
 
-    # Debug console logs
-    instructor_page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
-
-    # === STEP 3: Navigate to assessments page ===
-    instructor_page.goto(f"{BASE_URL}/assessments")
-    expect(instructor_page).to_have_url(f"{BASE_URL}/assessments")
-
-    # Select course - wait for option to be present first
-    # Select course - wait for option to be present first
-    # Wait for course options to load (now use composite format: courseId::sectionId)
-    instructor_page.wait_for_selector(
-        f"#courseSelect option[value^='{course_id}::']", state="attached", timeout=10000
-    )
-    # Select the first option for this course (composite format)
-    composite_value = instructor_page.locator(
-        f"#courseSelect option[value^='{course_id}::']"
-    ).first.get_attribute("value")
-    instructor_page.select_option("#courseSelect", value=composite_value)
-
-    # === STEP 4: Edit CLO fields (auto-marks IN_PROGRESS) ===
-    # Use inline inputs
-    # Wait for outcomes to load
-    instructor_page.wait_for_selector(".outcomes-list", timeout=10000)
-
-    instructor_page.wait_for_selector(
-        ".outcomes-list .row[data-outcome-id]", timeout=10000
+    # Execute the entire submission workflow
+    _execute_clo_submission_workflow(
+        admin_page, instructor_page, course_id, section_002_id, clo1_id
     )
 
-    # Locate row for our CLO
-    clo_row = instructor_page.locator(f".row[data-course-outcome-id='{clo1_id}']")
-    expect(clo_row).to_be_visible()
+    # Verify final status
+    instructor_page.goto(f"{BASE_URL}/audit/clo")
+    instructor_page.wait_for_selector('tr:has-text("Understand software design")')
+    status_badge = instructor_page.locator(
+        'tr:has-text("Understand software design") .badge'
+    ).first
+    assert "Awaiting Approval" in status_badge.text_content()
 
-    # Fill inline inputs
-    took_input = clo_row.locator("input[data-field='students_took']")
-    passed_input = clo_row.locator("input[data-field='students_passed']")
-    tool_input = clo_row.locator("input[data-field='assessment_tool']")
-
-    took_input.fill("30")
-    passed_input.fill("27")
-    tool_input.fill("Final Project")
-
-    # Trigger blur to autosave and mark in progress
-    tool_input.blur()
-    instructor_page.wait_for_timeout(2000)  # Wait for autosave and status update
-
-    # Verify status changed to IN_PROGRESS via badge class
-    # .bg-primary text-white in badge or row status?
-    # Badge: <span class="badge bg-primary">In Progress</span>
-    # The row gets 'border-info' class for In Progress in getBorderColorClass helper?
-    # Actually the test relied on data-status attribute before.
-    # The new UI doesn't clearly expose data-status on the row in the HTML loop I saw earlier (it exposes data-outcome-id).
-    # But getStatusBadge is used... wait, line 557 only sets data-outcome-id.
-    # Status is shown via visual badges.
-    # Verify badge text contains "In Progress" - rate span: .fw-bold.text-success if >80%
-
-    # Verify success rate calculated
-    # Target the text-center column which contains the rate, preventing match on Index column
-    rate_span = clo_row.locator(".col-md-1.text-center span.fw-bold")
-    expect(rate_span).to_contain_text("90%")
-
-    # === STEP 5: Submit Course for approval ===
-    # First fill required course-level data
-    instructor_page.locator("#courseStudentsPassed").fill("27")
-    instructor_page.locator("#courseStudentsDFIC").fill("3")
-
-    # Click submit course button
-    submit_btn = instructor_page.locator("#submitCourseBtn")
-    expect(submit_btn).to_be_visible()
-
-    # Handle confirmation dialog
-    instructor_page.once("dialog", lambda dialog: dialog.accept())
-    submit_btn.click()
-
-    # Wait for completion (page might reload or update UI)
-    instructor_page.wait_for_timeout(2000)
-
-    # === STEP 6: Verify status is APPROVED or AWAITING APPROVAL ===
-    # If using MockU logic, it might auto-approve if not configured for strict workflow,
-    # but let's check for "Awaiting Approval" or "Approved" text in status header or badge.
-    # Based on previous tests, it goes to AWAITING_APPROVAL.
-
-    # Reload outcomes to be safe (though JS does it)
-    instructor_page.wait_for_timeout(1000)
-
-    # Check for status badge in the row (inline loop has logic for it)
-    # If awaiting approval: <i class="fas fa-check-circle ..."></i> check logic?
-    # Line 556: if isApproved shows check-circle.
-    # Verify status transition (status summary cards should update)
-    # Wait for status update (In Progress should become 0)
-    expect(
-        instructor_page.locator(
-            "#statusSummaryContainer .card-body:has-text('In Progress') .fs-4"
-        )
-    ).to_have_text("0")
-
-    # Check that it moved to verification/approved state
-    awaiting = instructor_page.locator(
-        "#statusSummaryContainer .card-body:has-text('Awaiting Approval') .fs-4"
+    # Verify section isolation
+    _verify_section_isolation(
+        admin_page,
+        csrf_token,
+        course_id,
+        section_002_id,
+        section_001_id,
+        section_003_id,
     )
-    approved = instructor_page.locator(
-        "#statusSummaryContainer .card-body:has-text('Approved') .fs-4"
-    )
-
-    # Allow for auto-approval configuration
-    ac = awaiting.inner_text()
-    ap = approved.inner_text()
-    print(f"Status Counts: InProgress=0 (verified), Awaiting={ac}, Approved={ap}")
-
-    assert (
-        ac == "1" or ap == "1"
-    ), f"Course did not transition to submitted state. Counts: Awaiting={ac}, Approved={ap}"
-
-    # === STEP 7: Verify submission succeeded ===
-    # Confirmed via status summary
-    # UI already confirmed status is awaiting_approval via button attribute
-    # API verification skipped since audit-details endpoint requires audit_clo permission
+    print("\n✅ Test passed: Section isolation verified!")
 
     # Cleanup
     instructor_page.close()

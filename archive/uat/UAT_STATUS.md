@@ -56,7 +56,6 @@ Based on user stories in `planning/user_stories/`:
 **Current Email Architecture**:
 - **Brevo**: Production email sending (300/day free tier)
 - **Ethereal**: E2E testing with IMAP verification
-- **Email Whitelist**: Non-production safety (`EMAIL_WHITELIST` env var)
 
 **E2E Email Utilities** (`tests/e2e/email_utils.py`):
 - ✅ Supports Ethereal IMAP for email verification
@@ -67,8 +66,7 @@ Based on user stories in `planning/user_stories/`:
 **Required Updates for UAT-001**:
 1. Remove Mailtrap references from test file
 2. Update email verification to use Ethereal IMAP exclusively
-3. Verify email whitelist includes test email addresses
-4. Test end-to-end with new email provider architecture
+3. Test end-to-end with new email provider architecture
 
 ### 🗄️ Database Seeding
 
