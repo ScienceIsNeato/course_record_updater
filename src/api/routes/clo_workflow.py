@@ -157,10 +157,11 @@ def get_clos_for_audit():
     Institution admins see all CLOs at their institution.
 
     Query parameters:
-    - status: Filter by specific status (default: awaiting_approval)
+    - status: Filter by specific status (default: all)
     - program_id: Filter by specific program (program admins only see their programs)
     - term_id: Filter by specific term (matches /api/terms IDs)
     - term_name: Optional convenience filter for term name when IDs unavailable
+    - include_stats: If true, includes stats_by_status counts (reduces 9 requests to 1)
     """
     try:
         institution_id = get_current_institution_id()
@@ -173,6 +174,7 @@ def get_clos_for_audit():
         term_id = request.args.get("term_id")
         term_name = request.args.get("term_name")
         course_id = request.args.get("course_id")
+        include_stats = request.args.get("include_stats", "false").lower() == "true"
 
         if not term_id and term_name:
             term = get_term_by_name(term_name, institution_id)
@@ -204,10 +206,21 @@ def get_clos_for_audit():
             course_id=course_id,
         )
 
-        return (
-            jsonify({"success": True, "outcomes": outcomes, "count": len(outcomes)}),
-            200,
-        )
+        response_data = {"success": True, "outcomes": outcomes, "count": len(outcomes)}
+
+        # Include stats by status if requested (eliminates 7 extra API calls)
+        if include_stats and status is None:
+            # Calculate counts grouped by status (only when fetching all statuses)
+            stats_by_status = {}
+            for outcome in outcomes:
+                outcome_status = outcome.get("status", "unassigned")
+                stats_by_status[outcome_status] = (
+                    stats_by_status.get(outcome_status, 0) + 1
+                )
+
+            response_data["stats_by_status"] = stats_by_status
+
+        return jsonify(response_data), 200
 
     except Exception as e:
         return handle_api_error(

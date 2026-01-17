@@ -13,10 +13,10 @@ class TestSQLiteServiceClose:
 
     def test_close_disposes_engine_and_removes_session(self):
         """Verify close() calls remove() and dispose() in correct order."""
-        from src.database.database_sql import SQLiteService
+        from src.database.database_sql import SQLService
 
         # Create a service with a temporary in-memory database
-        service = SQLiteService("sqlite:///:memory:")
+        service = SQLService("sqlite:///:memory:")
 
         # Mock the internal components
         service._session_factory = MagicMock()
@@ -43,14 +43,14 @@ class TestDatabaseServiceCloseConnection:
         try:
             # Create a mock db service with sqlite attribute
             mock_db_service = MagicMock()
-            mock_db_service.sqlite = MagicMock()
+            mock_db_service.sql = MagicMock()
             database_service._db_service = mock_db_service
 
             # Call close_connection
             database_service.close_connection()
 
             # Verify sqlite.close() was called
-            mock_db_service.sqlite.close.assert_called_once()
+            mock_db_service.sql.close.assert_called_once()
         finally:
             # Restore original
             database_service._db_service = original_db_service

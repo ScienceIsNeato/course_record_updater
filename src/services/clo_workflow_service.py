@@ -907,11 +907,12 @@ class CLOWorkflowService:
 
             results: List[Dict[str, Any]] = []
             for so in section_outcomes:
-                # Enrich each section outcome with template data
+                # Enrich using already-fetched data (avoids re-querying)
                 section_outcome_id = so.get("id")
                 if section_outcome_id:
+                    # Pass the outcome data we already fetched to avoid re-querying
                     details = CLOWorkflowService.get_outcome_with_details(
-                        section_outcome_id
+                        section_outcome_id, outcome_data=so  # Use eager-loaded data!
                     )
                     if details:
                         results.append(details)
@@ -1086,7 +1087,8 @@ class CLOWorkflowService:
         tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]
     ]:
         """Attempt to resolve instructor details from a section ID associated with the outcome."""
-        section = db.get_section_by_id(outcome_section_id)
+        # Use eager-loaded section if available (avoids N+1 query)
+        section = outcome.get("_section") or db.get_section_by_id(outcome_section_id)
         if not section:
             return None
 
@@ -1164,8 +1166,13 @@ class CLOWorkflowService:
         Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]
     ]:
         """Resolve instructor and term details for an explicit section."""
+        # Use eager-loaded instructor if available (avoids N+1 query)
+        instructor = section_data.get("_instructor")
         instructor_id = section_data.get("instructor_id")
-        instructor = db.get_user(instructor_id) if instructor_id else None
+
+        if not instructor and instructor_id:
+            instructor = db.get_user(instructor_id)
+
         instructor_name = (
             CLOWorkflowService._build_instructor_name(instructor)
             if instructor
@@ -1173,16 +1180,22 @@ class CLOWorkflowService:
         )
         instructor_email = instructor.get("email") if instructor else None
 
+        # Use eager-loaded offering and term if available (avoids N+1 queries)
         term_name = None
-        offering_id = section_data.get("offering_id")
-        if offering_id:
-            offering = db.get_course_offering(offering_id)
-            if offering:
+        offering = section_data.get("_offering")
+        if not offering:
+            offering_id = section_data.get("offering_id")
+            if offering_id:
+                offering = db.get_course_offering(offering_id)
+
+        if offering:
+            term = offering.get("_term")
+            if not term:
                 term_id = offering.get("term_id")
                 if term_id:
                     term = db.get_term_by_id(term_id)
-                    if term:
-                        term_name = term.get("term_name") or term.get("name")
+            if term:
+                term_name = term.get("term_name") or term.get("name")
 
         section_id = section_data.get("section_id") or section_data.get("id")
         return instructor_name, instructor_email, term_name, instructor_id, section_id
@@ -1241,6 +1254,17 @@ class CLOWorkflowService:
     @staticmethod
     def _enrich_outcome_with_template(outcome: Dict[str, Any]) -> Dict[str, Any]:
         """Enrich outcome with template data if it's a raw section outcome."""
+        # Use eager-loaded template if available (avoids N+1 query)
+        if "_template" in outcome:
+            template = outcome["_template"]
+            enriched_outcome = {
+                **template,  # Base: Template fields (clo_number, description, course_id)
+                **outcome,  # Override: Section outcome fields (status, specific assessment)
+                "id": outcome["id"],  # Ensure we keep the section outcome ID
+            }
+            return enriched_outcome
+
+        # Fallback: fetch template if not eager loaded
         raw_course_id = outcome.get("course_id")
         if not raw_course_id and outcome.get("outcome_id"):
             # Fetch the template (CourseOutcome)
@@ -1259,6 +1283,11 @@ class CLOWorkflowService:
     @staticmethod
     def _get_course_for_outcome(outcome: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Get course information for the outcome."""
+        # Use eager-loaded course from template if available (avoids N+1 query)
+        if "_template" in outcome and outcome["_template"].get("_course"):
+            return outcome["_template"]["_course"]
+
+        # Fallback: fetch course if not eager loaded
         raw_course_id = outcome.get("course_id")
         course_id = raw_course_id if isinstance(raw_course_id, str) else None
         return db.get_course_by_id(course_id) if course_id else None
@@ -1313,6 +1342,17 @@ class CLOWorkflowService:
         """Get program name for the course."""
         if not course:
             return None
+
+        # Use eager-loaded programs if available (avoids N+1 query)
+        program_ids = course.get("program_ids", [])
+        if program_ids and len(program_ids) > 0:
+            # Programs might be eager loaded as _programs
+            if "_programs" in course:
+                programs = course["_programs"]
+                if programs and len(programs) > 0:
+                    return programs[0].get("name") or programs[0].get("program_name")
+
+        # Fallback: query programs
         course_id = (
             course.get("id")
             if isinstance(course, dict) and course.get("id")
@@ -1337,8 +1377,13 @@ class CLOWorkflowService:
         section_number = section_data.get("section_number") if section_data else None
         section_status = section_data.get("status") if section_data else None
 
-        if section_id:
-            section = db.get_section_by_id(section_id)
+        # Use eager-loaded section if available (avoids N+1 query!)
+        if not section_number and section_id:
+            # Check if section was eager loaded
+            section = enriched_outcome.get("_section")
+            if not section:
+                # Fallback: query if not eager loaded
+                section = db.get_section_by_id(section_id)
             if section:
                 section_number = section_number or section.get("section_number")
 
@@ -1361,7 +1406,16 @@ class CLOWorkflowService:
 
     @staticmethod
     def _add_outcome_history(final_details: Dict[str, Any]) -> None:
-        """Add unified history for the section outcome."""
+        """Add unified history for the section outcome.
+
+        Uses eager-loaded history if available to avoid N+1 query.
+        """
+        # Use eager-loaded history if available (avoids N+1 query)
+        if "_history" in final_details:
+            final_details["history"] = final_details["_history"]
+            return
+
+        # Fallback: query history if not eager loaded
         outcome_id_for_history = final_details.get("id")
         if outcome_id_for_history:
             history = db.get_outcome_history(outcome_id_for_history)

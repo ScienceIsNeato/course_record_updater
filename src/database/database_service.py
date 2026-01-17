@@ -41,9 +41,9 @@ def refresh_connection() -> DatabaseInterface:
 
 
 def reset_database() -> bool:
-    """Drop and recreate all tables for a clean database state (SQLite only)."""
-    if hasattr(_db_service, "sqlite"):
-        engine = _db_service.sqlite.engine
+    """Drop and recreate all tables for a clean database state."""
+    if hasattr(_db_service, "sql"):
+        engine = _db_service.sql.engine
         Base.metadata.drop_all(engine)
         Base.metadata.create_all(engine)
         return True
@@ -53,8 +53,8 @@ def reset_database() -> bool:
 
 def close_connection() -> None:
     """Close the underlying database connection."""
-    if hasattr(_db_service, "sqlite"):
-        _db_service.sqlite.close()
+    if hasattr(_db_service, "sql"):
+        _db_service.sql.close()
 
 
 def db_operation_timeout() -> AbstractContextManager[Any]:

@@ -1251,57 +1251,29 @@ document.addEventListener("DOMContentLoaded", () => {
   /**
    * Update summary statistics
    * Top stats are UNFILTERED source of truth for the institution (not affected by filter dropdowns)
+   * PERFORMANCE: Uses single API request with include_stats=true (was 7 separate requests)
    */
   async function updateStats() {
     try {
-      // Full CLO lifecycle: Unassigned → Assigned → In Progress → Needs Rework → Awaiting Approval → Approved → NCI
-      const statuses = [
-        "unassigned",
-        "assigned",
-        "in_progress",
-        "approval_pending",
-        "awaiting_approval",
-        "approved",
-        "never_coming_in",
-      ];
+      // Fetch all outcomes with stats (single request replaces 7 separate requests)
+      const response = await fetch(
+        "/api/outcomes/audit?status=all&include_stats=true",
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
 
-      // Top stats are UNFILTERED - no program/term filters applied
-      // This provides source of truth totals for the institution
+      const data = await response.json();
+      const stats = data.stats_by_status || {};
 
-      const promises = statuses.map((status) => {
-        const params = new URLSearchParams();
-        params.append("status", status);
-        // No filters - these are institution-wide totals
-
-        return fetch(`/api/outcomes/audit?${params.toString()}`)
-          .then((r) => {
-            if (!r.ok) {
-              throw new Error(`HTTP ${r.status}: ${r.statusText}`);
-            }
-            return r.json();
-          })
-          .then((d) => d.count || 0)
-          .catch((err) => {
-            // Return 0 for individual status failures to allow graceful degradation
-            // eslint-disable-next-line no-console
-            console.warn(
-              "Failed to fetch stats for status:",
-              status,
-              err.message,
-            );
-            return 0;
-          });
-      });
-
-      const [
-        unassigned,
-        assigned,
-        inProgress,
-        pending,
-        awaiting,
-        approved,
-        nci,
-      ] = await Promise.all(promises);
+      // Extract counts from stats (default to 0 if not present)
+      const unassigned = stats.unassigned || 0;
+      const assigned = stats.assigned || 0;
+      const inProgress = stats.in_progress || 0;
+      const pending = stats.approval_pending || 0;
+      const awaiting = stats.awaiting_approval || 0;
+      const approved = stats.approved || 0;
+      const nci = stats.never_coming_in || 0;
 
       if (document.getElementById("statUnassigned")) {
         document.getElementById("statUnassigned").textContent = unassigned;

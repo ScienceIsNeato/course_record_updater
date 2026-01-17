@@ -420,7 +420,7 @@
               "endpoint": "/api/auth/accept-invitation",
               "data": {
                 "invitation_token": "{{invite_token}}",
-                "password": "LassieDemo123!",  # pragma: allowlist secret
+                "password": "LassieDemo123!",
                 "display_name": "Lassie Demo"
               }
             }
