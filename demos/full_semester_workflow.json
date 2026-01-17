@@ -96,7 +96,7 @@
       "purpose": "Demonstrate the approval workflow for submitted outcomes",
       "pre_commands": [],
       "instructions": {
-        "human": "Filter to 'Awaiting Approval' status.\n\nFind **BIOL-101 Section 004, CLO #1**.\n\nClick on the card to open the detail modal.\n\nReview the description, assessment methods, and submission history.\n\nClick 'Approve' button. The outcome moves to 'Approved' status.\n\n**Repeat for BIOL-101 Section 004, CLO #2.** Approve it as well.\n\n**Note:** We'll handle CLO #3 in the next step—it needs some corrections.\n\n**Key Point:** Approving closes the loop—faculty receives confirmation and data is locked for reporting.",
+        "human": "Use the status filter to show ONLY 'Awaiting Approval' outcomes, and work from that filtered list.\n\nFind **BIOL-101 Section 004, CLO #1** within the filtered results.\n\nClick the card to open the detail modal.\n\nReview the description, assessment methods, and submission history.\n\nClick 'Approve' to accept the submission — the outcome moves to 'Approved' status.\n\nRepeat for BIOL-101 Section 004, CLO #2 and approve it as well.\n\nNote: We'll handle CLO #3 in the next step since it requires a rework request.\n\nKey Point: Working from the filtered 'Awaiting Approval' list ensures you only act on items ready for final review.",
         "automated": {
           "action": "none"
         }
@@ -144,7 +144,7 @@
       "purpose": "Correct a mistaken 'Never Coming In' marking from a previous audit session",
       "pre_commands": [],
       "instructions": {
-        "human": "Switch to the 'Never Coming In' (NCI) filter.\n\nFind **HIST-101 Section 001, CLO #2** (marked as NCI).\n\nNotice that CLO #1 for the same section is 'Approved'—this suggests CLO #2 being marked NCI was likely a mistake from the last audit session.\n\nClick 'Reopen'.\n\nAdd a reason: \"Likely marked NCI in error during previous session. CLO #1 is approved, so instructor was clearly active. Reopening for proper review.\"\n\nConfirm.\n\n**Result:** The outcome returns to 'In Progress' status, allowing the instructor to submit it properly.\n\n**Key Point:** This demonstrates the platform's flexibility to correct administrative errors even after final disposition.",
+        "human": "Switch to the 'Never Coming In' (NCI) filter.\n\nFind **HIST-101 Section 001, CLO #2** (marked as NCI).\n\nClick 'Reopen'.\n\nAdd a reason (example): \"Marked NCI in error — reopening for proper review.\"\n\nConfirm.\n\n**Result:** The outcome returns to an editable state (e.g., 'In Progress'), allowing the instructor to submit it properly.\n\n**Key Point:** Administrators can correct disposition errors and reopen outcomes for accurate reporting.",
         "automated": {
           "action": "none"
         }
@@ -283,7 +283,7 @@
       "purpose": "Tie up the loop by reviewing and approving the faculty submissions",
       "pre_commands": [],
       "instructions": {
-        "human": "Logout as prof.raj.patel@gmail.com.\n\nLogin again as loopcloser_demo_admin@proton.me / Demo123!.\n\nGo to the Audit page.\n\nYou should now see:\n- ZOOL-101 CLO #1: Fresh submission from Dr. Patel\n- BIOL-101 Section 2, CLO #2: Reworked submission\n\nReview both and click 'Approve' on each.\n\n**Result:** Both outcomes are now closed out for Fall 2025. Dr. Patel receives approval notifications.\n\n**Key Point:** This completes the full closed-loop workflow: Admin requests work → Faculty receives email → Faculty submits → Admin reviews → Loop closed.",
+        "human": "Logout as prof.raj.patel@gmail.com.\n\nLogin again as loopcloser_demo_admin@proton.me / Demo123!.\n\nGo to the Audit page.\n\nAlso open Proton Mail in a new tab (https://mail.proton.me/u/0/inbox) and log in as prof.raj.patel@proton.me to show the notification email indicating the new submission (example subject: 'New submission received: ZOOL-101 CLO #1').\n\nYou should now see:\n- ZOOL-101 CLO #1: Fresh submission from Dr. Patel\n- BIOL-101 Section 2, CLO #2: Reworked submission\n\nReview both and click 'Approve' on each.\n\n**Result:** Both outcomes are now closed out for Fall 2025. Dr. Patel receives approval notifications.\n\n**Key Point:** This completes the full closed-loop workflow: Admin requests work → Faculty receives email → Faculty submits → Admin reviews → Loop closed.",
         "automated": {
           "action": "none"
         }
@@ -395,33 +395,64 @@
     },
     {
       "step_number": 14,
-      "phase": "Section 5: Final Items & Known Issues",
-      "name": "Profile Management Features",
-      "purpose": "Tour the Profile/Account Settings page",
-      "pre_commands": [],
+      "phase": "Section 5: Invite Acceptance",
+      "name": "Instructor Accepts Invitation (Lassie)",
+      "purpose": "Show the invite acceptance flow: inbox, accept link, account creation, and confirmation of assigned course",
+      "pre_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT token FROM user_invitations WHERE email='lassie.tests.instructor1.test@gmail.com' ORDER BY created_at DESC LIMIT 1\"",
+          "purpose": "Get invitation token for Lassie",
+          "capture_output_as": "invite_token"
+        }
+      ],
       "instructions": {
-        "human": "Click your profile dropdown in the header → 'Account Settings'.\n\n**Profile Page Features:**\n\n1. **Personal Information:** Update name, display name\n2. **Email Address:** (Currently read-only, 'Change Email' coming soon—see GitHub Issue #44)\n3. **Password Change:** Update password with strength validation\n4. **System Date Override** (Admin only):\n   - Override system date for testing/demos\n   - Currently set to Dec 23, 2025\n   - Click 'Reset to Live' to return to real-time\n5. **Account Information:** Shows role, institution, member since date\n\n**Known Limitation:** Email changes require admin contact for now (Issue #44).",
+        "human": "Open Gmail in a new tab and log in as lassie.tests.instructor1.test@gmail.com (Demo123!).\n\nCheck the inbox for the LoopCloser invitation email (subject: 'You're invited to Demo University').\n\nClick the invitation link to accept and create an account.\n\nSet a password and display name (e.g., Lassie Demo).\n\nReturn to the inbox and confirm you received a welcome/confirmation email.\n\nFinally, log in to the application as lassie.tests.instructor1.test@gmail.com and navigate to 'Course Sections' → BIOL-101 Spring 2026 → Section 001 to confirm the assigned course appears.",
         "automated": {
-          "action": "none"
+          "action": "sequence",
+          "steps": [
+            {
+              "action": "api_post",
+              "endpoint": "/api/auth/logout",
+              "data": {}
+            },
+            {
+              "action": "api_post",
+              "endpoint": "/api/auth/accept-invitation",
+              "data": {
+                "invitation_token": "{{invite_token}}",
+                "password": "LassieDemo123!",
+                "display_name": "Lassie Demo"
+              }
+            }
+          ]
         }
       },
       "urls": [
         {
-          "label": "Profile Settings",
-          "url": "http://localhost:3001/profile"
-        },
-        {
-          "label": "Change Email Issue #44",
-          "url": "https://github.com/ScienceIsNeato/course_record_updater/issues/44"
+          "label": "Gmail Login",
+          "url": "https://mail.google.com"
         }
       ],
-      "inputs": {},
+      "inputs": {
+        "email": "lassie.tests.instructor1.test@gmail.com"
+      },
       "expected_results": [
-        "Profile page loads with all sections",
-        "Date override controls visible for admin",
-        "Password change form functional"
+        "Invitation accepted and account created",
+        "Welcome email received in inbox",
+        "Assigned course (BIOL-101 Section 001) visible after login"
       ],
-      "post_commands": [],
+      "post_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM users WHERE email='lassie.tests.instructor1.test@gmail.com' LIMIT 1\"",
+          "purpose": "Confirm user created",
+          "capture_output_as": "lassie_user_id"
+        },
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT count(*) FROM course_assignments WHERE user_id='{{lassie_user_id}}' AND course_id=(SELECT id FROM courses WHERE course_number='BIOL-101') AND term_id=(SELECT id FROM terms WHERE code='SP2026')\"",
+          "purpose": "Confirm course assignment exists",
+          "capture_output_as": "lassie_assignment_count"
+        }
+      ],
       "artifacts": {},
       "pause_for_human": true
     },
@@ -432,7 +463,7 @@
       "purpose": "Highlight bulk data management capabilities",
       "pre_commands": [],
       "instructions": {
-        "human": "Return to the dashboard.\n\n**Import Features:**\n- Navigate to 'Courses' → 'Import from Excel'\n- Supports bulk upload of: Courses, Learning Outcomes, Program Outcomes, Sections\n- Template download available\n- Validation errors shown inline\n\n**Export Features:**\n- From any management page (Courses, Outcomes, Faculty), click 'Export to CSV'\n- Audit page has 'Export Current View' to export filtered results\n- Useful for reporting and data backup\n\n**Future Work:**\n- Issue #45: Implement duplicate string checker to prevent test brittleness\n- Enhanced Excel templates with more validation\n- Batch instructor assignment via CSV\n\n**Demo Complete!**\n\nYou've seen:\n✓ Platform navigation and dashboard design\n✓ Complete outcome audit workflow\n✓ Email-driven instructor collaboration\n✓ Term/offering creation and instructor assignment\n✓ Profile management and import/export features",
+        "human": "Return to the dashboard.\n\n**Import Features:**\n- Navigate to 'Courses' → 'Import from Excel'\n- Supports bulk upload of: Courses, Learning Outcomes, Program Outcomes, Sections\n- Template download available\n- Validation errors shown inline\n\n**Export Features:**\n- From any management page (Courses, Outcomes, Faculty), click 'Export to CSV'\n- Audit page has 'Export Current View' to export filtered results\n- Useful for reporting and data backup\n\nFinally, login as Institution Admin (loopcloser_demo_admin@proton.me / Demo123!) and verify that BIOL-101 Spring 2026 Section 001 shows the newly assigned instructor (Lassie Demo) in the section assignment.\n\n**Future Work:**\n- Issue #45: Implement duplicate string checker to prevent test brittleness\n- Enhanced Excel templates with more validation\n- Batch instructor assignment via CSV\n\n**Demo Complete!**\n\nYou've seen:\n✓ Platform navigation and dashboard design\n✓ Complete outcome audit workflow\n✓ Email-driven instructor collaboration\n✓ Term/offering creation and instructor assignment\n✓ Profile management and import/export features",
         "automated": {
           "action": "none"
         }
@@ -447,7 +478,8 @@
       "expected_results": [
         "Import/export features accessible from relevant pages",
         "CSV exports include current filters",
-        "Templates available for bulk uploads"
+        "Templates available for bulk uploads",
+        "New instructor 'Lassie Demo' assigned to BIOL-101 Section 001"
       ],
       "post_commands": [],
       "artifacts": {},

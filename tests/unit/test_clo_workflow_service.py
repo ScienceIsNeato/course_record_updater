@@ -951,14 +951,17 @@ class TestSendReworkNotification:
 
         mock_get_details.return_value = {
             "id": outcome_id,
+            "course_id": "course-123",
             "course_number": "CS-101",
             "clo_number": "1",
             "instructor_email": "instructor@example.com",
+            "instructor_name": "Test Instructor",
         }
         mock_email_service._send_email.return_value = True
 
         # Need app context for render_template()
         with app.app_context():
+            app.config["BASE_URL"] = "http://localhost:3001"
             result = CLOWorkflowService._send_rework_notification(outcome_id, feedback)
 
         assert result is True

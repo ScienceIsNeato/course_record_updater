@@ -2721,6 +2721,28 @@ Fail-fast is enabled by default - use --no-fail-fast to run all checks.
 
     args = parser.parse_args()
 
+    # Special-case: if the user requested only the `integration` check,
+    # run the integration pytest suite directly instead of dispatching
+    # through the parallel executor. This ensures `--checks integration`
+    # behaves as a direct integration-run command as requested.
+    if set(args.checks) == {"integration"}:
+
+        def run_integration_tests(verbose: bool = False) -> int:
+            """Run integration tests directly using pytest and return exit code."""
+            pytest_cmd = [sys.executable, "-m", "pytest", "tests/integration"]
+            if not verbose:
+                pytest_cmd += ["-q"]
+            print(
+                "Running integration tests directly via pytest: ", " ".join(pytest_cmd)
+            )
+            result = subprocess.run(
+                pytest_cmd, cwd=os.path.dirname(os.path.dirname(__file__))
+            )
+            return result.returncode
+
+        rc = run_integration_tests(verbose=args.verbose)
+        sys.exit(rc)
+
     # Handle PR validation with comprehensive batch reporting
     # Check if 'pr' alias is in the checks list
     if "pr" in args.checks and not args.skip_pr_comments:

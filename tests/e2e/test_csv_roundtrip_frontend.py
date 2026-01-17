@@ -171,8 +171,9 @@ def _step_verify_integrity(page: Page, original_course_count: int):
     """Step 4: Verify data integrity after roundtrip."""
     print("\n✅ STEP 4: Verify data integrity...")
 
-    page.goto(f"{BASE_URL}/courses")
-    page.wait_for_load_state("networkidle")
+    # Navigate with explicit wait for any redirects to settle
+    page.goto(f"{BASE_URL}/courses", wait_until="networkidle")
+    page.wait_for_timeout(1000)  # Extra wait for any post-load redirects
 
     course_rows = page.locator("table tbody tr")
     visible_course_count = course_rows.count()

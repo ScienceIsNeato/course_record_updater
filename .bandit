@@ -1,6 +1,10 @@
+# Baseline Bandit configuration for LoopCloser.
 [bandit]
 # Directories to exclude from recursive scans
 exclude_dirs = ./venv,./.venv,./cursor-rules,./logs,./node_modules,./archives
+
+# Explicitly exclude the ship_it script, where trusted subprocess usage is intentional.
+exclude = ./scripts/ship_it.py
 
 # Default: show all severity levels. We rely on CI wrapper to decide which
 # severities should fail the build (HIGH and MEDIUM fail, LOW will be a warning).
