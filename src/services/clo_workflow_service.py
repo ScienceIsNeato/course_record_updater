@@ -343,7 +343,11 @@ class CLOWorkflowService:
             # Build assessment URL
             base_url = current_app.config.get("BASE_URL", "http://localhost:3001")
             course_id = outcome_details.get("course_id")
-            assessment_url = urljoin(base_url, f"/assessments?course={course_id}")
+            if course_id:
+                assessment_url = urljoin(base_url, f"/assessments?course={course_id}")
+            else:
+                # Fallback to general assessments page if no course_id
+                assessment_url = urljoin(base_url, "/assessments")
 
             template_context = {
                 "clo_number": clo_number,
