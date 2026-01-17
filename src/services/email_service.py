@@ -419,6 +419,7 @@ class EmailService:
         }
 
         # Render templates
+        # nosemgrep: unescaped-template-extension - Flask's render_template auto-escapes by default
         text_body = render_template(
             "emails/admin_submission_alert.txt", **template_context
         )

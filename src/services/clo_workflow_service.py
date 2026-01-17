@@ -1392,7 +1392,16 @@ class CLOWorkflowService:
 
             # Send email to each admin
             instructor_name = f"{instructor['first_name']} {instructor['last_name']}"
-            course_code = f"{course['course_number']}-{outcome['section_number']}"
+
+            # Fetch section data to get section_number (outcome doesn't have this field)
+            section_id = outcome.get("section_id")
+            section_number = "Unknown"
+            if section_id:
+                section_data = db.get_section_by_id(section_id)
+                if section_data:
+                    section_number = section_data.get("section_number", "Unknown")
+
+            course_code = f"{course['course_number']}-{section_number}"
 
             for admin in admins:
                 try:

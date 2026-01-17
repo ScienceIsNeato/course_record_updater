@@ -27,7 +27,7 @@ class TestAdminNotificationOnSubmission:
             "id": section_outcome_id,
             "status": CLOStatus.IN_PROGRESS,
             "course_id": "course-789",
-            "section_number": "001",
+            "section_id": "section-999",
             "outcome_number": 1,
         }
         mock_db.update_section_outcome.return_value = True
@@ -35,6 +35,10 @@ class TestAdminNotificationOnSubmission:
             "id": "course-789",
             "course_number": "CS101",
             "program_id": "program-111",
+        }
+        mock_db.get_section_by_id.return_value = {
+            "id": "section-999",
+            "section_number": "001",
         }
         mock_db.get_user_by_id.return_value = {
             "first_name": "John",

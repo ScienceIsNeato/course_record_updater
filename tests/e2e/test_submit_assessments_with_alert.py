@@ -272,55 +272,34 @@ def test_submit_assessments_with_alert_checkbox(
     alert_checkbox.check()
     expect(alert_checkbox).to_be_checked()
 
-    # === STEP 7: Track submission success ===
-    # Use response listener BEFORE clicking submit
-    submit_response_status = []
-
-    def response_handler(response):
-        if "submit-course" in response.url and response.request.method == "POST":
-            submit_response_status.append(response.status)
-            print(f"✅ Captured submit response: {response.status}")
-
-    instructor_page.on("response", response_handler)
-
-    # === STEP 8: Click Submit Assessments ===
-    submit_button = instructor_page.locator("#submitCourseBtn")
-    submit_button.wait_for(state="visible", timeout=10000)
-
-    # Handle alert dialog (will show success or error message)
+    # === STEP 7: Set up alert handler BEFORE clicking ===
     alert_messages = []
     instructor_page.on(
         "dialog",
         lambda dialog: (alert_messages.append(dialog.message), dialog.accept()),
     )
 
-    # Use expect_response to ensure we capture it
-    # Actual endpoint is /api/courses/{course_id}/submit
+    # === STEP 8: Click Submit and wait for response ===
+    submit_button = instructor_page.locator("#submitCourseBtn")
+    expect(submit_button).to_be_visible()
+
     with instructor_page.expect_response("**/api/courses/**/submit") as response_info:
         submit_button.click()
 
-    # Wait for response
     response = response_info.value
-    submit_response_status.append(response.status)
+    print(f"✅ Submit response: {response.status}")
 
-    # === STEP 9: Verify submission succeeded ===
-    # Verify we got a response
-    assert len(submit_response_status) > 0, "No response received from submit endpoint"
-    assert submit_response_status[0] == 200, (
-        f"Submit failed with status {submit_response_status[0]}"
-    )
+    # Wait a moment for alert to fire
+    instructor_page.wait_for_timeout(1500)
 
-    # Verify the alert message confirms admin notification
-    assert len(alert_messages) > 0, "No alert dialog shown"
+    # === STEP 9: Verify success ===
+    assert response.status == 200, f"Submit failed: {response.status}"
+    assert len(alert_messages) > 0, f"No alert shown (response was {response.status})"
+
     alert_text = alert_messages[0]
     assert (
-        "successfully" in alert_text.lower()
-    ), f"Alert doesn't show success: {alert_text}"
+        "submitted for approval successfully" in alert_text.lower()
+    ), f"Expected success message, got: {alert_text}"
 
-    # The alert should mention admin notification if checkbox was checked
-    # (actual email sending verified by server logs, not in test assertion)
-
-    print("✅ Submission succeeded")
-    print(f"✅ Alert shown: {alert_text}")
-    print("✅ Alert Program Admins checkbox working")
-    print("✅ Only selected section validated (not all instructor sections)")
+    print("✅ Submission succeeded with correct section scope")
+    print(f"✅ Alert: {alert_text[:80]}...")

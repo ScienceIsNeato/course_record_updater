@@ -1668,10 +1668,10 @@ class SQLiteDatabase(DatabaseInterface):
                             and_(
                                 User.role == "program_admin",
                                 # Check if program_id exists in the extras JSON array under 'program_ids'
-                                # SQLite JSON contains check
+                                # Use bindparams for proper SQL parameterization to prevent injection
                                 text(
-                                    f"EXISTS (SELECT 1 FROM json_each(users.extras, '$.program_ids') WHERE value = :program_id)"
-                                ),
+                                    "EXISTS (SELECT 1 FROM json_each(users.extras, '$.program_ids') WHERE value = :program_id)"
+                                ).bindparams(program_id=program_id),
                             )
                         ),
                         {"program_id": program_id},

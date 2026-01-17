@@ -104,6 +104,18 @@ function calculateSuccessRate(clo) {
 }
 
 /**
+ * Format history for CSV export (plain text)
+ */
+function formatHistoryForCsv(clo) {
+  if (!clo.history || clo.history.length === 0) {
+    return "No history";
+  }
+  return clo.history
+    .map((entry) => `${entry.event} - ${formatDateForCsv(entry.occurred_at)}`)
+    .join("; ");
+}
+
+/**
  * Export current Outcome list to CSV
  */
 function exportCurrentViewToCsv(cloList) {
@@ -132,7 +144,7 @@ function exportCurrentViewToCsv(cloList) {
     clo.clo_number || "",
     formatStatusLabel(clo.status),
     clo.instructor_name || "",
-    formatDateForCsv(clo.submitted_at),
+    formatHistoryForCsv(clo),
     clo.students_took ?? "",
     clo.students_passed ?? "",
     calculateSuccessRate(clo),

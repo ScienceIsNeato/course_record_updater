@@ -21,25 +21,34 @@ DEFAULT_EXPORT_LIMIT = 1000
 # Test user credentials - ONLY for automated testing
 # These are intentionally simple and MUST NOT be used in production
 TEST_USER_EMAIL = "test@example.com"
-TEST_USER_PASSWORD = "TestUser123!"  # pragma: allowlist secret
+TEST_USER_PASSWORD = "TestUser123!"  # nosec B105 - Test-only credential, not used in production  # pragma: allowlist secret
 TEST_ADMIN_EMAIL = "admin@example.com"
-TEST_ADMIN_PASSWORD = "TestPass123!"  # pragma: allowlist secret
+TEST_ADMIN_PASSWORD = "TestPass123!"  # nosec B105 - Test-only credential, not used in production  # pragma: allowlist secret
 
-# Additional test passwords  # pragma: allowlist secret
-TEST_PASSWORD = "TestPass123!"  # pragma: allowlist secret
-SECURE_PASSWORD = "SecurePassword123!"  # pragma: allowlist secret
-NEW_PASSWORD = "NewSecurePassword123!"  # pragma: allowlist secret
-NEW_SECURE_PASSWORD = "NewSecurePassword123!"  # pragma: allowlist secret
-VALID_PASSWORD = "ValidPassword123!"  # pragma: allowlist secret
-WRONG_PASSWORD = "WrongPass123!"  # pragma: allowlist secret
-WEAK_PASSWORD = "weak"  # pragma: allowlist secret
+# Additional test passwords
+TEST_PASSWORD = "TestPass123!"  # nosec B105 - Test-only credential, not used in production  # pragma: allowlist secret
+SECURE_PASSWORD = "SecurePassword123!"  # nosec B105 - Test-only credential  # pragma: allowlist secret
+NEW_PASSWORD = "NewSecurePassword123!"  # nosec B105 - Test-only credential  # pragma: allowlist secret
+NEW_SECURE_PASSWORD = "NewSecurePassword123!"  # nosec B105 - Test-only credential  # pragma: allowlist secret
+VALID_PASSWORD = (
+    "ValidPassword123!"  # nosec B105 - Test-only credential  # pragma: allowlist secret
+)
+WRONG_PASSWORD = (
+    "WrongPass123!"  # nosec B105 - Test-only credential  # pragma: allowlist secret
+)
+WEAK_PASSWORD = "weak"  # nosec B105 - Test-only credential  # pragma: allowlist secret
 INVALID_PASSWORD_SHORT = "a"
 INVALID_PASSWORD_NO_COMPLEXITY = "password123"
-STRONG_PASSWORD_1 = "Str0ng!Pass"  # pragma: allowlist secret
-STRONG_PASSWORD_2 = "StrongPass1!"  # pragma: allowlist secret
-LONG_PASSWORD = "A" * 129 + "1!"  # pragma: allowlist secret
-DEMO_PASSWORD = "Demo123!"  # pragma: allowlist secret
-DEMO_PASSWORD = "Demo123!"
+STRONG_PASSWORD_1 = (
+    "Str0ng!Pass"  # nosec B105 - Test-only credential  # pragma: allowlist secret
+)
+STRONG_PASSWORD_2 = (
+    "StrongPass1!"  # nosec B105 - Test-only credential  # pragma: allowlist secret
+)
+LONG_PASSWORD = (
+    "A" * 129 + "1!"
+)  # nosec B105 - Test-only credential  # pragma: allowlist secret
+DEMO_PASSWORD = "Demo123!"  # nosec B105 - Test-only credential for local development  # pragma: allowlist secret
 
 # Backwards-compatible aliases for test credentials module
 SITE_ADMIN_PASSWORD = "SiteAdmin123!"
