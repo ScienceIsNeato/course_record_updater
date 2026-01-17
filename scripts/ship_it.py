@@ -106,6 +106,11 @@ class QualityGateExecutor:
                 "js-lint-format", "🎨 JavaScript Lint & Format (ESLint, Prettier)"
             ),
             CheckDef(
+                "template-validation",
+                "📄 Template Validation (Jinja2 syntax check)",
+                self._run_template_validation,
+            ),
+            CheckDef(
                 "python-static-analysis", "🔍 Python Static Analysis (mypy, imports)"
             ),
             CheckDef("python-unit-tests", "🧪 Python Unit Tests (pytest, no coverage)"),
@@ -148,6 +153,11 @@ class QualityGateExecutor:
             ),
             CheckDef(
                 "js-lint-format", "🎨 JavaScript Lint & Format (ESLint, Prettier)"
+            ),
+            CheckDef(
+                "template-validation",
+                "📄 Template Validation (Jinja2 syntax check)",
+                self._run_template_validation,
             ),
             CheckDef(
                 "python-static-analysis", "🔍 Python Static Analysis (mypy, imports)"
@@ -335,6 +345,82 @@ class QualityGateExecutor:
                 status=CheckStatus.FAILED,
                 duration=time.time() - start_time,
                 output=f"🔴 Complexity analysis failed: {str(e)}",
+                error=str(e),
+            )
+
+    def _run_template_validation(self) -> CheckResult:
+        """Run Jinja2 template validation to catch syntax errors before runtime.
+
+        This check compiles all templates to catch issues like:
+        - Missing closing braces {{ ... }}
+        - Unmatched {% ... %}
+        - Invalid Jinja2 syntax
+
+        These errors cause 500 errors at runtime, so we catch them at CI time.
+        """
+        start_time = time.time()
+        try:
+            result = subprocess.run(  # nosec B603,B607
+                [
+                    sys.executable,
+                    "-m",
+                    "pytest",
+                    "tests/integration/test_template_smoke.py::test_all_templates_compile",
+                    "-v",
+                    "--tb=short",
+                ],
+                capture_output=True,
+                text=True,
+                cwd=self.project_root,
+                timeout=30,
+            )
+
+            duration = time.time() - start_time
+
+            if result.returncode == 0:
+                return CheckResult(
+                    name="template-validation",
+                    status=CheckStatus.PASSED,
+                    duration=duration,
+                    output="✅ All templates compiled successfully (no Jinja2 syntax errors)",
+                )
+            else:
+                # Extract the actual template error from pytest output
+                error_lines = []
+                for line in result.stdout.split("\n"):
+                    if (
+                        "TemplateSyntaxError" in line
+                        or "FAILED" in line
+                        or "ERROR" in line
+                    ):
+                        error_lines.append(line)
+
+                error_summary = (
+                    "\n".join(error_lines[:10]) if error_lines else result.stdout[-500:]
+                )
+
+                return CheckResult(
+                    name="template-validation",
+                    status=CheckStatus.FAILED,
+                    duration=duration,
+                    output=f"❌ Template syntax errors detected:\n{error_summary}",
+                    error="Jinja2 template syntax error",
+                )
+
+        except subprocess.TimeoutExpired:
+            return CheckResult(
+                name="template-validation",
+                status=CheckStatus.FAILED,
+                duration=time.time() - start_time,
+                output="❌ Template validation timed out after 30s",
+                error="Timeout",
+            )
+        except Exception as e:
+            return CheckResult(
+                name="template-validation",
+                status=CheckStatus.FAILED,
+                duration=time.time() - start_time,
+                output=f"❌ Template validation failed: {str(e)}",
                 error=str(e),
             )
 

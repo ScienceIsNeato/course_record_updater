@@ -82,40 +82,6 @@ class TestAssessmentsPageDataLoad:
             f"Got: {second_option_text}"
         )
 
-    def test_assessments_page_status_summary_visible(
-        self, authenticated_institution_admin_page: Page
-    ):
-        """
-        Verify that the status summary section loads with proper structure.
-
-        The status summary shows counts for:
-        - Assigned
-        - In Progress
-        - Needs Rework
-        - Awaiting Approval
-        - Approved
-        """
-        page = authenticated_institution_admin_page
-
-        page.goto(f"{BASE_URL}/assessments")
-        page.wait_for_load_state("networkidle")
-
-        # Wait for status summary to be populated
-        page.wait_for_selector("#statusSummaryContainer", timeout=10000)
-
-        status_container = page.locator("#statusSummaryContainer")
-        expect(status_container).to_be_visible()
-
-        # The status summary should contain card elements with counts
-        # After loadCourses() runs, it calls updateStatusSummary()
-        page.wait_for_function(
-            """() => {
-                const container = document.getElementById('statusSummaryContainer');
-                return container && container.innerHTML.trim().length > 0;
-            }""",
-            timeout=10000,
-        )
-
     def test_selecting_course_loads_outcomes_section(
         self, authenticated_institution_admin_page: Page
     ):

@@ -183,6 +183,19 @@ class CLOApprovalStatus:
     )
 
 
+# Section Assessment Status constants
+class SectionAssessmentStatus:
+    """Overall assessment status for a course section based on CLO states."""
+
+    NOT_STARTED = "not_started"  # All CLOs in UNASSIGNED or ASSIGNED
+    IN_PROGRESS = "in_progress"  # At least one CLO is IN_PROGRESS
+    NEEDS_REWORK = "needs_rework"  # ANY CLO needs rework (highest priority)
+    SUBMITTED = "submitted"  # All CLOs AWAITING_APPROVAL
+    APPROVED = "approved"  # All CLOs APPROVED
+    NCI = "nci"  # All CLOs are NEVER_COMING_IN
+    UNKNOWN = "unknown"  # Fallback for edge cases
+
+
 # Permission constants
 class Permission:
     """Permission constants."""

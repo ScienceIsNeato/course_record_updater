@@ -625,6 +625,85 @@ class CLOWorkflowService:
             }
 
     @staticmethod
+    def get_section_assessment_status(section_id: str) -> str:
+        """
+        Calculate overall assessment status for a section based on its CLO states.
+
+        This mirrors the frontend JavaScript logic in templates/assessments.html
+        and follows a strict precedence order to determine the section's status.
+
+        Precedence (highest to lowest priority):
+        1. NEEDS_REWORK - if ANY CLO is in approval_pending status
+        2. NCI - if ALL CLOs are never_coming_in
+        3. APPROVED - if ALL CLOs are approved
+        4. SUBMITTED - if ALL CLOs are awaiting_approval
+        5. IN_PROGRESS - if at least one CLO has assessment data OR is in_progress status
+        6. NOT_STARTED - if all CLOs are unassigned/assigned with NO data
+        7. UNKNOWN - fallback for edge cases
+
+        Args:
+            section_id: The ID of the course section
+
+        Returns:
+            str: One of the SectionAssessmentStatus constants
+        """
+        from src.utils.constants import SectionAssessmentStatus
+
+        try:
+            outcomes = db.get_section_outcomes_by_section(section_id)
+
+            if not outcomes or len(outcomes) == 0:
+                return SectionAssessmentStatus.NOT_STARTED
+
+            statuses = [o.get("status", "assigned") for o in outcomes]
+
+            # 1. NEEDS_REWORK - highest priority (any CLO needs rework)
+            if any(s == "approval_pending" for s in statuses):
+                return SectionAssessmentStatus.NEEDS_REWORK
+
+            # 2. NCI - all CLOs marked as never coming in
+            if all(s == "never_coming_in" for s in statuses):
+                return SectionAssessmentStatus.NCI
+
+            # 3. APPROVED - all CLOs approved
+            if all(s == "approved" for s in statuses):
+                return SectionAssessmentStatus.APPROVED
+
+            # 4. SUBMITTED - all CLOs awaiting approval
+            if all(s == "awaiting_approval" for s in statuses):
+                return SectionAssessmentStatus.SUBMITTED
+
+            # 5. IN_PROGRESS - check both explicit status AND populated data
+            # A CLO is "in progress" if it has a status of 'in_progress' OR
+            # if it has assessment data populated (students_took, students_passed, assessment_tool)
+            def has_assessment_data(outcome: Dict[str, Any]) -> bool:
+                return bool(
+                    outcome.get("students_took") is not None
+                    or outcome.get("students_passed") is not None
+                    or (
+                        outcome.get("assessment_tool")
+                        and len(outcome.get("assessment_tool", "").strip()) > 0
+                    )
+                )
+
+            if any(
+                o.get("status") == "in_progress" or has_assessment_data(o)
+                for o in outcomes
+            ):
+                return SectionAssessmentStatus.IN_PROGRESS
+
+            # 6. NOT_STARTED - all CLOs unassigned or assigned with no data
+            if all(s in ("assigned", "unassigned") for s in statuses):
+                return SectionAssessmentStatus.NOT_STARTED
+
+            # 7. UNKNOWN - fallback for mixed/unexpected states
+            return SectionAssessmentStatus.UNKNOWN
+
+        except Exception as e:
+            logger.error(f"Error calculating section assessment status: {e}")
+            return SectionAssessmentStatus.UNKNOWN
+
+    @staticmethod
     def submit_course_for_approval(
         course_id: str,
         user_id: str,
