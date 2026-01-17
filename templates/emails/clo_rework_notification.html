@@ -1,19 +1,153 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 
 <head>
-    <meta charset="UTF-8">
-    <title>Outcome Rework Notification</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rework Request</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+
+        .email-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #ffa07a 0%, #ffb88c 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .header-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .greeting {
+            font-size: 18px;
+            color: #2d3748;
+            margin-bottom: 20px;
+        }
+
+        .info-box {
+            background: #fff5f5;
+            border-left: 4px solid #ff6b6b;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .info-box strong {
+            color: #c53030;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .feedback-section {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .feedback-section h3 {
+            margin-top: 0;
+            color: #2d3748;
+            font-size: 16px;
+        }
+
+        .feedback-content {
+            color: #4a5568;
+            font-style: italic;
+            line-height: 1.8;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .footer {
+            background: #f7fafc;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #718096;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .footer p {
+            margin: 5px 0;
+        }
+    </style>
 </head>
 
 <body>
-    <p>Hello,</p>
-    <p>Your submission for Learning Outcome <strong>{{ clo_number }}</strong> in <strong>{{ course_number }}</strong>
-        requires some revisions before it can be approved.</p>
-    <p><strong>Feedback from reviewer:</strong></p>
-    <p>{{ feedback }}</p>
-    <p>Please review the feedback, make the necessary updates, and resubmit when ready.</p>
-    <p>Thank you,<br>Course Record System</p>
+    <div class="email-container">
+        <div class="header">
+            <div class="header-icon">📝</div>
+            <h1>Rework Request</h1>
+        </div>
+
+        <div class="content">
+            <p class="greeting">Hello {{ instructor_name }},</p>
+
+            <p>Your submission for <strong>Learning Outcome {{ clo_number }}</strong> in <strong>{{ course_code
+                    }}</strong> requires some revisions before it can be approved.</p>
+
+            <div class="feedback-section">
+                <h3>Feedback from reviewer:</h3>
+                <div class="feedback-content">{{ feedback }}</div>
+            </div>
+
+            <p>Please review the feedback, make the necessary updates, and resubmit when ready.</p>
+
+            <div style="text-align: center;">
+                <a href="{{ assessment_url }}" class="cta-button">Update Assessment →</a>
+            </div>
+
+            <p>The link above will take you directly to the assessment page for this course. If you have any questions
+                or need assistance, please don't hesitate to reach out to your program administrator.</p>
+
+            <p>Thank you for your continued dedication to student success!</p>
+        </div>
+
+        <div class="footer">
+            <p>This email was sent to {{ to_email }}</p>
+            <p>© {{ current_year }} LoopCloser. All rights reserved.</p>
+        </div>
+    </div>
 </body>
 
 </html>

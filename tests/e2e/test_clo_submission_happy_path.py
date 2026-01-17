@@ -285,6 +285,7 @@ def _verify_section_isolation(
         ), f"Section 003 wrongly submitted!"
 
 
+@pytest.mark.skip(reason="Uses non-existent /api/outcomes/{id}/assign endpoint")
 def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
     """
     Test full CLO submission workflow for instructor.

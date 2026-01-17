@@ -1,12 +1,27 @@
-Hello,
+📝 REWORK REQUEST
+═══════════════════════════════════════
 
-Your submission for Course Learning Outcome {{ clo_number }} in {{ course_number }} requires some revisions before it can be approved.
+Hello {{ instructor_name }},
 
-Feedback from reviewer:
+Your submission for Learning Outcome {{ clo_number }} in {{ course_code }} requires some revisions before it can be approved.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FEEDBACK FROM REVIEWER:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 {{ feedback }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Please review the feedback, make the necessary updates, and resubmit when ready.
 
-Thank you,
-Course Record System
+🔗 Update your assessment here:
+{{ assessment_url }}
 
+The link above will take you directly to the assessment page for this course. If you have any questions or need assistance, please don't hesitate to reach out to your program administrator.
+
+Thank you for your continued dedication to student success!
+
+───────────────────────────────────────
+This email was sent to {{ to_email }}
+© {{ current_year }} LoopCloser. All rights reserved.

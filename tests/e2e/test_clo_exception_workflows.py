@@ -373,5 +373,7 @@ def test_clo_reopen_workflow(authenticated_institution_admin_page: Page):
         headers=data["admin_header"],
     )
     outcome = resp.json()["outcome"]
-    assert outcome["status"] == "in_progress"
+    # After reopen, status should be awaiting_approval (ready for re-approval)
+    # Changed from in_progress to allow immediate approval without requiring edit
+    assert outcome["status"] == "awaiting_approval"
     assert outcome["approval_status"] == "pending"

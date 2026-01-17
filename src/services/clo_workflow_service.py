@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 from src.database.database_service import db
 from src.utils.constants import CLOApprovalStatus, CLOStatus
 from src.utils.logging_config import get_logger
+from src.utils.time_utils import get_current_time
 
 from .email_service import EmailService
 
@@ -236,11 +237,9 @@ class CLOWorkflowService:
                 return False
 
             update_data = {
-                "status": CLOStatus.IN_PROGRESS,
+                "status": CLOStatus.AWAITING_APPROVAL,  # Ready for re-approval after reopen
                 "approval_status": CLOApprovalStatus.PENDING,
-                # Reset review data? Maybe keep history?
-                # Usually we want to clear previous final decision metadata but keep audit trail if possible.
-                # But since we just update the current row, we overwrite status.
+                # Note: Keeps existing assessment data and history for audit trail
             }
 
             success = db.update_section_outcome(section_outcome_id, update_data)
@@ -332,16 +331,33 @@ class CLOWorkflowService:
 
             course_number = outcome_details.get("course_number", "Unknown Course")
             clo_number = outcome_details.get("clo_number", "Unknown CLO")
+            instructor_name = outcome_details.get("instructor_name", "Instructor")
 
             # Compose email using templates
-            from flask import render_template
+            from urllib.parse import urljoin
+
+            from flask import current_app, render_template
 
             subject = f"Feedback on CLO {clo_number} for {course_number}"
+
+            # Build assessment URL
+            base_url = current_app.config.get("BASE_URL", "http://localhost:3001")
+            course_id = outcome_details.get("course_id")
+            if course_id:
+                assessment_url = urljoin(base_url, f"/assessments?course={course_id}")
+            else:
+                # Fallback to general assessments page if no course_id
+                assessment_url = urljoin(base_url, "/assessments")
 
             template_context = {
                 "clo_number": clo_number,
                 "course_number": course_number,
+                "course_code": course_number,
                 "feedback": feedback,
+                "assessment_url": assessment_url,
+                "instructor_name": instructor_name,
+                "to_email": instructor_email,
+                "current_year": get_current_time().year,
             }
 
             text_body = render_template(  # nosemgrep

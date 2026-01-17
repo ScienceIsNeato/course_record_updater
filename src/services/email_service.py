@@ -628,56 +628,17 @@ class EmailService:
         """
         When Brevo fails in non-production environments, retry via Ethereal
         so local/E2E runs still have an inspectable copy of the email.
+
+        DISABLED: Ethereal fallback masks real failures. If Brevo is configured,
+        it should be Brevo or bust. Fallback only makes sense in pure test environments
+        where EMAIL_PROVIDER is explicitly set to 'ethereal'.
         """
-        try:
-            env = current_app.config.get("ENV", "development")
-            is_production = env == "production"
-        except RuntimeError:
-            env = "development"
-            is_production = False
-
-        if is_production or not isinstance(provider, BrevoProvider):
-            return
-
-        ethereal_user = os.getenv("ETHEREAL_USER")
-        if not ethereal_user:
-            logger.warning(
-                "[Email Service] Ethereal fallback requested but ETHEREAL_USER is not configured"
-            )
-            return
-
-        try:
-            logger.warning(
-                "[Email Service] Brevo delivery failed in %s, retrying via Ethereal",
-                env,
-            )
-            fallback_provider = create_email_provider("ethereal")
-            fallback_success = fallback_provider.send_email(
-                to_email, subject, html_body, text_body
-            )
-            EmailService._log_email_preview(
-                to_email=to_email,
-                subject=subject,
-                text_body=text_body,
-                html_body=html_body,
-                status="FALLBACK",
-                error_message=(
-                    "Delivered to Ethereal after Brevo failure"
-                    if fallback_success
-                    else "Ethereal fallback also failed"
-                ),
-            )
-            if fallback_success:
-                logger.warning(
-                    "[Email Service] Ethereal fallback delivered the message"
-                )
-            else:
-                logger.error("[Email Service] Ethereal fallback failed as well")
-        except Exception as fallback_error:
-            logger.error(
-                "[Email Service] Ethereal fallback threw an exception: %s",
-                fallback_error,
-            )
+        # Fallback disabled - if Brevo fails, we should fail loudly
+        # Only use Ethereal when EMAIL_PROVIDER is explicitly set to 'ethereal'
+        logger.debug(
+            "[Email Service] Ethereal fallback disabled - if primary provider fails, we fail"
+        )
+        return
 
     @staticmethod
     def pop_last_error_message() -> Optional[str]:
