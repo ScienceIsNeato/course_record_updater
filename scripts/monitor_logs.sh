@@ -161,6 +161,12 @@ if [ "$ENVIRONMENT" == "dev" ]; then
             
             # Show initial logs and track last timestamp
             while IFS=, read -r ts payload; do
+                # Skip empty log entries (Cloud Run heartbeats/metadata with no textPayload)
+                if [ -z "$payload" ] || [ "$payload" = '""' ]; then
+                    LAST_TIMESTAMP="$ts"
+                    continue
+                fi
+                
                 line="[$ts] $payload"
                 
                 # Colorize
@@ -210,6 +216,12 @@ if [ "$ENVIRONMENT" == "dev" ]; then
                 
                 # Process new logs and update LAST_TIMESTAMP (no subshell!)
                 while IFS=, read -r ts payload; do
+                    # Skip empty log entries (Cloud Run heartbeats/metadata with no textPayload)
+                    if [ -z "$payload" ] || [ "$payload" = '""' ]; then
+                        LAST_TIMESTAMP="$ts"
+                        continue
+                    fi
+                    
                     line="[$ts] $payload"
                     
                     # Colorize
@@ -244,7 +256,10 @@ if [ "$ENVIRONMENT" == "dev" ]; then
         fi
         
         $CMD | while IFS=, read -r ts payload; do
-             echo "[$ts] $payload"
+             # Skip empty entries
+             if [ -n "$payload" ] && [ "$payload" != '""' ]; then
+                 echo "[$ts] $payload"
+             fi
         done
         rm -f /tmp/logs_output.csv
     fi
