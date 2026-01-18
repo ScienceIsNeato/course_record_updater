@@ -30,32 +30,26 @@ TEST_PASSWORD = "TestPass123!"  # nosec B105 # pragma: allowlist secret
 SECURE_PASSWORD = "SecurePassword123!"  # nosec B105 # pragma: allowlist secret
 NEW_PASSWORD = "NewSecurePassword123!"  # nosec B105 # pragma: allowlist secret
 NEW_SECURE_PASSWORD = "NewSecurePassword123!"  # nosec B105 # pragma: allowlist secret
-VALID_PASSWORD = (
-    "ValidPassword123!"  # nosec B105 # pragma: allowlist secret
-)
-WRONG_PASSWORD = (
-    "WrongPass123!"  # nosec B105 # pragma: allowlist secret
-)
+VALID_PASSWORD = "ValidPassword123!"  # nosec B105 # pragma: allowlist secret
+WRONG_PASSWORD = "WrongPass123!"  # nosec B105 # pragma: allowlist secret
 WEAK_PASSWORD = "weak"  # nosec B105 # pragma: allowlist secret
-INVALID_PASSWORD_SHORT = "a" # nosec B105 # pragma: allowlist secret
-INVALID_PASSWORD_NO_COMPLEXITY = "password123" # nosec B105 # pragma: allowlist secret
-STRONG_PASSWORD_1 = (
-    "Str0ng!Pass"  # nosec B105 # pragma: allowlist secret
-)
-STRONG_PASSWORD_2 = (
-    "StrongPass1!"  # nosec B105 # pragma: allowlist secret
-)
-LONG_PASSWORD = (
-    "A" * 129 + "1!"
-)  # nosec B105 # pragma: allowlist secret
+INVALID_PASSWORD_SHORT = "a"  # nosec B105 # pragma: allowlist secret
+INVALID_PASSWORD_NO_COMPLEXITY = "password123"  # nosec B105 # pragma: allowlist secret
+STRONG_PASSWORD_1 = "Str0ng!Pass"  # nosec B105 # pragma: allowlist secret
+STRONG_PASSWORD_2 = "StrongPass1!"  # nosec B105 # pragma: allowlist secret
+LONG_PASSWORD = "A" * 129 + "1!"  # nosec B105 # pragma: allowlist secret
 DEMO_PASSWORD = "Demo123!"  # nosec B105 # pragma: allowlist secret
 
 # Backwards-compatible aliases for test credentials module
-SITE_ADMIN_PASSWORD = "SiteAdmin123!" # nosec B105 # pragma: allowlist secret
-INSTITUTION_ADMIN_PASSWORD = "InstitutionAdmin123!" # nosec B105 # pragma: allowlist secret
-PROGRAM_ADMIN_PASSWORD = INSTITUTION_ADMIN_PASSWORD # nosec B105 # pragma: allowlist secret
-INSTRUCTOR_PASSWORD = "Instructor123!" # nosec B105 # pragma: allowlist secret
-DEFAULT_PASSWORD = INSTITUTION_ADMIN_PASSWORD # nosec B105 # pragma: allowlist secret
+SITE_ADMIN_PASSWORD = "SiteAdmin123!"  # nosec B105 # pragma: allowlist secret
+INSTITUTION_ADMIN_PASSWORD = (
+    "InstitutionAdmin123!"  # nosec B105 # pragma: allowlist secret
+)
+PROGRAM_ADMIN_PASSWORD = (
+    INSTITUTION_ADMIN_PASSWORD  # nosec B105 # pragma: allowlist secret
+)
+INSTRUCTOR_PASSWORD = "Instructor123!"  # nosec B105 # pragma: allowlist secret
+DEFAULT_PASSWORD = INSTITUTION_ADMIN_PASSWORD  # nosec B105 # pragma: allowlist secret
 
 # Test account emails and course constants (for tests re-export)
 SITE_ADMIN_EMAIL = "siteadmin@system.local"
