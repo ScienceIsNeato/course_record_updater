@@ -290,6 +290,14 @@
         });
 
         const payload = await response.json();
+
+        // Handle authentication failure specifically to stop log spam
+        if (response.status === 401 || payload.error_code === "AUTH_REQUIRED") {
+          this.cleanup(); // Stop polling
+          window.location.reload(); // Reload to trigger login redirect
+          return;
+        }
+
         if (!response.ok || !payload.success) {
           throw new Error(payload.error || "Unable to load dashboard data");
         }
@@ -602,9 +610,14 @@
           { key: "title", label: "Title", sortable: true },
           { key: "credits", label: "Credits", sortable: true },
           { key: "sections", label: "Sections", sortable: true },
-          { key: "department", label: "Department", sortable: true },
+          { key: "programs", label: "Programs", sortable: true },
         ],
         data: courses.map((course) => {
+          // Format program names for display
+          const programNames = course.program_names || [];
+          const programsDisplay =
+            programNames.length > 0 ? programNames.join(", ") : "-";
+
           return {
             number: course.course_number || "-",
             title: course.course_title || course.title || "-",
@@ -612,7 +625,7 @@
             credits_sort: (course.credit_hours ?? 0).toString(),
             sections: (course.section_count ?? 0).toString(),
             sections_sort: (course.section_count ?? 0).toString(),
-            department: course.department || "-",
+            programs: programsDisplay,
           };
         }),
       });

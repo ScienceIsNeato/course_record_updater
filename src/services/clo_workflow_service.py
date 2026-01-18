@@ -1515,7 +1515,7 @@ class CLOWorkflowService:
             # Get program_id (courses have program_ids array, use first one)
             program_ids = course.get("program_ids") or []
             program_id = program_ids[0] if program_ids else course.get("program_id")
-            
+
             admins = []
             if program_id:
                 # Try to get program admins first
@@ -1541,7 +1541,9 @@ class CLOWorkflowService:
 
             # Only error if no admins found at all
             if not admins:
-                error_msg = f"No program or institution admins found for course {course_id}"
+                error_msg = (
+                    f"No program or institution admins found for course {course_id}"
+                )
                 logger.warning(error_msg)
                 return False, error_msg
 

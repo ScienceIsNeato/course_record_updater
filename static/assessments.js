@@ -1071,6 +1071,11 @@ document.addEventListener("DOMContentLoaded", function () {
   // Load course-level data when course is selected
   async function loadCourseLevelData(compositeId) {
     try {
+      if (!compositeId) {
+        courseLevelSection.style.display = "none";
+        return;
+      }
+
       // Parse composite ID: "courseId::sectionId"
       const [courseId, sectionId] = compositeId.split("::");
       // Find the specific section selected
@@ -1140,9 +1145,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Show the section
         courseLevelSection.style.display = "block";
+      } else {
+        courseLevelSection.style.display = "none";
       }
     } catch (error) {
       console.error("Error loading course-level data:", error);
+      courseLevelSection.style.display = "none";
     }
   }
 

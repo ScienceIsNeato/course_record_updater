@@ -1,12 +1,26 @@
 # LoopCloser - Current Status
 
-## Latest Work: Neon Performance Fix & Remote Seeding Security (2026-01-17)
+## Latest Work: Neon Performance & Email Configuration (2026-01-18)
 
-**Status**: ✅ COMPLETE & DEPLOYED - 40x performance improvement on Neon, security hardened
+**Status**: ✅ CODE COMPLETE - 7 commits ready, 3 manual steps remaining
 
-**Commit**: `100c6c3` - All quality gates passed  
 **Branch**: `feat/cloud-db-seeding`  
-**Deployed**: Dev environment at https://dev.loopcloser.io
+**Commits**: `100c6c3` (perf), `fafbb69` (email), `eea9a6b` (error), `6ca788a` (logs), `21a5b1b` (BASE_URL), `a030a93` (logs), `b781775` (fallback)
+
+**What's Complete**:
+- ✅ 40x performance improvement (eager loading + indexes on Neon)
+- ✅ Email configuration for dev (Brevo setup)
+- ✅ Email error propagation (no more false success)
+- ✅ Monitor logs duplicate/empty entry fixes
+- ✅ Email BASE_URL fix (links point to correct environment)
+- ✅ Graceful fallback for courses without programs
+
+**Manual Steps Remaining** (see `MANUAL_STEPS_REQUIRED.md`):
+1. Create Brevo secret in Google Cloud (use `printf` not `echo`)
+2. Grant Cloud Run service account access to secret
+3. Deploy to dev with `./scripts/deploy.sh dev`
+
+**Next Issue**: #49 - Remove Department field from UI (greenfield cleanup)
 
 **Problems Solved**:
 

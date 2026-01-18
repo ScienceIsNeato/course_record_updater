@@ -115,6 +115,14 @@
         });
 
         const payload = await response.json();
+
+        // Handle authentication failure specifically to stop log spam
+        if (response.status === 401 || payload.error_code === "AUTH_REQUIRED") {
+          this.cleanup(); // Stop polling
+          window.location.reload(); // Reload to trigger login redirect
+          return;
+        }
+
         if (!response.ok || !payload.success) {
           throw new Error(payload.error || "Unable to load dashboard data");
         }
