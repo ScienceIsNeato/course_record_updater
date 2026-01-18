@@ -33,14 +33,6 @@ fi
 
 ENV_ARG="$1"
 
-# Handle deprecated 'dev' argument (now use 'local')
-if [[ "$ENV_ARG" == "dev" ]]; then
-    echo -e "${YELLOW}⚠️  WARNING: 'dev' is deprecated. Use 'local' for local development.${NC}" >&2
-    echo -e "${YELLOW}           'dev' now refers to deployed dev at https://dev.loopcloser.io${NC}" >&2
-    echo -e "${YELLOW}           Treating as 'local' for backward compatibility...${NC}" >&2
-    ENV_ARG="local"
-fi
-
 # Validate environment
 if [[ ! "$ENV_ARG" =~ ^(local|e2e|smoke)$ ]]; then
     echo -e "${RED}❌ Error: Invalid environment '$ENV_ARG'${NC}" >&2

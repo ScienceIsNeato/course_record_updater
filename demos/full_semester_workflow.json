@@ -14,8 +14,8 @@
     "working_directory": ".",
     "setup_commands": [
       "source venv/bin/activate && source .envrc",
-      "python scripts/seed_db.py --demo --manifest demos/full_semester_manifest.json --clear --env dev",
-      "./scripts/restart_server.sh dev"
+      "python scripts/seed_db.py --demo --manifest demos/full_semester_manifest.json --clear --env {{env}}",
+      "./scripts/restart_server.sh {{env}}"
     ],
     "base_url": "http://localhost:3001",
     "cleanup_commands": []

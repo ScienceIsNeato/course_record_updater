@@ -971,8 +971,13 @@ class SQLDatabase(DatabaseInterface):
                 query = query.where(Course.id == course_id)
 
             # Use distinct to prevent duplicates when joining through multiple sections
-            outcomes = session.execute(query.distinct()).scalars().all()
-            return [to_dict(outcome) for outcome in outcomes]
+            # FIX: Do not use SQL-level DISTINCT (query.distinct()) because 'extras' column is JSON
+            # and PostgreSQL JSON type does not support equality comparisons.
+            # Deduplicate in Python instead.
+            outcomes = session.execute(query).scalars().all()
+            unique_outcomes = list({o.id: o for o in outcomes}.values())
+            
+            return [to_dict(outcome) for outcome in unique_outcomes]
 
     def get_section_outcomes_by_criteria(
         self,

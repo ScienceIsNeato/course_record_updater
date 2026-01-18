@@ -6,9 +6,11 @@ This page describes how LoopCloser sends transactional mail across different env
 
 | Environment | `ENV` value | Provider used | Purpose |
 | --- | --- | --- | --- |
-| Production | `production` | **Brevo** (`EMAIL_PROVIDER` defaults to `brevo`) | Real recipients, Brevo delivers to actual inboxes and tracks deliverability. |
-| Development (local/staging) | `development`, `staging` | **Brevo** by default | Exercises the real Brevo flow while working against local/staging data; still subject to Brevo policies (rate limits, IP restrictions). |
-| Testing / E2E (`pytest`, `ship_it.py --checks ...`) | `test`, `e2e`, or `TESTING=true` | **Ethereal** (`EMAIL_PROVIDER=ethereal` when running tests) | Sends emails to Ethereal accounts so we can verify delivery without hitting real mailboxes. |
+| Production | `production` | **Brevo** (`EMAIL_PROVIDER=brevo`) | Real recipients, Brevo delivers to actual inboxes and tracks deliverability. |
+| Dev (deployed) | `development` | **Brevo** (via secret `brevo-api-key`) | Real email delivery on dev.loopcloser.io for testing invitation/reminder flows. |
+| Local development | `development` | **Brevo** (from `.envrc`) | Local testing with real email delivery using personal Brevo key. |
+| Staging | `staging` | **Brevo** (via secret `brevo-api-key`) | Real email delivery for staging validation. |
+| Testing / E2E / CI | `test`, `e2e`, or `TESTING=true` | **Ethereal** (`EMAIL_PROVIDER=ethereal`) | Fake SMTP for automated tests - no real emails sent. |
 
 Brevo and Ethereal share the same `EmailService` API surface, so the rest of the application doesn't care which provider is in use.
 

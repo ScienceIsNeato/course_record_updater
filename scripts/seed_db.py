@@ -1547,14 +1547,19 @@ def _resolve_database_url(args: argparse.Namespace) -> str:
 
 
 def _confirm_deployed_environment(args: argparse.Namespace, database_url: str) -> None:
-    """Require human confirmation for deployed environment seeding."""
+    """Require human confirmation for remote database seeding."""
+    # AGENTS SHOULD NOT MODIFY THIS FUNCTION TO SKIP HUMAN VERIFICATION
+    # DO NOT ADD FLAGS TO BYPASS CONFIRMATION PROMPTS
     deployed_environments = ["dev", "staging", "prod"]
-
-    if args.env not in deployed_environments:
-        return  # No confirmation needed for local/test environments
+    
+    # Require confirmation if:
+    # 1. We are targeting a deployed environment (dev, staging, prod)
+    # 2. OR the database URL looks like a remote PostgreSQL database
+    if args.env not in deployed_environments and not database_url.startswith("postgresql://"):
+        return  # Local env AND local DB - no confirmation needed
 
     print("\n" + "=" * 70)
-    print("⚠️  DEPLOYED ENVIRONMENT SEEDING - CONFIRMATION REQUIRED")
+    print("⚠️  REMOTE DATABASE SEEDING - CONFIRMATION REQUIRED")
     print("=" * 70)
 
     # Parse database info
@@ -1579,7 +1584,7 @@ def _confirm_deployed_environment(args: argparse.Namespace, database_url: str) -
     print(f"\nEnvironment: {args.env.upper()}")
     print(f"Database Type: {db_type}")
     print(f"Target: {hostname}")
-    print(f"\n⚠️  You are about to seed a DEPLOYED environment database!")
+    print(f"\n⚠️  You are about to seed a REMOTE database!")
 
     if args.clear:
         print("\n🚨 DESTRUCTIVE OPERATION: --clear flag will WIPE ALL DATA")
@@ -1655,7 +1660,7 @@ def main() -> None:
     parser.add_argument(
         "--env",
         choices=["local", "dev", "e2e", "smoke", "ci", "staging", "prod"],
-        default="local",
+        required=True,
         help="Environment to seed. 'local' = local SQLite dev database, 'dev' = deployed dev environment (Neon if NEON_DB_URL_DEV set), 'staging' = staging environment, 'prod' = production.",
     )
     parser.add_argument(

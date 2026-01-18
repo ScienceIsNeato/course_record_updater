@@ -76,25 +76,121 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Determine log file based on environment if not explicitly provided
-if [ -z "$LOG_FILE" ]; then
-    case "$ENVIRONMENT" in
-        e2e|uat)
-            LOG_FILE="logs/test_server.log"
-            ;;
-        dev|"")
-            LOG_FILE="logs/server.log"
-            ENVIRONMENT="dev"  # Set default
-            ;;
-        *)
-            echo -e "${RED}❌ Invalid environment: $ENVIRONMENT${NC}" >&2
-            echo -e "${YELLOW}Valid environments: dev, e2e, uat${NC}"
-            exit 1
-            ;;
-    esac
+# Check that ENVIRONMENT is set (it's required now)
+if [ -z "$ENVIRONMENT" ]; then
+    echo -e "${RED}❌ Error: --env argument is required.${NC}"
+    show_usage
+    exit 1
 fi
 
-# Check if log file exists
-if [ ! -f "$LOG_FILE" ]; then
+# Determine log file based on environment
+case "$ENVIRONMENT" in
+    e2e|uat)
+        LOG_FILE="logs/test_server.log"
+        ;;
+    dev)
+        # Dev uses Cloud Run logs
+        ;;
+    local)
+        LOG_FILE="logs/server.log"
+        ;;
+    *)
+        echo -e "${RED}❌ Invalid environment: $ENVIRONMENT${NC}" >&2
+        echo -e "${YELLOW}Valid environments: dev, local, e2e, uat${NC}"
+        exit 1
+        ;;
+esac
+
+# Check if using Cloud Run logging
+if [ "$ENVIRONMENT" == "dev" ]; then
+    echo -e "${BLUE}☁️  Fetching logs from Cloud Run (loopcloser-dev)...${NC}"
+    echo -e "${BLUE}   (Use Ctrl+C to stop)${NC}"
+    echo ""
+    
+    # Check if gcloud is installed
+    if ! command -v gcloud &> /dev/null; then
+        echo -e "${RED}❌ gcloud CLI not found. Please install Google Cloud SDK.${NC}"
+        exit 1
+    fi
+
+    # Filter for the service
+    FILTER="resource.type=\"cloud_run_revision\" resource.labels.service_name=\"loopcloser-dev\""
+    
+    if [ "$FOLLOW" = true ]; then
+        echo -e "${BLUE}☁️  Polling logs (press Ctrl+C to stop)...${NC}"
+        # Simple polling loop to avoid requiring grpcio for live tail
+        LAST_TIMESTAMP=""
+        while true; do
+            # Construct filter for new logs
+            CURRENT_FILTER="$FILTER"
+            if [ -n "$LAST_TIMESTAMP" ]; then
+                CURRENT_FILTER="$FILTER timestamp > \"$LAST_TIMESTAMP\""
+            fi
+            
+            # Fetch logs
+            # Use --format="csv[no-heading](timestamp,textPayload)" to get both for tracking
+            # Use order=desc to get NEWEST logs first, then we'll reverse them or just handle timestamps
+            gcloud logging read "$CURRENT_FILTER" --limit=20 --format="csv[no-heading](timestamp,textPayload)" --order=desc 2>/dev/null > /tmp/logs_output.csv
+            
+            if [ -s /tmp/logs_output.csv ]; then
+                # Read line by line from temp file
+                # Use tac if available to reverse lines (so oldest is first), otherwise just read as is
+                if command -v tac &> /dev/null; then
+                    CMD="tac /tmp/logs_output.csv"
+                else
+                    CMD="cat /tmp/logs_output.csv"
+                fi
+
+                $CMD | while IFS=, read -r ts payload; do
+                    # Check if we've already seen this timestamp to avoid duplicates in tight polling
+                    if [[ "$ts" > "$LAST_TIMESTAMP" ]]; then
+                        # Normalize output format to look like local logs:
+                        # [YYYY-MM-DD HH:MM:SS] Message
+                        # Cloud timestamp is ISO8601, just keeping it as is or formatting it would be nice, 
+                        # but raw TS is fine for now to match structure.
+                        # Also apply colorization logic similar to local logs
+                        
+                        line="[$ts] $payload"
+                        
+                        if [[ $line == *"ERROR"* ]] || [[ $line == *"Error"* ]] || [[ $line == *"error"* ]] || [[ $line == *"Exception"* ]] || [[ $line == *"Traceback"* ]]; then
+                            echo -e "${RED}$line${NC}"
+                        elif [[ $line == *"WARNING"* ]] || [[ $line == *"Warning"* ]] || [[ $line == *"warning"* ]]; then
+                            echo -e "${YELLOW}$line${NC}"
+                        elif [[ $line == *"INFO"* ]] || [[ $line == *"Starting"* ]] || [[ $line == *"started"* ]] || [[ $line == *"✅"* ]]; then
+                            echo -e "${GREEN}$line${NC}"
+                        elif [[ $line == *"DEBUG"* ]] || [[ $line == *"[DB Service"* ]]; then
+                            echo -e "${CYAN}$line${NC}"
+                        elif [[ $line == *"127.0.0.1"* ]] || [[ $line == *"GET"* ]] || [[ $line == *"POST"* ]]; then
+                            echo -e "${BLUE}$line${NC}"
+                        else
+                            echo "$line"
+                        fi
+
+                        LAST_TIMESTAMP="$ts"
+                    fi
+                done
+            fi
+            rm -f /tmp/logs_output.csv
+            sleep 2
+        done
+    else
+        # Non-follow mode (just dump last N lines)
+        gcloud logging read "$FILTER" --limit="$LINES" --format="csv[no-heading](timestamp,textPayload)" --order=desc > /tmp/logs_output.csv
+        if command -v tac &> /dev/null; then
+             CMD="tac /tmp/logs_output.csv"
+        else
+             CMD="cat /tmp/logs_output.csv"
+        fi
+        
+        $CMD | while IFS=, read -r ts payload; do
+             echo "[$ts] $payload"
+        done
+        rm -f /tmp/logs_output.csv
+    fi
+    exit 0
+fi
+
+# Check if log file exists (for local modes)
     echo -e "${YELLOW}⚠️  Log file not found: $LOG_FILE${NC}"
     echo -e "${BLUE}💡 Have you started the server? Try running: ./restart_server.sh${NC}"
     echo -e "${BLUE}💡 Available log files:${NC}"
@@ -105,38 +201,6 @@ if [ ! -f "$LOG_FILE" ]; then
     fi
     exit 1
 fi
-
-# Function to colorize log output
-colorize_logs() {
-    while IFS= read -r line; do
-        # Add timestamp if line doesn't already have one
-        if [[ ! $line =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
-            timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-            line="[$timestamp] $line"
-        fi
-
-        # Colorize based on content
-        if [[ $line == *"ERROR"* ]] || [[ $line == *"Error"* ]] || [[ $line == *"error"* ]] || [[ $line == *"Exception"* ]] || [[ $line == *"Traceback"* ]]; then
-            echo -e "${RED}$line${NC}"
-        elif [[ $line == *"WARNING"* ]] || [[ $line == *"Warning"* ]] || [[ $line == *"warning"* ]]; then
-            echo -e "${YELLOW}$line${NC}"
-        elif [[ $line == *"INFO"* ]] || [[ $line == *"Starting"* ]] || [[ $line == *"started"* ]] || [[ $line == *"✅"* ]]; then
-            echo -e "${GREEN}$line${NC}"
-        elif [[ $line == *"DEBUG"* ]] || [[ $line == *"[DB Service"* ]]; then
-            echo -e "${CYAN}$line${NC}"
-        elif [[ $line == *"127.0.0.1"* ]] || [[ $line == *"GET"* ]] || [[ $line == *"POST"* ]]; then
-            echo -e "${BLUE}$line${NC}"
-        else
-            echo "$line"
-        fi
-    done
-}
-
-# Main execution
-echo -e "${BLUE}📋 LoopCloser - Log Monitor${NC}"
-echo -e "${BLUE}=======================================${NC}"
-echo -e "${BLUE}🌍 Environment: $ENVIRONMENT${NC}"
-echo -e "${BLUE}📁 Monitoring: $LOG_FILE${NC}"
 
 if [ "$FOLLOW" = true ]; then
     echo -e "${BLUE}📊 Showing last $LINES lines, then following...${NC}"

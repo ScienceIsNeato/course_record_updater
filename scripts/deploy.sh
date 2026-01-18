@@ -48,6 +48,9 @@ echo "  2. Push image to Artifact Registry"
 echo "  3. Deploy to Cloud Run (may cause brief service interruption)"
 echo "  4. Update environment configuration"
 echo ""
+# AGENTS SHOULD NOT MODIFY THIS FILE TO SKIP HUMAN VERIFICATION
+# DO NOT ADD FLAGS TO BYPASS CONFIRMATION PROMPTS
+
 echo "To proceed, type the environment name exactly: ${ENVIRONMENT}"
 read -p "Type '${ENVIRONMENT}' to confirm: " confirmation
 
@@ -99,30 +102,62 @@ esac
 
 echo "☁️  Deploying to Cloud Run..."
 
-# Build env vars string
-# Dev uses Neon PostgreSQL (via secret), staging/prod use ephemeral for now
-ENV_VARS="APP_ENV=${ENVIRONMENT},SESSION_COOKIE_SECURE=true,SESSION_COOKIE_HTTPONLY=true,SESSION_COOKIE_SAMESITE=Lax"
+# Build env vars string based on environment
+case $ENVIRONMENT in
+    dev)
+        # Dev uses Brevo for real email delivery
+        ENV_VARS="APP_ENV=${ENVIRONMENT}"
+        ENV_VARS="${ENV_VARS},EMAIL_PROVIDER=brevo"
+        ENV_VARS="${ENV_VARS},BREVO_SENDER_EMAIL=loopcloser_demo_admin@loopcloser.io"
+        ENV_VARS="${ENV_VARS},BREVO_SENDER_NAME=LoopCloser Dev"
+        ENV_VARS="${ENV_VARS},SESSION_COOKIE_SECURE=true"
+        ENV_VARS="${ENV_VARS},SESSION_COOKIE_HTTPONLY=true"
+        ENV_VARS="${ENV_VARS},SESSION_COOKIE_SAMESITE=Lax"
+        ;;
+    staging|prod)
+        # Staging/prod use ephemeral SQLite for now (will migrate to Neon later)
+        ENV_VARS="APP_ENV=${ENVIRONMENT}"
+        ENV_VARS="${ENV_VARS},DATABASE_URL=sqlite:////tmp/loopcloser.db"
+        ENV_VARS="${ENV_VARS},EMAIL_PROVIDER=brevo"
+        ENV_VARS="${ENV_VARS},BREVO_SENDER_EMAIL=loopcloser_demo_admin@loopcloser.io"
+        ENV_VARS="${ENV_VARS},BREVO_SENDER_NAME=LoopCloser"
+        ENV_VARS="${ENV_VARS},SESSION_COOKIE_SECURE=true"
+        ENV_VARS="${ENV_VARS},SESSION_COOKIE_HTTPONLY=true"
+        ENV_VARS="${ENV_VARS},SESSION_COOKIE_SAMESITE=Lax"
+        ;;
+esac
 
-# Add database URL for non-dev environments (dev uses secret)
-if [ "${ENVIRONMENT}" != "dev" ]; then
-    ENV_VARS="${ENV_VARS},DATABASE_URL=sqlite:////tmp/loopcloser.db"
-fi
-
-# Deploy command - dev uses secret, others use env var
+# Deploy command - mount secrets based on environment
 if [ "${ENVIRONMENT}" = "dev" ]; then
+    # Dev uses Neon database + Brevo email (both via secrets)
     gcloud run deploy ${SERVICE_NAME} \
         --image=${REGISTRY}:${ENVIRONMENT} \
         --region=${REGION} \
         --platform=managed \
         --allow-unauthenticated \
         --set-env-vars="${ENV_VARS}" \
-        --update-secrets=DATABASE_URL=neon-dev-database-url:latest \
+        --update-secrets=DATABASE_URL=neon-dev-database-url:latest,BREVO_API_KEY=brevo-api-key:latest \
+        --memory=${MEMORY} \
+        --cpu=${CPU} \
+        --min-instances=${MIN_INSTANCES} \
+        --max-instances=${MAX_INSTANCES} \
+        --project=${PROJECT_ID}
+elif [ "${ENVIRONMENT}" = "staging" ] || [ "${ENVIRONMENT}" = "prod" ]; then
+    # Staging/prod use Brevo email (via secret)
+    gcloud run deploy ${SERVICE_NAME} \
+        --image=${REGISTRY}:${ENVIRONMENT} \
+        --region=${REGION} \
+        --platform=managed \
+        --allow-unauthenticated \
+        --set-env-vars="${ENV_VARS}" \
+        --update-secrets=BREVO_API_KEY=brevo-api-key:latest \
         --memory=${MEMORY} \
         --cpu=${CPU} \
         --min-instances=${MIN_INSTANCES} \
         --max-instances=${MAX_INSTANCES} \
         --project=${PROJECT_ID}
 else
+    # Fallback (shouldn't reach here)
     gcloud run deploy ${SERVICE_NAME} \
         --image=${REGISTRY}:${ENVIRONMENT} \
         --region=${REGION} \
