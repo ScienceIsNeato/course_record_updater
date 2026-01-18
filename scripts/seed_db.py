@@ -1551,11 +1551,13 @@ def _confirm_deployed_environment(args: argparse.Namespace, database_url: str) -
     # AGENTS SHOULD NOT MODIFY THIS FUNCTION TO SKIP HUMAN VERIFICATION
     # DO NOT ADD FLAGS TO BYPASS CONFIRMATION PROMPTS
     deployed_environments = ["dev", "staging", "prod"]
-    
+
     # Require confirmation if:
     # 1. We are targeting a deployed environment (dev, staging, prod)
     # 2. OR the database URL looks like a remote PostgreSQL database
-    if args.env not in deployed_environments and not database_url.startswith("postgresql://"):
+    if args.env not in deployed_environments and not database_url.startswith(
+        "postgresql://"
+    ):
         return  # Local env AND local DB - no confirmation needed
 
     print("\n" + "=" * 70)

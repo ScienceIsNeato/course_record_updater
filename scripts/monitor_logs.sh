@@ -41,6 +41,32 @@ show_usage() {
     echo "  uat: logs/test_server.log"
 }
 
+# Function to colorize log output
+colorize_logs() {
+    while IFS= read -r line; do
+        # Add timestamp if line doesn't already have one
+        if [[ ! $line =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
+            timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+            line="[$timestamp] $line"
+        fi
+
+        # Colorize based on content
+        if [[ $line == *"ERROR"* ]] || [[ $line == *"Error"* ]] || [[ $line == *"error"* ]] || [[ $line == *"Exception"* ]] || [[ $line == *"Traceback"* ]]; then
+            echo -e "${RED}$line${NC}"
+        elif [[ $line == *"WARNING"* ]] || [[ $line == *"Warning"* ]] || [[ $line == *"warning"* ]]; then
+            echo -e "${YELLOW}$line${NC}"
+        elif [[ $line == *"INFO"* ]] || [[ $line == *"Starting"* ]] || [[ $line == *"started"* ]] || [[ $line == *"✅"* ]]; then
+            echo -e "${GREEN}$line${NC}"
+        elif [[ $line == *"DEBUG"* ]] || [[ $line == *"[DB Service"* ]]; then
+            echo -e "${CYAN}$line${NC}"
+        elif [[ $line == *"127.0.0.1"* ]] || [[ $line == *"GET"* ]] || [[ $line == *"POST"* ]]; then
+            echo -e "${BLUE}$line${NC}"
+        else
+            echo "$line"
+        fi
+    done
+}
+
 # Parse command line arguments
 LINES=10
 FOLLOW=true
@@ -191,6 +217,7 @@ if [ "$ENVIRONMENT" == "dev" ]; then
 fi
 
 # Check if log file exists (for local modes)
+if [ ! -f "$LOG_FILE" ]; then
     echo -e "${YELLOW}⚠️  Log file not found: $LOG_FILE${NC}"
     echo -e "${BLUE}💡 Have you started the server? Try running: ./restart_server.sh${NC}"
     echo -e "${BLUE}💡 Available log files:${NC}"

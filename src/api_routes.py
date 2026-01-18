@@ -6550,7 +6550,7 @@ def send_course_reminder_api() -> ResponseReturnValue:
             f"{course_number} - {course_title}" if course_title else course_number
         )
 
-        EmailService.send_course_assessment_reminder(
+        email_sent = EmailService.send_course_assessment_reminder(
             to_email=instructor["email"],
             instructor_name=instructor_name,
             course_display=course_display,
@@ -6582,20 +6582,36 @@ def send_course_reminder_api() -> ResponseReturnValue:
                             database_service.add_outcome_history(so_id, "Reminder Sent")
                     reminder_count += 1
 
-        logger.info(
-            f"[API] Course reminder sent to {instructor['email']} for {course_number} by {current_user.get('email')} "
-            f"(recorded {reminder_count} section reminders)"
-        )
-
-        return (
-            jsonify(
-                {
-                    "success": True,
-                    "message": f"Reminder sent to {instructor_name} for {course_display}",
-                }
-            ),
-            200,
-        )
+        # Check email result and return appropriate response
+        if email_sent:
+            logger.info(
+                f"[API] Course reminder sent to {instructor['email']} for {course_number} by {current_user.get('email')} "
+                f"(recorded {reminder_count} section reminders)"
+            )
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "message": f"Reminder sent to {instructor_name} for {course_display}",
+                    }
+                ),
+                200,
+            )
+        else:
+            logger.warning(
+                f"[API] Course reminder FAILED to {instructor['email']} for {course_number} "
+                f"(but recorded {reminder_count} section reminders for tracking)"
+            )
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Failed to send email to {instructor_name}. Email provider may be unavailable.",
+                        "reminders_recorded": reminder_count,
+                    }
+                ),
+                500,
+            )
 
     except Exception as e:
         logger.error(f"[API] Error sending course reminder: {str(e)}", exc_info=True)

@@ -976,7 +976,7 @@ class SQLDatabase(DatabaseInterface):
             # Deduplicate in Python instead.
             outcomes = session.execute(query).scalars().all()
             unique_outcomes = list({o.id: o for o in outcomes}.values())
-            
+
             return [to_dict(outcome) for outcome in unique_outcomes]
 
     def get_section_outcomes_by_criteria(
