@@ -6536,7 +6536,10 @@ def send_course_reminder_api() -> ResponseReturnValue:
         )
 
         # Build assessment URL with course parameter
-        base_url = request.url_root.rstrip("/")
+        # Use configured BASE_URL (not request.url_root which may be wrong on Cloud Run)
+        from flask import current_app
+        from src.utils.constants import DEFAULT_BASE_URL
+        base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL).rstrip("/")
         assessment_url = f"{base_url}/assessments?course={course_id}"
 
         # Send email

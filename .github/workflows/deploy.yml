@@ -78,12 +78,17 @@ jobs:
         case "${{ github.event.inputs.environment }}" in
           dev)
             # Dev uses Neon database + Brevo email (both via secrets)
-            ENV_VARS="APP_ENV=dev,EMAIL_PROVIDER=brevo,BREVO_SENDER_EMAIL=loopcloser_demo_admin@loopcloser.io,BREVO_SENDER_NAME=LoopCloser Dev,SESSION_COOKIE_SECURE=true,SESSION_COOKIE_HTTPONLY=true,SESSION_COOKIE_SAMESITE=Lax"
+            ENV_VARS="APP_ENV=dev,BASE_URL=https://dev.loopcloser.io,EMAIL_PROVIDER=brevo,BREVO_SENDER_EMAIL=loopcloser_demo_admin@loopcloser.io,BREVO_SENDER_NAME=LoopCloser Dev,SESSION_COOKIE_SECURE=true,SESSION_COOKIE_HTTPONLY=true,SESSION_COOKIE_SAMESITE=Lax"
             SECRETS="DATABASE_URL=neon-dev-database-url:latest,BREVO_API_KEY=brevo-api-key:latest"
             ;;
-          staging|prod)
-            # Staging/prod use ephemeral SQLite + Brevo email
-            ENV_VARS="APP_ENV=${{ github.event.inputs.environment }},DATABASE_URL=sqlite:////tmp/loopcloser.db,EMAIL_PROVIDER=brevo,BREVO_SENDER_EMAIL=loopcloser_demo_admin@loopcloser.io,BREVO_SENDER_NAME=LoopCloser,SESSION_COOKIE_SECURE=true,SESSION_COOKIE_HTTPONLY=true,SESSION_COOKIE_SAMESITE=Lax"
+          staging)
+            # Staging uses ephemeral SQLite + Brevo email
+            ENV_VARS="APP_ENV=staging,BASE_URL=https://staging.loopcloser.io,DATABASE_URL=sqlite:////tmp/loopcloser.db,EMAIL_PROVIDER=brevo,BREVO_SENDER_EMAIL=loopcloser_demo_admin@loopcloser.io,BREVO_SENDER_NAME=LoopCloser Staging,SESSION_COOKIE_SECURE=true,SESSION_COOKIE_HTTPONLY=true,SESSION_COOKIE_SAMESITE=Lax"
+            SECRETS="BREVO_API_KEY=brevo-api-key:latest"
+            ;;
+          prod)
+            # Production uses ephemeral SQLite + Brevo email
+            ENV_VARS="APP_ENV=prod,BASE_URL=https://loopcloser.io,DATABASE_URL=sqlite:////tmp/loopcloser.db,EMAIL_PROVIDER=brevo,BREVO_SENDER_EMAIL=loopcloser_demo_admin@loopcloser.io,BREVO_SENDER_NAME=LoopCloser,SESSION_COOKIE_SECURE=true,SESSION_COOKIE_HTTPONLY=true,SESSION_COOKIE_SAMESITE=Lax"
             SECRETS="BREVO_API_KEY=brevo-api-key:latest"
             ;;
         esac

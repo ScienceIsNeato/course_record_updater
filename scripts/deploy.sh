@@ -105,8 +105,9 @@ echo "☁️  Deploying to Cloud Run..."
 # Build env vars string based on environment
 case $ENVIRONMENT in
     dev)
-        # Dev uses Brevo for real email delivery
+        # Dev uses Brevo for real email delivery + Neon database
         ENV_VARS="APP_ENV=${ENVIRONMENT}"
+        ENV_VARS="${ENV_VARS},BASE_URL=https://dev.loopcloser.io"
         ENV_VARS="${ENV_VARS},EMAIL_PROVIDER=brevo"
         ENV_VARS="${ENV_VARS},BREVO_SENDER_EMAIL=loopcloser_demo_admin@loopcloser.io"
         ENV_VARS="${ENV_VARS},BREVO_SENDER_NAME=LoopCloser Dev"
@@ -114,9 +115,22 @@ case $ENVIRONMENT in
         ENV_VARS="${ENV_VARS},SESSION_COOKIE_HTTPONLY=true"
         ENV_VARS="${ENV_VARS},SESSION_COOKIE_SAMESITE=Lax"
         ;;
-    staging|prod)
-        # Staging/prod use ephemeral SQLite for now (will migrate to Neon later)
+    staging)
+        # Staging uses ephemeral SQLite + Brevo email
         ENV_VARS="APP_ENV=${ENVIRONMENT}"
+        ENV_VARS="${ENV_VARS},BASE_URL=https://staging.loopcloser.io"
+        ENV_VARS="${ENV_VARS},DATABASE_URL=sqlite:////tmp/loopcloser.db"
+        ENV_VARS="${ENV_VARS},EMAIL_PROVIDER=brevo"
+        ENV_VARS="${ENV_VARS},BREVO_SENDER_EMAIL=loopcloser_demo_admin@loopcloser.io"
+        ENV_VARS="${ENV_VARS},BREVO_SENDER_NAME=LoopCloser Staging"
+        ENV_VARS="${ENV_VARS},SESSION_COOKIE_SECURE=true"
+        ENV_VARS="${ENV_VARS},SESSION_COOKIE_HTTPONLY=true"
+        ENV_VARS="${ENV_VARS},SESSION_COOKIE_SAMESITE=Lax"
+        ;;
+    prod)
+        # Production uses ephemeral SQLite + Brevo email
+        ENV_VARS="APP_ENV=${ENVIRONMENT}"
+        ENV_VARS="${ENV_VARS},BASE_URL=https://loopcloser.io"
         ENV_VARS="${ENV_VARS},DATABASE_URL=sqlite:////tmp/loopcloser.db"
         ENV_VARS="${ENV_VARS},EMAIL_PROVIDER=brevo"
         ENV_VARS="${ENV_VARS},BREVO_SENDER_EMAIL=loopcloser_demo_admin@loopcloser.io"
