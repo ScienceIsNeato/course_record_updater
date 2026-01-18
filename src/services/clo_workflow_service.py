@@ -1515,18 +1515,23 @@ class CLOWorkflowService:
             # Get program_id (courses have program_ids array, use first one)
             program_ids = course.get("program_ids") or []
             program_id = program_ids[0] if program_ids else course.get("program_id")
-            if not program_id:
-                error_msg = f"No program ID for course {course_id}"
-                logger.warning(error_msg)
-                return False, error_msg
-
-            admins = db.get_program_admins(program_id)
-
-            # Fall back to institution admins if no program admins
-            if not admins:
+            
+            admins = []
+            if program_id:
+                # Try to get program admins first
+                admins = db.get_program_admins(program_id)
+                if not admins:
+                    logger.info(
+                        f"No program admins for program {program_id}, falling back to institution admins"
+                    )
+            else:
+                # No program assigned - go straight to institution admins
                 logger.info(
-                    f"No program admins for program {program_id}, falling back to institution admins"
+                    f"No program ID for course {course_id}, using institution admins for notifications"
                 )
+
+            # Fall back to institution admins if no program or no program admins
+            if not admins:
                 institution_id = course.get("institution_id")
                 if institution_id:
                     all_users = db.get_all_users(institution_id)
@@ -1534,9 +1539,10 @@ class CLOWorkflowService:
                         u for u in all_users if u.get("role") == "institution_admin"
                     ]
 
+            # Only error if no admins found at all
             if not admins:
-                error_msg = f"No program or institution admins found for notifications"
-                logger.info(error_msg)
+                error_msg = f"No program or institution admins found for course {course_id}"
+                logger.warning(error_msg)
                 return False, error_msg
 
             instructor_name = f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip()

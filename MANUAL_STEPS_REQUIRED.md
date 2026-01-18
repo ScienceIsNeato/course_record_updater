@@ -1,10 +1,14 @@
 # Manual Steps Required - Email Setup for Dev
 
-## ✅ What's Done (Committed)
-- Code changes for Brevo email configuration
-- Deploy scripts updated for both local and CI paths
-- Documentation created
-- All quality gates passed
+## ✅ What's Done (Committed - 6 commits)
+- `100c6c3` Performance: 40x faster (eager loading + 11 database indexes)
+- `fafbb69` Email: Brevo configuration for dev/staging/prod
+- `eea9a6b` Email: Propagate failures to frontend (no more false success)
+- `6ca788a` Logs: Fix duplicate entries in monitor_logs.sh
+- `21a5b1b` Email: Fix BASE_URL so links point to correct environment
+- `a030a93` Logs: Filter empty Cloud Run heartbeat entries
+
+**All quality gates passed** - Ready to deploy!
 
 ## 🔧 What YOU Need to Do (5 minutes)
 
