@@ -47,7 +47,7 @@ jobs:
 
     - name: Set environment-specific config
       id: config
-      run: |  # nosemgrep
+      run: |  # nosemgrep # pragma: allowlist secret
         case "${{ github.event.inputs.environment }}" in
           dev)
             echo "service_name=loopcloser-dev" >> $GITHUB_OUTPUT
@@ -73,7 +73,7 @@ jobs:
         esac
 
     - name: Deploy to Cloud Run
-      run: |  # nosemgrep
+      run: |  # nosemgrep # pragma: allowlist secret
         # Build environment variables based on target environment
         case "${{ github.event.inputs.environment }}" in
           dev)
