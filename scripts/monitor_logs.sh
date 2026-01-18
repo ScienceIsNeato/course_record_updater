@@ -22,23 +22,24 @@ show_usage() {
     echo "Monitor LoopCloser server logs in real-time"
     echo ""
     echo "Options:"
-    echo "  --env ENV          Environment: dev, e2e, or uat (default: dev)"
+    echo "  --env ENV          Environment: dev, local, e2e, or uat (REQUIRED)"
     echo "  -f, --file FILE    Monitor specific log file (overrides --env)"
-    echo "  -n, --lines NUM    Show last NUM lines and exit (no follow)"
-    echo "  --follow           Force follow mode even with -n"
+    echo "  -n, --lines NUM    Show last NUM lines initially (default: 10)"
+    echo "  --follow           Enable follow mode (default: true, disable with -n)"
     echo "  -h, --help         Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0                      # Monitor dev server log (follow mode)"
+    echo "  $0 --env local          # Monitor local dev server (follow mode)"
+    echo "  $0 --env dev            # Monitor Cloud Run dev logs (follow mode)"
     echo "  $0 --env e2e            # Monitor E2E test server log"
-    echo "  $0 --env e2e -n 50      # Show last 50 E2E log lines"
-    echo "  $0 -n 20 --follow       # Show last 20 dev lines then follow"
-    echo "  $0 -f logs/database_location.txt  # View specific file"
+    echo "  $0 --env dev -n 50      # Show last 50 dev logs (no follow)"
+    echo "  $0 --env local --follow # Monitor local with explicit follow"
     echo ""
-    echo "Environment Log Files:"
-    echo "  dev: logs/server.log"
-    echo "  e2e: logs/test_server.log"
-    echo "  uat: logs/test_server.log"
+    echo "Environment Log Sources:"
+    echo "  local: logs/server.log (local file)"
+    echo "  dev: Cloud Run loopcloser-dev (gcloud logs)"
+    echo "  e2e: logs/test_server.log (local file)"
+    echo "  uat: logs/test_server.log (local file)"
 }
 
 # Function to colorize log output
@@ -143,60 +144,94 @@ if [ "$ENVIRONMENT" == "dev" ]; then
     FILTER="resource.type=\"cloud_run_revision\" resource.labels.service_name=\"loopcloser-dev\""
     
     if [ "$FOLLOW" = true ]; then
-        echo -e "${BLUE}☁️  Polling logs (press Ctrl+C to stop)...${NC}"
-        # Simple polling loop to avoid requiring grpcio for live tail
+        echo -e "${BLUE}☁️  Showing last ${LINES} lines, then polling for new logs...${NC}"
+        echo -e "${BLUE}🛑 Press Ctrl+C to stop monitoring${NC}"
+        echo ""
+        
+        # Show initial logs
+        gcloud logging read "$FILTER" --limit="$LINES" --format="csv[no-heading](timestamp,textPayload)" --order=desc 2>/dev/null > /tmp/logs_init.csv
+        
         LAST_TIMESTAMP=""
+        if [ -s /tmp/logs_init.csv ]; then
+            if command -v tac &> /dev/null; then
+                CMD="tac /tmp/logs_init.csv"
+            else
+                CMD="cat /tmp/logs_init.csv"
+            fi
+            
+            # Show initial logs and track last timestamp
+            while IFS=, read -r ts payload; do
+                line="[$ts] $payload"
+                
+                # Colorize
+                if [[ $line == *"ERROR"* ]] || [[ $line == *"Error"* ]] || [[ $line == *"error"* ]] || [[ $line == *"Exception"* ]] || [[ $line == *"Traceback"* ]]; then
+                    echo -e "${RED}$line${NC}"
+                elif [[ $line == *"WARNING"* ]] || [[ $line == *"Warning"* ]] || [[ $line == *"warning"* ]]; then
+                    echo -e "${YELLOW}$line${NC}"
+                elif [[ $line == *"INFO"* ]] || [[ $line == *"Starting"* ]] || [[ $line == *"started"* ]] || [[ $line == *"✅"* ]]; then
+                    echo -e "${GREEN}$line${NC}"
+                elif [[ $line == *"DEBUG"* ]] || [[ $line == *"[DB Service"* ]]; then
+                    echo -e "${CYAN}$line${NC}"
+                elif [[ $line == *"127.0.0.1"* ]] || [[ $line == *"GET"* ]] || [[ $line == *"POST"* ]]; then
+                    echo -e "${BLUE}$line${NC}"
+                else
+                    echo "$line"
+                fi
+                
+                # Update last timestamp (this persists because we're not in a subshell pipe)
+                LAST_TIMESTAMP="$ts"
+            done < <($CMD)
+        fi
+        rm -f /tmp/logs_init.csv
+        
+        echo ""
+        echo -e "${BLUE}--- Watching for new logs (2s polling interval) ---${NC}"
+        echo ""
+        
+        # Poll for new logs
         while true; do
-            # Construct filter for new logs
-            CURRENT_FILTER="$FILTER"
+            # Only fetch logs AFTER last timestamp
             if [ -n "$LAST_TIMESTAMP" ]; then
                 CURRENT_FILTER="$FILTER timestamp > \"$LAST_TIMESTAMP\""
+            else
+                CURRENT_FILTER="$FILTER"
             fi
             
-            # Fetch logs
-            # Use --format="csv[no-heading](timestamp,textPayload)" to get both for tracking
-            # Use order=desc to get NEWEST logs first, then we'll reverse them or just handle timestamps
-            gcloud logging read "$CURRENT_FILTER" --limit=20 --format="csv[no-heading](timestamp,textPayload)" --order=desc 2>/dev/null > /tmp/logs_output.csv
+            # Fetch new logs
+            gcloud logging read "$CURRENT_FILTER" --limit=50 --format="csv[no-heading](timestamp,textPayload)" --order=desc 2>/dev/null > /tmp/logs_new.csv
             
-            if [ -s /tmp/logs_output.csv ]; then
-                # Read line by line from temp file
-                # Use tac if available to reverse lines (so oldest is first), otherwise just read as is
+            if [ -s /tmp/logs_new.csv ]; then
+                # Reverse to show oldest first
                 if command -v tac &> /dev/null; then
-                    CMD="tac /tmp/logs_output.csv"
+                    CMD="tac /tmp/logs_new.csv"
                 else
-                    CMD="cat /tmp/logs_output.csv"
+                    CMD="cat /tmp/logs_new.csv"
                 fi
-
-                $CMD | while IFS=, read -r ts payload; do
-                    # Check if we've already seen this timestamp to avoid duplicates in tight polling
-                    if [[ "$ts" > "$LAST_TIMESTAMP" ]]; then
-                        # Normalize output format to look like local logs:
-                        # [YYYY-MM-DD HH:MM:SS] Message
-                        # Cloud timestamp is ISO8601, just keeping it as is or formatting it would be nice, 
-                        # but raw TS is fine for now to match structure.
-                        # Also apply colorization logic similar to local logs
-                        
-                        line="[$ts] $payload"
-                        
-                        if [[ $line == *"ERROR"* ]] || [[ $line == *"Error"* ]] || [[ $line == *"error"* ]] || [[ $line == *"Exception"* ]] || [[ $line == *"Traceback"* ]]; then
-                            echo -e "${RED}$line${NC}"
-                        elif [[ $line == *"WARNING"* ]] || [[ $line == *"Warning"* ]] || [[ $line == *"warning"* ]]; then
-                            echo -e "${YELLOW}$line${NC}"
-                        elif [[ $line == *"INFO"* ]] || [[ $line == *"Starting"* ]] || [[ $line == *"started"* ]] || [[ $line == *"✅"* ]]; then
-                            echo -e "${GREEN}$line${NC}"
-                        elif [[ $line == *"DEBUG"* ]] || [[ $line == *"[DB Service"* ]]; then
-                            echo -e "${CYAN}$line${NC}"
-                        elif [[ $line == *"127.0.0.1"* ]] || [[ $line == *"GET"* ]] || [[ $line == *"POST"* ]]; then
-                            echo -e "${BLUE}$line${NC}"
-                        else
-                            echo "$line"
-                        fi
-
-                        LAST_TIMESTAMP="$ts"
+                
+                # Process new logs and update LAST_TIMESTAMP (no subshell!)
+                while IFS=, read -r ts payload; do
+                    line="[$ts] $payload"
+                    
+                    # Colorize
+                    if [[ $line == *"ERROR"* ]] || [[ $line == *"Error"* ]] || [[ $line == *"error"* ]] || [[ $line == *"Exception"* ]] || [[ $line == *"Traceback"* ]]; then
+                        echo -e "${RED}$line${NC}"
+                    elif [[ $line == *"WARNING"* ]] || [[ $line == *"Warning"* ]] || [[ $line == *"warning"* ]]; then
+                        echo -e "${YELLOW}$line${NC}"
+                    elif [[ $line == *"INFO"* ]] || [[ $line == *"Starting"* ]] || [[ $line == *"started"* ]] || [[ $line == *"✅"* ]]; then
+                        echo -e "${GREEN}$line${NC}"
+                    elif [[ $line == *"DEBUG"* ]] || [[ $line == *"[DB Service"* ]]; then
+                        echo -e "${CYAN}$line${NC}"
+                    elif [[ $line == *"127.0.0.1"* ]] || [[ $line == *"GET"* ]] || [[ $line == *"POST"* ]]; then
+                        echo -e "${BLUE}$line${NC}"
+                    else
+                        echo "$line"
                     fi
-                done
+                    
+                    # Update last timestamp (persists because not in pipe subshell)
+                    LAST_TIMESTAMP="$ts"
+                done < <($CMD)
             fi
-            rm -f /tmp/logs_output.csv
+            rm -f /tmp/logs_new.csv
             sleep 2
         done
     else
