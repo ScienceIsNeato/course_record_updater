@@ -227,7 +227,8 @@ download_database() {
 
 seed_database() {
     local env=$1
-    shift
+    local local_db=$2
+    shift 2
     local seed_flags=("$@")
     
     log_info "Running seed script: python scripts/seed_db.py --env ${env} ${seed_flags[*]}"
@@ -237,7 +238,11 @@ seed_database() {
         source venv/bin/activate
     fi
     
-    # Run seeding
+    # CRITICAL: Override DATABASE_URL to point to local downloaded file
+    # This prevents seed_db.py from using NEON_DB_URL_* and seeding remote instead
+    export DATABASE_URL="sqlite:///${local_db}"
+    
+    # Run seeding on LOCAL file (not remote Neon!)
     python scripts/seed_db.py --env "$env" "${seed_flags[@]}"
     
     log_success "Database seeded"
@@ -343,8 +348,8 @@ main() {
     # Step 3: Download database
     download_database "$BUCKET" "$LOCAL_DB"
     
-    # Step 4: Seed database
-    seed_database "$ENVIRONMENT" "${SEED_FLAGS[@]}"
+    # Step 4: Seed database (pass local_db path for DATABASE_URL override)
+    seed_database "$ENVIRONMENT" "$LOCAL_DB" "${SEED_FLAGS[@]}"
     
     # Step 5: Upload database
     upload_database "$BUCKET" "$LOCAL_DB"

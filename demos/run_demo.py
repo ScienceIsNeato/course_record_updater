@@ -177,8 +177,6 @@ class DemoRunner:
         try:
             os.chdir(self.working_dir)
             print()
-            os.chdir(self.working_dir)
-            print()
             for cmd in setup_commands:
                 # Substitute {{env}} in commands
                 cmd = self._substitute_variables(cmd)
