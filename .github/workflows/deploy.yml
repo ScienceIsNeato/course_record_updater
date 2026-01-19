@@ -47,7 +47,7 @@ jobs:
 
     - name: Set environment-specific config
       id: config
-      run: |  # nosemgrep
+      run: |  # nosemgrep # pragma: allowlist secret
         case "${{ github.event.inputs.environment }}" in
           dev)
             echo "service_name=loopcloser-dev" >> $GITHUB_OUTPUT
@@ -73,15 +73,33 @@ jobs:
         esac
 
     - name: Deploy to Cloud Run
-      run: |  # nosemgrep
-        ENV_VARS="ENV=${{ github.event.inputs.environment }},APP_ENV=${{ github.event.inputs.environment }},DATABASE_URL=sqlite:////tmp/loopcloser.db,SESSION_COOKIE_SECURE=true,SESSION_COOKIE_HTTPONLY=true,SESSION_COOKIE_SAMESITE=Lax"
+      run: |  # nosemgrep # pragma: allowlist secret
+        # Build environment variables based on target environment
+        case "${{ github.event.inputs.environment }}" in
+          dev)
+            # Dev uses Neon database + Brevo email (both via secrets)
+            ENV_VARS="APP_ENV=dev,BASE_URL=https://dev.loopcloser.io,EMAIL_PROVIDER=brevo,BREVO_SENDER_EMAIL=loopcloser_demo_admin@loopcloser.io,BREVO_SENDER_NAME=LoopCloser Dev,SESSION_COOKIE_SECURE=true,SESSION_COOKIE_HTTPONLY=true,SESSION_COOKIE_SAMESITE=Lax"
+            SECRETS="DATABASE_URL=neon-dev-database-url:latest,BREVO_API_KEY=brevo-api-key:latest,SECRET_KEY=loopcloser-secret-key:latest"
+            ;;
+          staging)
+            # Staging uses ephemeral SQLite + Brevo email
+            ENV_VARS="APP_ENV=staging,BASE_URL=https://staging.loopcloser.io,DATABASE_URL=sqlite:////tmp/loopcloser.db,EMAIL_PROVIDER=brevo,BREVO_SENDER_EMAIL=loopcloser_demo_admin@loopcloser.io,BREVO_SENDER_NAME=LoopCloser Staging,SESSION_COOKIE_SECURE=true,SESSION_COOKIE_HTTPONLY=true,SESSION_COOKIE_SAMESITE=Lax"
+            SECRETS="BREVO_API_KEY=brevo-api-key:latest,SECRET_KEY=loopcloser-secret-key:latest"
+            ;;
+          prod)
+            # Production uses ephemeral SQLite + Brevo email
+            ENV_VARS="APP_ENV=prod,BASE_URL=https://loopcloser.io,DATABASE_URL=sqlite:////tmp/loopcloser.db,EMAIL_PROVIDER=brevo,BREVO_SENDER_EMAIL=loopcloser_demo_admin@loopcloser.io,BREVO_SENDER_NAME=LoopCloser,SESSION_COOKIE_SECURE=true,SESSION_COOKIE_HTTPONLY=true,SESSION_COOKIE_SAMESITE=Lax"
+            SECRETS="BREVO_API_KEY=brevo-api-key:latest,SECRET_KEY=loopcloser-secret-key:latest"
+            ;;
+        esac
+        
         gcloud run deploy ${{ steps.config.outputs.service_name }} \
           --image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }} \
           --region=${{ env.REGION }} \
           --platform=managed \
           --allow-unauthenticated \
           --set-env-vars="${ENV_VARS}" \
-          --set-secrets="SECRET_KEY=loopcloser-secret-key:latest" \
+          --update-secrets="${SECRETS}" \
           --memory=${{ steps.config.outputs.memory }} \
           --cpu=${{ steps.config.outputs.cpu }} \
           --min-instances=${{ steps.config.outputs.min_instances }} \

@@ -344,7 +344,7 @@ class TestBulkEmailService:
         # Setup mocks
         mock_db = Mock()
         mock_db_service = Mock()
-        mock_db_service.sqlite.get_session.return_value = mock_db
+        mock_db_service.sql.get_session.return_value = mock_db
         mock_get_db.return_value = mock_db_service
 
         # Create Flask app context for current_app access
@@ -402,7 +402,7 @@ class TestBulkEmailService:
         """Test background sending when job not found."""
         mock_db = Mock()
         mock_db_service = Mock()
-        mock_db_service.sqlite.get_session.return_value = mock_db
+        mock_db_service.sql.get_session.return_value = mock_db
         mock_get_db.return_value = mock_db_service
 
         mock_bulk_email_job.get_job.return_value = None
@@ -431,7 +431,7 @@ class TestBulkEmailService:
         """Test background sending exception handling."""
         mock_db = Mock()
         mock_db_service = Mock()
-        mock_db_service.sqlite.get_session.return_value = mock_db
+        mock_db_service.sql.get_session.return_value = mock_db
         mock_get_db.return_value = mock_db_service
 
         # First call returns job, second call (in except block) returns job

@@ -404,6 +404,9 @@ class CourseSectionOutcome(Base, TimestampMixin):  # type: ignore[valid-type,mis
 
     section = relationship("CourseSection", back_populates="outcomes")
     outcome = relationship("CourseOutcome")
+    history = relationship(
+        "OutcomeHistory", back_populates="section_outcome", cascade=CASCADE_OPTIONS
+    )
 
 
 class UserInvitation(Base, TimestampMixin):  # type: ignore[valid-type,misc]
@@ -476,8 +479,11 @@ def _get_model_data(model: Any) -> Dict[str, Any]:
 
 
 def _course_section_outcome_to_dict(model: CourseSectionOutcome) -> Dict[str, Any]:
-    """Convert CourseSectionOutcome model to dictionary."""
-    return {
+    """Convert CourseSectionOutcome model to dictionary.
+
+    Includes eager-loaded relationships when available to avoid N+1 queries.
+    """
+    data = {
         "id": model.id,
         "section_id": model.section_id,
         "outcome_id": model.outcome_id,
@@ -497,6 +503,51 @@ def _course_section_outcome_to_dict(model: CourseSectionOutcome) -> Dict[str, An
         "created_at": model.created_at,
         "last_modified": model.updated_at,
     }
+
+    # Include eager-loaded relationships if available (avoids N+1 queries)
+    # Check if relationship is loaded (not a proxy/lazy load)
+    from sqlalchemy.orm import object_session
+    from sqlalchemy.orm.attributes import instance_state
+
+    state = instance_state(model)
+
+    # Include template (CourseOutcome) if eager loaded
+    if "outcome" not in state.unloaded and model.outcome:
+        data["_template"] = _course_outcome_to_dict(model.outcome)
+
+    # Include section with instructor and offering if eager loaded
+    if "section" not in state.unloaded and model.section:
+        section_dict = _course_section_to_dict(model.section)
+        data["_section"] = section_dict
+
+        # Include instructor if eager loaded on section
+        section_state = instance_state(model.section)
+        if "instructor" not in section_state.unloaded and model.section.instructor:
+            data["_instructor"] = _user_to_dict(model.section.instructor)
+
+        # Include offering with term if eager loaded on section
+        if "offering" not in section_state.unloaded and model.section.offering:
+            offering_dict = _course_offering_to_dict(model.section.offering)
+            data["_offering"] = offering_dict
+
+            # Include term if eager loaded on offering
+            offering_state = instance_state(model.section.offering)
+            if "term" not in offering_state.unloaded and model.section.offering.term:
+                data["_term"] = _term_to_dict(model.section.offering.term)
+
+    # Include history if eager loaded (avoids N+1 query - was causing 100+ extra queries!)
+    if "history" not in state.unloaded and model.history:
+        data["_history"] = [
+            {
+                "id": h.id,
+                "event": h.event,
+                "occurred_at": h.occurred_at,
+                "created_at": h.created_at,
+            }
+            for h in model.history
+        ]
+
+    return data
 
 
 def _institution_to_dict(model: Institution) -> Dict[str, Any]:
@@ -551,8 +602,18 @@ def _user_to_dict(model: User) -> Dict[str, Any]:
         "system_date_override": model.system_date_override,
     }
     # Add program_ids if not already present
+    # Add program_ids if not already present
+    from sqlalchemy.orm.attributes import instance_state
+
+    state = instance_state(model)
+
     if "program_ids" not in data:
-        data["program_ids"] = [program.id for program in model.programs]
+        # Only access programs if already loaded to prevent N+1 queries
+        if "programs" not in state.unloaded:
+            data["program_ids"] = [program.id for program in model.programs]
+        else:
+            # If not loaded, default to empty list (caller must request eager load if needed)
+            data["program_ids"] = []
     return data
 
 
@@ -579,7 +640,12 @@ def _program_to_dict(model: Program) -> Dict[str, Any]:
 
 
 def _course_to_dict(model: Course) -> Dict[str, Any]:
-    """Convert Course model to dictionary."""
+    """Convert Course model to dictionary.
+
+    Includes eager-loaded programs when available to avoid N+1 queries.
+    """
+    from sqlalchemy.orm.attributes import instance_state
+
     data = {
         "course_id": model.id,
         "course_number": model.course_number,
@@ -591,9 +657,15 @@ def _course_to_dict(model: Course) -> Dict[str, Any]:
         "created_at": model.created_at,
         "last_modified": model.updated_at,
     }
-    # Add program_ids if not already present
-    if "program_ids" not in data:
+
+    # Include program_ids using eager-loaded programs if available (avoids N+1 query)
+    state = instance_state(model)
+    if "programs" not in state.unloaded and model.programs:
         data["program_ids"] = [program.id for program in model.programs]
+        data["_programs"] = [_program_to_dict(program) for program in model.programs]
+    else:
+        data["program_ids"] = []
+
     return data
 
 
@@ -617,10 +689,21 @@ def _term_to_dict(model: Term) -> Dict[str, Any]:
 
 
 def _course_offering_to_dict(model: CourseOffering) -> Dict[str, Any]:
-    """Convert CourseOffering model to dictionary."""
-    term = getattr(model, "term", None)
+    """Convert CourseOffering model to dictionary.
+
+    Includes eager-loaded term when available to avoid N+1 queries.
+    """
+    from sqlalchemy.orm.attributes import instance_state
+
+    state = instance_state(model)
+    term = None
     term_start = None
     term_end = None
+
+    # Use eager-loaded term if available (avoids N+1 query)
+    if "term" not in state.unloaded:
+        term = getattr(model, "term", None)
+
     if term:
         term_start = term.start_date
         term_end = term.end_date
@@ -629,7 +712,7 @@ def _course_offering_to_dict(model: CourseOffering) -> Dict[str, Any]:
         term_end = model.extras.get("term_end_date")
 
     status = get_term_status(term_start, term_end)
-    return {
+    data = {
         "offering_id": model.id,
         "course_id": model.course_id,
         "term_id": model.term_id,
@@ -647,10 +730,19 @@ def _course_offering_to_dict(model: CourseOffering) -> Dict[str, Any]:
         "last_modified": model.updated_at,
     }
 
+    # Include eager-loaded term as nested object
+    if term:
+        data["_term"] = _term_to_dict(term)
+
+    return data
+
 
 def _course_section_to_dict(model: CourseSection) -> Dict[str, Any]:
-    """Convert CourseSection model to dictionary."""
-    return {
+    """Convert CourseSection model to dictionary.
+
+    Includes eager-loaded relationships when available to avoid N+1 queries.
+    """
+    data = {
         "section_id": model.id,
         "offering_id": model.offering_id,
         "instructor_id": model.instructor_id,
@@ -675,6 +767,21 @@ def _course_section_to_dict(model: CourseSection) -> Dict[str, Any]:
         "created_at": model.created_at,
         "last_modified": model.updated_at,
     }
+
+    # Include eager-loaded relationships if available
+    from sqlalchemy.orm.attributes import instance_state
+
+    state = instance_state(model)
+
+    # Include instructor if eager loaded
+    if "instructor" not in state.unloaded and model.instructor:
+        data["_instructor"] = _user_to_dict(model.instructor)
+
+    # Include offering if eager loaded
+    if "offering" not in state.unloaded and model.offering:
+        data["_offering"] = _course_offering_to_dict(model.offering)
+
+    return data
 
 
 def _course_outcome_to_dict(model: CourseOutcome) -> Dict[str, Any]:
@@ -703,27 +810,19 @@ def _course_outcome_to_dict(model: CourseOutcome) -> Dict[str, Any]:
         "feedback_provided_at": model.feedback_provided_at,
     }
 
-    # Add course info if relationship satisfies (is loaded)
-    # Note: simple check 'if model.course' might trigger lazy load which fails if detached.
-    # But since we use selectinload, it should be available.
-    # Safe approach: check dict or inspect.
-    # For now, we wrap in try/except or rely on explicit loading.
-    try:
-        if model.course:
-            base_dict.update(
-                {
-                    "course_number": model.course.course_number,
-                    "course_title": model.course.course_title,
-                    "course": {
-                        "course_number": model.course.course_number,
-                        "course_title": model.course.course_title,
-                    },
-                }
-            )
-    except Exception as e:
-        # Relationship not loaded or detached; log at debug level so it can be
-        # investigated without failing normal operations.
-        logger.debug("Course relationship not available for model: %s", e)
+    # Add course info if relationship is loaded (avoids triggering lazy load)
+    from sqlalchemy.orm.attributes import instance_state
+
+    state = instance_state(model)
+    if "course" not in state.unloaded and model.course:
+        course_dict = _course_to_dict(model.course)
+        base_dict["_course"] = course_dict
+        base_dict["course_number"] = model.course.course_number
+        base_dict["course_title"] = model.course.course_title
+        base_dict["course"] = {
+            "course_number": model.course.course_number,
+            "course_title": model.course.course_title,
+        }
 
     return base_dict
 
@@ -832,7 +931,7 @@ class OutcomeHistory(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     occurred_at = Column(DateTime, nullable=False, default=get_current_time)
 
     # Relationship
-    section_outcome = relationship("CourseSectionOutcome")
+    section_outcome = relationship("CourseSectionOutcome", back_populates="history")
 
 
 # Import BulkEmailJob to ensure it's registered with Base

@@ -241,8 +241,8 @@ jobs:
         export PYTHONPATH=.
 
         # Seed baseline data for integration tests
-        # Use prod environment to match course_records.db (standard name)
-        python scripts/seed_db.py --env prod --clear
+        # Use ci environment (local SQLite, no confirmation prompts)
+        python scripts/seed_db.py --env ci --clear
     - name: Start Flask Server for Integration Tests
       run: |
         # Set environment variables for SQLite

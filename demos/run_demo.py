@@ -43,16 +43,17 @@ BOLD = '\033[1m'
 NC = '\033[0m'  # No Color
 
 class DemoRunner:
-    def __init__(self, demo_file: Path, auto_mode: bool = False, start_step: int = 1,
+    def __init__(self, demo_file: Path, env: str, auto_mode: bool = False, start_step: int = 1,
                  fail_fast: bool = False, verify_only: bool = False):
         self.demo_file = demo_file
+        self.env = env
         self.auto_mode = auto_mode
         self.start_step = start_step
         self.fail_fast = fail_fast
         self.verify_only = verify_only
         self.demo_data = None
         self.artifact_dir = None
-        self.context_vars = {}  # For variable substitution like {{course_id}}
+        self.context_vars = {'env': env}  # Initialize with env variable
         self.session = requests.Session()  # For maintaining auth cookies
         self.csrf_token = None  # CSRF token for API calls
         self.errors = []  # Track all errors encountered during demo
@@ -160,7 +161,7 @@ class DemoRunner:
         if not setup_commands:
             return True
 
-        self.print_header("Environment Setup")
+        self.print_header(f"Environment Setup ({self.env.upper()})")
         print(f"Working Directory: {CYAN}{self.working_dir}{NC}\n")
         print("The following commands will prepare the demo environment:\n")
 
@@ -177,6 +178,8 @@ class DemoRunner:
             os.chdir(self.working_dir)
             print()
             for cmd in setup_commands:
+                # Substitute {{env}} in commands
+                cmd = self._substitute_variables(cmd)
                 if not self.run_command(cmd, label="Setup"):
                     return False
 
@@ -819,6 +822,12 @@ def main():
         epilog='Example: python run_demo.py --demo full_semester_workflow.json'
     )
     parser.add_argument(
+        '--env',
+        choices=['local', 'dev', 'staging', 'prod'],
+        required=True,
+        help='Target environment (local, dev, staging, prod)'
+    )
+    parser.add_argument(
         '--demo',
         required=True,
         help='Path to demo JSON file'
@@ -860,6 +869,7 @@ def main():
     # Create and run demo
     runner = DemoRunner(
         demo_file=demo_file,
+        env=args.env,
         auto_mode=args.auto,
         start_step=args.start_step,
         fail_fast=args.fail_fast,

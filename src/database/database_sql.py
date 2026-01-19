@@ -1,4 +1,7 @@
-"""SQLite engine and session management for LoopCloser."""
+"""SQL engine and session management for LoopCloser.
+
+Supports any SQLAlchemy-compatible database (SQLite, PostgreSQL, MySQL, etc.)
+"""
 
 from __future__ import annotations
 
@@ -12,8 +15,12 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from src.models.models_sql import Base
 
 
-class SQLiteService:
-    """Manage SQLite engine and sessions."""
+class SQLService:
+    """Manage SQL database engine and sessions via SQLAlchemy.
+
+    Automatically detects database type from connection URL and configures
+    appropriately. Supports SQLite, PostgreSQL, MySQL, and other SQLAlchemy dialects.
+    """
 
     def __init__(self, db_path: str | None = None) -> None:
         db_url = db_path or os.getenv("DATABASE_URL", "sqlite:///course_records.db")

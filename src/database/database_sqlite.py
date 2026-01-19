@@ -1,4 +1,7 @@
-"""SQLite-backed database implementation."""
+"""SQL database implementation using SQLAlchemy.
+
+Supports SQLite, PostgreSQL, and other SQLAlchemy-compatible databases.
+"""
 
 from __future__ import annotations
 
@@ -7,10 +10,10 @@ from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import and_, delete, func, or_, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
 from src.database.database_interface import DatabaseInterface
-from src.database.database_sql import SQLiteService
+from src.database.database_sql import SQLService
 from src.models.models_sql import (
     Course,
     CourseOffering,
@@ -79,11 +82,15 @@ def _normalize_section_datetime(value: Any) -> Any:
     return value
 
 
-class SQLiteDatabase(DatabaseInterface):
-    """Concrete database implementation using SQLite and SQLAlchemy."""
+class SQLDatabase(DatabaseInterface):
+    """Concrete database implementation using SQLAlchemy.
+
+    Supports any SQLAlchemy-compatible database (SQLite, PostgreSQL, MySQL, etc.).
+    The database type is automatically detected from the DATABASE_URL connection string.
+    """
 
     def __init__(self, db_url: Optional[str] = None) -> None:
-        self.sqlite = SQLiteService(db_url)
+        self.sql = SQLService(db_url)
 
     # ------------------------------------------------------------------
     # Institution operations
@@ -95,7 +102,7 @@ class SQLiteDatabase(DatabaseInterface):
         short_name = payload.get("short_name")
         logo_path = payload.pop("logo_path", None)
         if not name or not short_name:
-            logger.error("[SQLiteDatabase] Institution requires name and short_name")
+            logger.error("[SQLDatabase] Institution requires name and short_name")
             return None
 
         institution = Institution(
@@ -112,9 +119,9 @@ class SQLiteDatabase(DatabaseInterface):
             extras={**payload, "institution_id": institution_id},
         )
 
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             session.add(institution)
-            logger.info("[SQLiteDatabase] Created institution %s", institution_id)
+            logger.info("[SQLDatabase] Created institution %s", institution_id)
 
         # Automatically create default program for the institution
         default_program_data = {
@@ -125,25 +132,25 @@ class SQLiteDatabase(DatabaseInterface):
         default_program_id = self.create_program(default_program_data)
         if default_program_id:
             logger.info(
-                "[SQLiteDatabase] Created default program %s for institution %s",
+                "[SQLDatabase] Created default program %s for institution %s",
                 default_program_id,
                 institution_id,
             )
         else:
             logger.warning(
-                "[SQLiteDatabase] Failed to create default program for institution %s",
+                "[SQLDatabase] Failed to create default program for institution %s",
                 institution_id,
             )
 
         return institution_id
 
     def get_institution_by_id(self, institution_id: str) -> Optional[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             inst = session.get(Institution, institution_id)
             return to_dict(inst) if inst else None
 
     def get_all_institutions(self) -> List[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             records = (
                 session.execute(
                     select(Institution).where(Institution.is_active.is_(True))
@@ -212,7 +219,7 @@ class SQLiteDatabase(DatabaseInterface):
         return self.create_institution(institution_data)
 
     def get_institution_instructor_count(self, institution_id: str) -> int:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             return (
                 session.execute(
                     select(func.count(User.id)).where(
@@ -228,7 +235,7 @@ class SQLiteDatabase(DatabaseInterface):
     def get_institution_by_short_name(
         self, short_name: str
     ) -> Optional[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             record = (
                 session.execute(
                     select(Institution).where(
@@ -245,7 +252,7 @@ class SQLiteDatabase(DatabaseInterface):
     ) -> bool:
         """Update institution details."""
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 inst = session.get(Institution, institution_id)
                 if not inst:
                     return False
@@ -266,7 +273,7 @@ class SQLiteDatabase(DatabaseInterface):
         WARNING: This is DESTRUCTIVE and IRREVERSIBLE.
         """
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 inst = session.get(Institution, institution_id)
                 if not inst:
                     return False
@@ -286,17 +293,17 @@ class SQLiteDatabase(DatabaseInterface):
         user_id = _ensure_uuid(payload.pop("id", None) or payload.pop("user_id", None))
         email = payload.get("email")
         if not email:
-            logger.error("[SQLiteDatabase] User requires email")
+            logger.error("[SQLDatabase] User requires email")
             return None
 
         # Validate required fields
         first_name = payload.get("first_name", "")
         last_name = payload.get("last_name", "")
         if not first_name or not first_name.strip():
-            logger.error("[SQLiteDatabase] User requires first_name")
+            logger.error("[SQLDatabase] User requires first_name")
             return None
         if not last_name or not last_name.strip():
-            logger.error("[SQLiteDatabase] User requires last_name")
+            logger.error("[SQLDatabase] User requires last_name")
             return None
 
         user = User(
@@ -326,7 +333,7 @@ class SQLiteDatabase(DatabaseInterface):
             extras={**payload, "user_id": user_id},
         )
 
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             existing = (
                 session.execute(select(User).where(User.email == user.email))
                 .scalars()
@@ -334,7 +341,7 @@ class SQLiteDatabase(DatabaseInterface):
             )
             if existing:
                 logger.error(
-                    "[SQLiteDatabase] Duplicate email %s", logger.sanitize(user.email)
+                    "[SQLDatabase] Duplicate email %s", logger.sanitize(user.email)
                 )
                 return None
             session.add(user)
@@ -346,50 +353,77 @@ class SQLiteDatabase(DatabaseInterface):
                     .all()
                 )
                 user.programs = programs
-            logger.info("[SQLiteDatabase] Created user %s", user_id)
+            logger.info("[SQLDatabase] Created user %s", user_id)
             return user_id
 
     def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             record = (
-                session.execute(select(User).where(User.email == email.lower()))
+                session.execute(
+                    select(User)
+                    .options(joinedload(User.programs))
+                    .where(User.email == email.lower())
+                )
+                .unique()
                 .scalars()
                 .first()
             )
             return to_dict(record) if record else None
 
     def get_user_by_reset_token(self, reset_token: str) -> Optional[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             record = (
                 session.execute(
-                    select(User).where(User.password_reset_token == reset_token)
+                    select(User)
+                    .options(joinedload(User.programs))
+                    .where(User.password_reset_token == reset_token)
                 )
+                .unique()
                 .scalars()
                 .first()
             )
             return to_dict(record) if record else None
 
     def get_all_users(self, institution_id: str) -> List[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             records = (
                 session.execute(
-                    select(User).where(User.institution_id == institution_id)
+                    select(User)
+                    .options(joinedload(User.programs))
+                    .where(User.institution_id == institution_id)
                 )
+                .unique()
                 .scalars()
                 .all()
             )
             return [to_dict(user) for user in records]
 
     def get_users_by_role(self, role: str) -> List[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             records = (
-                session.execute(select(User).where(User.role == role)).scalars().all()
+                session.execute(
+                    select(User)
+                    .options(joinedload(User.programs))
+                    .where(User.role == role)
+                )
+                .unique()
+                .scalars()
+                .all()
             )
             return [to_dict(user) for user in records]
 
     def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
-            user = session.get(User, user_id)
+        with self.sql.session_scope() as session:
+            user = (
+                session.execute(
+                    select(User)
+                    .options(joinedload(User.programs))
+                    .where(User.id == user_id)
+                )
+                .unique()
+                .scalars()
+                .first()
+            )
             return to_dict(user) if user else None
 
     def get_user(self, user_id: str) -> Optional[Dict[str, Any]]:
@@ -397,7 +431,7 @@ class SQLiteDatabase(DatabaseInterface):
         return self.get_user_by_id(user_id)
 
     def update_user(self, user_id: str, user_data: Dict[str, Any]) -> bool:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             user = session.get(User, user_id)
             if not user:
                 logger.warning(f"[UPDATE_USER] User {user_id} not found in database")
@@ -457,7 +491,7 @@ class SQLiteDatabase(DatabaseInterface):
         return self.update_user(user_id, {"account_status": "suspended"})
 
     def calculate_and_update_active_users(self, institution_id: str) -> int:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             count = (
                 session.execute(
                     select(func.count(User.id)).where(
@@ -482,7 +516,7 @@ class SQLiteDatabase(DatabaseInterface):
         return self.update_user(user_id, update_data)
 
     def get_user_by_verification_token(self, token: str) -> Optional[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             user = (
                 session.execute(
                     select(User).where(User.email_verification_token == token)
@@ -509,7 +543,7 @@ class SQLiteDatabase(DatabaseInterface):
             extras={**payload, "course_id": course_id},
         )
 
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             session.add(course)
             program_ids = payload.get("program_ids") or []
             if program_ids:
@@ -519,13 +553,13 @@ class SQLiteDatabase(DatabaseInterface):
                     .all()
                 )
                 course.programs = programs
-            logger.info("[SQLiteDatabase] Created course %s", course_id)
+            logger.info("[SQLDatabase] Created course %s", course_id)
             return course_id
 
     def update_course(self, course_id: str, course_data: Dict[str, Any]) -> bool:
         """Update course details."""
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 course = session.get(Course, course_id)
                 if not course:
                     return False
@@ -561,7 +595,7 @@ class SQLiteDatabase(DatabaseInterface):
     def delete_course(self, course_id: str) -> bool:
         """Delete course (CASCADE deletes offerings, sections)."""
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 course = session.get(Course, course_id)
                 if not course:
                     return False
@@ -574,7 +608,7 @@ class SQLiteDatabase(DatabaseInterface):
     def get_course_by_number(
         self, course_number: str, institution_id: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             query = select(Course).where(
                 func.upper(Course.course_number) == course_number.upper()
             )
@@ -587,7 +621,7 @@ class SQLiteDatabase(DatabaseInterface):
     def get_courses_by_department(
         self, institution_id: str, department: str
     ) -> List[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             records = (
                 session.execute(
                     select(Course).where(
@@ -662,7 +696,7 @@ class SQLiteDatabase(DatabaseInterface):
             extras=extras_dict,
         )
 
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             session.add(outcome)
             session.flush()  # Ensure outcome exists
 
@@ -712,7 +746,7 @@ class SQLiteDatabase(DatabaseInterface):
     ) -> bool:
         """Update course outcome details."""
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 outcome = session.get(CourseOutcome, outcome_id)
                 if not outcome:
                     return False
@@ -746,7 +780,7 @@ class SQLiteDatabase(DatabaseInterface):
 
     def delete_course_outcome(self, outcome_id: str) -> bool:
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 outcome = session.get(CourseOutcome, outcome_id)
                 if outcome:
                     # Manual cascade for section outcomes
@@ -763,7 +797,7 @@ class SQLiteDatabase(DatabaseInterface):
             return False
 
     def get_course_outcomes(self, course_id: str) -> List[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             outcomes = (
                 session.execute(
                     select(CourseOutcome).where(CourseOutcome.course_id == course_id)
@@ -775,7 +809,7 @@ class SQLiteDatabase(DatabaseInterface):
 
     def get_course_outcome(self, outcome_id: str) -> Optional[Dict[str, Any]]:
         """Get single course outcome by ID (includes students_took, students_passed, assessment_tool)"""
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             outcome = session.get(CourseOutcome, outcome_id)
             return to_dict(outcome) if outcome else None
 
@@ -783,7 +817,7 @@ class SQLiteDatabase(DatabaseInterface):
         self, course_outcome_id: str, section_id: str
     ) -> Optional[Dict[str, Any]]:
         """Get the CourseSectionOutcome for a specific section and course outcome."""
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             section_outcome = (
                 session.execute(
                     select(CourseSectionOutcome).where(
@@ -800,7 +834,7 @@ class SQLiteDatabase(DatabaseInterface):
 
     def get_section_outcome(self, section_outcome_id: str) -> Optional[Dict[str, Any]]:
         """Get a single section outcome by ID."""
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             # Use select instead of get for robustness against session state issues
             result = session.execute(
                 select(CourseSectionOutcome).where(
@@ -812,7 +846,7 @@ class SQLiteDatabase(DatabaseInterface):
 
     def get_section_outcomes_by_section(self, section_id: str) -> List[Dict[str, Any]]:
         """Get all section outcomes for a specific section."""
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             section_outcomes = (
                 session.execute(
                     select(CourseSectionOutcome).where(
@@ -826,7 +860,7 @@ class SQLiteDatabase(DatabaseInterface):
 
     def get_section_outcomes_by_outcome(self, outcome_id: str) -> List[Dict[str, Any]]:
         """Get all section outcomes for a course outcome (template)."""
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             section_outcomes = (
                 session.execute(
                     select(CourseSectionOutcome).where(
@@ -846,7 +880,7 @@ class SQLiteDatabase(DatabaseInterface):
         If status changes, a history entry is recorded in the same transaction.
         """
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 section_outcome = session.get(CourseSectionOutcome, section_outcome_id)
                 if not section_outcome:
                     return False
@@ -874,7 +908,7 @@ class SQLiteDatabase(DatabaseInterface):
                     )
                     session.add(history_entry)
                     logger.info(
-                        f"[SQLiteDatabase] Recorded history: {event_label} for {section_outcome_id}"
+                        f"[SQLDatabase] Recorded history: {event_label} for {section_outcome_id}"
                     )
 
                 return True
@@ -903,7 +937,7 @@ class SQLiteDatabase(DatabaseInterface):
         course_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Get course outcomes filtered by status (or all if status is None)."""
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             # Build query with joins to get institution filtering
             query = (
                 select(CourseOutcome)
@@ -937,8 +971,13 @@ class SQLiteDatabase(DatabaseInterface):
                 query = query.where(Course.id == course_id)
 
             # Use distinct to prevent duplicates when joining through multiple sections
-            outcomes = session.execute(query.distinct()).scalars().all()
-            return [to_dict(outcome) for outcome in outcomes]
+            # FIX: Do not use SQL-level DISTINCT (query.distinct()) because 'extras' column is JSON
+            # and PostgreSQL JSON type does not support equality comparisons.
+            # Deduplicate in Python instead.
+            outcomes = session.execute(query).scalars().all()
+            unique_outcomes = list({o.id: o for o in outcomes}.values())
+
+            return [to_dict(outcome) for outcome in unique_outcomes]
 
     def get_section_outcomes_by_criteria(
         self,
@@ -952,9 +991,13 @@ class SQLiteDatabase(DatabaseInterface):
         """
         Get section outcomes filtered by various criteria.
         This is the source of truth for workflow audits (section-level granularity).
+
+        Performance Note: Uses eager loading to fetch all related data in one query
+        to avoid N+1 query problems when displaying audit pages.
         """
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             # Start with CourseSectionOutcome and join up to Course/Institution
+            # PERFORMANCE: Use joinedload to eagerly fetch related data (avoids N+1 queries)
             query = (
                 select(CourseSectionOutcome)
                 .join(
@@ -963,6 +1006,23 @@ class SQLiteDatabase(DatabaseInterface):
                 .join(CourseOffering, CourseSection.offering_id == CourseOffering.id)
                 .join(Course, CourseOffering.course_id == Course.id)
                 .where(Course.institution_id == institution_id)
+                # Eager load all relationships to avoid N+1 queries
+                # CRITICAL: Use selectinload (not joinedload) to avoid duplicate paths
+                .options(
+                    # Load course outcome template with course and programs
+                    selectinload(CourseSectionOutcome.outcome)
+                    .selectinload(CourseOutcome.course)
+                    .selectinload(Course.programs),
+                    # Load section with instructor, offering, and term (single path)
+                    selectinload(CourseSectionOutcome.section).selectinload(
+                        CourseSection.instructor
+                    ),
+                    selectinload(CourseSectionOutcome.section)
+                    .selectinload(CourseSection.offering)
+                    .selectinload(CourseOffering.term),
+                    # Load outcome history (selectinload for one-to-many)
+                    selectinload(CourseSectionOutcome.history),
+                )
             )
 
             if status and status != "all":
@@ -978,18 +1038,35 @@ class SQLiteDatabase(DatabaseInterface):
                 query = query.where(CourseOffering.term_id == term_id)
 
             if program_id:
-                from src.models.models_sql import course_program_table
-
                 query = query.join(
                     course_program_table, Course.id == course_program_table.c.course_id
                 ).where(course_program_table.c.program_id == program_id)
 
-            results = session.execute(query).scalars().all()
+            # Use .unique() to deduplicate results from joined eager loads
+            results = session.execute(query).unique().scalars().all()
+
+            # Force load all relationships before session closes (fixes lazy load issues)
+            for result in results:
+                # Access all eager-loaded relationships to force SQLAlchemy to fetch them
+                _ = result.outcome
+                if result.outcome:
+                    _ = result.outcome.course
+                    if result.outcome.course:
+                        _ = result.outcome.course.programs
+                _ = result.section
+                if result.section:
+                    _ = result.section.instructor
+                    _ = result.section.offering
+                    if result.section.offering:
+                        _ = result.section.offering.term
+                _ = result.history  # Trigger history load
+
+            # Now convert to dicts with all data loaded
             return [to_dict(res) for res in results]
 
     def get_sections_by_course(self, course_id: str) -> List[Dict[str, Any]]:
         """Get all course sections for a given course."""
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             # Get sections through course offering
             sections = (
                 session.execute(
@@ -1005,7 +1082,7 @@ class SQLiteDatabase(DatabaseInterface):
             return [to_dict(section) for section in sections]
 
     def get_course_by_id(self, course_id: str) -> Optional[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             course = session.get(Course, course_id)
             return to_dict(course) if course else None
 
@@ -1014,7 +1091,7 @@ class SQLiteDatabase(DatabaseInterface):
         return self.get_course_by_id(course_id)
 
     def get_all_courses(self, institution_id: str) -> List[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             courses = (
                 session.execute(
                     select(Course)
@@ -1027,7 +1104,7 @@ class SQLiteDatabase(DatabaseInterface):
             return [to_dict(course) for course in courses]
 
     def get_all_instructors(self, institution_id: str) -> List[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             instructors = (
                 session.execute(
                     select(User).where(
@@ -1043,7 +1120,7 @@ class SQLiteDatabase(DatabaseInterface):
             return [to_dict(user) for user in instructors]
 
     def get_all_sections(self, institution_id: str) -> List[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             sections = (
                 session.execute(
                     select(CourseSection)
@@ -1093,7 +1170,7 @@ class SQLiteDatabase(DatabaseInterface):
 
     def get_section_by_id(self, section_id: str) -> Optional[Dict[str, Any]]:
         """Get single section by ID"""
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             section = session.get(CourseSection, section_id)
             return to_dict(section) if section else None
 
@@ -1111,7 +1188,7 @@ class SQLiteDatabase(DatabaseInterface):
             section_count=payload.get("section_count", 0),
             extras={**payload, "offering_id": offering_id},
         )
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             session.add(offering)
             return offering_id
 
@@ -1120,7 +1197,7 @@ class SQLiteDatabase(DatabaseInterface):
     ) -> bool:
         """Update course offering details."""
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 offering = session.get(CourseOffering, offering_id)
                 if not offering:
                     return False
@@ -1140,7 +1217,7 @@ class SQLiteDatabase(DatabaseInterface):
     def delete_course_offering(self, offering_id: str) -> bool:
         """Delete course offering (CASCADE deletes sections)."""
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 offering = session.get(CourseOffering, offering_id)
                 if not offering:
                     return False
@@ -1151,7 +1228,7 @@ class SQLiteDatabase(DatabaseInterface):
             return False
 
     def get_course_offering(self, offering_id: str) -> Optional[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             offering = (
                 session.execute(
                     select(CourseOffering)
@@ -1166,7 +1243,7 @@ class SQLiteDatabase(DatabaseInterface):
     def get_course_offering_by_course_and_term(
         self, course_id: str, term_id: str
     ) -> Optional[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             offering = (
                 session.execute(
                     select(CourseOffering)
@@ -1184,7 +1261,7 @@ class SQLiteDatabase(DatabaseInterface):
             return to_dict(offering) if offering else None
 
     def get_all_course_offerings(self, institution_id: str) -> List[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             offerings = (
                 session.execute(
                     select(CourseOffering)
@@ -1221,7 +1298,7 @@ class SQLiteDatabase(DatabaseInterface):
         term_id = _ensure_uuid(payload.pop("term_id", None))
         term_name = payload.get("term_name")
         if not term_name:
-            logger.error("[SQLiteDatabase] term_name is required")
+            logger.error("[SQLDatabase] term_name is required")
             return None
         term = Term(
             id=term_id,
@@ -1233,14 +1310,14 @@ class SQLiteDatabase(DatabaseInterface):
             institution_id=payload.get("institution_id"),
             extras={**payload, "term_id": term_id},
         )
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             session.add(term)
             return term_id
 
     def update_term(self, term_id: str, term_data: Dict[str, Any]) -> bool:
         """Update term details."""
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 term = session.get(Term, term_id)
                 if not term:
                     return False
@@ -1260,7 +1337,7 @@ class SQLiteDatabase(DatabaseInterface):
     def delete_term(self, term_id: str) -> bool:
         """Delete term (CASCADE deletes offerings and sections)."""
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 term = session.get(Term, term_id)
                 if not term:
                     return False
@@ -1273,7 +1350,7 @@ class SQLiteDatabase(DatabaseInterface):
     def get_term_by_name(
         self, name: str, institution_id: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             filters = [Term.term_name == name]
             if institution_id is not None:
                 filters.append(Term.institution_id == institution_id)
@@ -1285,7 +1362,7 @@ class SQLiteDatabase(DatabaseInterface):
         # Use system date override to determine "current" date for filtering
         current_date_str = get_current_time().strftime("%Y-%m-%d")
 
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             # Use SQLite date() function to extract just the date portion from
             # ISO datetime strings (e.g., "2026-01-08T03:59:16..." -> "2026-01-08")
             # This ensures proper date comparison without time component issues
@@ -1305,7 +1382,7 @@ class SQLiteDatabase(DatabaseInterface):
             return [to_dict(term) for term in terms]
 
     def get_all_terms(self, institution_id: str) -> List[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             terms = (
                 session.execute(
                     select(Term)
@@ -1319,12 +1396,12 @@ class SQLiteDatabase(DatabaseInterface):
 
     def get_term_by_id(self, term_id: str) -> Optional[Dict[str, Any]]:
         """Get single term by ID"""
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             term = session.get(Term, term_id)
             return to_dict(term) if term else None
 
     def get_sections_by_term(self, term_id: str) -> List[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             sections = (
                 session.execute(
                     select(CourseSection)
@@ -1366,7 +1443,7 @@ class SQLiteDatabase(DatabaseInterface):
             completed_date=_normalize_section_datetime(payload.get("completed_date")),
             extras={**payload, "section_id": section_id},
         )
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             session.add(section)
 
             # Auto-populate CLO Instances (CourseSectionOutcome) based on Templates (CourseOutcome)
@@ -1425,7 +1502,7 @@ class SQLiteDatabase(DatabaseInterface):
     ) -> bool:
         """Update course section details."""
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 section = session.get(CourseSection, section_id)
                 if not section:
                     return False
@@ -1459,7 +1536,7 @@ class SQLiteDatabase(DatabaseInterface):
     def delete_course_section(self, section_id: str) -> bool:
         """Delete course section."""
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 section = session.get(CourseSection, section_id)
                 if not section:
                     return False
@@ -1470,7 +1547,7 @@ class SQLiteDatabase(DatabaseInterface):
             return False
 
     def get_sections_by_instructor(self, instructor_id: str) -> List[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             sections = (
                 session.execute(
                     select(CourseSection).where(
@@ -1535,12 +1612,12 @@ class SQLiteDatabase(DatabaseInterface):
             is_active=payload.get("is_active", True),
             extras={**payload, "program_id": program_id},
         )
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             session.add(program)
             return program_id
 
     def get_programs_by_institution(self, institution_id: str) -> List[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             programs = (
                 session.execute(
                     select(Program).where(Program.institution_id == institution_id)
@@ -1551,7 +1628,7 @@ class SQLiteDatabase(DatabaseInterface):
             return [to_dict(program) for program in programs]
 
     def get_program_by_id(self, program_id: str) -> Optional[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             program = session.get(Program, program_id)
             return to_dict(program) if program else None
 
@@ -1569,7 +1646,7 @@ class SQLiteDatabase(DatabaseInterface):
         from src.models.models_sql import course_program_table
 
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 # Check if link already exists
                 existing = session.execute(
                     select(course_program_table).where(
@@ -1597,7 +1674,7 @@ class SQLiteDatabase(DatabaseInterface):
     def get_program_by_name_and_institution(
         self, program_name: str, institution_id: str
     ) -> Optional[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             program = (
                 session.execute(
                     select(Program).where(
@@ -1613,7 +1690,7 @@ class SQLiteDatabase(DatabaseInterface):
             return to_dict(program) if program else None
 
     def update_program(self, program_id: str, updates: Dict[str, Any]) -> bool:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             program = session.get(Program, program_id)
             if not program:
                 return False
@@ -1625,7 +1702,7 @@ class SQLiteDatabase(DatabaseInterface):
             return True
 
     def delete_program(self, program_id: str, reassign_to_program_id: str) -> bool:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             program = session.get(Program, program_id)
             if not program:
                 return False
@@ -1639,7 +1716,7 @@ class SQLiteDatabase(DatabaseInterface):
             return True
 
     def get_courses_by_program(self, program_id: str) -> List[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             program = session.get(Program, program_id)
             if not program:
                 return []
@@ -1647,7 +1724,7 @@ class SQLiteDatabase(DatabaseInterface):
 
     def get_programs_for_course(self, course_id: str) -> List[Dict[str, Any]]:
         """Get all programs that a course is attached to."""
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             course = session.get(Course, course_id)
             if not course:
                 return []
@@ -1655,7 +1732,7 @@ class SQLiteDatabase(DatabaseInterface):
 
     def get_program_admins(self, program_id: str) -> List[Dict[str, Any]]:
         """Get all users with program_admin role for a specific program."""
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             try:
                 # Query users who are program_admins and have this program_id in their program_ids JSON array
                 # Note: SQLite's JSON support uses json_each() for querying arrays
@@ -1691,7 +1768,7 @@ class SQLiteDatabase(DatabaseInterface):
                 return []
 
     def get_unassigned_courses(self, institution_id: str) -> List[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             courses = (
                 session.execute(
                     select(Course)
@@ -1714,7 +1791,7 @@ class SQLiteDatabase(DatabaseInterface):
     def assign_course_to_default_program(
         self, course_id: str, institution_id: str
     ) -> bool:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             default_program = (
                 session.execute(
                     select(Program).where(
@@ -1737,7 +1814,7 @@ class SQLiteDatabase(DatabaseInterface):
             return True
 
     def add_course_to_program(self, course_id: str, program_id: str) -> bool:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             course = session.get(Course, course_id)
             program = session.get(Program, program_id)
             if not course or not program:
@@ -1747,7 +1824,7 @@ class SQLiteDatabase(DatabaseInterface):
             return True
 
     def remove_course_from_program(self, course_id: str, program_id: str) -> bool:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             course = session.get(Course, course_id)
             program = session.get(Program, program_id)
             if not course or not program:
@@ -1821,20 +1898,20 @@ class SQLiteDatabase(DatabaseInterface):
             personal_message=payload.get("personal_message"),
             extras=extras_dict,
         )
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             session.add(invitation)
             session.flush()  # Ensure invitation is immediately visible to subsequent queries
             return invitation_id
 
     def get_invitation_by_id(self, invitation_id: str) -> Optional[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             invitation = session.get(UserInvitation, invitation_id)
             return to_dict(invitation) if invitation else None
 
     def get_invitation_by_token(
         self, invitation_token: str
     ) -> Optional[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             invitation = (
                 session.execute(
                     select(UserInvitation).where(
@@ -1849,7 +1926,7 @@ class SQLiteDatabase(DatabaseInterface):
     def get_invitation_by_email(
         self, email: str, institution_id: str
     ) -> Optional[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             invitation = (
                 session.execute(
                     select(UserInvitation)
@@ -1867,7 +1944,7 @@ class SQLiteDatabase(DatabaseInterface):
             return to_dict(invitation) if invitation else None
 
     def update_invitation(self, invitation_id: str, updates: Dict[str, Any]) -> bool:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             # Use query for string UUID primary key instead of session.get()
             invitation = session.execute(
                 select(UserInvitation).where(UserInvitation.id == invitation_id)
@@ -1879,7 +1956,7 @@ class SQLiteDatabase(DatabaseInterface):
                     setattr(invitation, key, value)
                 else:
                     logger.warning(
-                        "[SQLiteDatabase] Unknown attribute '%s' for UserInvitation; storing in extras.",
+                        "[SQLDatabase] Unknown attribute '%s' for UserInvitation; storing in extras.",
                         logger.sanitize(key),
                     )
                     invitation.extras[key] = value
@@ -1889,7 +1966,7 @@ class SQLiteDatabase(DatabaseInterface):
     def list_invitations(
         self, institution_id: str, status: Optional[str], limit: int, offset: int
     ) -> List[Dict[str, Any]]:
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             query = select(UserInvitation).where(
                 UserInvitation.institution_id == institution_id
             )
@@ -1909,7 +1986,7 @@ class SQLiteDatabase(DatabaseInterface):
         from src.models.models_sql import AuditLog
 
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 audit_log = AuditLog(**audit_data)
                 session.add(audit_log)
                 return True
@@ -1924,7 +2001,7 @@ class SQLiteDatabase(DatabaseInterface):
         from src.models.models_sql import AuditLog
 
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 query = select(AuditLog).where(
                     AuditLog.entity_type == entity_type,
                     AuditLog.entity_id == entity_id,
@@ -1947,7 +2024,7 @@ class SQLiteDatabase(DatabaseInterface):
         from src.models.models_sql import AuditLog
 
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 query = select(AuditLog).where(AuditLog.user_id == user_id)
 
                 if start_date:
@@ -1969,7 +2046,7 @@ class SQLiteDatabase(DatabaseInterface):
         from src.models.models_sql import AuditLog
 
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 query = select(AuditLog)
 
                 if institution_id:
@@ -1994,7 +2071,7 @@ class SQLiteDatabase(DatabaseInterface):
         from src.models.models_sql import AuditLog
 
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 query = select(AuditLog).where(
                     AuditLog.timestamp >= start_date,
                     AuditLog.timestamp <= end_date,
@@ -2063,7 +2140,7 @@ class SQLiteDatabase(DatabaseInterface):
         """
         from src.models.models_sql import InstructorReminder
 
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             reminder = InstructorReminder(
                 section_id=section_id,
                 instructor_id=instructor_id,
@@ -2075,7 +2152,7 @@ class SQLiteDatabase(DatabaseInterface):
             session.flush()
             reminder_id = str(reminder.id)
             logger.info(
-                f"[SQLiteDatabase] Created reminder {reminder_id} for section {section_id}"
+                f"[SQLDatabase] Created reminder {reminder_id} for section {section_id}"
             )
             return reminder_id
 
@@ -2083,7 +2160,7 @@ class SQLiteDatabase(DatabaseInterface):
         """Get all reminders sent for a specific section."""
         from src.models.models_sql import InstructorReminder
 
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             reminders = (
                 session.query(InstructorReminder)
                 .filter(InstructorReminder.section_id == section_id)
@@ -2096,7 +2173,7 @@ class SQLiteDatabase(DatabaseInterface):
         """Get all reminders sent to a specific instructor."""
         from src.models.models_sql import InstructorReminder
 
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             reminders = (
                 session.query(InstructorReminder)
                 .filter(InstructorReminder.instructor_id == instructor_id)
@@ -2131,7 +2208,7 @@ class SQLiteDatabase(DatabaseInterface):
         from src.models.models_sql import OutcomeHistory
 
         try:
-            with self.sqlite.session_scope() as session:
+            with self.sql.session_scope() as session:
                 entry = OutcomeHistory(
                     section_outcome_id=section_outcome_id,
                     event=event,
@@ -2139,7 +2216,7 @@ class SQLiteDatabase(DatabaseInterface):
                 )
                 session.add(entry)
                 logger.info(
-                    f"[SQLiteDatabase] Added history: {event} for {section_outcome_id}"
+                    f"[SQLDatabase] Added history: {event} for {section_outcome_id}"
                 )
                 return True
         except Exception as e:
@@ -2150,7 +2227,7 @@ class SQLiteDatabase(DatabaseInterface):
         """Get history entries for a section outcome, sorted by date DESC."""
         from src.models.models_sql import OutcomeHistory
 
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             entries = (
                 session.query(OutcomeHistory)
                 .filter(OutcomeHistory.section_outcome_id == section_outcome_id)
@@ -2164,7 +2241,7 @@ class SQLiteDatabase(DatabaseInterface):
     # ------------------------------------------------------------------
     def delete_user(self, user_id: str) -> bool:
         """Delete a user (for testing purposes)."""
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             user = session.get(User, user_id)
             if not user:
                 return False
@@ -2173,7 +2250,7 @@ class SQLiteDatabase(DatabaseInterface):
 
     def delete_program_simple(self, program_id: str) -> bool:
         """Delete a program without reassignment (for testing purposes)."""
-        with self.sqlite.session_scope() as session:
+        with self.sql.session_scope() as session:
             program = session.get(Program, program_id)
             if not program:
                 return False

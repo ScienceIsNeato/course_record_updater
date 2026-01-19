@@ -14,8 +14,9 @@
 4. [GCP Project Setup](#gcp-project-setup)
 5. [Deployment Commands](#deployment-commands)
 6. [Environment Variables](#environment-variables)
-7. [Rollback Procedures](#rollback-procedures)
-8. [Troubleshooting](#troubleshooting)
+7. [Database Seeding](#database-seeding)
+8. [Rollback Procedures](#rollback-procedures)
+9. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -303,6 +304,137 @@ gcloud run deploy loopcloser-prod \
 |----------|-------------|
 | `ETHEREAL_USER` | Ethereal test email user |
 | `ETHEREAL_PASS` | Ethereal test email password |
+
+---
+
+## Database Seeding
+
+### Overview
+
+Deployed Cloud Run environments use SQLite databases stored in GCS buckets. To seed these databases with demo or test data, use the `seed_remote_db.sh` script which:
+
+1. Creates a backup of the current database
+2. Scales down the Cloud Run service (brief downtime)
+3. Downloads the database from GCS
+4. Runs the seeding script locally
+5. Uploads the seeded database back to GCS
+6. Restores the Cloud Run service
+
+### Prerequisites
+
+```bash
+# Ensure you're authenticated with GCP
+gcloud auth login
+
+# Set the correct project
+gcloud config set project loopcloser
+
+# Verify access to GCS buckets
+gsutil ls gs://loopcloser-db-dev/
+```
+
+### Usage
+
+#### Seed Dev Environment
+
+```bash
+# Seed with full demo dataset (DESTRUCTIVE - clears existing data)
+./scripts/seed_remote_db.sh dev --demo --clear
+
+# Seed with custom manifest
+./scripts/seed_remote_db.sh dev --demo --clear --manifest demos/custom_demo.json
+```
+
+#### Seed Staging Environment
+
+```bash
+# Seed staging environment
+./scripts/seed_remote_db.sh staging --demo --clear
+```
+
+#### Production Seeding (CAUTION)
+
+```bash
+# ⚠️  DANGEROUS - Only use in emergency situations
+./scripts/seed_remote_db.sh prod --demo --clear
+```
+
+### How It Works
+
+The script performs the following steps:
+
+1. **Validation**: Checks GCP authentication and project configuration
+2. **Confirmation**: Prompts for user confirmation (especially for production)
+3. **Backup**: Creates timestamped backup in `gs://<bucket>/backups/`
+4. **Scale Down**: Sets Cloud Run min/max instances to 0 (downtime begins)
+5. **Download**: Downloads database from GCS to local file
+6. **Seed**: Runs `scripts/seed_db.py` with specified flags
+7. **Upload**: Uploads seeded database back to GCS
+8. **Scale Up**: Restores Cloud Run service to original scaling
+9. **Cleanup**: Removes temporary local database file
+
+### Safety Features
+
+- **Automatic Backups**: Always creates a backup before seeding
+- **Service Scaling**: Prevents concurrent writes during download/upload
+- **Trap Handlers**: Ensures service is restored even if script fails
+- **Confirmation Prompts**: Requires explicit confirmation before proceeding
+- **Production Warnings**: Extra warnings when targeting production
+
+### Rollback After Seeding
+
+If you need to rollback to a previous database state:
+
+```bash
+# List available backups
+gsutil ls gs://loopcloser-db-dev/backups/
+
+# Restore from backup
+gsutil cp gs://loopcloser-db-dev/backups/loopcloser-20260117-105830.db \
+  gs://loopcloser-db-dev/loopcloser.db
+
+# Restart the service to pick up the restored database
+gcloud run services update loopcloser-dev --region=us-central1 \
+  --min-instances=0 --max-instances=0
+sleep 5
+gcloud run services update loopcloser-dev --region=us-central1 \
+  --min-instances=0 --max-instances=2
+```
+
+### Troubleshooting
+
+#### "Permission Denied" Error
+
+```bash
+# Verify project is set correctly
+gcloud config get-value project
+
+# Re-authenticate if needed
+gcloud auth login
+gcloud auth application-default login
+```
+
+#### "Database Not Found" in GCS
+
+This is normal for first deployment. The script will create a new database file.
+
+#### Service Won't Scale Down
+
+Check if there are active requests:
+
+```bash
+# View service logs
+gcloud run logs read --service=loopcloser-dev --region=us-central1 --limit=50
+```
+
+#### Seeding Script Fails Locally
+
+Ensure your virtual environment is activated:
+
+```bash
+source venv/bin/activate
+python scripts/seed_db.py --env dev --demo --clear  # Test locally first
+```
 
 ---
 

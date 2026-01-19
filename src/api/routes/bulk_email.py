@@ -80,7 +80,7 @@ ERROR_AUTH_REQUIRED = "Authentication required"
 def get_db() -> Session:
     """Get database session"""
     db_service = get_database_service()
-    return db_service.sqlite.get_session()  # type: ignore[attr-defined,return-value]
+    return db_service.sql.get_session()  # type: ignore[attr-defined,return-value]
 
 
 @bulk_email_bp.route("/send-instructor-reminders", methods=["POST"])

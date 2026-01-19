@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
-"""
-Baseline Database Seeding for E2E Tests
+"""Database seeding script for LoopCloser.
 
-Creates minimal shared infrastructure needed across all E2E tests.
-Tests create their own specific data (users, sections) via API calls.
+SECURITY: This script only works with LOCAL databases (sqlite:// or localhost).
+For remote/deployed databases, use scripts/seed_remote_db.sh which has proper
+safeguards and confirmation prompts.
 """
+
+from __future__ import annotations
 
 import argparse
 import json
 import os
 import sys
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 # Typing imports for static analysis
@@ -1369,14 +1371,14 @@ class DemoSeeder(BaselineSeeder):
         """Create OutcomeHistory entries with relative dates from manifest."""
         from datetime import timedelta
 
-        from src.database.database_sqlite import SQLiteDatabase
+        from src.database.database_sqlite import SQLDatabase
         from src.models.models_sql import OutcomeHistory
 
         now = datetime.now(timezone.utc)
 
         # Cast to access internal session_scope (demo seeder only)
-        db: SQLiteDatabase = database_service.db  # type: ignore[assignment]
-        with db.sqlite.session_scope() as session:
+        db = database_service.db  # type: ignore[assignment,attr-defined]
+        with db.sql.session_scope() as session:  # type: ignore[attr-defined]
             for entry in history_data:
                 event = entry.get("event")
                 relative_days = entry.get("relative_days", 0)
@@ -1441,106 +1443,185 @@ class DemoSeeder(BaselineSeeder):
 
     def print_summary(self) -> None:
         """Print demo seeding summary"""
-        # Environment-aware configuration
-        env_config = {
-            "dev": {"port": 3001, "env_name": "dev"},
-            "e2e": {"port": 3002, "env_name": "e2e"},
-            "smoke": {"port": 3003, "env_name": "smoke"},
-            "ci": {"port": 3001, "env_name": "ci"},
-            "prod": {"port": 3001, "env_name": "prod"},
-        }
-
-        config = env_config.get(self.env, {"port": 3001, "env_name": "dev"})
-        port = config["port"]
-        env_name = config["env_name"]
-
         self.log("")
-        self.log("📊 Demo Environment Ready:")
+        self.log("📊 Seeding Complete:")
         self.log(f"   Institutions: {len(self.created['institutions'])} created")
         self.log(f"   Users: {len(self.created['users'])} created")
         self.log(f"   Terms: {len(self.created['terms'])} created")
         self.log(f"   Courses: {len(self.created['courses'])} created")
-        self.log("🎬 Next Steps:")
-        self.log(f"   1. Start server: ./restart_server.sh {env_name}")
-        self.log(f"   2. Navigate to: http://localhost:{port}")
-        self.log("   3. Login with the credentials above")
+        self.log("")
+
+        # Environment-specific next steps
+        if self.env == "local":
+            self.log("🎬 Next Steps (Local Development):")
+            self.log("   1. Restart server: ./scripts/restart_server.sh local")
+            self.log("   2. Navigate to: http://localhost:3001")
+            self.log("   3. Login with demo credentials")
+            self.log("")
+            self.log("💡 Monitor logs: ./scripts/monitor_logs.sh")
+        elif self.env == "dev":
+            self.log("🎬 Next Steps (Dev Environment):")
+            self.log("   1. Database seeded on Neon - app will see changes immediately")
+            self.log("   2. Navigate to: https://dev.loopcloser.io")
+            self.log("   3. Login with demo credentials")
+            self.log("")
+            self.log(
+                "💡 Note: Cloud Run app restarts automatically, no manual restart needed"
+            )
+        elif self.env == "staging":
+            self.log("🎬 Next Steps (Staging Environment):")
+            self.log("   1. Database seeded on Neon - app will see changes immediately")
+            self.log("   2. Navigate to: https://staging.loopcloser.io")
+            self.log("   3. Login with demo credentials")
+        elif self.env == "prod":
+            self.log("🎬 Next Steps (Production Environment):")
+            self.log("   1. Database seeded on Neon - app will see changes immediately")
+            self.log("   2. Navigate to: https://loopcloser.io")
+            self.log("   3. Login with demo credentials")
+            self.log("")
+            self.log("⚠️  Production database modified - verify data integrity!")
+        elif self.env == "e2e":
+            self.log("🎬 Next Steps (E2E Testing):")
+            self.log("   1. Restart server: ./scripts/restart_server.sh e2e")
+            self.log("   2. Run E2E tests: npm run test:e2e")
+            self.log("")
+            self.log("💡 Monitor logs: ./scripts/monitor_logs.sh")
+        elif self.env == "smoke":
+            self.log("🎬 Next Steps (Smoke Testing):")
+            self.log("   1. Restart server: ./scripts/restart_server.sh smoke")
+            self.log("   2. Run smoke tests")
+        else:
+            self.log("🎬 Next Steps:")
+            self.log(f"   Environment: {self.env}")
+            self.log("   Check environment-specific documentation")
 
 
-def main() -> None:
-    """Main seeding entry point"""
-    parser = argparse.ArgumentParser(
-        description="Seed baseline E2E test data",
-        epilog="Examples:\n"
-        "  python scripts/seed_database_service.db.py --demo --clear --env dev\n"
-        "  python scripts/seed_database_service.db.py --clear --env e2e\n"
-        "  python scripts/seed_database_service.db.py --env prod\n",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    parser.add_argument("--clear", action="store_true", help="Clear database first")
-    parser.add_argument(
-        "--demo",
-        action="store_true",
-        help="Seed generic demo environment for product demonstrations",
-    )
-    parser.add_argument(
-        "--env",
-        choices=["dev", "e2e", "smoke", "ci", "prod"],
-        default="prod",
-        help="Environment to seed (dev, e2e, smoke, ci, or prod). Determines which database file to use.",
-    )
-    parser.add_argument(
-        "--manifest",
-        type=str,
-        help="Path to JSON manifest file for custom seeding (overrides generic defaults)",
-    )
+def _resolve_database_url(args: argparse.Namespace) -> str:
+    """Resolve database URL based on environment and configuration."""
+    # Environment-specific Neon database URLs (set these in .envrc)
+    neon_env_mapping = {
+        "dev": os.environ.get("NEON_DB_URL_DEV"),
+        "staging": os.environ.get("NEON_DB_URL_STAGING"),
+        "prod": os.environ.get("NEON_DB_URL_PROD"),
+    }
 
-    # Parse arguments and catch errors
-    try:
-        args = parser.parse_args()
-    except SystemExit as e:
-        if e.code != 0:
-            print("\n❌ ERROR: Invalid arguments provided")
-            print("💡 TIP: Use --env dev (not just 'dev')")
-            print("Run with -h or --help for usage information\n")
-        raise
-
-    # Map environment to database file
-    db_mapping = {
-        "dev": "sqlite:///course_records_dev.db",
+    # Local SQLite database mapping (for local/test envs only)
+    local_db_mapping = {
+        "local": "sqlite:///course_records_dev.db",
         "e2e": "sqlite:///course_records_e2e.db",
         "smoke": "sqlite:///course_records_smoke.db",
         "ci": "sqlite:///course_records_ci.db",
-        "prod": "sqlite:///course_records.db",
     }
 
-    database_url = db_mapping[args.env]
-    os.environ["DATABASE_URL"] = database_url
+    deployed_environments = ["dev", "staging", "prod"]
 
-    # Refresh database service to ensure it uses the correct database
-    # NOTE: Must use database_service.refresh_connection() NOT database_factory.refresh_database_service()
-    # because the latter only updates the factory cache, not the database_service.db alias
-    from src.database import database_service
+    # Priority: DATABASE_URL → NEON_DB_URL_* → Local SQLite
+    existing_db_url = os.environ.get("DATABASE_URL")
+    if existing_db_url:
+        print(
+            f"\n[SEED] 🗄️  Using manual DATABASE_URL override: {existing_db_url[:50]}..."
+        )
+        return existing_db_url
+    elif args.env in neon_env_mapping and neon_env_mapping[args.env]:
+        database_url = neon_env_mapping[args.env]
+        if not database_url:  # type guard for mypy
+            raise ValueError(f"NEON_DB_URL_{args.env.upper()} is not set")
+        print(
+            f"\n[SEED] 🗄️  Using {args.env.upper()} Neon database: {database_url[:50]}..."
+        )
+        return database_url
+    elif args.env in deployed_environments:
+        # Deployed environments REQUIRE Neon URL
+        print(
+            f"\n❌ ERROR: {args.env.upper()} environment requires NEON_DB_URL_{args.env.upper()} to be set"
+        )
+        print(f"\nPlease add this to your .envrc file:")
+        print(f'  export NEON_DB_URL_{args.env.upper()}="postgresql://..."')
+        print(f"\nThen run: direnv allow .\n")
+        sys.exit(1)
+    else:
+        # Local SQLite fallback
+        database_url = local_db_mapping.get(args.env, "sqlite:///course_records.db")
+        print(f"\n[SEED] 🗄️  Using local {args.env} database: {database_url}")
+        return database_url
 
-    database_service.refresh_connection()
 
-    # Log which database we're using
-    db_file = database_url.replace("sqlite:///", "")
-    print(f"[SEED] 🗄️  Using {args.env} database: {db_file}")
+def _confirm_deployed_environment(args: argparse.Namespace, database_url: str) -> None:
+    """Require human confirmation for remote database seeding."""
+    # AGENTS SHOULD NOT MODIFY THIS FUNCTION TO SKIP HUMAN VERIFICATION
+    # DO NOT ADD FLAGS TO BYPASS CONFIRMATION PROMPTS
+    deployed_environments = ["dev", "staging", "prod"]
 
+    # Require confirmation if:
+    # 1. We are targeting a deployed environment (dev, staging, prod)
+    # 2. OR the database URL looks like a remote PostgreSQL database
+    if args.env not in deployed_environments and not database_url.startswith(
+        "postgresql://"
+    ):
+        return  # Local env AND local DB - no confirmation needed
+
+    print("\n" + "=" * 70)
+    print("⚠️  REMOTE DATABASE SEEDING - CONFIRMATION REQUIRED")
+    print("=" * 70)
+
+    # Parse database info
+    if database_url.startswith("postgresql://"):
+        db_type = "PostgreSQL (Neon)"
+        hostname_start = database_url.find("@")
+        hostname_end = (
+            database_url.find("/", hostname_start) if hostname_start != -1 else -1
+        )
+        hostname = (
+            database_url[hostname_start + 1 : hostname_end]
+            if hostname_start != -1 and hostname_end != -1
+            else "unknown"
+        )
+    elif database_url.startswith("sqlite:///"):
+        db_type = "SQLite (local file)"
+        hostname = database_url.replace("sqlite:///", "")
+    else:
+        db_type = "Unknown"
+        hostname = database_url[:50]
+
+    print(f"\nEnvironment: {args.env.upper()}")
+    print(f"Database Type: {db_type}")
+    print(f"Target: {hostname}")
+    print(f"\n⚠️  You are about to seed a REMOTE database!")
+
+    if args.clear:
+        print("\n🚨 DESTRUCTIVE OPERATION: --clear flag will WIPE ALL DATA")
+
+    print("\n" + "-" * 70)
+    print("To proceed, type 'yes' (lowercase, exactly)")
+    print("To cancel, press Ctrl+C or type anything else")
+    print("-" * 70)
+
+    try:
+        confirmation = input("\nType 'yes' to confirm: ").strip()
+    except KeyboardInterrupt:
+        print("\n\n❌ Seeding cancelled by user\n")
+        sys.exit(0)
+
+    if confirmation != "yes":
+        print(f"\n❌ Confirmation failed. Expected 'yes', got '{confirmation}'")
+        print("Seeding cancelled - no changes made\n")
+        sys.exit(0)
+
+    print("\n✅ Confirmation received. Proceeding with remote seeding...\n")
+
+
+def _execute_seeding(args: argparse.Namespace) -> bool:
+    """Execute the seeding operation."""
     if args.demo:
         demo_seeder = DemoSeeder(manifest_path=args.manifest, env=args.env)
-
         if args.clear:
             demo_seeder.log("🧹 Clearing database...")
             from src.database.database_service import reset_database
 
             reset_database()
-
-        success = demo_seeder.seed_demo()
-        sys.exit(0 if success else 1)
+        return demo_seeder.seed_demo()
     else:
         baseline_seeder = BaselineTestSeeder()
-
         if args.clear:
             baseline_seeder.log("🧹 Clearing database...")
             from src.database.database_service import reset_database
@@ -1558,8 +1639,63 @@ def main() -> None:
                 print(f"❌ Failed to load manifest: {e}")
                 sys.exit(1)
 
-        success = baseline_seeder.seed_baseline(manifest_data)
-        sys.exit(0 if success else 1)
+        return baseline_seeder.seed_baseline(manifest_data)
+
+
+def main() -> None:
+    """Main seeding entry point"""
+    parser = argparse.ArgumentParser(
+        description="Seed database with test or demo data",
+        epilog="Examples:\n"
+        "  python scripts/seed_db.py --demo --clear --env local    # Local SQLite dev database\n"
+        "  python scripts/seed_db.py --demo --clear --env dev      # Deployed dev (uses NEON_DB_URL_DEV if set)\n"
+        "  python scripts/seed_db.py --clear --env e2e             # E2E test database\n"
+        "  python scripts/seed_db.py --env staging                 # Staging environment\n",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("--clear", action="store_true", help="Clear database first")
+    parser.add_argument(
+        "--demo",
+        action="store_true",
+        help="Seed generic demo environment for product demonstrations",
+    )
+    parser.add_argument(
+        "--env",
+        choices=["local", "dev", "e2e", "smoke", "ci", "staging", "prod"],
+        required=True,
+        help="Environment to seed. 'local' = local SQLite dev database, 'dev' = deployed dev environment (Neon if NEON_DB_URL_DEV set), 'staging' = staging environment, 'prod' = production.",
+    )
+    parser.add_argument(
+        "--manifest",
+        type=str,
+        help="Path to JSON manifest file for custom seeding (overrides generic defaults)",
+    )
+
+    # Parse arguments and catch errors
+    try:
+        args = parser.parse_args()
+    except SystemExit as e:
+        if e.code != 0:
+            print("\n❌ ERROR: Invalid arguments provided")
+            print("💡 TIP: Use --env local (not just 'local')")
+            print("Run with -h or --help for usage information\n")
+        raise
+
+    # Resolve database URL
+    database_url = _resolve_database_url(args)
+    os.environ["DATABASE_URL"] = database_url
+
+    # Require confirmation for deployed environments
+    _confirm_deployed_environment(args, database_url)
+
+    # Refresh database connection
+    from src.database import database_service
+
+    database_service.refresh_connection()
+
+    # Execute seeding
+    success = _execute_seeding(args)
+    sys.exit(0 if success else 1)
 
 
 if __name__ == "__main__":

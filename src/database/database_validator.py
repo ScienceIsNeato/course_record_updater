@@ -59,7 +59,7 @@ def _get_sqlalchemy_engine(db_service: Any) -> Any:
     """Extract SQLAlchemy engine from database service.
 
     Works with any database implementation that uses SQLAlchemy and exposes
-    the engine (e.g., SQLiteDatabase via sqlite.engine).
+    the engine (e.g., SQLDatabase via sql.engine).
 
     Args:
         db_service: Database service instance
@@ -71,10 +71,10 @@ def _get_sqlalchemy_engine(db_service: Any) -> Any:
         AttributeError: If db_service doesn't have SQLAlchemy engine
     """
     # Try common patterns for accessing SQLAlchemy engine
-    # SQLiteDatabase: db_service.sqlite.engine
+    # SQLDatabase: db_service.sql.engine
     # Other implementations might expose engine differently
-    if hasattr(db_service, "sqlite") and hasattr(db_service.sqlite, "engine"):
-        return db_service.sqlite.engine
+    if hasattr(db_service, "sql") and hasattr(db_service.sql, "engine"):
+        return db_service.sql.engine
 
     # Try direct engine attribute
     if hasattr(db_service, "engine"):

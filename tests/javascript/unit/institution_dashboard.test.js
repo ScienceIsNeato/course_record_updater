@@ -148,7 +148,7 @@ describe('InstitutionDashboard', () => {
           course_title: 'Intro Biology',
           credit_hours: 3,
           section_count: 2,
-          department: 'Biology'
+          program_names: ['Biological Sciences']
         }
       ]);
 
@@ -448,13 +448,13 @@ describe('InstitutionDashboard', () => {
       `);
     });
 
-    it('renders course table with action buttons', () => {
+    it('renders course table with programs (not department)', () => {
       const courses = [
         {
           course_id: 'c1',
           course_number: 'BIO101',
           course_title: 'Introduction to Biology',
-          department: 'Biology',
+          program_names: ['Biological Sciences'],
           credit_hours: 3,
           active: true
         },
@@ -462,7 +462,7 @@ describe('InstitutionDashboard', () => {
           course_id: 'c2',
           course_number: 'CHEM202',
           course_title: 'Organic Chemistry',
-          department: 'Chemistry',
+          program_names: ['Chemistry', 'Pre-Med'],
           credit_hours: 4,
           active: true
         }
@@ -476,12 +476,15 @@ describe('InstitutionDashboard', () => {
       expect(callArgs.id).toBe('institution-courses-table');
       expect(callArgs.data).toHaveLength(2);
 
-      // Verify course data structure
+      // Verify course data structure (now shows programs instead of department)
       const course1 = callArgs.data[0];
       expect(course1.number).toBe('BIO101');
       expect(course1.title).toBe('Introduction to Biology');
       expect(course1.credits).toBe('3');
-      expect(course1.department).toBe('Biology');
+      expect(course1.programs).toBe('Biological Sciences');  // Changed from department
+      
+      const course2 = callArgs.data[1];
+      expect(course2.programs).toBe('Chemistry, Pre-Med');  // Multiple programs
       // Actions column removed - panels are display-only
     });
 
@@ -518,7 +521,7 @@ describe('InstitutionDashboard', () => {
       // Should use defaults for missing fields
       expect(courseData.number).toBe('MATH101');
       expect(courseData.title).toBe('-'); // Default dash
-      expect(courseData.department).toBe('-'); // Default dash
+      expect(courseData.programs).toBe('-'); // Default dash for missing programs
     });
   });
 

@@ -65,7 +65,7 @@ class TestSQLAlchemySchemaValidation:
         # Simple object that mimics SQLiteDatabase structure
         class Service:
             def __init__(self, engine):
-                self.sqlite = type("SQLite", (), {"engine": engine})()
+                self.sql = type("SQL", (), {"engine": engine})()
 
         return Service(engine)
 

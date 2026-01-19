@@ -10,7 +10,7 @@ Focus areas (from coverage report):
 - Lines 984-1030: get_sections_by_instructor (HUGE block)
 """
 
-from src.database.database_sqlite import SQLiteDatabase
+from src.database.database_sqlite import SQLDatabase
 
 
 class TestInstitutionCreationMethods:
@@ -18,7 +18,7 @@ class TestInstitutionCreationMethods:
 
     def test_create_new_institution_with_admin_success(self):
         """Test creating institution with admin user in one operation."""
-        db = SQLiteDatabase()
+        db = SQLDatabase()
 
         institution_data = {
             "name": "Coverage Test University",
@@ -56,7 +56,7 @@ class TestInstitutionCreationMethods:
 
     def test_create_new_institution_simple_success(self):
         """Test creating institution without admin (site admin workflow)."""
-        db = SQLiteDatabase()
+        db = SQLDatabase()
 
         # This method just creates the institution, no admin user
         institution_id = db.create_new_institution_simple(
@@ -78,7 +78,7 @@ class TestSectionInstructorMethods:
 
     def test_get_sections_by_instructor_with_data(self):
         """Test retrieving enriched sections for an instructor."""
-        db = SQLiteDatabase()
+        db = SQLDatabase()
 
         # Create minimal test data
         institution_id = db.create_institution(
@@ -155,7 +155,7 @@ class TestSectionInstructorMethods:
 
     def test_get_sections_by_instructor_empty(self):
         """Test retrieving sections for instructor with no assignments."""
-        db = SQLiteDatabase()
+        db = SQLDatabase()
 
         institution_id = db.create_institution(
             {"name": "Empty Sections University", "short_name": "ESU"}
@@ -184,7 +184,7 @@ class TestUserUpdateMethods:
 
     def test_update_user_partial_fields(self):
         """Test updating only some user fields."""
-        db = SQLiteDatabase()
+        db = SQLDatabase()
 
         institution_id = db.create_institution(
             {"name": "Update Test University", "short_name": "UTU"}
@@ -216,7 +216,7 @@ class TestUserUpdateMethods:
 class TestUserCreation:
     def test_create_user_duplicate_email(self):
         """Test create_user returns None on duplicate email."""
-        db = SQLiteDatabase()
+        db = SQLDatabase()
         email = "duplicate@test.edu"
 
         # Setup institution first
@@ -252,5 +252,5 @@ class TestUserCreation:
 #
 # NOTE: status+program+term filtered outcomes live on the higher-level service in
 # `database_sqlite.DatabaseService` and are exercised via `database_service.get_outcomes_by_status`
-# tests (see `tests/unit/test_database_service.py`). SQLiteDatabase intentionally doesn't expose
+# tests (see `tests/unit/test_database_service.py`). SQLDatabase intentionally doesn't expose
 # that API.

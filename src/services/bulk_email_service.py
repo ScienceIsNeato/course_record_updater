@@ -145,7 +145,7 @@ class BulkEmailService:
             from src.database.database_factory import get_database_service
 
             db_service = get_database_service()
-            db = db_service.sqlite.get_session()  # type: ignore[attr-defined]
+            db = db_service.sql.get_session()  # type: ignore[attr-defined]
 
             try:
                 # Get job
