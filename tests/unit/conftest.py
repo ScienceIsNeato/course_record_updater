@@ -4,7 +4,7 @@ Pytest configuration for unit tests.
 Provides database fixtures with proper isolation for pytest-xdist parallel execution.
 Each worker gets its own database to prevent conflicts.
 
-OPTIMIZATION NOTE (2024):
+OPTIMIZATION NOTE (2026):
 The previous implementation used `reset_database()` (DROP ALL + CREATE ALL) for every
 test, which was extremely slow (~70ms per test = ~112 seconds total overhead for 1600 tests).
 Now we use efficient DELETE statements which are ~50x faster (~1.5ms per test).
@@ -44,19 +44,19 @@ def _fast_clear_all_tables(engine):
     2. No constraint recreation
     3. SQLite can reuse existing pages
 
+    Note: Tables are deleted in reverse dependency order (children before parents)
+    to respect foreign key constraints without needing to disable FK checks.
+
     Args:
         engine: SQLAlchemy engine instance
     """
-    from sqlalchemy import text
-
     tables = _get_table_delete_order()
 
     with engine.begin() as conn:
-        # Disable foreign key checks for faster deletion (SQLite-specific)
-        conn.execute(text("PRAGMA foreign_keys = OFF"))
+        # Delete in reverse dependency order (children before parents)
+        # This respects FK constraints without needing PRAGMA manipulation
         for table in tables:
-            conn.execute(text(f"DELETE FROM {table.name}"))
-        conn.execute(text("PRAGMA foreign_keys = ON"))
+            conn.execute(table.delete())
 
 
 @pytest.fixture(scope="session", autouse=True)
