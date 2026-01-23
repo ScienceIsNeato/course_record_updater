@@ -45,6 +45,10 @@ def setup_unit_test_database(tmp_path_factory, worker_id):
 
     yield db_path
 
+    # Clean up coordination flag so integration tests aren't affected
+    # if run in the same process (e.g., pytest tests/unit tests/integration)
+    os.environ.pop("_UNIT_TEST_CLEANUP_ACTIVE", None)
+
 
 @pytest.fixture(scope="function", autouse=True)
 def reset_db_between_tests():
@@ -66,36 +70,39 @@ def _fast_clear_all_tables():
         return
 
     engine = database_service._db_service.sql.engine
-    # Delete in reverse dependency order to avoid FK constraint violations
-    # Association tables first, then child tables, then parent tables
+    # Delete in reverse dependency order to respect foreign keys.
+    # Leaf/association tables first, then child tables, then parent tables.
+    # Table names must match __tablename__ in models_sql.py exactly.
     tables_in_delete_order = [
-        "course_section_outcomes",
-        "course_program",
-        "user_program",
-        "audit_log",
-        "instructor_reminders",
-        "outcome_history",
-        "course_sections",
-        "course_outcomes",
-        "course_offerings",
-        "user_invitations",
-        "terms",
-        "courses",
-        "programs",
-        "users",
+        "outcome_history",  # FK → course_section_outcomes
+        "course_section_outcomes",  # FK → course_sections, course_outcomes
+        "course_programs",  # association: FK → courses, programs
+        "user_programs",  # association: FK → users, programs
+        "audit_log",  # FK → users
+        "instructor_reminders",  # FK → course_sections, users
+        "bulk_email_jobs",  # references users (no FK constraint)
+        "course_sections",  # FK → course_offerings, users
+        "course_outcomes",  # FK → courses
+        "course_offerings",  # FK → courses, terms, institutions
+        "user_invitations",  # FK → institutions
+        "terms",  # FK → institutions
+        "courses",  # FK → institutions
+        "programs",  # FK → institutions
+        "users",  # FK → institutions
         "institutions",
     ]
 
-    with engine.connect() as conn:
-        # Disable FK checks for speed (SQLite-specific)
-        conn.execute(text("PRAGMA foreign_keys = OFF"))
-        for table in tables_in_delete_order:
-            try:
-                conn.execute(text(f"DELETE FROM {table}"))  # noqa: S608
-            except Exception:
-                pass  # Table might not exist yet in some edge cases
-        conn.execute(text("PRAGMA foreign_keys = ON"))
-        conn.commit()
-
-    # Clear any cached sessions
-    database_service._db_service.sql.remove_session()
+    try:
+        with engine.connect() as conn:
+            # Disable FK checks for speed (SQLite-specific)
+            conn.execute(text("PRAGMA foreign_keys = OFF"))
+            for table in tables_in_delete_order:
+                try:
+                    conn.execute(text(f"DELETE FROM {table}"))  # noqa: S608
+                except Exception:
+                    pass  # Table might not exist yet in some edge cases
+            conn.execute(text("PRAGMA foreign_keys = ON"))
+            conn.commit()
+    finally:
+        # Always clear cached sessions, even if commit fails
+        database_service._db_service.sql.remove_session()

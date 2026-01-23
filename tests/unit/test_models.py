@@ -2,9 +2,11 @@
 Unit tests for the data models module.
 
 Tests unique model behaviors not covered by test_enhanced_models.py.
-Duplicate tests (user creation, role validation, active status, comprehensive
-section/course tests) have been consolidated into test_enhanced_models.py which
-has more thorough coverage of those behaviors.
+Removed duplicates: basic user creation, optional fields, role validation,
+and basic course creation (all covered by test_enhanced_models.py with
+more thorough assertions). Retained here: name validation edge cases,
+active status calculation, permissions, credit hours, term/section/outcome
+models, and validation function edge cases.
 """
 
 from datetime import date
@@ -87,6 +89,18 @@ class TestUser:
         assert "manage_users" in admin_perms
         assert "manage_institutions" in admin_perms
         assert "view_all_data" in admin_perms
+
+    def test_calculate_active_status(self):
+        """Test active status calculation for billing headcount."""
+        # Only active account with active courses counts as active
+        assert User.calculate_active_status("active", True) is True
+        assert User.calculate_active_status("active", False) is False
+        # Non-active account statuses never count regardless of courses
+        assert User.calculate_active_status("inactive", True) is False
+        assert User.calculate_active_status("inactive", False) is False
+        assert User.calculate_active_status("imported", True) is False
+        assert User.calculate_active_status("imported", False) is False
+        assert User.calculate_active_status("pending", True) is False
 
 
 class TestCourse:
