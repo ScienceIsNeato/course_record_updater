@@ -6,6 +6,11 @@ Each worker gets its own database to prevent conflicts.
 
 Performance optimization: Uses DELETE-based table cleanup instead of DROP ALL + CREATE ALL
 per test. Schema is created once per session and only data is cleared between tests.
+
+Invocation: Use `python scripts/ship_it.py --checks python-unit-tests` as the primary
+interface. The ship_it.py wrapper handles venv activation, env vars, and parallel
+execution via maintAInability-gate.sh. Direct pytest is acceptable for single-file
+verification during development only.
 """
 
 import os

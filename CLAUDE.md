@@ -65,12 +65,29 @@ python scripts/ship_it.py --checks smoke          # Critical path tests (30-60s)
 **Single Test File Verification (Development Only):**
 ```bash
 # Quick verification of a single test file during development
-pytest tests/unit/test_auth_service.py
-pytest tests/integration/test_offering_workflow.py -v
+pytest tests/unit/test_auth_service.py -q
+pytest tests/integration/test_offering_workflow.py -q
 
 # Run specific test by name
 pytest tests/unit/test_auth_service.py::test_login_success -v
 ```
+
+**Dev-Cycle Optimization (Rapid Iteration):**
+```bash
+# Fast full unit suite (~10s, uses DELETE-based cleanup instead of DDL reset)
+python scripts/ship_it.py --checks python-unit-tests
+
+# Skip slow tests (e.g., real bcrypt hashing) during iteration
+pytest tests/unit/ -m "not slow" -x -q
+
+# Re-run only previously failed tests
+pytest tests/unit/ --lf -q
+
+# Always validate with ship_it.py before committing
+python scripts/ship_it.py --checks commit
+```
+
+**Note:** The unit test suite uses fast DELETE-based database cleanup between tests (schema created once per session). This is handled automatically by `tests/unit/conftest.py`. Tests marked with `@pytest.mark.slow` can be skipped during rapid iteration with `-m "not slow"`.
 
 **Frontend Testing:**
 ```bash
@@ -233,6 +250,7 @@ tests/
 2. **Database Fixtures:** Use `db_session`, `init_schema`, `test_db` fixtures
 3. **Auth Fixtures:** Use `authenticated_client` fixture for logged-in tests
 4. **Parallel Execution:** Tests must be thread-safe (use unique IDs, isolated data)
+5. **Fast DB Cleanup:** Unit tests use DELETE-based table cleanup (not DROP/CREATE DDL) via `tests/unit/conftest.py`. Schema is created once per session; only data is cleared between tests. This keeps the full suite under ~10s.
 
 ### CSRF Protection
 
