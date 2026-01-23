@@ -6,6 +6,8 @@ Each worker gets its own database to prevent conflicts.
 
 Performance optimization: Uses DELETE-based table cleanup instead of DROP ALL + CREATE ALL
 per test. Schema is created once per session and only data is cleared between tests.
+Table list is derived from SQLAlchemy metadata (never hardcoded) so it stays in sync
+with the schema automatically.
 
 Invocation: Use `python scripts/ship_it.py --checks python-unit-tests` as the primary
 interface. The ship_it.py wrapper handles venv activation, env vars, and parallel
@@ -63,44 +65,27 @@ def reset_db_between_tests():
 
 
 def _fast_clear_all_tables():
-    """Clear all table data using DELETE statements (much faster than DDL reset)."""
+    """Clear all table data using DELETE statements (much faster than DDL reset).
+
+    Table list is derived from SQLAlchemy Base.metadata.sorted_tables so it
+    automatically stays in sync with the schema. Reversed topological sort
+    ensures children are deleted before parents (correct FK order).
+    """
     import src.database.database_service as database_service
+    from src.models.models_sql import Base
 
     if not hasattr(database_service._db_service, "sql"):
         return
 
     engine = database_service._db_service.sql.engine
-    # Delete in reverse dependency order to respect foreign keys.
-    # Leaf/association tables first, then child tables, then parent tables.
-    # Table names must match __tablename__ in models_sql.py exactly.
-    tables_in_delete_order = [
-        "outcome_history",  # FK → course_section_outcomes
-        "course_section_outcomes",  # FK → course_sections, course_outcomes
-        "course_programs",  # association: FK → courses, programs
-        "user_programs",  # association: FK → users, programs
-        "audit_log",  # FK → users
-        "instructor_reminders",  # FK → course_sections, users
-        "bulk_email_jobs",  # references users (no FK constraint)
-        "course_sections",  # FK → course_offerings, users
-        "course_outcomes",  # FK → courses
-        "course_offerings",  # FK → courses, terms, institutions
-        "user_invitations",  # FK → institutions
-        "terms",  # FK → institutions
-        "courses",  # FK → institutions
-        "programs",  # FK → institutions
-        "users",  # FK → institutions
-        "institutions",
-    ]
+    # sorted_tables returns parent-first; reversed gives children-first (correct for DELETE)
+    tables = list(reversed(Base.metadata.sorted_tables))
 
     try:
         with engine.connect() as conn:
-            # Disable FK checks for speed (SQLite-specific)
             conn.execute(text("PRAGMA foreign_keys = OFF"))
-            for table in tables_in_delete_order:
-                try:
-                    conn.execute(text(f"DELETE FROM {table}"))  # noqa: S608
-                except Exception:
-                    pass  # Table might not exist yet in some edge cases
+            for table in tables:
+                conn.execute(table.delete())
             conn.execute(text("PRAGMA foreign_keys = ON"))
             conn.commit()
     finally:
