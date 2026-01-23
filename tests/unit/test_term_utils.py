@@ -18,8 +18,6 @@ from src.utils.term_utils import (
     is_valid_term,
 )
 
-# pytest import removed
-
 
 class TestTermGenerator:
     """Test the TermGenerator class functionality."""

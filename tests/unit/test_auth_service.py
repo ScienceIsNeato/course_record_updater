@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
-# Import the auth service components
 from src.services.auth_service import (
     AuthService,
     admin_required,
@@ -19,8 +18,6 @@ from src.services.auth_service import (
     permission_required,
     role_required,
 )
-
-# pytest import removed
 
 
 class TestAuthService:
