@@ -1,12 +1,8 @@
 """Unit tests for Flask application setup and configuration."""
 
 import os
-
-# Unused imports removed
-# mock import removed
 from unittest.mock import patch
 
-# pytest import removed
 from flask import Flask
 
 # Import the app module for testing

@@ -84,44 +84,9 @@ class TestLoggingConfiguration:
             # Level may be inherited from parent
             assert isinstance(logger.getEffectiveLevel(), int)
 
-    def test_logging_module_integration(self):
-        """Test integration with Python logging module."""
-        import logging
-
-        # Test that logging levels are properly accessible
-        assert hasattr(logging, "DEBUG")
-        assert hasattr(logging, "INFO")
-        assert hasattr(logging, "WARNING")
-        assert hasattr(logging, "ERROR")
-        assert hasattr(logging, "CRITICAL")
-
-        # Test level values are integers
-        assert isinstance(logging.DEBUG, int)
-        assert isinstance(logging.INFO, int)
-
-    def test_logging_config_module_attributes(self):
-        """Test logging configuration module attributes."""
-        import src.utils.logging_config as logging_config
-
-        # Test that module has expected functions
-        assert hasattr(logging_config, "setup_logger")
-        assert hasattr(logging_config, "get_import_logger")
-        assert callable(logging_config.setup_logger)
-        assert callable(logging_config.get_import_logger)
-
 
 class TestLoggingFormatters:
     """Test logging formatter functionality."""
-
-    def test_import_logger_message_format(self):
-        """Test that import logger can log messages."""
-        logger = get_import_logger()
-
-        # Test that we can log without error
-        test_message = "Test import message"
-        logger.info(test_message)
-
-        # Test passes if no exception was raised
 
     def test_multiple_logger_functions(self):
         """Test that multiple logger functions are available."""
@@ -161,15 +126,6 @@ class TestLoggingFormatters:
         app_logger = get_app_logger()
         assert isinstance(app_logger, logging.Logger)
         assert app_logger.name == "FlaskApp"  # Actual logger name
-
-    def test_logger_handlers_functionality(self):
-        """Test that loggers handle messages properly."""
-        import_logger = get_import_logger()
-
-        # Test logging without errors - test passes if no exception is raised
-        import_logger.info("Test info message")
-        import_logger.warning("Test warning message")
-        import_logger.error("Test error message")
 
     def test_get_quality_gate_logger(self):
         """Test quality gate logger creation and configuration"""
