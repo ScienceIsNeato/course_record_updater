@@ -1,5 +1,10 @@
 """
 Unit tests for the data models module.
+
+Tests unique model behaviors not covered by test_enhanced_models.py.
+Duplicate tests (user creation, role validation, active status, comprehensive
+section/course tests) have been consolidated into test_enhanced_models.py which
+has more thorough coverage of those behaviors.
 """
 
 from datetime import date
@@ -21,56 +26,7 @@ from src.models.models import (
 
 
 class TestUser:
-    """Test User model functionality"""
-
-    def test_create_user_schema_basic(self):
-        """Test creating a basic user schema"""
-        user = User.create_schema(
-            email="john.doe@mocku.test",
-            first_name="John",
-            last_name="Doe",
-            role="instructor",
-            institution_id="test-institution",
-            password_hash="$2b$12$test_hash",
-        )
-
-        assert user["email"] == "john.doe@mocku.test"
-        assert user["first_name"] == "John"
-        assert user["last_name"] == "Doe"
-        assert user["role"] == "instructor"
-        assert user["institution_id"] == "test-institution"
-        assert user["password_hash"] == "$2b$12$test_hash"
-        assert user["account_status"] == "pending"  # Default status
-        assert "created_at" in user
-
-    def test_create_user_schema_with_optional_fields(self):
-        """Test creating user schema with optional fields"""
-        user = User.create_schema(
-            email="jane.smith@mocku.test",
-            first_name="Jane",
-            last_name="Smith",
-            role="program_admin",
-            institution_id="test-institution",
-            password_hash="$2b$12$test_hash",
-            display_name="Jane S.",
-            program_ids=["prog1", "prog2"],
-        )
-
-        assert user["display_name"] == "Jane S."
-        assert user["role"] == "program_admin"
-        assert user["program_ids"] == ["prog1", "prog2"]
-
-    def test_create_user_invalid_role(self):
-        """Test that invalid role raises ValueError"""
-        with pytest.raises(ValueError, match="Invalid role"):
-            User.create_schema(
-                email="test@mocku.test",
-                first_name="Test",
-                last_name="User",
-                role="invalid_role",
-                institution_id="test-institution",
-                password_hash="$2b$12$test_hash",
-            )
+    """Test User model functionality - unique validation behaviors."""
 
     def test_create_user_missing_first_name_raises_error(self):
         """Test that missing first name raises ValueError"""
@@ -132,34 +88,9 @@ class TestUser:
         assert "manage_institutions" in admin_perms
         assert "view_all_data" in admin_perms
 
-    def test_user_active_status_calculation(self):
-        """Test User model active status calculation."""
-        # Test various status combinations
-        assert User.calculate_active_status("active", True) is True
-        assert User.calculate_active_status("active", False) is False
-        assert User.calculate_active_status("inactive", True) is False
-        assert User.calculate_active_status("inactive", False) is False
-
 
 class TestCourse:
-    """Test Course model functionality"""
-
-    def test_create_course_schema_basic(self):
-        """Test creating a basic course schema"""
-        course = Course.create_schema(
-            course_number="ACC-201",
-            course_title="Accounting Principles",
-            department="Business",
-            institution_id="test-institution",
-        )
-
-        assert course["course_number"] == "ACC-201"
-        assert course["course_title"] == "Accounting Principles"
-        assert course["department"] == "Business"
-        assert course["institution_id"] == "test-institution"
-        assert course["credit_hours"] == 3  # Default
-        assert course["active"] is True
-        assert "course_id" in course
+    """Test Course model functionality - unique credit hours behavior."""
 
     def test_create_course_with_credit_hours(self):
         """Test creating course with custom credit hours"""
@@ -233,8 +164,6 @@ class TestCourseSection:
                 offering_id="offering-123", status="invalid_status"
             )
 
-    # Grade distribution functionality removed per requirements
-
 
 class TestCourseOutcome:
     """Test CourseOutcome model functionality"""
@@ -251,13 +180,12 @@ class TestCourseOutcome:
         assert outcome["clo_number"] == "1"
         assert outcome["description"] == "Students will demonstrate understanding of..."
         assert outcome["active"] is True
-        # New CLO assessment fields (corrected from demo feedback)
         assert outcome["students_took"] is None
         assert outcome["students_passed"] is None
         assert outcome["assessment_tool"] is None
 
     def test_update_assessment_data(self):
-        """Test updating assessment data (corrected field names from demo feedback)"""
+        """Test updating assessment data"""
         assessment = CourseOutcome.update_assessment_data(
             students_took=25,
             students_passed=22,
@@ -267,9 +195,7 @@ class TestCourseOutcome:
         assert assessment["students_took"] == 25
         assert assessment["students_passed"] == 22
         assert assessment["assessment_tool"] == "Test #3"
-        assert (
-            abs(assessment["percentage_meeting"] - 88.0) < 0.01
-        )  # Calculated field with tolerance
+        assert abs(assessment["percentage_meeting"] - 88.0) < 0.01
 
     def test_invalid_assessment_tool_length(self):
         """Test that assessment_tool exceeding 50 chars raises ValueError"""
@@ -309,24 +235,6 @@ class TestValidationFunctions:
         assert validate_term_name("2024") is False  # Missing season
         assert validate_term_name("24 Fall") is False  # Wrong year format
 
-    def test_format_and_parse_functions(self):
-        """Test format and parse utility functions."""
-        from src.adapters.cei_excel_adapter import parse_cei_term
-        from src.models.models import format_term_name
-
-        # Test format function
-        formatted = format_term_name(2024, "Fall")
-        assert isinstance(formatted, str)
-
-        # Test parse function (YEAR+SEASON format)
-        result = parse_cei_term("2024FA")
-        assert isinstance(result, tuple) and len(result) == 2
-
-    def test_validate_course_number_edge_cases(self):
-        """Test course number validation edge cases."""
-        # Current implementation accepts lowercase
-        assert validate_course_number("math-101") is True
-
 
 class TestConstants:
     """Test that constants are properly defined"""
@@ -335,14 +243,12 @@ class TestConstants:
         """Test that all roles are properly defined in new authorization system"""
         from src.services.auth_service import ROLE_PERMISSIONS, UserRole
 
-        # Test that UserRole enum contains expected roles
         role_values = [role.value for role in UserRole]
         assert "instructor" in role_values
         assert "program_admin" in role_values
         assert "institution_admin" in role_values
         assert "site_admin" in role_values
 
-        # Test that all roles have permissions defined
         for role_value in role_values:
             assert role_value in ROLE_PERMISSIONS
             assert isinstance(ROLE_PERMISSIONS[role_value], list)
@@ -357,90 +263,17 @@ class TestConstants:
         assert "completed" in ASSESSMENT_STATUSES
 
 
-class TestModelValidationFunctions:
-    """Test model validation functions."""
-
-    def test_validate_course_number_valid(self):
-        """Test validate_course_number with valid course numbers."""
-        assert validate_course_number("CS-101") is True
-        assert validate_course_number("MATH-205") is True
-        assert validate_course_number("BIO-1010") is True
-
-    def test_validate_course_number_invalid(self):
-        """Test validate_course_number with invalid course numbers."""
-        assert validate_course_number("invalid") is False
-        assert validate_course_number("CS101") is False  # Missing dash
-        assert validate_course_number("CS-") is False  # Missing number
-        assert validate_course_number("") is False  # Empty string
-        # Note: None handling would need to be added to the actual function
-
-    def test_validate_term_name_basic(self):
-        """Test validate_term_name with basic functionality."""
-        # Test what the current function actually validates
-        assert validate_term_name("2024 Fall") is True
-        assert validate_term_name("2025 Spring") is True
-        assert validate_term_name("2024 Summer") is True
-
-    def test_validate_term_name_invalid_basic(self):
-        """Test validate_term_name with invalid formats."""
-        assert validate_term_name("Invalid Term") is False
-        assert validate_term_name("Fall") is False  # Missing year
-        assert validate_term_name("2024") is False  # Missing semester
-        assert validate_term_name("") is False  # Empty string
-        # Note: None handling would need to be added to the actual function
-
-    def test_user_model_active_status_calculation(self):
-        """Test User model's active status calculation logic."""
-        from src.models.models import User
-
-        # Test various combinations of account status and sections
-        test_cases = [
-            ("active", True, True),  # Active account with sections
-            ("active", False, False),  # Active account without sections
-            ("imported", True, False),  # Imported account with sections
-            ("imported", False, False),  # Imported account without sections
-            ("inactive", True, False),  # Inactive account with sections
-            ("inactive", False, False),  # Inactive account without sections
-        ]
-
-        for account_status, has_sections, expected_active in test_cases:
-            result = User.calculate_active_status(account_status, has_sections)
-            assert (
-                result == expected_active
-            ), f"Failed for {account_status}, {has_sections}"
-
-    def test_course_section_model_comprehensive(self):
-        """Test CourseSection model with comprehensive data."""
-        section_data = CourseSection.create_schema(
-            offering_id="offering123",
-            section_number="001",
-            instructor_id="instructor123",
-            enrollment=25,  # Correct parameter name
-            status="assigned",  # Valid status from the model
-        )
-
-        # Verify all fields are present
-        assert section_data["offering_id"] == "offering123"
-        assert section_data["section_number"] == "001"
-        assert section_data["instructor_id"] == "instructor123"
-        assert section_data["enrollment"] == 25
-        assert section_data["status"] == "assigned"
-        assert "created_at" in section_data
-
-
 class TestModelValidationEdgeCases:
-    """Test model validation edge cases and comprehensive functionality."""
+    """Test model validation edge cases - comprehensive versions kept here."""
 
     def test_validate_course_number_edge_cases(self):
         """Test validate_course_number with various edge cases."""
-        # Test with different valid formats (only numeric after dash)
         valid_numbers = ["MATH-101", "ENG-200", "HIST-300", "CS-101", "PHYS-201"]
 
         for course_number in valid_numbers:
             result = validate_course_number(course_number)
             assert result is True, f"Should validate {course_number}"
 
-        # Test with invalid formats
         invalid_numbers = [
             "MATH101",  # Missing dash
             "MATH-",  # Missing number
@@ -455,14 +288,12 @@ class TestModelValidationEdgeCases:
 
     def test_validate_term_name_edge_cases(self):
         """Test validate_term_name with various edge cases."""
-        # Test with different valid formats
         valid_terms = ["2024 Fall", "2025 Spring", "2023 Summer", "2026 Winter"]
 
         for term_name in valid_terms:
             result = validate_term_name(term_name)
             assert result is True, f"Should validate {term_name}"
 
-        # Test with invalid formats
         invalid_terms = [
             "Fall 2024",  # Wrong order
             "24 Fall",  # Two-digit year
@@ -477,7 +308,6 @@ class TestModelValidationEdgeCases:
         """Test format_term_name comprehensive functionality."""
         from src.models.models import format_term_name
 
-        # Test format_term_name with year and season parameters
         result = format_term_name("2024", "Fall")
         assert result == "2024 Fall"
 
@@ -488,7 +318,6 @@ class TestModelValidationEdgeCases:
         """Test parse_cei_term comprehensive functionality."""
         from src.adapters.cei_excel_adapter import parse_cei_term
 
-        # Test valid CEI term formats (YEAR+SEASON)
         valid_terms = ["2024FA", "2025SP", "2023SU", "2026WI"]
 
         expected_results = [
@@ -502,63 +331,6 @@ class TestModelValidationEdgeCases:
             result = parse_cei_term(cei_term)
             assert result == expected, f"Expected {expected}, got {result}"
 
-    def test_user_model_comprehensive_functionality(self):
-        """Test comprehensive User model functionality."""
-        # Test User.calculate_active_status with various combinations
-        # Logic: active status requires BOTH account_status == "active" AND has_active_courses == True
-        test_cases = [
-            ("active", True, True),  # Active account with sections - TRUE
-            ("active", False, False),  # Active account without sections - FALSE
-            ("imported", True, False),  # Imported account with sections - FALSE
-            ("imported", False, False),  # Imported account without sections - FALSE
-            ("invited", True, False),  # Invited account with sections - FALSE
-            ("invited", False, False),  # Invited account without sections - FALSE
-        ]
-
-        for account_status, has_sections, expected_active in test_cases:
-            result = User.calculate_active_status(account_status, has_sections)
-            assert (
-                result == expected_active
-            ), f"Failed for {account_status}, {has_sections}"
-
-    def test_course_section_model_comprehensive_functionality(self):
-        """Test comprehensive CourseSection model functionality."""
-        # Test with various valid data combinations
-        test_data_sets = [
-            {
-                "offering_id": "offering1",
-                "section_number": "001",
-                "instructor_id": "instructor1",
-                "enrollment": 25,
-                "status": "assigned",
-            },
-            {
-                "offering_id": "offering2",
-                "section_number": "002",
-                "instructor_id": "instructor2",
-                "enrollment": 30,
-                "status": "in_progress",
-            },
-            {
-                "offering_id": "offering3",
-                "section_number": "003",
-                "instructor_id": "instructor3",
-                "enrollment": 15,
-                "status": "completed",
-            },
-        ]
-
-        for data in test_data_sets:
-            schema = CourseSection.create_schema(**data)
-
-            # Should create valid schema
-            assert isinstance(schema, dict)
-            assert schema["offering_id"] == data["offering_id"]
-            assert schema["section_number"] == data["section_number"]
-            assert schema["instructor_id"] == data["instructor_id"]
-            assert schema["enrollment"] == data["enrollment"]
-            assert schema["status"] == data["status"]
-
 
 class TestCourseOfferingAdditional:
     """Test CourseOffering model additional functionality."""
@@ -571,7 +343,6 @@ class TestCourseOfferingAdditional:
             course_id="course123", term_id="term456", institution_id="inst789"
         )
 
-        # This should cover the return statement on line 515
         assert schema["course_id"] == "course123"
         assert schema["term_id"] == "term456"
         assert schema["institution_id"] == "inst789"
@@ -583,10 +354,9 @@ class TestCourseOutcomeAdditional:
     """Test CourseOutcome model additional functionality."""
 
     def test_update_assessment_data_percentage_calculation(self):
-        """Test automatic percentage calculation in assessment data update (corrected field names)."""
+        """Test automatic percentage calculation in assessment data update."""
         from src.models.models import CourseOutcome
 
-        # Test the specific case where percentage is calculated automatically
         updated_data = CourseOutcome.update_assessment_data(
             students_took=30, students_passed=24
         )

@@ -1427,12 +1427,6 @@ class TestCourseEndpoints:
     def _login_user(self, overrides=None):
         return self._login_site_admin(overrides)
 
-    def _login_user(self, overrides=None):
-        return self._login_site_admin(overrides)
-
-    def _login_user(self, overrides=None):
-        return self._login_site_admin(overrides)
-
     @patch("src.api_routes.get_all_courses")
     def test_get_courses_endpoint_exists(self, mock_get_all_courses):
         """Test that GET /api/courses endpoint exists and returns valid JSON."""
