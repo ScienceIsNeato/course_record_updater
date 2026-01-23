@@ -1052,6 +1052,22 @@ for r in d.get('results',[])[:5]:
                 echo "FAIL" > "$SECRETS_OUT"
                 echo "  ❌ detect-secrets: Secrets found!" >> "$SECRETS_OUT"
                 echo "$SECRETS_OUTPUT" >> "$SECRETS_OUT"
+                echo "" >> "$SECRETS_OUT"
+                # Provide contextual guidance based on the output
+                if echo "$SECRETS_OUTPUT" | grep -q 'baseline.*unstaged'; then
+                    echo "  📋 Baseline file needs to be staged" >> "$SECRETS_OUT"
+                    echo "  💡 The baseline was regenerated. Stage it with:" >> "$SECRETS_OUT"
+                    echo "     git add .secrets.baseline" >> "$SECRETS_OUT"
+                elif echo "$SECRETS_OUTPUT" | grep -qE 'src/utils/constants\.py'; then
+                    echo "  📋 Secrets found in constants.py (allowed location)" >> "$SECRETS_OUT"
+                    echo "  💡 You added a new password constant. Regenerate the baseline:" >> "$SECRETS_OUT"
+                    echo "     detect-secrets scan > .secrets.baseline" >> "$SECRETS_OUT"
+                    echo "     git add .secrets.baseline" >> "$SECRETS_OUT"
+                else
+                    echo "  ⚠️  Secrets found outside allowed locations!" >> "$SECRETS_OUT"
+                    echo "  💡 Move hardcoded passwords to src/utils/constants.py and import from there." >> "$SECRETS_OUT"
+                    echo "     See SECURITY.md for password handling policy." >> "$SECRETS_OUT"
+                fi
             fi
         else
             echo "FAIL" > "$SECRETS_OUT"

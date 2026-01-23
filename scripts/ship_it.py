@@ -39,6 +39,63 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, List, Optional, Sequence, Tuple
 
+# =============================================================================
+# Subprocess Wrappers
+# =============================================================================
+# These wrappers consolidate the nosec annotations for subprocess calls.
+# All subprocess invocations in this script use controlled, hardcoded commands
+# (not user input), so B603/B607 warnings are false positives.
+# See SECURITY.md for the security policy on subprocess usage in scripts.
+# =============================================================================
+
+
+def run_subprocess(
+    cmd: List[str],
+    capture_output: bool = True,
+    text: bool = True,
+    check: bool = False,
+    cwd: Optional[str] = None,
+    timeout: Optional[float] = None,
+    env: Optional[dict] = None,
+) -> subprocess.CompletedProcess:
+    """Run a subprocess with security annotations.
+
+    All commands executed through this wrapper are hardcoded in the script,
+    not derived from user input, making B603/B607 false positives.
+    """
+    return subprocess.run(  # nosec B603,B607
+        cmd,
+        capture_output=capture_output,
+        text=text,
+        check=check,
+        cwd=cwd,
+        timeout=timeout,
+        env=env,
+    )
+
+
+def start_subprocess(
+    cmd: List[str],
+    stdout: Any = subprocess.PIPE,
+    stderr: Any = subprocess.STDOUT,
+    text: bool = True,
+    cwd: Optional[str] = None,
+    env: Optional[dict] = None,
+) -> subprocess.Popen:
+    """Start a subprocess (non-blocking) with security annotations.
+
+    All commands executed through this wrapper are hardcoded in the script,
+    not derived from user input, making B603/B607 false positives.
+    """
+    return subprocess.Popen(  # nosec B603,B607
+        cmd,
+        stdout=stdout,
+        stderr=stderr,
+        text=text,
+        cwd=cwd,
+        env=env,
+    )
+
 
 @dataclass
 class CheckDef:
@@ -238,11 +295,9 @@ class QualityGateExecutor:
         try:
             # First check if radon is installed
             try:
-                subprocess.run(  # nosec B603,B607
+                run_subprocess(
                     ["radon", "--version"],
-                    capture_output=True,
                     check=True,
-                    text=True,
                 )
             except (subprocess.CalledProcessError, FileNotFoundError):
                 return CheckResult(
@@ -266,10 +321,8 @@ class QualityGateExecutor:
             ]
             radon_cmd_display = "radon cc --min D -s -a --md src tests scripts"
 
-            radon_result = subprocess.run(  # nosec B603,B607
+            radon_result = run_subprocess(
                 radon_cmd,
-                capture_output=True,
-                text=True,
                 cwd=self.project_root,
             )
 
@@ -360,7 +413,7 @@ class QualityGateExecutor:
         """
         start_time = time.time()
         try:
-            result = subprocess.run(  # nosec B603,B607
+            result = run_subprocess(
                 [
                     sys.executable,
                     "-m",
@@ -369,8 +422,6 @@ class QualityGateExecutor:
                     "-v",
                     "--tb=short",
                 ],
-                capture_output=True,
-                text=True,
                 cwd=self.project_root,
                 timeout=30,
             )
@@ -510,18 +561,14 @@ class QualityGateExecutor:
     def _get_git_diff_output(self) -> str:
         base_candidates = ["origin/main", "main", "master"]
         for base in base_candidates:
-            result = subprocess.run(  # nosec B603,B607
+            result = run_subprocess(
                 ["git", "diff", "--unified=0", base],
-                capture_output=True,
-                text=True,
             )
             if result.returncode == 0:
                 return result.stdout
 
-        fallback = subprocess.run(  # nosec B603,B607
+        fallback = run_subprocess(
             ["git", "diff", "--unified=0", "HEAD~1"],
-            capture_output=True,
-            text=True,
         )
         return fallback.stdout if fallback.returncode == 0 else ""
 
@@ -631,9 +678,7 @@ class QualityGateExecutor:
 
         added_lines = self._get_git_added_lines()
         if not added_lines:
-            report_lines.append(
-                "⚠️ No added lines detected to analyze for this commit."
-            )
+            report_lines.append("⚠️ No added lines detected to analyze for this commit.")
             return report_lines
 
         blocks = self._get_js_uncovered_new_blocks(added_lines)
@@ -724,17 +769,17 @@ class QualityGateExecutor:
             # Normal mode: Capture for formatted output
             if verbose:
                 # Stream directly - no buffering, real-time output
-                process = subprocess.Popen(  # nosec
+                process = start_subprocess(
                     cmd,
-                    text=True,
+                    stdout=None,
+                    stderr=None,
                 )
             else:
                 # Capture for formatted summary
-                process = subprocess.Popen(  # nosec
+                process = start_subprocess(
                     cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    text=True,
                 )
 
             self._register_process(process)
@@ -890,11 +935,10 @@ class QualityGateExecutor:
             # Start server in background
             # Note: restart_server.sh starts the Flask server in background and exits immediately
             # This is CORRECT behavior - we wait for the port to respond, not for the script to finish
-            process = subprocess.Popen(  # nosec
+            process = start_subprocess(
                 ["bash", "scripts/restart_server.sh", server_env],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True,
             )
 
             # Wait for server to be ready (max 30 seconds)
@@ -1453,17 +1497,14 @@ def _get_pr_context() -> Tuple[Optional[int], Optional[str], Optional[str]]:
         Tuple of (pr_number, owner, name) or (None, None, None) if not in PR context
     """
     import json
-    import subprocess  # nosec
 
     # Detect current PR number from branch or environment
     pr_number = os.getenv("PR_NUMBER")
     if not pr_number:
         # Try to get from current branch if we're in a PR
         try:
-            result = subprocess.run(  # nosec
+            result = run_subprocess(
                 ["gh", "pr", "view", "--json", "number,url,title"],
-                capture_output=True,
-                text=True,
                 check=True,
             )
             pr_data = json.loads(result.stdout)
@@ -1477,10 +1518,8 @@ def _get_pr_context() -> Tuple[Optional[int], Optional[str], Optional[str]]:
 
     # Get repository info
     try:
-        repo_result = subprocess.run(  # nosec
+        repo_result = run_subprocess(
             ["gh", "repo", "view", "--json", "owner,name"],
-            capture_output=True,
-            text=True,
             check=True,
         )
         repo_data = json.loads(repo_result.stdout)
@@ -1550,7 +1589,6 @@ def resolve_review_thread(thread_id: str) -> bool:
     """
     try:
         import json
-        import subprocess  # nosec
 
         pr_number, owner, name = _get_pr_context()
         if not pr_number:
@@ -1568,7 +1606,7 @@ def resolve_review_thread(thread_id: str) -> bool:
         }
         """
 
-        result = subprocess.run(  # nosec
+        result = run_subprocess(
             [
                 "gh",
                 "api",
@@ -1584,8 +1622,6 @@ def resolve_review_thread(thread_id: str) -> bool:
                 "-f",
                 f"threadId={thread_id}",
             ],
-            capture_output=True,
-            text=True,
             check=False,
         )
 
@@ -1626,7 +1662,6 @@ def reply_to_pr_comment(
     """
     try:
         import json
-        import subprocess  # nosec
 
         pr_number, owner, name = _get_pr_context()
         if not pr_number:
@@ -1637,7 +1672,7 @@ def reply_to_pr_comment(
             comment = {"body": body}
 
             # Use GitHub CLI to post the comment
-            result = subprocess.run(  # nosec B603,B607
+            result = run_subprocess(
                 [
                     "gh",
                     "api",
@@ -1649,8 +1684,6 @@ def reply_to_pr_comment(
                     "-f",
                     f"body={comment['body']}",
                 ],
-                capture_output=True,
-                text=True,
                 check=True,
             )
 
@@ -1676,7 +1709,6 @@ def check_pr_comments() -> Tuple[List[Any], List[Any]]:
     """
     try:
         import json
-        import subprocess  # nosec
 
         pr_number, owner, name = _get_pr_context()
         if not pr_number:
@@ -1724,7 +1756,7 @@ def check_pr_comments() -> Tuple[List[Any], List[Any]]:
         """
 
         # Execute GraphQL query
-        result = subprocess.run(  # nosec
+        result = run_subprocess(
             [
                 "gh",
                 "api",
@@ -1738,8 +1770,6 @@ def check_pr_comments() -> Tuple[List[Any], List[Any]]:
                 "-f",
                 f"query={graphql_query}",
             ],
-            capture_output=True,
-            text=True,
             check=True,
         )
 
@@ -1844,10 +1874,9 @@ def _get_ci_status_from_rollup(
     """Try to get CI status from GitHub statusCheckRollup."""
     try:
         import json
-        import subprocess  # nosec
 
         # Use statusCheckRollup first - it gives us individual job/check names
-        result = subprocess.run(  # nosec
+        result = run_subprocess(
             [
                 "gh",
                 "pr",
@@ -1856,8 +1885,6 @@ def _get_ci_status_from_rollup(
                 "--json",
                 "statusCheckRollup",
             ],
-            capture_output=True,
-            text=True,
             check=False,
         )
 
@@ -1884,10 +1911,9 @@ def _get_ci_status_from_rollup(
 def _get_ci_status_fallback(pr_number: int, owner: str, name: str) -> Optional[Any]:
     """Fallback to workflow runs API if rollup fails."""
     import json
-    import subprocess  # nosec
 
     # Fallback to workflow runs API (less detailed, but better than nothing)
-    result = subprocess.run(  # nosec
+    result = run_subprocess(
         [
             "gh",
             "api",
@@ -1895,8 +1921,6 @@ def _get_ci_status_fallback(pr_number: int, owner: str, name: str) -> Optional[A
             "--jq",
             f".workflow_runs[] | select(.pull_requests[]?.number == {pr_number}) | {{id, name, status, conclusion, created_at, html_url}}",
         ],
-        capture_output=True,
-        text=True,
         check=False,
     )
 
@@ -1990,13 +2014,9 @@ def check_ci_status() -> Optional[Any]:
 
 def _get_current_commit_sha() -> Optional[str]:
     """Get the current git commit SHA."""
-    import subprocess  # nosec
-
     try:
-        result = subprocess.run(  # nosec
+        result = run_subprocess(
             ["git", "rev-parse", "HEAD"],
-            capture_output=True,
-            text=True,
             check=True,
         )
         return result.stdout.strip()
@@ -2737,8 +2757,8 @@ Fail-fast is enabled by default - use --no-fail-fast to run all checks.
             print(
                 "Running integration tests directly via pytest: ", " ".join(pytest_cmd)
             )
-            result = subprocess.run(
-                pytest_cmd, cwd=os.path.dirname(os.path.dirname(__file__))
+            result = run_subprocess(
+                pytest_cmd, cwd=os.path.dirname(os.path.dirname(__file__)), check=False
             )
             return result.returncode
 
