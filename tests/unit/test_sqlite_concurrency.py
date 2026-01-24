@@ -64,8 +64,6 @@ class TestSQLiteConcurrency:
                 for _ in range(5):
                     db.get_all_institutions()
                     db.get_users_by_role("instructor")
-                    # Small delay to simulate processing
-                    time.sleep(0.001)
                 results.append(True)
             except Exception as e:
                 errors.append(e)
@@ -149,7 +147,6 @@ class TestSQLiteConcurrency:
             try:
                 for _ in range(3):
                     db.get_all_institutions()
-                    time.sleep(0.001)
                 read_results.append(True)
             except Exception as e:
                 errors.append(e)

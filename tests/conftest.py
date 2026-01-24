@@ -119,17 +119,22 @@ def ensure_test_database(tmp_path_factory):
 
 @pytest.fixture(autouse=True)
 def clean_database_between_tests():
-    """Reset database after each test to guarantee isolation.
+    """Database cleanup placeholder - actual cleanup handled by test-type-specific conftest.
 
-    Skip for E2E tests which manage their own database state via their conftest.
-    E2E tests use course_records_e2e.db while unit tests use temporary databases.
+    Unit tests: tests/unit/conftest.py handles fast DELETE-based cleanup.
+    E2E tests: manage their own database state via their conftest.
+
+    This global fixture is kept for backwards compatibility with integration/smoke tests.
     """
     yield
     # Skip cleanup for E2E tests - they manage their own state
     db_url = os.environ.get("DATABASE_URL", "")
     if "e2e" in db_url.lower():
-        # E2E tests - don't interfere with their database management
         return
 
-    # Unit tests - reset database for isolation
+    # For integration/smoke tests that don't have their own conftest cleanup,
+    # only reset if not already handled by unit conftest
+    if os.environ.get("_UNIT_TEST_CLEANUP_ACTIVE"):
+        return
+
     database_service.reset_database()

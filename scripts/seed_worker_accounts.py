@@ -32,7 +32,12 @@ import src.database.database_service as database_service
 import src.database.database_service as db
 from src.models.models import User
 from src.services.password_service import hash_password
-from src.utils.constants import SITE_ADMIN_INSTITUTION_ID
+from src.utils.constants import (
+    INSTITUTION_ADMIN_PASSWORD,
+    SITE_ADMIN_INSTITUTION_ID,
+    SITE_ADMIN_PASSWORD,
+    TEST_USER_PASSWORD,
+)
 
 # Import E2E test data contract
 from tests.e2e.e2e_test_data_contract import (
@@ -82,7 +87,7 @@ def _get_base_accounts() -> List[Dict[str, str]]:
         # Site admins
         {
             "email": "siteadmin@system.local",
-            "password": "SiteAdmin123!",
+            "password": SITE_ADMIN_PASSWORD,
             "first_name": "System",
             "last_name": "Administrator",
             "role": "site_admin",
@@ -92,7 +97,7 @@ def _get_base_accounts() -> List[Dict[str, str]]:
         # Institution admins (MockU)
         {
             "email": "sarah.admin@mocku.test",
-            "password": "InstitutionAdmin123!",
+            "password": INSTITUTION_ADMIN_PASSWORD,
             "first_name": "Sarah",
             "last_name": "Johnson",
             "role": "institution_admin",
@@ -102,7 +107,7 @@ def _get_base_accounts() -> List[Dict[str, str]]:
         # Program admins (MockU)
         {
             "email": "lisa.prog@mocku.test",
-            "password": "TestUser123!",
+            "password": TEST_USER_PASSWORD,
             "first_name": "Lisa",
             "last_name": "Wang",
             "role": "program_admin",
@@ -112,7 +117,7 @@ def _get_base_accounts() -> List[Dict[str, str]]:
         # Instructors (MockU)
         {
             "email": "john.instructor@mocku.test",
-            "password": "TestUser123!",
+            "password": TEST_USER_PASSWORD,
             "first_name": "John",
             "last_name": "Smith",
             "role": "instructor",

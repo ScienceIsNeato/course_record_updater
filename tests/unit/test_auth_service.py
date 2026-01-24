@@ -20,8 +20,6 @@ from src.services.auth_service import (
     role_required,
 )
 
-# pytest import removed
-
 
 class TestAuthService:
     """Test the AuthService class."""

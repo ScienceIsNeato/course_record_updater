@@ -11,8 +11,17 @@ Provides utilities for:
 
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional
+
+# Add src to path for constants import
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+from utils.constants import (  # noqa: E402
+    INSTITUTION_ADMIN_PASSWORD,
+    SITE_ADMIN_PASSWORD,
+    TEST_USER_PASSWORD,
+)
 
 
 class ExplorationTracker:
@@ -99,19 +108,19 @@ def validate_test_accounts() -> Dict[str, bool]:
     accounts = {
         "site_admin": {
             "email": "siteadmin@system.local",
-            "password": "SiteAdmin123!",
+            "password": SITE_ADMIN_PASSWORD,
         },
         "institution_admin": {
             "email": "sarah.admin@mocku.test",
-            "password": "InstitutionAdmin123!",
+            "password": INSTITUTION_ADMIN_PASSWORD,
         },
         "program_admin": {
             "email": "lisa.prog@mocku.test",
-            "password": "TestUser123!",
+            "password": TEST_USER_PASSWORD,
         },
         "instructor": {
             "email": "john.instructor@mocku.test",
-            "password": "TestUser123!",
+            "password": TEST_USER_PASSWORD,
         },
     }
 

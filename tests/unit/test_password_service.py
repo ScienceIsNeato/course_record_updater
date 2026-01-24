@@ -117,11 +117,13 @@ class TestPasswordHashing:
 
         assert verify_password(password, invalid_hash) is False
 
+    @pytest.mark.slow
     def test_hash_consistency(self):
         """Test that same password produces different hashes (due to salt)
 
         NOTE: This test uses REAL bcrypt to verify actual integration.
         It's intentionally slower (~0.5s) to test the real password flow.
+        Mark with @pytest.mark.slow - skip in dev cycles with: pytest -m "not slow"
         """
         from tests.test_credentials import TEST_PASSWORD
 
