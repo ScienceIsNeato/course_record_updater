@@ -107,7 +107,7 @@ class TestUserEndpoints(CommonAuthMixin):
             "last_name": "User",
             "role": "instructor",
             "institution_id": "inst-123",  # Required for non-site_admin roles
-            "password": "TestPass123!",
+            "password": "TestPass123!",  # pragma: allowlist secret
         }
 
         # Mock database failure
@@ -141,7 +141,7 @@ class TestUserEndpoints(CommonAuthMixin):
             "last_name": "User",
             "role": "instructor",
             "institution_id": "inst-123",  # Required for non-site_admin roles
-            "password": "TestPass123!",
+            "password": "TestPass123!",  # pragma: allowlist secret
         }
 
         # Mock database exception
@@ -212,7 +212,7 @@ class TestUserEndpoints(CommonAuthMixin):
             "first_name": "New",
             "last_name": "User",
             "institution_id": "inst-123",  # Required for non-site_admin roles
-            "password": "TestPass123!",  # Provide password for immediate activation
+            "password": "TestPass123!",  # pragma: allowlist secret  # Provide password for immediate activation
         }
 
         response = self.client.post(

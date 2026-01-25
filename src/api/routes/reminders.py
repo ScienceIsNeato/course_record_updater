@@ -4,17 +4,12 @@ Reminder API routes.
 Provides endpoints for sending course-specific assessment reminders to instructors.
 """
 
-from typing import Any, Dict
-
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 
 import src.database.database_service as database_service
 from src.api.utils import get_current_user_safe
-from src.services.auth_service import (
-    login_required,
-    permission_required,
-)
+from src.services.auth_service import login_required, permission_required
 from src.utils.logging_config import get_logger
 
 # Create blueprint

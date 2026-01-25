@@ -5,8 +5,6 @@ Provides endpoints for creating, reading, updating, and deleting institutions.
 Includes both admin-only management endpoints and public registration.
 """
 
-from typing import Any, Dict
-
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 
@@ -19,10 +17,7 @@ from src.database.database_service import (
     get_institution_instructor_count,
     update_institution,
 )
-from src.services.auth_service import (
-    UserRole,
-    permission_required,
-)
+from src.services.auth_service import UserRole, permission_required
 from src.utils.constants import (
     FAILED_TO_CREATE_INSTITUTION_MSG,
     INSTITUTION_NOT_FOUND_MSG,

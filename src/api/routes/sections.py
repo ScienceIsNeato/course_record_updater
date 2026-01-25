@@ -11,11 +11,9 @@ from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 
 from src.api.utils import (
-    InstitutionContextMissingError,
     get_current_institution_id_safe,
     get_current_user_safe,
     handle_api_error,
-    resolve_institution_scope,
 )
 from src.database.database_service import (
     assign_instructor,
@@ -29,11 +27,7 @@ from src.database.database_service import (
     get_user_by_id,
     update_course_section,
 )
-from src.services.auth_service import (
-    UserRole,
-    has_permission,
-    permission_required,
-)
+from src.services.auth_service import UserRole, has_permission, permission_required
 from src.services.clo_workflow_service import CLOWorkflowService
 from src.utils.constants import (
     INSTITUTION_CONTEXT_REQUIRED_MSG,

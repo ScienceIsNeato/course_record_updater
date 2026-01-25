@@ -6,7 +6,7 @@ current user information, and system date override functionality.
 Also includes the global context validation before_app_request handler.
 """
 
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from flask import Blueprint, jsonify, request, session
 from flask.typing import ResponseReturnValue
@@ -17,10 +17,7 @@ from src.api.utils import (
     get_current_user_safe,
     handle_api_error,
 )
-from src.database.database_service import (
-    get_program_by_id,
-    update_user,
-)
+from src.database.database_service import get_program_by_id, update_user
 from src.services.auth_service import (
     UserRole,
     clear_current_program_id,

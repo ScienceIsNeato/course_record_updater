@@ -5,18 +5,11 @@ Provides endpoints for managing course learning outcomes (CLOs),
 including CRUD operations, assessment data updates, and submission workflows.
 """
 
-from typing import Any, Dict, Tuple
-
 from flask import Blueprint, jsonify, request, session
 from flask.typing import ResponseReturnValue
 
 import src.database.database_service as database_service
-from src.api.utils import (
-    get_current_institution_id_safe,
-    get_current_user_safe,
-    handle_api_error,
-    resolve_institution_scope,
-)
+from src.api.utils import get_current_institution_id_safe, handle_api_error
 from src.database.database_service import (
     delete_course_outcome,
     get_course_by_id,
@@ -35,7 +28,6 @@ from src.utils.constants import (
     COURSE_NOT_FOUND_MSG,
     NO_JSON_DATA_PROVIDED_MSG,
     OUTCOME_NOT_FOUND_MSG,
-    CLOStatus,
 )
 from src.utils.logging_config import get_logger
 

@@ -13,7 +13,7 @@ from flask import Blueprint, jsonify, request, send_file
 from werkzeug.wrappers import Response
 
 from src.api.utils import handle_api_error, resolve_institution_scope
-from src.database.database_service import get_audit_logs_filtered, get_recent_audit_logs
+from src.database.database_service import get_audit_logs_filtered
 from src.services.audit_service import AuditService, EntityType
 from src.services.auth_service import permission_required
 from src.utils.constants import TIMEZONE_UTC_SUFFIX

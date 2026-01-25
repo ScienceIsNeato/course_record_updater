@@ -11,13 +11,7 @@ from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 
 import src.database.database_service as database_service
-from src.api.utils import (
-    InstitutionContextMissingError,
-    get_current_institution_id_safe,
-    get_current_user_safe,
-    handle_api_error,
-    resolve_institution_scope,
-)
+from src.api.utils import get_current_institution_id_safe, handle_api_error
 from src.database.database_service import (
     delete_course_offering,
     get_all_course_offerings,
@@ -28,15 +22,8 @@ from src.database.database_service import (
     get_programs_by_institution,
     update_course_offering,
 )
-from src.services.auth_service import (
-    UserRole,
-    get_current_institution_id,
-    permission_required,
-)
-from src.utils.constants import (
-    COURSE_OFFERING_NOT_FOUND_MSG,
-    NO_JSON_DATA_PROVIDED_MSG,
-)
+from src.services.auth_service import get_current_institution_id, permission_required
+from src.utils.constants import COURSE_OFFERING_NOT_FOUND_MSG, NO_JSON_DATA_PROVIDED_MSG
 from src.utils.logging_config import get_logger
 from src.utils.term_utils import TERM_STATUS_ACTIVE, get_term_status
 

@@ -17,17 +17,13 @@ from typing import Any, Dict, List, Tuple
 from flask import Blueprint, jsonify, request, send_file
 from flask.typing import ResponseReturnValue
 
-import src.database.database_service as database_service
 from src.api.utils import (
     DEFAULT_EXPORT_EXTENSION,
     get_current_user_safe,
     get_mimetype_for_extension,
 )
 from src.database.database_service import get_all_institutions
-from src.services.auth_service import (
-    UserRole,
-    login_required,
-)
+from src.services.auth_service import UserRole, login_required
 from src.services.export_service import ExportConfig, create_export_service
 from src.utils.constants import USER_NOT_AUTHENTICATED_MSG
 from src.utils.logging_config import get_logger

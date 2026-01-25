@@ -26,7 +26,10 @@ class TestLoginAPI:
 
             response = client.post(
                 "/api/auth/login",
-                json={"email": "test@example.com", "password": "password123"},
+                json={
+                    "email": "test@example.com",
+                    "password": "password123",  # pragma: allowlist secret
+                },
                 headers={"X-CSRFToken": csrf_token},
             )
 
@@ -39,7 +42,10 @@ class TestLoginAPI:
 
             response = client.post(
                 "/api/auth/login",
-                json={"email": "test@example.com", "password": "password123"},
+                json={
+                    "email": "test@example.com",
+                    "password": "password123",  # pragma: allowlist secret
+                },
                 headers={"X-CSRFToken": csrf_token},
             )
 
@@ -60,7 +66,10 @@ class TestLoginAPI:
 
             response = client.post(
                 "/api/auth/login",
-                json={"email": "test@example.com", "password": "password123"},
+                json={
+                    "email": "test@example.com",
+                    "password": "password123",  # pragma: allowlist secret
+                },
                 headers={"X-CSRFToken": csrf_token},
             )
 

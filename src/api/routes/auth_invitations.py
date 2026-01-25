@@ -13,10 +13,7 @@ from src.api.utils import (
     get_current_user_safe,
     handle_api_error,
 )
-from src.services.auth_service import (
-    login_required,
-    permission_required,
-)
+from src.services.auth_service import permission_required
 from src.utils.constants import (
     INSTITUTION_CONTEXT_REQUIRED_MSG,
     INVITATION_CREATED_AND_SENT_MSG,

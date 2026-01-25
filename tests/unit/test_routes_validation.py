@@ -197,7 +197,7 @@ class TestAPIRoutesErrorHandling:
             "last_name": "User",
             "role": "instructor",
             "institution_id": "riverside-tech-institute",  # Required for non-site_admin roles
-            "password": "TestPass123!",
+            "password": "TestPass123!",  # pragma: allowlist secret
         }
 
         response = self.client.post("/api/users", json=user_data)

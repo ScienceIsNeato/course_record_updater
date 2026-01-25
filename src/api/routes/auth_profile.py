@@ -10,17 +10,12 @@ from typing import Any, Dict
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 
-from src.api.utils import get_current_user_safe, handle_api_error
 from src.database.database_service import (
     get_user_by_id,
     update_user,
     update_user_profile,
 )
-from src.services.auth_service import (
-    get_current_institution_id,
-    get_current_user,
-    login_required,
-)
+from src.services.auth_service import get_current_user, login_required
 from src.utils.constants import (
     MISSING_REQUIRED_FIELD_EMAIL_MSG,
     NO_JSON_DATA_PROVIDED_MSG,

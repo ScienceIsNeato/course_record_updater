@@ -17,18 +17,13 @@ from typing import Any, Dict, Optional, Tuple
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 
-import src.database.database_service as database_service
 from src.api.utils import (
     DEFAULT_EXPORT_EXTENSION,
     get_current_institution_id_safe,
     get_current_user_safe,
     handle_api_error,
 )
-from src.services.auth_service import (
-    UserRole,
-    login_required,
-    permission_required,
-)
+from src.services.auth_service import UserRole, login_required, permission_required
 from src.services.import_service import import_excel
 from src.utils.logging_config import get_logger
 
