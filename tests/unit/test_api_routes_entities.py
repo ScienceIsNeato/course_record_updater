@@ -23,7 +23,7 @@ class TestTermRoutes:
             "last_name": "Admin",
         }
 
-    @patch("src.api_routes.get_active_terms")
+    @patch("src.api.routes.terms.get_active_terms")
     def test_list_terms_success(self, mock_get_terms):
         """Test listing terms for an institution."""
         create_test_session(self.client, self.admin_user)
@@ -37,7 +37,7 @@ class TestTermRoutes:
         assert len(data["terms"]) == 1
         assert data["terms"][0]["name"] == "Fall 2024"
 
-    @patch("src.api_routes.create_term")
+    @patch("src.api.routes.terms.create_term")
     def test_create_term_success(self, mock_create):
         """Test creating a new term."""
         create_test_session(self.client, self.admin_user)
@@ -57,7 +57,7 @@ class TestTermRoutes:
         assert data["success"] is True
         assert data["term_id"] == "term-123"
 
-    @patch("src.api_routes.get_term_by_id")
+    @patch("src.api.routes.terms.get_term_by_id")
     def test_get_term_success(self, mock_get_term):
         """Test getting a term by ID."""
         create_test_session(self.client, self.admin_user)
@@ -74,7 +74,7 @@ class TestTermRoutes:
         assert data["success"] is True
         assert data["term"]["name"] == "Fall 2024"
 
-    @patch("src.api_routes.get_term_by_id")
+    @patch("src.api.routes.terms.get_term_by_id")
     def test_get_term_not_found_or_access_denied(self, mock_get_term):
         """Test getting term that doesn't exist or wrong institution."""
         create_test_session(self.client, self.admin_user)
@@ -89,8 +89,8 @@ class TestTermRoutes:
         response = self.client.get("/api/terms/t1")
         assert response.status_code == 404
 
-    @patch("src.api_routes.get_term_by_id")
-    @patch("src.api_routes.update_term")
+    @patch("src.api.routes.terms.get_term_by_id")
+    @patch("src.api.routes.terms.update_term")
     def test_update_term_success(self, mock_update, mock_get_term):
         """Test updating a term."""
         create_test_session(self.client, self.admin_user)
@@ -104,8 +104,8 @@ class TestTermRoutes:
         assert response.status_code == 200
         assert json.loads(response.data)["success"] is True
 
-    @patch("src.api_routes.get_term_by_id")
-    @patch("src.api_routes.delete_term")
+    @patch("src.api.routes.terms.get_term_by_id")
+    @patch("src.api.routes.terms.delete_term")
     def test_delete_term_success(self, mock_delete, mock_get_term):
         """Test deleting a term."""
         create_test_session(self.client, self.admin_user)
@@ -140,7 +140,7 @@ class TestProgramRoutes:
             "last_name": "Admin",
         }
 
-    @patch("src.api_routes.get_programs_by_institution")
+    @patch("src.api.routes.programs.get_programs_by_institution")
     def test_list_programs_success(self, mock_get_programs):
         """Test listing programs."""
         create_test_session(self.client, self.admin_user)
@@ -155,7 +155,7 @@ class TestProgramRoutes:
         assert data["success"] is True
         assert len(data["programs"]) == 1
 
-    @patch("src.api_routes.create_program")
+    @patch("src.api.routes.programs.create_program")
     def test_create_program_success(self, mock_create):
         """Test creating a program."""
         create_test_session(self.client, self.admin_user)
@@ -169,7 +169,7 @@ class TestProgramRoutes:
         assert data["success"] is True
         assert data["program_id"] == "prog-123"
 
-    @patch("src.api_routes.get_program_by_id")
+    @patch("src.api.routes.programs.get_program_by_id")
     def test_get_program_success(self, mock_get_program):
         """Test getting a program."""
         user = self.admin_user.copy()
@@ -182,8 +182,8 @@ class TestProgramRoutes:
         assert response.status_code == 200
         assert json.loads(response.data)["program"]["name"] == "Physics"
 
-    @patch("src.api_routes.get_program_by_id")
-    @patch("src.api_routes.update_program")
+    @patch("src.api.routes.programs.get_program_by_id")
+    @patch("src.api.routes.programs.update_program")
     def test_update_program_success(self, mock_update, mock_get_program):
         """Test updating a program."""
         create_test_session(self.client, self.admin_user)
@@ -197,9 +197,9 @@ class TestProgramRoutes:
         assert response.status_code == 200
         assert json.loads(response.data)["success"] is True
 
-    @patch("src.api_routes.get_program_by_id")
-    @patch("src.api_routes.delete_program")
-    @patch("src.api_routes.get_programs_by_institution")
+    @patch("src.api.routes.programs.get_program_by_id")
+    @patch("src.api.routes.programs.delete_program")
+    @patch("src.api.routes.programs.get_programs_by_institution")
     def test_delete_program_success(
         self, mock_get_programs, mock_delete, mock_get_prog
     ):
