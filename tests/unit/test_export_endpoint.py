@@ -25,7 +25,7 @@ class TestExportEndpoint:
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("src.api_routes.create_export_service")
+    @patch("src.api.routes.exports.create_export_service")
     def test_export_with_authentication(
         self, mock_create_service, authenticated_client
     ):
@@ -63,7 +63,7 @@ class TestExportEndpoint:
         # Should succeed
         assert response.status_code == 200
 
-    @patch("src.api_routes.create_export_service")
+    @patch("src.api.routes.exports.create_export_service")
     def test_export_sanitizes_path_traversal(
         self, mock_create_service, authenticated_client
     ):
@@ -110,7 +110,7 @@ class TestExportEndpoint:
             # Cleanup
             Path(temp_path).unlink(missing_ok=True)
 
-    @patch("src.api_routes.create_export_service")
+    @patch("src.api.routes.exports.create_export_service")
     def test_export_handles_failure(self, mock_create_service, authenticated_client):
         """Export should handle service failures gracefully"""
         # Mock adapter to return supported formats
@@ -141,7 +141,7 @@ class TestExportEndpoint:
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("src.api_routes.create_export_service")
+    @patch("src.api.routes.exports.create_export_service")
     def test_export_with_parameters(self, mock_create_service, authenticated_client):
         """Export should accept and use optional parameters"""
 
@@ -188,8 +188,8 @@ class TestExportEndpoint:
         # Verify export was called
         assert mock_service.export_data.called
 
-    @patch("src.api_routes.get_all_institutions")
-    @patch("src.api_routes.create_export_service")
+    @patch("src.api.routes.exports.get_all_institutions")
+    @patch("src.api.routes.exports.create_export_service")
     def test_site_admin_export_all_institutions(
         self, mock_create_service, mock_get_institutions, client
     ):
@@ -245,8 +245,8 @@ class TestExportEndpoint:
         assert response.status_code == 200
         assert response.content_type == "application/zip"
 
-    @patch("src.api_routes.get_all_institutions")
-    @patch("src.api_routes.create_export_service")
+    @patch("src.api.routes.exports.get_all_institutions")
+    @patch("src.api.routes.exports.create_export_service")
     def test_site_admin_export_no_institutions(
         self, mock_create_service, mock_get_institutions, client
     ):
@@ -288,7 +288,7 @@ class TestExportEndpoint:
         assert data["success"] is False
         assert "no institutions" in data["error"].lower()
 
-    @patch("src.api_routes.create_export_service")
+    @patch("src.api.routes.exports.create_export_service")
     def test_export_handles_exception(self, mock_create_service, authenticated_client):
         """Export should handle unexpected exceptions"""
         # Mock adapter to return supported formats
@@ -315,24 +315,26 @@ class TestExportEndpoint:
         assert data["success"] is False
         assert "error" in data
 
-    @patch("src.api_routes.get_current_user")
-    def test_export_missing_institution_context(self, mock_get_user, client):
+    @patch("src.api.routes.exports.get_current_user_safe")
+    def test_export_missing_institution_context(
+        self, mock_get_user, authenticated_client
+    ):
         """Export should fail when user has no institution context"""
-        # Mock user without institution_id
+        # Mock user without institution_id (must be authenticated to pass @login_required)
         mock_get_user.return_value = {
             "email": "test@example.com",
             "institution_id": None,
         }
 
-        response = client.get("/api/export/data")
+        response = authenticated_client.get("/api/export/data")
 
         # Should return 400 error
         assert response.status_code == 400
         data = response.get_json()
         assert data["success"] is False
-        assert "Institution context" in data["error"]
+        assert "institution context" in data["error"].lower()
 
-    @patch("src.api_routes.create_export_service")
+    @patch("src.api.routes.exports.create_export_service")
     def test_export_adapter_not_found(self, mock_create_service, authenticated_client):
         """Export should fail gracefully when adapter is not found"""
         # Mock registry returning None for adapter
@@ -353,7 +355,7 @@ class TestExportEndpoint:
         assert data["success"] is False
         assert "Adapter not found" in data["error"]
 
-    @patch("src.api_routes.create_export_service")
+    @patch("src.api.routes.exports.create_export_service")
     def test_export_adapter_exception_fallback(
         self, mock_create_service, authenticated_client
     ):
@@ -387,7 +389,7 @@ class TestExportEndpoint:
         # Should still succeed with fallback to .xlsx
         assert response.status_code == 200
 
-    @patch("src.api_routes.create_export_service")
+    @patch("src.api.routes.exports.create_export_service")
     def test_export_sanitizes_empty_data_type(
         self, mock_create_service, authenticated_client
     ):

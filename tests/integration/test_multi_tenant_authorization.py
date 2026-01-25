@@ -44,10 +44,10 @@ class TestInstitutionDataIsolation:
                     mock_has_perm.return_value = True
 
                     # Test accessing own institution's programs
-                    from src.api_routes import list_programs
+                    from src.api.routes.programs import list_programs
 
                     with patch(
-                        "src.api_routes.get_programs_by_institution"
+                        "src.api.routes.programs.get_programs_by_institution"
                     ) as mock_get_programs:
                         mock_get_programs.return_value = [
                             {
@@ -58,10 +58,12 @@ class TestInstitutionDataIsolation:
                         ]
 
                         with patch(
-                            "src.api_routes.get_current_institution_id"
+                            "src.api.routes.programs.get_current_institution_id_safe"
                         ) as mock_inst_id:
                             mock_inst_id.return_value = "institution-a"
-                            with patch("src.api_routes.jsonify") as mock_jsonify:
+                            with patch(
+                                "src.api.routes.programs.jsonify"
+                            ) as mock_jsonify:
                                 mock_jsonify.return_value = MagicMock()
 
                                 _ = list_programs()
@@ -94,9 +96,11 @@ class TestInstitutionDataIsolation:
                     mock_has_perm.return_value = True
 
                     # Test accessing courses - should be filtered by institution
-                    from src.api_routes import list_courses
+                    from src.api.routes.courses import list_courses
 
-                    with patch("src.api_routes.get_all_courses") as mock_get_courses:
+                    with patch(
+                        "src.api.routes.courses.get_all_courses"
+                    ) as mock_get_courses:
                         # Mock courses from multiple institutions
                         mock_get_courses.return_value = [
                             {
@@ -112,10 +116,12 @@ class TestInstitutionDataIsolation:
                         ]
 
                         with patch(
-                            "src.api_routes.get_current_institution_id"
+                            "src.api.routes.courses.get_current_institution_id_safe"
                         ) as mock_inst_id:
                             mock_inst_id.return_value = "institution-a"
-                            with patch("src.api_routes.jsonify") as mock_jsonify:
+                            with patch(
+                                "src.api.routes.courses.jsonify"
+                            ) as mock_jsonify:
                                 mock_jsonify.return_value = MagicMock()
 
                                 _ = list_courses()
@@ -146,10 +152,10 @@ class TestInstitutionDataIsolation:
                     mock_has_perm.return_value = True
 
                     # Test accessing sections - instructors get filtered by instructor_id
-                    from src.api_routes import list_sections
+                    from src.api.routes.sections import list_sections
 
                     with patch(
-                        "src.api_routes.get_sections_by_instructor"
+                        "src.api.routes.sections.get_sections_by_instructor"
                     ) as mock_get_sections:
                         mock_get_sections.return_value = [
                             {
@@ -160,10 +166,12 @@ class TestInstitutionDataIsolation:
                         ]
 
                         with patch(
-                            "src.api_routes.get_current_institution_id"
+                            "src.api.routes.sections.get_current_institution_id_safe"
                         ) as mock_inst_id:
                             mock_inst_id.return_value = "institution-a"
-                            with patch("src.api_routes.jsonify") as mock_jsonify:
+                            with patch(
+                                "src.api.routes.sections.jsonify"
+                            ) as mock_jsonify:
                                 mock_jsonify.return_value = MagicMock()
 
                                 _ = list_sections()

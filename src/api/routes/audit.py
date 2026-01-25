@@ -12,7 +12,8 @@ from typing import Any, Union
 from flask import Blueprint, jsonify, request, send_file
 from werkzeug.wrappers import Response
 
-from src.api.utils import handle_api_error
+from src.api.utils import handle_api_error, resolve_institution_scope
+from src.database.database_service import get_audit_logs_filtered, get_recent_audit_logs
 from src.services.audit_service import AuditService, EntityType
 from src.services.auth_service import permission_required
 from src.utils.constants import TIMEZONE_UTC_SUFFIX
@@ -330,3 +331,46 @@ def export_logs() -> Union[Response, tuple[Any, int]]:
 
     except Exception as e:
         return handle_api_error(e, "Export audit logs", "Failed to export audit logs")
+
+
+@audit_bp.route("/search", methods=["GET"])
+@permission_required("manage_institution_users")
+def search_audit_logs_endpoint() -> tuple[Any, int]:
+    """
+    Search and filter audit logs (institution-scoped).
+
+    Query Params:
+        start_date (str): Start date (YYYY-MM-DD)
+        end_date (str): End date (YYYY-MM-DD)
+        entity_type (str): Filter by entity type (optional)
+        limit (int): Number of logs to return (default: 100)
+
+    Returns:
+        200: { success: true, logs: [...] }
+        403: Permission denied
+    """
+    try:
+        _user, institution_ids, is_global = resolve_institution_scope()
+        institution_id = institution_ids[0] if institution_ids else None
+
+        if not institution_id and not is_global:
+            return (
+                jsonify({"success": False, "error": "Institution context required"}),
+                400,
+            )
+
+        start_date = request.args.get("start_date")
+        end_date = request.args.get("end_date")
+        entity_type = request.args.get("entity_type")
+
+        logs = get_audit_logs_filtered(
+            start_date=start_date,
+            end_date=end_date,
+            entity_type=entity_type,
+            institution_id=institution_id,
+        )
+
+        return jsonify({"success": True, "logs": logs}), 200
+
+    except Exception as e:
+        return handle_api_error(e, "Search audit logs", "Failed to search audit logs")

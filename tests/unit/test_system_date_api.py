@@ -24,7 +24,9 @@ class TestSystemDateEndpoints:
             "system_date_override": override_date,
         }
 
-        mocker.patch("src.api_routes.get_current_user", return_value=mock_user)
+        mocker.patch(
+            "src.api.routes.context.get_current_user_safe", return_value=mock_user
+        )
 
         response = client.get("/api/profile/system-date")
         assert response.status_code == 200
@@ -42,7 +44,9 @@ class TestSystemDateEndpoints:
             "system_date_override": None,
         }
 
-        mocker.patch("src.api_routes.get_current_user", return_value=mock_user)
+        mocker.patch(
+            "src.api.routes.context.get_current_user_safe", return_value=mock_user
+        )
 
         response = client.get("/api/profile/system-date")
         assert response.status_code == 200
@@ -60,14 +64,16 @@ class TestSystemDateEndpoints:
             "system_date_override": None,
         }
 
-        mocker.patch("src.api_routes.get_current_user", return_value=mock_user)
+        mocker.patch(
+            "src.api.routes.context.get_current_user_safe", return_value=mock_user
+        )
 
         response = client.get("/api/profile/system-date")
         assert response.status_code == 403
 
     def test_get_system_date_requires_authentication(self, client, mocker):
         """GET returns 401 when not authenticated."""
-        mocker.patch("src.api_routes.get_current_user", return_value=None)
+        mocker.patch("src.api.routes.context.get_current_user_safe", return_value=None)
 
         response = client.get("/api/profile/system-date")
         assert response.status_code == 401
@@ -86,8 +92,12 @@ class TestSystemDateEndpoints:
             "system_date_override": None,
         }
 
-        mocker.patch("src.api_routes.get_current_user", return_value=mock_user)
-        mock_update = mocker.patch("src.api_routes.update_user", return_value=True)
+        mocker.patch(
+            "src.api.routes.context.get_current_user_safe", return_value=mock_user
+        )
+        mock_update = mocker.patch(
+            "src.api.routes.context.update_user", return_value=True
+        )
 
         response = client.post(
             "/api/profile/system-date",
@@ -110,7 +120,9 @@ class TestSystemDateEndpoints:
             "system_date_override": None,
         }
 
-        mocker.patch("src.api_routes.get_current_user", return_value=mock_user)
+        mocker.patch(
+            "src.api.routes.context.get_current_user_safe", return_value=mock_user
+        )
 
         response = client.post(
             "/api/profile/system-date",
@@ -128,7 +140,9 @@ class TestSystemDateEndpoints:
             "system_date_override": None,
         }
 
-        mocker.patch("src.api_routes.get_current_user", return_value=mock_user)
+        mocker.patch(
+            "src.api.routes.context.get_current_user_safe", return_value=mock_user
+        )
 
         response = client.post(
             "/api/profile/system-date",
@@ -151,8 +165,12 @@ class TestSystemDateEndpoints:
             "system_date_override": override_date,
         }
 
-        mocker.patch("src.api_routes.get_current_user", return_value=mock_user)
-        mock_update = mocker.patch("src.api_routes.update_user", return_value=True)
+        mocker.patch(
+            "src.api.routes.context.get_current_user_safe", return_value=mock_user
+        )
+        mock_update = mocker.patch(
+            "src.api.routes.context.update_user", return_value=True
+        )
 
         response = client.delete("/api/profile/system-date")
 
@@ -172,7 +190,9 @@ class TestSystemDateEndpoints:
             "system_date_override": None,
         }
 
-        mocker.patch("src.api_routes.get_current_user", return_value=mock_user)
+        mocker.patch(
+            "src.api.routes.context.get_current_user_safe", return_value=mock_user
+        )
 
         response = client.delete("/api/profile/system-date")
         assert response.status_code == 403

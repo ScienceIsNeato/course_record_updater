@@ -35,8 +35,10 @@ class TestDemoFilePathSecurity:
     def test_path_traversal_with_double_dots_blocked(self, auth_session):
         """Path with .. should be rejected."""
         with (
-            patch("src.api_routes.get_current_user") as mock_user,
-            patch("src.api_routes.get_current_institution_id") as mock_inst,
+            patch("src.api.routes.imports.get_current_user_safe") as mock_user,
+            patch(
+                "src.api.routes.imports.get_current_institution_id_safe"
+            ) as mock_inst,
         ):
             mock_user.return_value = {"user_id": "test", "role": "institution_admin"}
             mock_inst.return_value = "inst-123"
@@ -53,8 +55,10 @@ class TestDemoFilePathSecurity:
     def test_path_traversal_with_absolute_path_blocked(self, auth_session):
         """Absolute paths should be rejected."""
         with (
-            patch("src.api_routes.get_current_user") as mock_user,
-            patch("src.api_routes.get_current_institution_id") as mock_inst,
+            patch("src.api.routes.imports.get_current_user_safe") as mock_user,
+            patch(
+                "src.api.routes.imports.get_current_institution_id_safe"
+            ) as mock_inst,
         ):
             mock_user.return_value = {"user_id": "test", "role": "institution_admin"}
             mock_inst.return_value = "inst-123"
@@ -70,8 +74,10 @@ class TestDemoFilePathSecurity:
     def test_path_outside_allowed_directories_blocked(self, auth_session):
         """Paths not in allowed directories should be rejected."""
         with (
-            patch("src.api_routes.get_current_user") as mock_user,
-            patch("src.api_routes.get_current_institution_id") as mock_inst,
+            patch("src.api.routes.imports.get_current_user_safe") as mock_user,
+            patch(
+                "src.api.routes.imports.get_current_institution_id_safe"
+            ) as mock_inst,
         ):
             mock_user.return_value = {"user_id": "test", "role": "institution_admin"}
             mock_inst.return_value = "inst-123"
@@ -102,8 +108,10 @@ class TestDemoFilePathSecurity:
 
         try:
             with (
-                patch("src.api_routes.get_current_user") as mock_user,
-                patch("src.api_routes.get_current_institution_id") as mock_inst,
+                patch("src.api.routes.imports.get_current_user_safe") as mock_user,
+                patch(
+                    "src.api.routes.imports.get_current_institution_id_safe"
+                ) as mock_inst,
             ):
                 mock_user.return_value = {
                     "user_id": "test",

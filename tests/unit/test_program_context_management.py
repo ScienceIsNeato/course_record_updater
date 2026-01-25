@@ -148,15 +148,9 @@ class TestProgramContextAPI:
     @pytest.fixture
     def app(self):
         """Create Flask app for testing"""
-        app = Flask(__name__)
+        from src.app import app
+
         app.config["TESTING"] = True
-        app.config["SECRET_KEY"] = "test-secret-key"
-
-        # Register the API blueprint
-        from src.api_routes import api
-
-        app.register_blueprint(api)
-
         return app
 
     @pytest.fixture
@@ -179,9 +173,15 @@ class TestProgramContextAPI:
 
         with app.app_context():
             with (
-                patch("src.api_routes.get_current_user", return_value=mock_user),
-                patch("src.api_routes.get_current_program_id", return_value="prog-123"),
-                patch("src.api_routes.get_program_by_id") as mock_get_program,
+                patch(
+                    "src.api.routes.context.get_current_user_safe",
+                    return_value=mock_user,
+                ),
+                patch(
+                    "src.api.routes.context.get_current_program_id",
+                    return_value="prog-123",
+                ),
+                patch("src.api.routes.context.get_program_by_id") as mock_get_program,
                 patch(
                     "src.services.auth_service.get_current_user", return_value=mock_user
                 ),
@@ -215,9 +215,17 @@ class TestProgramContextAPI:
 
         with app.app_context():
             with (
-                patch("src.api_routes.get_current_user", return_value=mock_user),
-                patch("src.api_routes.get_program_by_id", return_value=mock_program),
-                patch("src.api_routes.set_current_program_id", return_value=True),
+                patch(
+                    "src.api.routes.context.get_current_user_safe",
+                    return_value=mock_user,
+                ),
+                patch(
+                    "src.api.routes.context.get_program_by_id",
+                    return_value=mock_program,
+                ),
+                patch(
+                    "src.api.routes.context.set_current_program_id", return_value=True
+                ),
                 patch(
                     "src.services.auth_service.get_current_user", return_value=mock_user
                 ),
@@ -245,7 +253,10 @@ class TestProgramContextAPI:
 
         with app.app_context():
             with (
-                patch("src.api_routes.get_current_user", return_value=mock_user),
+                patch(
+                    "src.api.routes.context.get_current_user_safe",
+                    return_value=mock_user,
+                ),
                 patch(
                     "src.services.auth_service.get_current_user", return_value=mock_user
                 ),
@@ -264,7 +275,9 @@ class TestProgramContextAPI:
         """Test DELETE /api/context/program success"""
         with app.app_context():
             with (
-                patch("src.api_routes.clear_current_program_id", return_value=True),
+                patch(
+                    "src.api.routes.context.clear_current_program_id", return_value=True
+                ),
                 patch(
                     "src.services.auth_service.get_current_user",
                     return_value={"user_id": "test", "role": "site_admin"},
@@ -287,15 +300,9 @@ class TestUnassignedCoursesAPI:
     @pytest.fixture
     def app(self):
         """Create Flask app for testing"""
-        app = Flask(__name__)
+        from src.app import app
+
         app.config["TESTING"] = True
-        app.config["SECRET_KEY"] = "test-secret-key"
-
-        # Register the API blueprint
-        from src.api_routes import api
-
-        app.register_blueprint(api)
-
         return app
 
     @pytest.fixture
@@ -313,10 +320,12 @@ class TestUnassignedCoursesAPI:
         with app.app_context():
             with (
                 patch(
-                    "src.api_routes.get_current_institution_id", return_value="inst-123"
+                    "src.api.routes.courses.get_current_institution_id_safe",
+                    return_value="inst-123",
                 ),
                 patch(
-                    "src.api_routes.get_unassigned_courses", return_value=mock_courses
+                    "src.api.routes.courses.get_unassigned_courses",
+                    return_value=mock_courses,
                 ),
                 patch(
                     "src.services.auth_service.get_current_user",
@@ -339,10 +348,12 @@ class TestUnassignedCoursesAPI:
         with app.app_context():
             with (
                 patch(
-                    "src.api_routes.get_current_institution_id", return_value="inst-123"
+                    "src.api.routes.courses.get_current_institution_id_safe",
+                    return_value="inst-123",
                 ),
                 patch(
-                    "src.api_routes.assign_course_to_default_program", return_value=True
+                    "src.api.routes.courses.assign_course_to_default_program",
+                    return_value=True,
                 ),
                 patch(
                     "src.services.auth_service.get_current_user",
@@ -366,15 +377,15 @@ class TestContextValidationMiddleware:
     @pytest.fixture
     def app(self):
         """Create Flask app for testing"""
-        app = Flask(__name__)
+        from src.app import app
+
         app.config["TESTING"] = True
-        app.config["SECRET_KEY"] = "test-secret-key"
         return app
 
     def test_context_validation_skips_auth_endpoints(self, app):
         """Test that context validation skips auth endpoints"""
         with app.test_request_context("/api/auth/login", method="POST"):
-            from src.api_routes import validate_context
+            from src.api.routes.context import validate_context
 
             # Should return None (no validation error) for auth endpoints
             result = validate_context()
@@ -383,7 +394,7 @@ class TestContextValidationMiddleware:
     def test_context_validation_skips_context_endpoints(self, app):
         """Test that context validation skips context management endpoints"""
         with app.test_request_context("/api/context/program", method="GET"):
-            from src.api_routes import validate_context
+            from src.api.routes.context import validate_context
 
             # Should return None (no validation error) for context endpoints
             result = validate_context()
@@ -394,8 +405,10 @@ class TestContextValidationMiddleware:
         mock_user = {"user_id": "admin-123", "role": "site_admin"}
 
         with app.test_request_context("/api/courses", method="GET"):
-            with patch("src.api_routes.get_current_user", return_value=mock_user):
-                from src.api_routes import validate_context
+            with patch(
+                "src.api.routes.context.get_current_user_safe", return_value=mock_user
+            ):
+                from src.api.routes.context import validate_context
 
                 result = validate_context()
                 assert result is None
@@ -406,12 +419,18 @@ class TestContextValidationMiddleware:
 
         with app.test_request_context("/api/courses", method="GET"):
             with (
-                patch("src.api_routes.get_current_user", return_value=mock_user),
-                patch("src.api_routes.get_current_institution_id", return_value=None),
-                patch("src.api_routes.logger") as mock_logger,
+                patch(
+                    "src.api.routes.context.get_current_user_safe",
+                    return_value=mock_user,
+                ),
+                patch(
+                    "src.api.routes.context.get_current_institution_id_safe",
+                    return_value=None,
+                ),
+                patch("src.api.routes.context.logger") as mock_logger,
             ):
 
-                from src.api_routes import validate_context
+                from src.api.routes.context import validate_context
 
                 # Call the validation function directly
                 result = validate_context()

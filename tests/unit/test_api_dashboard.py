@@ -9,12 +9,36 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
+# Save original module so the reimport doesn't break auth for other tests
+_original_dashboard_module = sys.modules.get("src.api.routes.dashboard")
+
 with patch("src.services.auth_service.login_required", lambda f: f):
     if "src.api.routes.dashboard" in sys.modules:
         del sys.modules["src.api.routes.dashboard"]
     from src.api.routes.dashboard import dashboard_bp
 
+    # Keep a reference so @patch decorators can target the correct module during tests
+    _test_dashboard_module = sys.modules["src.api.routes.dashboard"]
+
+# Restore original module or remove the tainted version so other tests get a clean import
+if _original_dashboard_module is not None:
+    sys.modules["src.api.routes.dashboard"] = _original_dashboard_module
+else:
+    sys.modules.pop("src.api.routes.dashboard", None)
+
 from src.services.dashboard_service import DashboardServiceError
+
+
+@pytest.fixture(autouse=True)
+def _swap_dashboard_module():
+    """Swap the test's dashboard module into sys.modules so @patch targets work."""
+    saved = sys.modules.get("src.api.routes.dashboard")
+    sys.modules["src.api.routes.dashboard"] = _test_dashboard_module
+    yield
+    if saved is not None:
+        sys.modules["src.api.routes.dashboard"] = saved
+    else:
+        sys.modules.pop("src.api.routes.dashboard", None)
 
 
 @pytest.fixture
