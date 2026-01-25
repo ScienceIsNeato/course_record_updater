@@ -29,9 +29,6 @@ from src.utils.term_utils import get_current_term, get_term_display_name
 
 from .api import register_blueprints  # New modular API structure
 
-# Import new API routes and services
-from .api_routes import api
-
 # Unused imports removed
 
 
@@ -131,8 +128,7 @@ def setup_logging() -> None:
 setup_logging()
 
 # Register API blueprints
-app.register_blueprint(api)  # Legacy monolithic API (being refactored)
-register_blueprints(app)  # New modular API structure
+register_blueprints(app)  # Modular API structure
 
 # Configure email service (sets BASE_URL and other email settings)
 EmailService.configure_app(app)
