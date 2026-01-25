@@ -1,7 +1,7 @@
 """
-Unit tests for api_routes.py error handling and edge cases
+Unit tests for API routes error handling and edge cases
 
-This file targets the missing coverage lines in api_routes.py to push
+This file targets the missing coverage lines in API routes to push
 toward 80% total coverage.
 """
 
@@ -9,9 +9,11 @@ import os
 import tempfile
 from unittest.mock import patch
 
+import pytest
 from flask import Flask
 
-from src.api_routes import api
+from src.api import register_blueprints
+from src.app import app as flask_app
 from tests.test_utils import CommonAuthMixin
 
 
@@ -20,10 +22,8 @@ class TestAPIErrorHandling(CommonAuthMixin):
 
     def setup_method(self):
         """Set up test client."""
-        self.app = Flask(__name__)
+        self.app = flask_app
         self.app.config["TESTING"] = True
-        self.app.config["SECRET_KEY"] = "test-secret-key"
-        self.app.register_blueprint(api, url_prefix="/api")
         self.client = self.app.test_client()
 
     def test_create_user_no_json_data(self):
@@ -39,7 +39,7 @@ class TestAPIErrorHandling(CommonAuthMixin):
         self._login_site_admin()
 
         # Test database failure path
-        with patch("src.api_routes.create_user_db", return_value=None):
+        with patch("src.api.routes.users.create_user_db", return_value=None):
             user_data = {
                 "email": "test@example.com",
                 "first_name": "Test",
@@ -63,14 +63,16 @@ class TestAPIErrorHandling(CommonAuthMixin):
 
         # Test exception handling
         with patch(
-            "src.database.database_service.get_users_by_role",
+            "src.api.routes.users.get_users_by_role",
             side_effect=Exception("DB Error"),
         ):
             response = self.client.get("/api/users?role=instructor")
 
-            assert response.status_code == 200  # API gracefully handles exceptions
+            # API returns 500 with error details on exceptions
+            assert response.status_code == 500
             data = response.get_json()
-            assert data["success"] is True  # API gracefully handles exceptions
+            assert data["success"] is False
+            assert "error" in data
 
     def test_create_course_no_json_data(self):
         """Test course creation with no JSON data."""
@@ -83,7 +85,7 @@ class TestAPIErrorHandling(CommonAuthMixin):
     def test_create_course_database_failure(self):
         """Test course creation when database fails."""
         # Test unauthenticated request
-        with patch("src.api_routes.create_course", return_value=None):
+        with patch("src.api.routes.courses.create_course", return_value=None):
             course_data = {
                 "course_number": "TEST-101",
                 "course_title": "Test Course",
@@ -99,7 +101,7 @@ class TestAPIErrorHandling(CommonAuthMixin):
         """Test getting course by number when not found."""
         # Test unauthenticated request
         with patch(
-            "src.database.database_service.get_course_by_number", return_value=None
+            "src.api.routes.courses.get_course_by_number", return_value=None
         ):
             response = self.client.get("/api/courses/NONEXISTENT-101")
 
@@ -111,11 +113,11 @@ class TestAPIErrorHandling(CommonAuthMixin):
         # Test unauthenticated request
         with (
             patch(
-                "src.api_routes.get_current_institution_id",
+                "src.api.routes.courses.get_current_institution_id",
                 return_value="westside-liberal-arts",
             ),
             patch(
-                "src.api_routes.get_courses_by_department",
+                "src.api.routes.courses.get_courses_by_department",
                 side_effect=Exception("DB Error"),
             ),
         ):
@@ -130,10 +132,8 @@ class TestTermEndpoints(CommonAuthMixin):
 
     def setup_method(self):
         """Set up test client."""
-        self.app = Flask(__name__)
+        self.app = flask_app
         self.app.config["TESTING"] = True
-        self.app.config["SECRET_KEY"] = "test-secret-key"
-        self.app.register_blueprint(api, url_prefix="/api")
         self.client = self.app.test_client()
 
     def test_create_term_no_json_data(self):
@@ -160,7 +160,7 @@ class TestTermEndpoints(CommonAuthMixin):
     def test_create_term_database_failure(self):
         """Test term creation when database fails."""
         # Test unauthenticated request
-        with patch("src.database.database_service.create_term", return_value=None):
+        with patch("src.api.routes.terms.create_term", return_value=None):
             term_data = {
                 "name": "Test Term",
                 "start_date": "2024-01-15",
@@ -179,10 +179,8 @@ class TestImportEndpoints(CommonAuthMixin):
 
     def setup_method(self):
         """Set up test client."""
-        self.app = Flask(__name__)
+        self.app = flask_app
         self.app.config["TESTING"] = True
-        self.app.config["SECRET_KEY"] = "test-secret-key"
-        self.app.register_blueprint(api, url_prefix="/api")
         self.client = self.app.test_client()
 
     def test_import_excel_no_file(self):
@@ -224,7 +222,7 @@ class TestImportEndpoints(CommonAuthMixin):
     def test_import_excel_service_exception(self):
         """Test Excel import when service raises exception."""
         with patch(
-            "src.services.import_service.import_excel",
+            "src.api.routes.data_import.import_excel",
             side_effect=Exception("Import failed"),
         ):
             with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
@@ -248,7 +246,7 @@ class TestImportEndpoints(CommonAuthMixin):
 
     def test_import_progress_endpoints(self):
         """Exercise import progress helper endpoints."""
-        from src.api_routes import (
+        from src.api.routes.data_import import (
             cleanup_progress,
             create_progress_tracker,
             update_progress,
@@ -293,10 +291,8 @@ class TestSectionEndpoints(CommonAuthMixin):
 
     def setup_method(self):
         """Set up test client."""
-        self.app = Flask(__name__)
+        self.app = flask_app
         self.app.config["TESTING"] = True
-        self.app.config["SECRET_KEY"] = "test-secret-key"
-        self.app.register_blueprint(api, url_prefix="/api")
         self.client = self.app.test_client()
 
     def test_get_sections_exception_handling(self):
@@ -304,10 +300,10 @@ class TestSectionEndpoints(CommonAuthMixin):
         # Test unauthenticated request
         with (
             patch(
-                "src.api_routes.get_current_institution_id",
+                "src.api.routes.sections.get_current_institution_id",
                 return_value="westside-liberal-arts",
             ),
-            patch("src.api_routes.get_all_sections", side_effect=Exception("DB Error")),
+            patch("src.api.routes.sections.get_all_sections", side_effect=Exception("DB Error")),
         ):
             response = self.client.get("/api/sections")
 
@@ -339,7 +335,7 @@ class TestSectionEndpoints(CommonAuthMixin):
         """Test section creation when database fails."""
         # Test unauthenticated request
         with patch(
-            "src.database.database_service.create_course_section", return_value=None
+            "src.api.routes.sections.create_course_section", return_value=None
         ):
             section_data = {
                 "course_number": "TEST-101",
@@ -358,7 +354,7 @@ class TestSectionEndpoints(CommonAuthMixin):
         """Test get sections by instructor with exception."""
         # Test unauthenticated request
         with patch(
-            "src.api_routes.get_sections_by_instructor",
+            "src.api.routes.sections.get_sections_by_instructor",
             side_effect=Exception("DB Error"),
         ):
             response = self.client.get(
@@ -374,12 +370,11 @@ class TestDashboardErrorHandling:
 
     def setup_method(self):
         """Set up test client."""
-        self.app = Flask(__name__)
+        self.app = flask_app
         self.app.config["TESTING"] = True
-        self.app.register_blueprint(api, url_prefix="/api")
         self.client = self.app.test_client()
 
-    @patch("src.api_routes.get_current_user")
+    @patch("src.app.get_current_user")
     def test_dashboard_no_user(self, mock_get_user):
         """Test dashboard with no current user."""
         # Test dashboard error paths
@@ -394,7 +389,7 @@ class TestDashboardErrorHandling:
             # Template errors are expected in unit tests
             pass
 
-    @patch("src.api_routes.get_current_user")
+    @patch("src.app.get_current_user")
     def test_dashboard_unknown_role(self, mock_get_user):
         """Test dashboard with unknown role."""
         mock_get_user.return_value = {
@@ -417,10 +412,8 @@ class TestAdditionalErrorPaths(CommonAuthMixin):
 
     def setup_method(self):
         """Set up test client."""
-        self.app = Flask(__name__)
+        self.app = flask_app
         self.app.config["TESTING"] = True
-        self.app.config["SECRET_KEY"] = "test-secret-key"
-        self.app.register_blueprint(api, url_prefix="/api")
         self.client = self.app.test_client()
 
     def test_malformed_json_requests(self):

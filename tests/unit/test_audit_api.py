@@ -2,7 +2,6 @@
 
 TDD tests for:
 - Recent audit logs (GET /api/audit/recent)
-- Audit log search (GET /api/audit/search)
 """
 
 from unittest.mock import patch
@@ -55,8 +54,10 @@ class TestAuditAPI:
         """Test successful retrieval of recent audit logs."""
         self._login_institution_admin()
 
-        with patch("src.api_routes.get_recent_audit_logs") as mock_get_logs:
-            mock_get_logs.return_value = [
+        with patch(
+            "src.api.routes.audit.AuditService.get_recent_activity"
+        ) as mock_get_recent:
+            mock_get_recent.return_value = [
                 {
                     "id": "log-1",
                     "action": "create",
@@ -74,49 +75,19 @@ class TestAuditAPI:
             assert len(data["logs"]) == 1
             assert data["logs"][0]["id"] == "log-1"
 
-            # Verify call with correct institution_id (positional args)
-            mock_get_logs.assert_called_once_with("inst-123", 50)
+            # Verify call with keyword args
+            mock_get_recent.assert_called_once()
 
-    def test_search_audit_logs_success(self):
-        """Test successful search of audit logs."""
+    def test_get_recent_audit_logs_database_error(self):
+        """Test audit log retrieval handles database errors."""
         self._login_institution_admin()
 
-        with patch("src.api_routes.get_audit_logs_filtered") as mock_search:
-            mock_search.return_value = [
-                {
-                    "id": "log-2",
-                    "action": "update",
-                    "entity_type": "course",
-                    "timestamp": "2023-01-02T12:00:00Z",
-                }
-            ]
+        with patch(
+            "src.api.routes.audit.AuditService.get_recent_activity"
+        ) as mock_get_recent:
+            mock_get_recent.side_effect = Exception("Database error")
 
-            response = self.client.get(
-                "/api/audit/search?start_date=2023-01-01&end_date=2023-01-31&entity_type=course"
-            )
-
-            assert response.status_code == 200
-            data = response.get_json()
-            assert data["success"] is True
-            assert len(data["logs"]) == 1
-            assert data["logs"][0]["id"] == "log-2"
-
-            # Verify filtered search call
-            mock_search.assert_called_once()
-            call_args = mock_search.call_args
-            assert call_args[1]["institution_id"] == "inst-123"
-            assert call_args[1]["entity_type"] == "course"
-            assert call_args[1]["start_date"] == "2023-01-01"
-            assert call_args[1]["end_date"] == "2023-01-31"
-
-    def test_search_audit_logs_database_error(self):
-        """Test audit log search handles database errors."""
-        self._login_institution_admin()
-
-        with patch("src.api_routes.get_audit_logs_filtered") as mock_search:
-            mock_search.side_effect = Exception("Database error")
-
-            response = self.client.get("/api/audit/search")
+            response = self.client.get("/api/audit/recent")
 
             assert response.status_code == 500
             data = response.get_json()

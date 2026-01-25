@@ -272,7 +272,7 @@ class TestDashboardEndpoint:
 class TestRegistrationEndpoints:
     """Test registration API endpoints (Story 2.1)"""
 
-    @patch("src.services.registration_service.register_institution_admin")
+    @patch("src.api.routes.registration.register_institution_admin")
     def test_register_institution_admin_success(self, mock_register):
         """Test successful registration of institution admin."""
         # Setup successful registration response
@@ -354,7 +354,7 @@ class TestRegistrationEndpoints:
             assert data["success"] is False
             assert "Invalid email format" in data["error"]
 
-    @patch("src.services.registration_service.register_institution_admin")
+    @patch("src.api.routes.registration.register_institution_admin")
     def test_register_institution_admin_registration_error(self, mock_register):
         """Test registration with RegistrationError exception."""
         from src.services.registration_service import RegistrationError
@@ -378,7 +378,7 @@ class TestRegistrationEndpoints:
             assert data["success"] is False
             assert "Email already exists" in data["error"]
 
-    @patch("src.services.registration_service.register_institution_admin")
+    @patch("src.api.routes.registration.register_institution_admin")
     def test_register_institution_admin_server_error(self, mock_register):
         """Test registration with unexpected server error."""
         mock_register.side_effect = Exception("Database connection failed")
@@ -402,7 +402,7 @@ class TestRegistrationEndpoints:
 
     def test_register_institution_admin_optional_website(self):
         """Test registration without optional website_url field."""
-        with patch("src.services.registration_service.register_institution_admin") as mock_register:
+        with patch("src.api.routes.registration.register_institution_admin") as mock_register:
             mock_register.return_value = {
                 "success": True,
                 "message": "Registration successful!",
@@ -1438,7 +1438,7 @@ class TestCourseEndpoints:
         assert "courses" in data
         assert isinstance(data["courses"], list)
 
-    @patch("src.database.database_service.get_courses_by_department")
+    @patch("src.api.routes.courses.get_courses_by_department")
     def test_get_courses_with_department_filter(self, mock_get_courses):
         """Test GET /api/courses with department filter."""
         self._login_site_admin({"institution_id": "riverside-tech-institute"})
@@ -1477,7 +1477,7 @@ class TestCourseEndpoints:
         assert "message" in data
         assert "course_id" in data
 
-    @patch("src.services.auth_service.get_current_institution_id")
+    @patch("src.api.routes.courses.get_current_institution_id")
     def test_create_course_requires_institution_context(self, mock_get_institution_id):
         """Test POST /api/courses fails when no institution context is available."""
         self._login_site_admin()
@@ -1498,8 +1498,8 @@ class TestCourseEndpoints:
         assert data["success"] is False
         assert "Institution context required" in data["error"]
 
-    @patch("src.database.database_service.create_course")
-    @patch("src.services.auth_service.get_current_institution_id")
+    @patch("src.api.routes.courses.create_course")
+    @patch("src.api.routes.courses.get_current_institution_id")
     def test_create_course_adds_institution_context(
         self, mock_get_institution_id, mock_create_course
     ):
@@ -1531,7 +1531,7 @@ class TestCourseEndpoints:
         assert call_args["course_title"] == "Test Course"
         assert call_args["department"] == "TEST"
 
-    @patch("src.database.database_service.get_course_by_number", return_value=None)
+    @patch("src.api.routes.courses.get_course_by_number", return_value=None)
     def test_get_course_by_number_endpoint_exists(self, mock_get_course):
         """Test that GET /api/courses/<course_number> endpoint exists."""
         self._login_site_admin()
@@ -1556,8 +1556,8 @@ class TestCourseEndpoints:
         assert "error" in data
         assert "not found" in data["error"].lower()
 
-    @patch("src.database.database_service.duplicate_course_record")
-    @patch("src.database.database_service.get_course_by_id")
+    @patch("src.api.routes.courses.duplicate_course_record")
+    @patch("src.api.routes.courses.get_course_by_id")
     def test_duplicate_course_success(
         self, mock_get_course_by_id, mock_duplicate_course
     ):
@@ -1591,7 +1591,7 @@ class TestCourseEndpoints:
         assert data["course"]["course_id"] == "course-999"
         mock_duplicate_course.assert_called_once()
 
-    @patch("src.database.database_service.get_course_by_id")
+    @patch("src.api.routes.courses.get_course_by_id")
     def test_duplicate_course_forbidden_for_other_institution(
         self, mock_get_course_by_id
     ):
@@ -1647,8 +1647,8 @@ class TestTermEndpoints:
         create_test_session(self.client, user_data)
         return user_data
 
-    @patch("src.services.auth_service.get_current_institution_id")
-    @patch("src.database.database_service.get_active_terms")
+    @patch("src.api.routes.terms.get_current_institution_id")
+    @patch("src.api.routes.terms.get_active_terms")
     def test_get_terms_success(self, mock_get_terms, mock_get_current_institution_id):
         """Test GET /api/terms."""
         self._login_user()
@@ -1921,8 +1921,8 @@ class TestInstitutionEndpoints:
         """Alias for _login_site_admin for backward compatibility"""
         return self._login_site_admin(overrides)
 
-    @patch("src.database.database_service.get_all_institutions")
-    @patch("src.database.database_service.get_institution_instructor_count")
+    @patch("src.api.routes.institutions.get_all_institutions")
+    @patch("src.api.routes.institutions.get_institution_instructor_count")
     def test_list_institutions_success(self, mock_get_count, mock_get_institutions):
         """Test GET /api/institutions endpoint."""
         self._login_site_admin()
@@ -1940,7 +1940,7 @@ class TestInstitutionEndpoints:
         assert "institutions" in data
         assert len(data["institutions"]) == 2
 
-    @patch("src.services.registration_service.create_new_institution")
+    @patch("src.api.routes.institutions.create_new_institution")
     def test_create_institution_success(self, mock_create_institution):
         """Test POST /api/institutions/register endpoint success (public registration)."""
         # No login needed - this is a public registration endpoint
@@ -1967,8 +1967,8 @@ class TestInstitutionEndpoints:
         assert data["success"] is True
         assert "institution_id" in data
 
-    @patch("src.services.auth_service.get_current_user")
-    @patch("src.database.database_service.get_institution_by_id")
+    @patch("src.api.routes.institutions.get_current_user")
+    @patch("src.api.routes.institutions.get_institution_by_id")
     def test_get_institution_details_success(self, mock_get_institution, mock_get_user):
         """Test GET /api/institutions/<id> endpoint success."""
         self._login_site_admin()
@@ -1991,8 +1991,8 @@ class TestInstitutionEndpoints:
         assert "institution" in data
         assert data["institution"]["name"] == "Test University"
 
-    @patch("src.services.auth_service.get_current_institution_id")
-    @patch("src.database.database_service.get_all_instructors")
+    @patch("src.api.routes.courses.get_current_institution_id")
+    @patch("src.api.routes.courses.get_all_instructors")
     def test_list_instructors_success(self, mock_get_instructors, mock_get_mocku):
         """Test GET /api/instructors endpoint success."""
         self._login_site_admin()
@@ -2010,7 +2010,7 @@ class TestInstitutionEndpoints:
         assert "instructors" in data
         assert len(data["instructors"]) == 2
 
-    @patch("src.services.registration_service.create_new_institution")
+    @patch("src.api.routes.institutions.create_new_institution")
     def test_create_institution_missing_data(self, mock_create_institution):
         """Test POST /api/institutions/register with missing data."""
         with app.test_client() as client:
@@ -2020,7 +2020,7 @@ class TestInstitutionEndpoints:
             data = json.loads(response.data)
             assert data["success"] is False
 
-    @patch("src.services.registration_service.create_new_institution")
+    @patch("src.api.routes.institutions.create_new_institution")
     def test_create_institution_missing_admin_user_field(self, mock_create_institution):
         """Test POST /api/institutions/register with missing admin user field."""
         with app.test_client() as client:
@@ -2047,7 +2047,7 @@ class TestInstitutionEndpoints:
             assert data["success"] is False
             assert "Admin user email is required" in data["error"]
 
-    @patch("src.services.registration_service.create_new_institution")
+    @patch("src.api.routes.institutions.create_new_institution")
     def test_create_institution_creation_failure(self, mock_create_institution):
         """Test POST /api/institutions/register when institution creation fails."""
         # Setup - make create_new_institution return None (failure)
@@ -2076,7 +2076,7 @@ class TestInstitutionEndpoints:
             assert data["success"] is False
             assert "Failed to create institution" in data["error"]
 
-    @patch("src.services.registration_service.create_new_institution")
+    @patch("src.api.routes.institutions.create_new_institution")
     def test_create_institution_exception_handling(self, mock_create_institution):
         """Test POST /api/institutions/register exception handling."""
         # Setup - make create_new_institution raise an exception
@@ -2105,7 +2105,7 @@ class TestInstitutionEndpoints:
             assert data["success"] is False
             assert "Failed to create institution" in data["error"]
 
-    @patch("src.database.database_service.get_all_institutions")
+    @patch("src.api.routes.institutions.get_all_institutions")
     def test_list_institutions_exception(self, mock_get_institutions):
         """Test GET /api/institutions exception handling."""
         self._login_user()
@@ -2146,7 +2146,7 @@ class TestInstitutionEndpoints:
         assert data["success"] is False
         assert "permission denied" in data["error"].lower()
 
-    @patch("src.database.database_service.create_course")
+    @patch("src.api.routes.courses.create_course")
     def test_create_course_data_validation(self, mock_create_course):
         """Test course creation with comprehensive data validation."""
         self._login_user({"institution_id": "test-institution"})
@@ -2339,10 +2339,10 @@ class TestUserManagementAPI:
         create_test_session(self.client, user_data)
         return user_data
 
-    @patch("src.services.auth_service.get_current_institution_id")
-    @patch("src.services.auth_service.get_current_user")
-    @patch("src.database.database_service.get_users_by_role")
-    @patch("src.services.auth_service.has_permission")
+    @patch("src.api.routes.users.get_current_institution_id")
+    @patch("src.api.routes.users.get_current_user")
+    @patch("src.api.routes.users.get_users_by_role")
+    @patch("src.api.routes.users.has_permission")
     def test_list_users_with_role_filter(
         self,
         mock_has_permission,
@@ -2382,10 +2382,10 @@ class TestUserManagementAPI:
         assert len(data["users"]) == 2
         mock_get_users.assert_called_once_with("instructor")
 
-    @patch("src.services.auth_service.get_current_institution_id")
-    @patch("src.services.auth_service.get_current_user")
-    @patch("src.database.database_service.get_users_by_role")
-    @patch("src.services.auth_service.has_permission")
+    @patch("src.api.routes.users.get_current_institution_id")
+    @patch("src.api.routes.users.get_current_user")
+    @patch("src.api.routes.users.get_users_by_role")
+    @patch("src.api.routes.users.has_permission")
     def test_list_users_with_department_filter(
         self,
         mock_has_permission,
@@ -2472,7 +2472,7 @@ class TestCourseManagementOperations:
         self.app.config["SECRET_KEY"] = "test-secret-key"
         self.client = self.app.test_client()
 
-    @patch("src.database.database_service.create_course")
+    @patch("src.api.routes.courses.create_course")
     @patch("src.services.auth_service.has_permission")
     def test_create_course_comprehensive_validation(
         self, mock_has_permission, mock_create_course
@@ -2533,7 +2533,7 @@ class TestCourseManagementOperations:
         data = response.get_json()
         assert "Missing required fields" in data["error"]
 
-    @patch("src.database.database_service.create_term")
+    @patch("src.api.routes.terms.create_term")
     @patch("src.services.auth_service.has_permission")
     def test_create_term_comprehensive(self, mock_has_permission, mock_create_term):
         """Test comprehensive term creation."""
@@ -2565,7 +2565,7 @@ class TestCourseManagementOperations:
         assert data["success"] is True
         assert data["term_id"] == "term123"
 
-    @patch("src.database.database_service.get_sections_by_instructor")
+    @patch("src.api.routes.sections.get_sections_by_instructor")
     def test_get_sections_by_instructor_comprehensive(self, mock_get_sections):
         """Test getting sections by instructor comprehensively."""
         from tests.test_utils import create_test_session
@@ -2600,7 +2600,7 @@ class TestCourseManagementOperations:
         assert len(data["sections"]) == 2
         mock_get_sections.assert_called_once_with("instructor1")
 
-    @patch("src.database.database_service.get_sections_by_term")
+    @patch("src.api.routes.sections.get_sections_by_term")
     def test_get_sections_by_term_comprehensive(self, mock_get_sections):
         """Test getting sections by term comprehensively."""
         from tests.test_utils import create_test_session
@@ -2657,8 +2657,8 @@ class TestCourseManagementOperations:
         data = response.get_json()
         assert data["error"] == "No Excel file provided"
 
-    @patch("src.database.database_service.get_program_by_id")
-    @patch("src.database.database_service.remove_course_from_program")
+    @patch("src.api.routes.programs.get_program_by_id")
+    @patch("src.api.routes.programs.remove_course_from_program")
     @patch("src.services.auth_service.has_permission")
     def test_remove_course_from_program_success(
         self, mock_has_permission, mock_remove, mock_get_program
@@ -2718,8 +2718,8 @@ class TestCourseManagementOperations:
         assert data["success"] is False
         assert "Program not found" in data["error"]
 
-    @patch("src.database.database_service.get_program_by_id")
-    @patch("src.database.database_service.bulk_add_courses_to_program")
+    @patch("src.api.routes.programs.get_program_by_id")
+    @patch("src.api.routes.programs.bulk_add_courses_to_program")
     @patch("src.services.auth_service.has_permission")
     def test_bulk_manage_courses_add_action(
         self, mock_has_permission, mock_bulk_add, mock_get_program
@@ -2750,8 +2750,8 @@ class TestCourseManagementOperations:
         assert "2 added" in data["message"]
         mock_bulk_add.assert_called_once_with(["c1", "c2"], "prog1")
 
-    @patch("src.database.database_service.get_program_by_id")
-    @patch("src.database.database_service.bulk_remove_courses_from_program")
+    @patch("src.api.routes.programs.get_program_by_id")
+    @patch("src.api.routes.programs.bulk_remove_courses_from_program")
     @patch("src.services.auth_service.has_permission")
     def test_bulk_manage_courses_remove_action(
         self, mock_has_permission, mock_bulk_remove, mock_get_program
@@ -2858,10 +2858,10 @@ class TestAPIRoutesErrorHandling:
         create_test_session(self.client, user_data)
         return user_data
 
-    @patch("src.database.database_service.get_all_users", return_value=[])
-    @patch("src.services.auth_service.get_current_institution_id")
-    @patch("src.services.auth_service.get_current_user")
-    @patch("src.services.auth_service.has_permission")
+    @patch("src.api.routes.users.get_all_users", return_value=[])
+    @patch("src.api.routes.users.get_current_institution_id")
+    @patch("src.api.routes.users.get_current_user")
+    @patch("src.api.routes.users.has_permission")
     def test_list_users_no_role_filter_coverage(
         self,
         mock_has_permission,
@@ -2885,10 +2885,10 @@ class TestAPIRoutesErrorHandling:
         assert data["users"] == []
         mock_get_all_users.assert_called_once_with("riverside-tech-institute")
 
-    @patch("src.database.database_service.get_user_by_id", return_value=None)
-    @patch("src.services.auth_service.get_current_institution_id")
-    @patch("src.services.auth_service.get_current_user")
-    @patch("src.services.auth_service.has_permission")
+    @patch("src.api.routes.users.get_user_by_id", return_value=None)
+    @patch("src.api.routes.users.get_current_institution_id")
+    @patch("src.api.routes.users.get_current_user")
+    @patch("src.api.routes.users.has_permission")
     def test_get_user_not_found_coverage(
         self,
         mock_has_permission,
@@ -3281,7 +3281,7 @@ class TestAPIRoutesExtended:
 
     @patch("src.api.routes.courses.get_all_courses")
     @patch("src.api.utils.get_all_institutions")
-    @patch("src.api.routes.courses.get_current_institution_id")
+    @patch("src.api.utils.get_current_institution_id")
     def test_list_courses_global_scope(
         self, mock_get_mocku_id, mock_get_institutions, mock_get_all_courses
     ):
@@ -3321,9 +3321,9 @@ class TestAPIRoutesExtended:
         assert data["success"] is True
         assert len(data["courses"]) == 1
 
-    @patch("src.services.auth_service.get_current_user")
+    @patch("src.api.routes.courses.get_current_user")
     @patch("src.services.auth_service.has_permission")
-    @patch("src.database.database_service.get_courses_by_program")
+    @patch("src.api.routes.courses.get_courses_by_program")
     def test_list_courses_with_program_override(
         self, mock_get_by_program, mock_has_permission, mock_get_user
     ):
@@ -3443,7 +3443,7 @@ class TestAPIRoutesHelperFunctions:
         mock_institutions = ["inst1"]
         mock_global = False
 
-        with patch("src.api.utils.resolve_institution_scope") as mock_resolve:
+        with patch("src.api.routes.courses.resolve_institution_scope") as mock_resolve:
             mock_resolve.return_value = (mock_user, mock_institutions, mock_global)
 
             user, institutions, is_global = _resolve_courses_scope()
@@ -3461,7 +3461,7 @@ class TestAPIRoutesHelperFunctions:
         from src.api.routes.courses import _resolve_courses_scope
         from src.api.utils import InstitutionContextMissingError
 
-        with patch("src.api.utils.resolve_institution_scope") as mock_resolve:
+        with patch("src.api.routes.courses.resolve_institution_scope") as mock_resolve:
             mock_resolve.side_effect = InstitutionContextMissingError("Missing context")
 
             with pytest.raises(ValueError, match="Institution context required"):
@@ -3511,7 +3511,7 @@ class TestAPIRoutesHelperFunctions:
         from src.api.routes.courses import _resolve_program_override
 
         with self.app.test_request_context("/?"):
-            with patch("src.services.auth_service.get_current_program_id") as mock_get_program:
+            with patch("src.api.routes.courses.get_current_program_id") as mock_get_program:
                 mock_get_program.return_value = "current-program"
 
                 result = _resolve_program_override({"role": "user"})
@@ -3561,7 +3561,7 @@ class TestAPIRoutesHelperFunctions:
         mock_courses_1 = [{"id": "c1", "department": "CS"}]
         mock_courses_2 = [{"id": "c2", "department": "MATH"}]
 
-        with patch("src.database.database_service.get_all_courses") as mock_get_courses:
+        with patch("src.api.routes.courses.get_all_courses") as mock_get_courses:
             mock_get_courses.side_effect = [mock_courses_1, mock_courses_2]
 
             courses, context = _get_global_courses(institution_ids, None)
@@ -3579,7 +3579,7 @@ class TestAPIRoutesHelperFunctions:
         mock_courses_1 = [{"id": "c1", "department": "CS"}]
         mock_courses_2 = [{"id": "c2", "department": "MATH"}]
 
-        with patch("src.database.database_service.get_all_courses") as mock_get_courses:
+        with patch("src.api.routes.courses.get_all_courses") as mock_get_courses:
             mock_get_courses.side_effect = [mock_courses_1, mock_courses_2]
 
             courses, context = _get_global_courses(institution_ids, "CS")
@@ -3600,7 +3600,7 @@ class TestAPIRoutesHelperFunctions:
             {"id": "c2", "department": "MATH"},
         ]
 
-        with patch("src.database.database_service.get_courses_by_program") as mock_get_courses:
+        with patch("src.api.routes.courses.get_courses_by_program") as mock_get_courses:
             mock_get_courses.return_value = mock_courses
 
             courses, context = _get_program_courses(program_id, None)
@@ -3620,7 +3620,7 @@ class TestAPIRoutesHelperFunctions:
             {"id": "c2", "department": "MATH"},
         ]
 
-        with patch("src.database.database_service.get_courses_by_program") as mock_get_courses:
+        with patch("src.api.routes.courses.get_courses_by_program") as mock_get_courses:
             mock_get_courses.return_value = mock_courses
 
             courses, context = _get_program_courses(program_id, "CS")
@@ -3638,7 +3638,7 @@ class TestAPIRoutesHelperFunctions:
         mock_institutions = ["inst1"]
         mock_global = False
 
-        with patch("src.api.utils.resolve_institution_scope") as mock_resolve:
+        with patch("src.api.routes.users.resolve_institution_scope") as mock_resolve:
             mock_resolve.return_value = (mock_user, mock_institutions, mock_global)
 
             user, institutions, is_global = _resolve_users_scope()
@@ -3656,7 +3656,7 @@ class TestAPIRoutesHelperFunctions:
         from src.api.routes.users import _resolve_users_scope
         from src.api.utils import InstitutionContextMissingError
 
-        with patch("src.api.utils.resolve_institution_scope") as mock_resolve:
+        with patch("src.api.routes.users.resolve_institution_scope") as mock_resolve:
             mock_resolve.side_effect = InstitutionContextMissingError("Missing context")
 
             with pytest.raises(ValueError, match="Institution context required"):
@@ -3708,7 +3708,7 @@ class TestRemoveCourseHelpers:
             "name": "Test Program",
         }
 
-        with patch("src.database.database_service.get_program_by_id") as mock_get_program:
+        with patch("src.api.routes.programs.get_program_by_id") as mock_get_program:
             mock_get_program.return_value = mock_program
 
             program, institution_id = _validate_program_for_removal("prog1")
@@ -3725,7 +3725,7 @@ class TestRemoveCourseHelpers:
 
         from src.api.routes.programs import _validate_program_for_removal
 
-        with patch("src.database.database_service.get_program_by_id") as mock_get_program:
+        with patch("src.api.routes.programs.get_program_by_id") as mock_get_program:
             mock_get_program.return_value = None
 
             with pytest.raises(ValueError, match="Program not found"):
@@ -3743,7 +3743,7 @@ class TestRemoveCourseHelpers:
             {"id": "prog3", "is_default": False},
         ]
 
-        with patch("src.database.database_service.get_programs_by_institution") as mock_get_programs:
+        with patch("src.api.routes.programs.get_programs_by_institution") as mock_get_programs:
             mock_get_programs.return_value = mock_programs
 
             result = _get_default_program_id("inst1")
@@ -3762,7 +3762,7 @@ class TestRemoveCourseHelpers:
             {"id": "prog2", "is_default": False},
         ]
 
-        with patch("src.database.database_service.get_programs_by_institution") as mock_get_programs:
+        with patch("src.api.routes.programs.get_programs_by_institution") as mock_get_programs:
             mock_get_programs.return_value = mock_programs
 
             result = _get_default_program_id("inst1")
@@ -3785,7 +3785,7 @@ class TestRemoveCourseHelpers:
 
         from src.api.routes.programs import _get_default_program_id
 
-        with patch("src.database.database_service.get_programs_by_institution") as mock_get_programs:
+        with patch("src.api.routes.programs.get_programs_by_institution") as mock_get_programs:
             mock_get_programs.return_value = None
 
             result = _get_default_program_id("inst1")
@@ -3799,8 +3799,8 @@ class TestRemoveCourseHelpers:
         from src.api.routes.programs import _remove_course_with_orphan_handling
 
         with (
-            patch("src.database.database_service.remove_course_from_program") as mock_remove,
-            patch("src.database.database_service.assign_course_to_default_program") as mock_assign,
+            patch("src.api.routes.programs.remove_course_from_program") as mock_remove,
+            patch("src.api.routes.programs.assign_course_to_default_program") as mock_assign,
         ):
             mock_remove.return_value = True
 
@@ -3819,8 +3819,8 @@ class TestRemoveCourseHelpers:
         from src.api.routes.programs import _remove_course_with_orphan_handling
 
         with (
-            patch("src.database.database_service.remove_course_from_program") as mock_remove,
-            patch("src.database.database_service.assign_course_to_default_program") as mock_assign,
+            patch("src.api.routes.programs.remove_course_from_program") as mock_remove,
+            patch("src.api.routes.programs.assign_course_to_default_program") as mock_assign,
         ):
             mock_remove.return_value = True
 
@@ -3931,7 +3931,7 @@ class TestBulkManageHelpers:
 
         mock_result = {"success_count": 5, "failed_count": 0}
 
-        with patch("src.database.database_service.bulk_add_courses_to_program") as mock_bulk_add:
+        with patch("src.api.routes.programs.bulk_add_courses_to_program") as mock_bulk_add:
             mock_bulk_add.return_value = mock_result
 
             result, message = _execute_bulk_add(["course1", "course2"], "prog1")
@@ -3949,12 +3949,12 @@ class TestBulkManageHelpers:
         mock_result = {"removed": 3, "failed": 0}
 
         with (
-            patch("src.services.auth_service.get_current_institution_id") as mock_get_inst,
+            patch("src.api.routes.programs.get_current_institution_id") as mock_get_inst,
             patch("src.api.routes.programs._get_default_program_id") as mock_get_default,
             patch(
-                "src.database.database_service.bulk_remove_courses_from_program"
+                "src.api.routes.programs.bulk_remove_courses_from_program"
             ) as mock_bulk_remove,
-            patch("src.database.database_service.assign_course_to_default_program") as mock_assign,
+            patch("src.api.routes.programs.assign_course_to_default_program") as mock_assign,
         ):
             mock_get_inst.return_value = "inst1"
             mock_get_default.return_value = "default_prog"
@@ -3981,12 +3981,12 @@ class TestBulkManageHelpers:
         mock_result = {"removed": 2, "failed": 0}
 
         with (
-            patch("src.services.auth_service.get_current_institution_id") as mock_get_inst,
+            patch("src.api.routes.programs.get_current_institution_id") as mock_get_inst,
             patch("src.api.routes.programs._get_default_program_id") as mock_get_default,
             patch(
-                "src.database.database_service.bulk_remove_courses_from_program"
+                "src.api.routes.programs.bulk_remove_courses_from_program"
             ) as mock_bulk_remove,
-            patch("src.database.database_service.assign_course_to_default_program") as mock_assign,
+            patch("src.api.routes.programs.assign_course_to_default_program") as mock_assign,
         ):
             mock_get_inst.return_value = "inst1"
             mock_get_default.return_value = None  # No default program
@@ -4019,7 +4019,7 @@ class TestExcelImportHelpers:
             "institution_id": None,
         }
 
-        with patch("src.services.auth_service.get_current_user") as mock_get_user:
+        with patch("src.api.routes.data_import.get_current_user") as mock_get_user:
             mock_get_user.return_value = mock_user
 
             # Should fail because site admin has no institution_id
@@ -4036,7 +4036,7 @@ class TestExcelImportHelpers:
 
         from src.api.routes.data_import import _check_excel_import_permissions
 
-        with patch("src.services.auth_service.get_current_user") as mock_get_user:
+        with patch("src.api.routes.data_import.get_current_user") as mock_get_user:
             mock_get_user.return_value = None
 
             with pytest.raises(PermissionError, match="Authentication required"):
@@ -4492,7 +4492,7 @@ class TestUserCreationPermissionValidation:
 
 
 class TestCourseReminderEndpoint:
-    """Test /api/send-course-reminder endpoint."""
+    """Test /api/bulk-email/send-course-reminder endpoint."""
 
     @pytest.fixture
     def authenticated_client_and_token(self, client):
@@ -4557,7 +4557,7 @@ class TestCourseReminderEndpoint:
 
         # Send request
         response = client.post(
-            "/api/send-course-reminder",
+            "/api/bulk-email/send-course-reminder",
             json={
                 "instructor_id": "instructor-123",
                 "course_id": "course-123",
@@ -4579,7 +4579,7 @@ class TestCourseReminderEndpoint:
         """Test sending reminder with no JSON data returns 400."""
         client = authenticated_client_and_token
         response = client.post(
-            "/api/send-course-reminder",
+            "/api/bulk-email/send-course-reminder",
         )
 
         assert response.status_code == 400
@@ -4595,7 +4595,7 @@ class TestCourseReminderEndpoint:
         """Test sending reminder with missing required fields returns 400."""
         client = authenticated_client_and_token
         response = client.post(
-            "/api/send-course-reminder",
+            "/api/bulk-email/send-course-reminder",
             json={"instructor_id": "instructor-123"},  # Missing course_id
         )
 
@@ -4614,7 +4614,7 @@ class TestCourseReminderEndpoint:
         mock_get_instructor.return_value = None
 
         response = client.post(
-            "/api/send-course-reminder",
+            "/api/bulk-email/send-course-reminder",
             json={
                 "instructor_id": "nonexistent",
                 "course_id": "course-123",
@@ -4640,7 +4640,7 @@ class TestCourseReminderEndpoint:
         mock_get_course.return_value = None
 
         response = client.post(
-            "/api/send-course-reminder",
+            "/api/bulk-email/send-course-reminder",
             json={
                 "instructor_id": "instructor-123",
                 "course_id": "nonexistent",
@@ -4694,7 +4694,7 @@ class TestCourseReminderEndpoint:
         }
 
         response = client.post(
-            "/api/send-course-reminder",
+            "/api/bulk-email/send-course-reminder",
             json={"instructor_id": "instructor-123", "course_id": "course-123"},
         )
 
@@ -4748,7 +4748,7 @@ class TestCourseReminderEndpoint:
 
         # Send request
         response = client.post(
-            "/api/send-course-reminder",
+            "/api/bulk-email/send-course-reminder",
             json={
                 "instructor_id": "instructor-123",
                 "course_id": "course-123",
@@ -4793,7 +4793,7 @@ class TestUpdateUserRoleEndpoint:
         create_test_session(client, user_data)
         return client
 
-    @patch("src.services.auth_service.get_current_institution_id")
+    @patch("src.api.routes.users.get_current_institution_id")
     def test_missing_role_returns_400(self, mock_get_inst, institution_admin_client):
         mock_get_inst.return_value = "inst-123"
         response = institution_admin_client.patch(
@@ -4804,7 +4804,7 @@ class TestUpdateUserRoleEndpoint:
         assert response.status_code == 400
         assert response.get_json()["error"] == "Role is required"
 
-    @patch("src.services.auth_service.get_current_institution_id")
+    @patch("src.api.routes.users.get_current_institution_id")
     def test_invalid_role_returns_400(self, mock_get_inst, institution_admin_client):
         mock_get_inst.return_value = "inst-123"
         response = institution_admin_client.patch(
@@ -4816,8 +4816,8 @@ class TestUpdateUserRoleEndpoint:
         assert response.get_json()["success"] is False
         assert "Invalid role" in response.get_json()["error"]
 
-    @patch("src.services.auth_service.get_current_institution_id")
-    @patch("src.database.database_service.get_user_by_id")
+    @patch("src.api.routes.users.get_current_institution_id")
+    @patch("src.api.routes.users.get_user_by_id")
     def test_user_not_found_returns_404(
         self, mock_get_user, mock_get_inst, institution_admin_client
     ):
@@ -4831,8 +4831,8 @@ class TestUpdateUserRoleEndpoint:
         assert response.status_code == 404
         assert response.get_json()["error"] == "User not found"
 
-    @patch("src.services.auth_service.get_current_institution_id")
-    @patch("src.database.database_service.get_user_by_id")
+    @patch("src.api.routes.users.get_current_institution_id")
+    @patch("src.api.routes.users.get_user_by_id")
     def test_institution_mismatch_returns_404(
         self, mock_get_user, mock_get_inst, institution_admin_client
     ):
@@ -4846,9 +4846,9 @@ class TestUpdateUserRoleEndpoint:
         assert response.status_code == 404
         assert response.get_json()["error"] == "User not found"
 
-    @patch("src.services.auth_service.get_current_institution_id")
-    @patch("src.database.database_service.update_user_role")
-    @patch("src.database.database_service.get_user_by_id")
+    @patch("src.api.routes.users.get_current_institution_id")
+    @patch("src.api.routes.users.update_user_role")
+    @patch("src.api.routes.users.get_user_by_id")
     def test_update_failure_returns_500(
         self, mock_get_user, mock_update_role, mock_get_inst, institution_admin_client
     ):
@@ -4863,9 +4863,9 @@ class TestUpdateUserRoleEndpoint:
         assert response.status_code == 500
         assert response.get_json()["error"] == "Failed to update role"
 
-    @patch("src.services.auth_service.get_current_institution_id")
-    @patch("src.database.database_service.update_user_role")
-    @patch("src.database.database_service.get_user_by_id")
+    @patch("src.api.routes.users.get_current_institution_id")
+    @patch("src.api.routes.users.update_user_role")
+    @patch("src.api.routes.users.get_user_by_id")
     def test_success_returns_200(
         self, mock_get_user, mock_update_role, mock_get_inst, institution_admin_client
     ):
@@ -4917,7 +4917,7 @@ class TestDuplicateCourseEndpoint:
         create_test_session(client, user_data)
         return client
 
-    @patch("src.database.database_service.get_course_by_id")
+    @patch("src.api.routes.courses.get_course_by_id")
     def test_source_course_missing_returns_404(
         self, mock_get_course, institution_admin_client
     ):
@@ -4930,8 +4930,8 @@ class TestDuplicateCourseEndpoint:
         assert response.status_code == 404
         assert response.get_json()["success"] is False
 
-    @patch("src.database.database_service.get_course_by_id")
-    @patch("src.services.auth_service.get_current_user")
+    @patch("src.api.routes.courses.get_course_by_id")
+    @patch("src.api.routes.courses.get_current_user")
     def test_permission_denied_returns_403(
         self, mock_get_user, mock_get_course, institution_admin_client
     ):
@@ -4948,9 +4948,9 @@ class TestDuplicateCourseEndpoint:
         assert response.status_code == 403
         assert response.get_json()["error"] == "Permission denied"
 
-    @patch("src.database.database_service.duplicate_course_record")
-    @patch("src.database.database_service.get_course_by_id")
-    @patch("src.services.auth_service.get_current_user")
+    @patch("src.api.routes.courses.duplicate_course_record")
+    @patch("src.api.routes.courses.get_course_by_id")
+    @patch("src.api.routes.courses.get_current_user")
     def test_duplicate_failure_returns_500(
         self, mock_get_user, mock_get_course, mock_duplicate, institution_admin_client
     ):
@@ -4968,9 +4968,9 @@ class TestDuplicateCourseEndpoint:
         assert response.status_code == 500
         assert response.get_json()["error"] == "Failed to duplicate course"
 
-    @patch("src.database.database_service.duplicate_course_record")
-    @patch("src.database.database_service.get_course_by_id")
-    @patch("src.services.auth_service.get_current_user")
+    @patch("src.api.routes.courses.duplicate_course_record")
+    @patch("src.api.routes.courses.get_course_by_id")
+    @patch("src.api.routes.courses.get_current_user")
     def test_duplicate_success_returns_201(
         self, mock_get_user, mock_get_course, mock_duplicate, institution_admin_client
     ):

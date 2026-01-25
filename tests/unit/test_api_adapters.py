@@ -53,7 +53,7 @@ class TestAdapterEndpoints:
         response = self.client.get("/api/adapters")
         assert response.status_code == 401  # API returns 401, not 302
 
-    @patch("src.api_routes._export_all_institutions")
+    @patch("src.api.routes.data_export._export_all_institutions")
     def test_export_data_site_admin(self, mock_export_all):
         """Test site admin export delegates to _export_all_institutions."""
         create_test_session(
@@ -69,7 +69,7 @@ class TestAdapterEndpoints:
         # Verify call
         mock_export_all.assert_called_once()
 
-    @patch("src.api_routes.create_export_service")
+    @patch("src.api.routes.data_export.create_export_service")
     def test_export_data_institution_admin_success(self, mock_create_service):
         """Test export data for institution admin."""
         create_test_session(
@@ -96,7 +96,7 @@ class TestAdapterEndpoints:
         mock_result.records_exported = 10
         mock_service.export_data.return_value = mock_result
 
-        with patch("src.api_routes.send_file") as mock_send_file:
+        with patch("src.api.routes.data_export.send_file") as mock_send_file:
             # Need to mock Path.exists/unlink or just ensure execution flow
             mock_send_file.return_value = "FILE RESPONSE"
 
@@ -132,10 +132,10 @@ class TestAdapterEndpoints:
         assert response.status_code == 400
         data = response.get_json()
         assert data["success"] is False
-        # Update assertion to match actual error message
-        assert "Institution context required" in data["error"]
+        # Check for institution context error (case-insensitive)
+        assert "institution context" in data["error"].lower()
 
-    @patch("src.api_routes.create_export_service")
+    @patch("src.api.routes.data_export.create_export_service")
     def test_export_data_adapter_not_found(self, mock_create_service):
         """Test export fails if adapter is invalid."""
         create_test_session(
@@ -159,7 +159,7 @@ class TestExportHelpers:
 
     def test_create_system_manifest(self):
         """Test manifest creation."""
-        from src.api_routes import _create_system_manifest
+        from src.api.routes.data_export import _create_system_manifest
 
         manifest = _create_system_manifest(
             current_user={"email": "admin@test.com"},
@@ -175,10 +175,10 @@ class TestExportHelpers:
         assert manifest["failed_exports"] == 1
         assert manifest["total_institutions"] == 1
 
-    @patch("src.api_routes._DEFAULT_EXPORT_EXTENSION", ".csv")
+    @patch("src.api.routes.data_export._DEFAULT_EXPORT_EXTENSION", ".csv")
     def test_get_adapter_file_extension(self):
         """Test extension resolution."""
-        from src.api_routes import _get_adapter_file_extension
+        from src.api.routes.data_export import _get_adapter_file_extension
 
         mock_service = Mock()
         mock_adapter = Mock()
@@ -194,15 +194,15 @@ class TestExportHelpers:
         ext = _get_adapter_file_extension(mock_service, "unknown")
         assert ext == ".csv"
 
-    @patch("src.api_routes.get_all_institutions")
-    @patch("src.api_routes._create_system_export_zip")
-    @patch("src.api_routes.send_file")
-    @patch("src.api_routes.create_export_service")
+    @patch("src.api.routes.data_export.get_all_institutions")
+    @patch("src.api.routes.data_export._create_system_export_zip")
+    @patch("src.api.routes.data_export.send_file")
+    @patch("src.api.routes.data_export.create_export_service")
     def test_export_all_institutions_flow(
         self, mock_create_service, mock_send_file, mock_create_zip, mock_get_insts
     ):
         """Test the logic within _export_all_institutions."""
-        from src.api_routes import _export_all_institutions
+        from src.api.routes.data_export import _export_all_institutions
 
         # Setup mocks
         mock_get_insts.return_value = [{"institution_id": "i1", "short_name": "inst1"}]

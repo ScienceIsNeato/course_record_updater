@@ -23,8 +23,8 @@ class TestSiteAdminExport:
     naming that prevents collisions (fixed in api_routes.py).
     """
 
-    @patch("src.api_routes.get_all_institutions")
-    @patch("src.api_routes.create_export_service")
+    @patch("src.api.routes.data_export.get_all_institutions")
+    @patch("src.api.routes.data_export.create_export_service")
     def test_site_admin_export_adapter_not_found(
         self, mock_create_service, mock_get_institutions, client
     ):
@@ -63,8 +63,8 @@ class TestSiteAdminExport:
         assert data["success"] is False
         assert "Adapter not found" in data["error"]
 
-    @patch("src.api_routes.get_all_institutions")
-    @patch("src.api_routes.create_export_service")
+    @patch("src.api.routes.data_export.get_all_institutions")
+    @patch("src.api.routes.data_export.create_export_service")
     def test_site_admin_export_adapter_info_exception(
         self, mock_create_service, mock_get_institutions, client
     ):
@@ -115,8 +115,8 @@ class TestSiteAdminExport:
         # Should succeed with fallback
         assert response.status_code == 200
 
-    @patch("src.api_routes.get_all_institutions")
-    @patch("src.api_routes.create_export_service")
+    @patch("src.api.routes.data_export.get_all_institutions")
+    @patch("src.api.routes.data_export.create_export_service")
     def test_site_admin_export_partial_failure(
         self, mock_create_service, mock_get_institutions, client
     ):
@@ -198,8 +198,8 @@ class TestSiteAdminExport:
         finally:
             tmp_path.unlink()
 
-    @patch("src.api_routes.get_all_institutions")
-    @patch("src.api_routes.create_export_service")
+    @patch("src.api.routes.data_export.get_all_institutions")
+    @patch("src.api.routes.data_export.create_export_service")
     def test_site_admin_export_default_adapter(
         self, mock_create_service, mock_get_institutions, client
     ):
@@ -251,8 +251,8 @@ class TestSiteAdminExport:
         # Should succeed with default adapter
         assert response.status_code == 200
 
-    @patch("src.api_routes.get_all_institutions")
-    @patch("src.api_routes.create_export_service")
+    @patch("src.api.routes.data_export.get_all_institutions")
+    @patch("src.api.routes.data_export.create_export_service")
     def test_site_admin_export_general_exception(
         self, mock_create_service, mock_get_institutions, client
     ):
