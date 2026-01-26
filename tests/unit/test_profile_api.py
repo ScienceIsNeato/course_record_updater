@@ -9,10 +9,10 @@ import os
 from unittest.mock import patch
 
 from src.app import app
-from src.utils.constants import NEW_PASSWORD, SECURE_PASSWORD
+from src.utils.constants import GENERIC_PASSWORD
 
-TEST_PASSWORD = os.environ.get("TEST_PASSWORD", SECURE_PASSWORD)
-NEW_TEST_PASSWORD = NEW_PASSWORD
+TEST_PASSWORD = os.environ.get("TEST_PASSWORD", GENERIC_PASSWORD)
+NEW_TEST_PASSWORD = GENERIC_PASSWORD
 
 
 class TestProfileUpdateAPI:

@@ -58,9 +58,9 @@ class TestPasswordHashing:
     @patch("src.services.password_service.bcrypt.hashpw", _mock_hashpw)
     def test_hash_password_success(self):
         """Test successful password hashing"""
-        from src.utils.constants import TEST_PASSWORD
+        from src.utils.constants import GENERIC_PASSWORD
 
-        password = TEST_PASSWORD
+        password = GENERIC_PASSWORD
         hashed = hash_password(password)
 
         assert isinstance(hashed, str)
@@ -88,9 +88,9 @@ class TestPasswordHashing:
     @patch("src.services.password_service.bcrypt.checkpw", _mock_checkpw)
     def test_verify_password_correct(self):
         """Test password verification with correct password"""
-        from src.utils.constants import TEST_PASSWORD
+        from src.utils.constants import GENERIC_PASSWORD
 
-        password = TEST_PASSWORD
+        password = GENERIC_PASSWORD
         hashed = hash_password(password)
 
         assert verify_password(password, hashed) is True
@@ -100,9 +100,9 @@ class TestPasswordHashing:
     @patch("src.services.password_service.bcrypt.checkpw", _mock_checkpw)
     def test_verify_password_incorrect(self):
         """Test password verification with incorrect password"""
-        from src.utils.constants import TEST_PASSWORD
+        from src.utils.constants import GENERIC_PASSWORD
 
-        password = TEST_PASSWORD
+        password = GENERIC_PASSWORD
         wrong_password = "WrongPass123!"
         hashed = hash_password(password)
 
@@ -110,9 +110,9 @@ class TestPasswordHashing:
 
     def test_verify_password_with_invalid_hash(self):
         """Test password verification with invalid hash"""
-        from src.utils.constants import TEST_PASSWORD
+        from src.utils.constants import GENERIC_PASSWORD
 
-        password = TEST_PASSWORD
+        password = GENERIC_PASSWORD
         invalid_hash = "invalid_hash"
 
         assert verify_password(password, invalid_hash) is False
@@ -125,9 +125,9 @@ class TestPasswordHashing:
         It's intentionally slower (~0.5s) to test the real password flow.
         Mark with @pytest.mark.slow - skip in dev cycles with: pytest -m "not slow"
         """
-        from src.utils.constants import TEST_PASSWORD
+        from src.utils.constants import GENERIC_PASSWORD
 
-        password = TEST_PASSWORD
+        password = GENERIC_PASSWORD
         hash1 = hash_password(password)
         hash2 = hash_password(password)
 

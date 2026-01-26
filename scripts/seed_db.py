@@ -1064,9 +1064,9 @@ class BaselineTestSeeder(BaselineSeeder):
 
         # Create users (site_admin, instructors, program admins, institution admins)
         self.log("👥 Creating users...")
-        from src.utils.constants import INSTITUTION_ADMIN_PASSWORD
+        from src.utils.constants import GENERIC_PASSWORD
 
-        default_hash = hash_password(INSTITUTION_ADMIN_PASSWORD)
+        default_hash = hash_password(GENERIC_PASSWORD)
         # Use program_map if any user uses program_code, else fall back to list
         uses_program_code_users = any(
             "program_code" in u for u in manifest_data.get("users", [])
@@ -1249,9 +1249,9 @@ class DemoSeeder(BaselineSeeder):
 
         # 6. Create Users
         self.log("👥 Creating demo faculty/staff...")
-        from src.utils.constants import DEMO_PASSWORD
+        from src.utils.constants import GENERIC_PASSWORD
 
-        default_hash = hash_password(DEMO_PASSWORD)
+        default_hash = hash_password(GENERIC_PASSWORD)
 
         user_ids = self.create_users_from_manifest(
             inst_ids, manifest["users"], program_map, default_hash

@@ -16,42 +16,16 @@ DEFAULT_PAGINATION_LIMIT = 50
 DEFAULT_AUDIT_LOG_LIMIT = 20
 DEFAULT_EXPORT_LIMIT = 1000
 
-# Test secrets (placeholders used only in test environments)
-# NOTE: Do NOT hardcode passwords in tests. Add new test passwords here
-# Test user credentials - ONLY for automated testing
-# These are intentionally simple and MUST NOT be used in production
-TEST_USER_EMAIL = "test@example.com"
-TEST_USER_PASSWORD = "TestUser123!"  # nosec B105 # pragma: allowlist secret
-TEST_ADMIN_EMAIL = "admin@example.com"
-TEST_ADMIN_PASSWORD = "TestPass123!"  # nosec B105 # pragma: allowlist secret
-
-# Additional test passwords
-TEST_PASSWORD = "TestPass123!"  # nosec B105 # pragma: allowlist secret
-SECURE_PASSWORD = "SecurePassword123!"  # nosec B105 # pragma: allowlist secret
-NEW_PASSWORD = "NewSecurePassword123!"  # nosec B105 # pragma: allowlist secret
-NEW_SECURE_PASSWORD = "NewSecurePassword123!"  # nosec B105 # pragma: allowlist secret
-VALID_PASSWORD = "ValidPassword123!"  # nosec B105 # pragma: allowlist secret
-WRONG_PASSWORD = "WrongPass123!"  # nosec B105 # pragma: allowlist secret
+# Test passwords - ONLY THREE constants needed
+# Use GENERIC_PASSWORD everywhere except password validation testing
+# Do NOT hardcode passwords elsewhere - import from here
+GENERIC_PASSWORD = "TestPass123!"  # nosec B105 # pragma: allowlist secret
 WEAK_PASSWORD = "weak"  # nosec B105 # pragma: allowlist secret
-INVALID_PASSWORD_SHORT = "a"  # nosec B105 # pragma: allowlist secret
-INVALID_PASSWORD_NO_COMPLEXITY = "password123"  # nosec B105 # pragma: allowlist secret
-STRONG_PASSWORD_1 = "Str0ng!Pass"  # nosec B105 # pragma: allowlist secret
-STRONG_PASSWORD_2 = "StrongPass1!"  # nosec B105 # pragma: allowlist secret
-LONG_PASSWORD = "A" * 129 + "1!"  # nosec B105 # pragma: allowlist secret
-DEMO_PASSWORD = "Demo123!"  # nosec B105 # pragma: allowlist secret
+INVALID_PASSWORD = "password123"  # nosec B105 # pragma: allowlist secret
 
-# Backwards-compatible aliases for test credentials module
-SITE_ADMIN_PASSWORD = "SiteAdmin123!"  # nosec B105 # pragma: allowlist secret
-INSTITUTION_ADMIN_PASSWORD = (
-    "InstitutionAdmin123!"  # nosec B105 # pragma: allowlist secret
-)
-PROGRAM_ADMIN_PASSWORD = (
-    INSTITUTION_ADMIN_PASSWORD  # nosec B105 # pragma: allowlist secret
-)
-INSTRUCTOR_PASSWORD = "Instructor123!"  # nosec B105 # pragma: allowlist secret
-DEFAULT_PASSWORD = INSTITUTION_ADMIN_PASSWORD  # nosec B105 # pragma: allowlist secret
-
-# Test account emails and course constants (for tests re-export)
+# Test account emails
+TEST_USER_EMAIL = "test@example.com"
+TEST_ADMIN_EMAIL = "admin@example.com"
 SITE_ADMIN_EMAIL = "siteadmin@system.local"
 INSTITUTION_ADMIN_EMAIL = "sarah.admin@mocku.test"
 PROGRAM_ADMIN_EMAIL = "lisa.prog@mocku.test"
@@ -63,9 +37,6 @@ CS_DATA_STRUCTURES_COURSE = "CS-201"
 EE_CIRCUITS_COURSE = "EE-101"
 CS_PROGRAM_NAME = "Computer Science"
 EE_PROGRAM_NAME = "Electrical Engineering"
-
-# Password used for password reset tests
-RESET_PASSWORD = NEW_SECURE_PASSWORD
 
 # Branding defaults for institutions
 DEFAULT_INSTITUTION_NAME = "Your Institution"

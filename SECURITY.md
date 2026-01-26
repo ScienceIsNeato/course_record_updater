@@ -20,23 +20,31 @@ All other code **MUST** import passwords from `constants.py`. This ensures:
 2. **Single source of truth**: All test passwords defined once with proper `# nosec` annotations
 3. **Easy auditing**: Security review only needs to check two files
 
-### Adding New Test Passwords
+### Password Constants
 
-1. Add the password constant to `src/utils/constants.py` with proper annotations:
-   ```python
-   MY_NEW_PASSWORD = "NewPass123!"  # nosec B105 # pragma: allowlist secret
-   ```
+The codebase uses exactly THREE password constants:
 
-2. Import and use in your code:
-   ```python
-   from utils.constants import MY_NEW_PASSWORD
-   ```
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `GENERIC_PASSWORD` | `TestPass123!` | **Use everywhere** - all test accounts, seeds, E2E |
+| `WEAK_PASSWORD` | `weak` | Testing rejection of weak passwords |
+| `INVALID_PASSWORD` | `password123` | Testing password complexity requirements |
 
-3. Regenerate the secrets baseline:
-   ```bash
-   detect-secrets scan > .secrets.baseline
-   git add .secrets.baseline src/utils/constants.py
-   ```
+**DO NOT** create role-specific passwords (e.g., `SITE_ADMIN_PASSWORD`, `INSTRUCTOR_PASSWORD`). Use `GENERIC_PASSWORD` for all test accounts.
+
+### Using Passwords in Code
+
+```python
+from src.utils.constants import GENERIC_PASSWORD
+
+# Create test user with standard password
+user = create_user(email="test@example.com", password=GENERIC_PASSWORD)
+
+# For password validation tests only:
+from src.utils.constants import WEAK_PASSWORD, INVALID_PASSWORD
+with pytest.raises(PasswordValidationError):
+    hash_password(WEAK_PASSWORD)
+```
 
 ### When detect-secrets Fails
 
