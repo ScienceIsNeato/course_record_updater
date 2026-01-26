@@ -136,8 +136,6 @@ class TestNewUserRegistrationFlow:
         # emails = email_helper.get_recent_emails(limit=5)
         # assert not any(e.to_email == test_email for e in emails)
 
-        pass
-
     def test_registration_with_duplicate_email_does_not_send_duplicate(
         self, browser, base_url
     ):
@@ -168,8 +166,6 @@ class TestNewUserRegistrationFlow:
         # # Verify no new email sent
         # emails = email_helper.get_recent_emails(limit=1)
         # assert len(emails) == 0, "Should not send email for duplicate registration"
-
-        pass
 
 
 class TestPasswordResetFlow:
@@ -269,8 +265,6 @@ class TestPasswordResetFlow:
         # browser.click("button[type='submit']")
         # expect(browser).to_have_url(f"{base_url}/dashboard")
 
-        pass
-
     def test_password_reset_for_nonexistent_email_does_not_reveal_existence(
         self, browser, base_url
     ):
@@ -295,8 +289,6 @@ class TestPasswordResetFlow:
         # email_helper = MailtrapHelper()
         # emails = email_helper.get_recent_emails(limit=5)
         # assert not any(e.to_email == nonexistent_email for e in emails)
-
-        pass
 
 
 class TestInvitationFlow:
@@ -403,15 +395,12 @@ class TestInvitationFlow:
         #     "Prof. Bob Martinez"
         # )
 
-        pass
-
     def test_program_admin_invites_instructor(self, browser, base_url):
         """
         E2E: Program admin invites instructor to their program
 
         Similar flow to institution admin but scoped to program.
         """
-        pass
 
     def test_invitation_with_expired_token_shows_error(self, browser, base_url):
         """
@@ -419,7 +408,6 @@ class TestInvitationFlow:
 
         Tests token expiration (typically 7 days).
         """
-        pass
 
 
 class TestWelcomeEmailFlow:
@@ -448,7 +436,6 @@ class TestWelcomeEmailFlow:
         - Email contains useful links (dashboard, support, etc.)
         """
         # This might not be implemented yet - check EmailService
-        pass
 
 
 class TestMultiUserEmailFlowIntegration:
@@ -473,7 +460,6 @@ class TestMultiUserEmailFlowIntegration:
 
         Email Count: 1 verification + 4 invitations = 5 emails minimum
         """
-        pass
 
     def test_concurrent_registrations_all_receive_emails(self, browser, base_url):
         """
@@ -481,7 +467,6 @@ class TestMultiUserEmailFlowIntegration:
 
         Verifies email system can handle concurrent sends without dropping emails.
         """
-        pass
 
 
 # Helper pseudo-code for email verification utilities

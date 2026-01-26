@@ -172,7 +172,8 @@ def test_tc_crud_pa_004_manage_program_courses(program_admin_authenticated_page:
     )
 
     # Get the first course's current title and ID for verification
-    first_course_data = program_admin_authenticated_page.evaluate("""
+    first_course_data = program_admin_authenticated_page.evaluate(
+        """
         () => {
             const firstRow = document.querySelector('#coursesTableContainer table tbody tr');
             if (!firstRow) return null;
@@ -182,7 +183,8 @@ def test_tc_crud_pa_004_manage_program_courses(program_admin_authenticated_page:
                          firstRow.querySelector('[data-course-id]')?.getAttribute('data-course-id')
             };
         }
-        """)
+        """
+    )
 
     if not first_course_data or not first_course_data.get("title"):
         pytest.skip("No courses found for update test")

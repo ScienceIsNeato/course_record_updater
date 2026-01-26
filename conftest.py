@@ -7,7 +7,6 @@ to all test modules.
 All tests use CSRF-enabled clients to properly exercise security code paths.
 """
 
-import re
 from typing import Any, Callable, Generator, cast
 
 import pytest

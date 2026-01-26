@@ -145,6 +145,7 @@ def validate_import_file() -> ResponseReturnValue:
             try:
                 os.unlink(temp_file_path)
             except OSError:
+                # Ignore cleanup errors - file may already be deleted or locked
                 pass
 
     except Exception as e:

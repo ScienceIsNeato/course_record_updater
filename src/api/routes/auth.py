@@ -470,16 +470,23 @@ def unlock_account_api() -> ResponseReturnValue:
                 400,
             )
 
-        # Get current user (admin check would go here)
+        # Get current user and verify admin role
         current_user = get_current_user_safe()
         if not current_user:
             return jsonify({"success": False, "error": "Authentication required"}), 401
 
-        # For now, allow any logged-in user to unlock accounts
-        # In production, this should check for admin role
+        # Only site_admin and institution_admin can unlock accounts
+        user_role = current_user.get("role")
+        if user_role not in ["site_admin", "institution_admin"]:
+            return (
+                jsonify(
+                    {"success": False, "error": "Unauthorized: Admin role required"}
+                ),
+                403,
+            )
 
         # Unlock account
-        result = LoginService.unlock_account(data["email"], current_user["id"])
+        result = LoginService.unlock_account(data["email"], current_user["user_id"])
 
         return jsonify({"success": True, **result}), 200
 

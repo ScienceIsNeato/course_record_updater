@@ -1,9 +1,5 @@
 """Unit tests for programs API routes (migrated from test_api_routes.py)."""
 
-from unittest.mock import patch
-
-import pytest
-
 
 class TestRemoveCourseHelpers:
     """Test helper functions for remove_course_from_program_api."""

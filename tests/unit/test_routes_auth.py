@@ -4,8 +4,6 @@ import json
 import os
 from unittest.mock import patch
 
-import pytest
-
 from src.app import app
 from src.utils.constants import USER_NOT_FOUND_MSG
 

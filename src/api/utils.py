@@ -5,7 +5,6 @@ This module contains common helper functions, error handlers, and utilities
 used across multiple API route modules.
 """
 
-import traceback
 from typing import Any, Dict, List, Optional, Tuple
 
 from flask import jsonify, request
@@ -44,12 +43,12 @@ def get_current_user_safe() -> Dict[str, Any]:
     return user
 
 
-def get_current_user_id_safe() -> str:
-    """Get current user's ID and ensure it is not None."""
+def get_current_user_id_safe() -> Optional[str]:
+    """Get current user's ID, returning None if unavailable."""
     user = get_current_user_safe()
     user_id = user.get("user_id")
     if not user_id:
-        return "unknown"
+        return None
     return str(user_id)
 
 
@@ -128,10 +127,8 @@ def handle_api_error(
     Returns:
         tuple: (JSON response, HTTP status code)
     """
-    logger.error(
-        f"{operation_name} failed: {str(e)}\n"
-        f"Full traceback:\n{traceback.format_exc()}"
-    )
+    # Use logger.exception for proper traceback handling without embedding in message
+    logger.exception("%s failed", operation_name)
 
     # Return sanitized response to user
     return jsonify({"success": False, "error": user_message}), status_code

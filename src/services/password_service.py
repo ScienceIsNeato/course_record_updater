@@ -50,19 +50,13 @@ RATE_LIMIT_WINDOW_MINUTES = 60
 class PasswordValidationError(Exception):
     """Raised when password validation fails"""
 
-    pass
-
 
 class AccountLockedError(Exception):
     """Raised when account is locked due to too many failed attempts"""
 
-    pass
-
 
 class RateLimitError(Exception):
     """Raised when rate limit is exceeded"""
-
-    pass
 
 
 class PasswordService:

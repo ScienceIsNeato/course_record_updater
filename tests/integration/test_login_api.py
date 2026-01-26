@@ -365,8 +365,12 @@ class TestUnlockAccountAPI:
         self, mock_module_get_user, mock_service_get_user, mock_password_service, client
     ):
         """Test successful account unlock"""
-        # Setup
-        user_context = {"id": "admin-123", "institution_id": "inst-123"}
+        # Setup - must have admin role to unlock accounts
+        user_context = {
+            "user_id": "admin-123",
+            "institution_id": "inst-123",
+            "role": "institution_admin",
+        }
         mock_module_get_user.return_value = user_context
         mock_service_get_user.return_value = user_context
         mock_password_service.clear_failed_attempts.return_value = None

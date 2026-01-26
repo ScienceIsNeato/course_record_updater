@@ -58,7 +58,7 @@ class TestPasswordHashing:
     @patch("src.services.password_service.bcrypt.hashpw", _mock_hashpw)
     def test_hash_password_success(self):
         """Test successful password hashing"""
-        from tests.test_credentials import TEST_PASSWORD
+        from src.utils.constants import TEST_PASSWORD
 
         password = TEST_PASSWORD
         hashed = hash_password(password)
@@ -88,7 +88,7 @@ class TestPasswordHashing:
     @patch("src.services.password_service.bcrypt.checkpw", _mock_checkpw)
     def test_verify_password_correct(self):
         """Test password verification with correct password"""
-        from tests.test_credentials import TEST_PASSWORD
+        from src.utils.constants import TEST_PASSWORD
 
         password = TEST_PASSWORD
         hashed = hash_password(password)
@@ -100,7 +100,7 @@ class TestPasswordHashing:
     @patch("src.services.password_service.bcrypt.checkpw", _mock_checkpw)
     def test_verify_password_incorrect(self):
         """Test password verification with incorrect password"""
-        from tests.test_credentials import TEST_PASSWORD
+        from src.utils.constants import TEST_PASSWORD
 
         password = TEST_PASSWORD
         wrong_password = "WrongPass123!"
@@ -110,7 +110,7 @@ class TestPasswordHashing:
 
     def test_verify_password_with_invalid_hash(self):
         """Test password verification with invalid hash"""
-        from tests.test_credentials import TEST_PASSWORD
+        from src.utils.constants import TEST_PASSWORD
 
         password = TEST_PASSWORD
         invalid_hash = "invalid_hash"
@@ -125,7 +125,7 @@ class TestPasswordHashing:
         It's intentionally slower (~0.5s) to test the real password flow.
         Mark with @pytest.mark.slow - skip in dev cycles with: pytest -m "not slow"
         """
-        from tests.test_credentials import TEST_PASSWORD
+        from src.utils.constants import TEST_PASSWORD
 
         password = TEST_PASSWORD
         hash1 = hash_password(password)

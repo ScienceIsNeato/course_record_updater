@@ -6,7 +6,6 @@ This reproduces the issue causing 20 test failures in the full suite.
 """
 
 import threading
-import time
 from typing import List
 
 from src.database.database_factory import get_database_service

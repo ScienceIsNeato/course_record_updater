@@ -99,7 +99,7 @@ def test_export() -> bool:
         print(f"✅ Created courses: {course1}, {course2}")
 
         # Create test term (requires term_name, start_date, end_date)
-        from datetime import date, datetime
+        from datetime import date
 
         term1 = create_term(
             {

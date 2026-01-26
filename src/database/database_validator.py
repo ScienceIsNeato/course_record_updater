@@ -25,8 +25,6 @@ logger = logging.getLogger(__name__)
 class SchemaValidationError(Exception):
     """Raised when database schema doesn't match SQLAlchemy models."""
 
-    pass
-
 
 def _get_model_columns(model: DeclarativeMeta) -> Set[str]:
     """Extract column names from SQLAlchemy model.

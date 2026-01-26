@@ -11,7 +11,7 @@ Tests all 7 possible status states with proper precedence:
 7. UNKNOWN
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 

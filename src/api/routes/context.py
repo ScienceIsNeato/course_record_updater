@@ -61,8 +61,8 @@ def _should_skip_context_validation(endpoint: str) -> bool:
     # Skip non-API endpoints (static files, HTML pages)
     if "." not in endpoint:
         return True
-    # Skip auth endpoints
-    if "auth" in endpoint:
+    # Skip auth endpoints (auth_* blueprints have endpoint format auth_bp.function)
+    if endpoint.startswith("auth"):
         return True
     # Get the function name (after the dot)
     func_name = endpoint.rsplit(".", 1)[-1]
@@ -322,8 +322,14 @@ def set_system_date() -> ResponseReturnValue:
 
         # Update user record with override
         user_id = get_current_user_id_safe()
-        if user_id:
-            update_user(user_id, {"system_date_override": override_date})
+        if not user_id:
+            return (
+                jsonify(
+                    {"success": False, "error": "Session error: user ID not found"}
+                ),
+                401,
+            )
+        update_user(user_id, {"system_date_override": override_date})
 
         # Update session immediately so validation middleware picks it up
         session["system_date_override"] = override_date.isoformat()
@@ -358,6 +364,13 @@ def clear_system_date() -> ResponseReturnValue:
 
         # Clear override
         user_id = get_current_user_id_safe()
+        if not user_id:
+            return (
+                jsonify(
+                    {"success": False, "error": "Session error: user ID not found"}
+                ),
+                401,
+            )
         update_user(user_id, {"system_date_override": None})
 
         # Update session immediately

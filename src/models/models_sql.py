@@ -506,7 +506,6 @@ def _course_section_outcome_to_dict(model: CourseSectionOutcome) -> Dict[str, An
 
     # Include eager-loaded relationships if available (avoids N+1 queries)
     # Check if relationship is loaded (not a proxy/lazy load)
-    from sqlalchemy.orm import object_session
     from sqlalchemy.orm.attributes import instance_state
 
     state = instance_state(model)

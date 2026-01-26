@@ -23,12 +23,11 @@ import argparse
 import os
 import sys
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import src.database.database_service as database_service
 import src.database.database_service as db
 from src.models.models import User
 from src.services.password_service import hash_password
@@ -41,11 +40,9 @@ from src.utils.constants import (
 
 # Import E2E test data contract
 from tests.e2e.e2e_test_data_contract import (
-    BASE_ACCOUNTS,
     MAX_PARALLEL_WORKERS,
     PROGRAMS_PER_ADMIN_WORKER,
     SECTIONS_PER_INSTRUCTOR_WORKER,
-    get_worker_email,
     validate_seeded_data,
 )
 

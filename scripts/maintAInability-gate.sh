@@ -273,12 +273,21 @@ if [[ "$RUN_PYTHON_LINT_FORMAT" == "true" ]]; then
     GROUPED_PASSED=false
   fi
   
-  # Run flake8 (critical errors only)
-  echo "  🔍 Checking critical lint issues with flake8..."
-  if flake8 --select=E9,F63,F7,F82 --show-source --statistics src/ tests/ scripts/ conftest.py 2>&1; then
-    add_success "flake8" "No critical lint errors found"
+  # Auto-remove unused imports with autoflake
+  echo "  🧹 Auto-removing unused imports with autoflake..."
+  if autoflake --in-place --remove-all-unused-imports --recursive --exclude=venv,__pycache__,.git src/ tests/ scripts/ conftest.py 2>/dev/null || true; then
+    add_success "autoflake" "Unused imports auto-removed"
   else
-    add_failure "flake8" "Critical lint errors found" "Fix the errors above"
+    add_failure "autoflake" "Unused import removal" "Run: autoflake --in-place --remove-all-unused-imports --recursive src/ tests/ scripts/ conftest.py"
+    GROUPED_PASSED=false
+  fi
+  
+  # Run flake8 (critical errors + unused imports)
+  echo "  🔍 Checking critical lint issues with flake8..."
+  if flake8 --select=E9,F63,F7,F82,F401 --show-source --statistics src/ tests/ scripts/ conftest.py 2>&1; then
+    add_success "flake8" "No critical lint errors or unused imports found"
+  else
+    add_failure "flake8" "Critical lint errors or unused imports found" "Fix the errors above"
     GROUPED_PASSED=false
   fi
   
@@ -436,8 +445,8 @@ if [[ "$RUN_LINT" == "true" ]]; then
   # Run flake8 for critical errors only (much faster)
   # Only check tracked Python files to avoid processing non-Python files
   # Use xargs to avoid "argument list too long" error
-  echo "🔧 Running flake8 critical error check..."
-  FLAKE8_OUTPUT=$(git ls-files '*.py' 'adapters/**/*.py' 'tests/**/*.py' 'api/**/*.py' 'session/**/*.py' 'email_providers/**/*.py' 'bulk_email_models/**/*.py' 'scripts/**/*.py' 2>&1 | grep -v 'Dark Forest' | grep -v '__pycache__' | xargs -r flake8 --max-line-length=88 --select=E9,F63,F7,F82 2>&1 | grep -v 'Unable to find qualified name')
+  echo "🔧 Running flake8 critical error check (including unused imports)..."
+  FLAKE8_OUTPUT=$(git ls-files '*.py' 'adapters/**/*.py' 'tests/**/*.py' 'api/**/*.py' 'session/**/*.py' 'email_providers/**/*.py' 'bulk_email_models/**/*.py' 'scripts/**/*.py' 2>&1 | grep -v 'Dark Forest' | grep -v '__pycache__' | xargs -r flake8 --max-line-length=88 --select=E9,F63,F7,F82,F401 2>&1 | grep -v 'Unable to find qualified name')
   FLAKE8_EXIT=$?
 
   if [[ $FLAKE8_EXIT -ne 0 && -n "$FLAKE8_OUTPUT" ]]; then

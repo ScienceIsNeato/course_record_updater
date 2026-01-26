@@ -8,8 +8,6 @@ panel filtering, and institution-wide functionality.
 import pytest
 from playwright.sync_api import Page, expect
 
-from tests.e2e.header_navigator import HeaderNavigator
-
 
 @pytest.mark.e2e
 class TestInstitutionAdminDashboardWorkflow:

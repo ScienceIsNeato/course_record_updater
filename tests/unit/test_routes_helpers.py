@@ -4,13 +4,6 @@ from unittest.mock import patch
 
 import pytest
 
-from src.api.utils import (
-    InstitutionContextMissingError,
-    handle_api_error,
-    resolve_institution_scope,
-)
-from src.app import app
-
 
 class TestAPIRoutesExtended:
     """Test missing coverage lines in API routes."""

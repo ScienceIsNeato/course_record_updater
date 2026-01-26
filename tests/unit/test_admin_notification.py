@@ -4,7 +4,7 @@ Unit tests for admin notification feature.
 Tests the email alert when instructors submit assessments.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from src.services.clo_workflow_service import CLOWorkflowService
 from src.utils.constants import CLOStatus

@@ -4,8 +4,6 @@ import json
 import os
 from unittest.mock import patch
 
-import pytest
-
 from src.app import app
 
 TEST_PASSWORD = os.environ.get(

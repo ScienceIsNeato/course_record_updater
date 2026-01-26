@@ -14,8 +14,6 @@ from typing import Any, Dict, List, Tuple
 class FileCompatibilityError(Exception):
     """Raised when a file is incompatible with an adapter"""
 
-    pass
-
 
 class FileBaseAdapter(ABC):
     """
@@ -51,7 +49,6 @@ class FileBaseAdapter(ABC):
             (True, "File compatible. Detected 45 course records, 12 faculty records.")
             (False, "Missing required columns: course_code, instructor_email")
         """
-        pass
 
     @abstractmethod
     def detect_data_types(self, file_path: str) -> List[str]:
@@ -74,7 +71,6 @@ class FileBaseAdapter(ABC):
             ['courses', 'faculty', 'assessments']  # Excel file
             ['students', 'enrollments']            # Student enrollment CSV
         """
-        pass
 
     @abstractmethod
     def get_adapter_info(self) -> Dict[str, Any]:
@@ -126,7 +122,6 @@ class FileBaseAdapter(ABC):
                 "public": True
             }
         """
-        pass
 
     @abstractmethod
     def parse_file(
@@ -180,7 +175,6 @@ class FileBaseAdapter(ABC):
             ValueError: If required options are missing
             Exception: For other parsing errors
         """
-        pass
 
     @abstractmethod
     def export_data(
@@ -234,7 +228,6 @@ class FileBaseAdapter(ABC):
             ValueError: If required options are missing
             Exception: For export errors
         """
-        pass
 
     def supports_export(self) -> bool:
         """

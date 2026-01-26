@@ -398,7 +398,7 @@ def update_outcome_assessment_endpoint(outcome_id: str) -> ResponseReturnValue:
         # Check if user is the instructor or an admin
         if str(section.get("instructor_id")) != str(
             current_user["user_id"]
-        ) and current_user["role"] not in ["institution_admin", "system_admin"]:
+        ) and current_user["role"] not in ["institution_admin", "site_admin"]:
             return jsonify({"success": False, "error": "Unauthorized"}), 403
 
         allowed_fields = [

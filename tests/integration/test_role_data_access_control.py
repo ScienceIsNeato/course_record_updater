@@ -26,7 +26,7 @@ from src.database.database_service import (
     get_user_by_email,
 )
 from src.services.auth_service import UserRole
-from tests.test_credentials import (
+from src.utils.constants import (
     INSTITUTION_ADMIN_EMAIL,
     INSTRUCTOR_EMAIL,
     PROGRAM_ADMIN_EMAIL,

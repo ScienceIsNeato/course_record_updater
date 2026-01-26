@@ -67,6 +67,10 @@ def list_courses() -> ResponseReturnValue:
             }
         )
 
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except PermissionError as e:
+        return jsonify({"success": False, "error": str(e)}), 403
     except Exception as e:
         return handle_api_error(e, "Get courses", "Failed to retrieve courses")
 

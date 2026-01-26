@@ -5,17 +5,19 @@ Provides endpoints for user profile management, password changes, and
 password reset workflows.
 """
 
-from typing import Any, Dict
-
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 
+from src.api.utils import (
+    get_current_user_id_safe,
+    get_current_user_safe,
+)
 from src.database.database_service import (
     get_user_by_id,
     update_user,
     update_user_profile,
 )
-from src.services.auth_service import get_current_user, login_required
+from src.services.auth_service import login_required
 from src.utils.constants import (
     MISSING_REQUIRED_FIELD_EMAIL_MSG,
     NO_JSON_DATA_PROVIDED_MSG,
@@ -28,26 +30,6 @@ auth_profile_bp = Blueprint("auth_profile", __name__, url_prefix="/api")
 
 # Initialize logger
 logger = get_logger(__name__)
-
-
-# HELPER: Safe access to current user for type checking
-def _get_current_user_safe() -> Dict[str, Any]:
-    """Get current user and ensure it is not None (for type safety in protected routes)."""
-    user = get_current_user()
-    if user is None:
-        # In a real request this should have been caught by @login_required
-        # but for type safety we must handle the None case.
-        return {}
-    return user
-
-
-def _get_current_user_id_safe() -> str:
-    """Get current user's ID and ensure it is not None."""
-    user = _get_current_user_safe()
-    user_id = user.get("user_id")
-    if not user_id:
-        return "unknown"
-    return str(user_id)
 
 
 # ===== PROFILE MANAGEMENT API ENDPOINTS =====
@@ -76,7 +58,7 @@ def update_profile_api() -> ResponseReturnValue:
     try:
 
         # Get current user
-        current_user = _get_current_user_safe()
+        current_user = get_current_user_safe()
         if not current_user:
             return jsonify({"success": False, "error": "Authentication required"}), 401
 
@@ -96,7 +78,14 @@ def update_profile_api() -> ResponseReturnValue:
             )
 
         # Update profile
-        user_id = _get_current_user_id_safe()
+        user_id = get_current_user_id_safe()
+        if not user_id:
+            return (
+                jsonify(
+                    {"success": False, "error": "Session error: user ID not found"}
+                ),
+                401,
+            )
         success = update_user_profile(user_id, profile_data)
 
         if success:
@@ -150,7 +139,7 @@ def change_password_api() -> ResponseReturnValue:
         )
 
         # Get current user
-        current_user = _get_current_user_safe()
+        current_user = get_current_user_safe()
         if not current_user:
             return jsonify({"success": False, "error": "Authentication required"}), 401
 
@@ -179,7 +168,14 @@ def change_password_api() -> ResponseReturnValue:
             )
 
         # Get user with password hash
-        user_id = _get_current_user_id_safe()
+        user_id = get_current_user_id_safe()
+        if not user_id:
+            return (
+                jsonify(
+                    {"success": False, "error": "Session error: user ID not found"}
+                ),
+                401,
+            )
         user = get_user_by_id(user_id)
         if not user:
             return jsonify({"success": False, "error": USER_NOT_FOUND_MSG}), 404

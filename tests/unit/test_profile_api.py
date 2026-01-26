@@ -9,7 +9,7 @@ import os
 from unittest.mock import patch
 
 from src.app import app
-from tests.test_credentials import NEW_PASSWORD, SECURE_PASSWORD
+from src.utils.constants import NEW_PASSWORD, SECURE_PASSWORD
 
 TEST_PASSWORD = os.environ.get("TEST_PASSWORD", SECURE_PASSWORD)
 NEW_TEST_PASSWORD = NEW_PASSWORD

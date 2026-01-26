@@ -678,9 +678,7 @@ class QualityGateExecutor:
 
         added_lines = self._get_git_added_lines()
         if not added_lines:
-            report_lines.append(
-                "⚠️ No added lines detected to analyze for this commit."
-            )
+            report_lines.append("⚠️ No added lines detected to analyze for this commit.")
             return report_lines
 
         blocks = self._get_js_uncovered_new_blocks(added_lines)
@@ -1663,7 +1661,7 @@ def reply_to_pr_comment(
         True if successful, False otherwise
     """
     try:
-        import json
+        pass
 
         pr_number, owner, name = _get_pr_context()
         if not pr_number:

@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from flask import Blueprint, jsonify, request, send_file
+from flask import Blueprint, after_this_request, jsonify, request, send_file
 from flask.typing import ResponseReturnValue
 
 from src.api.utils import (
@@ -240,6 +240,19 @@ def export_data() -> ResponseReturnValue:
         # Get appropriate mimetype from adapter's file extension
         mimetype = get_mimetype_for_extension(file_extension)
 
+        # Schedule temp file cleanup after response is sent
+        file_to_cleanup = output_path  # Capture for closure
+
+        @after_this_request
+        def cleanup_temp_file(response: Any) -> Any:
+            try:
+                if file_to_cleanup.exists():
+                    file_to_cleanup.unlink()
+                    logger.debug(f"[EXPORT] Cleaned up temp file: {file_to_cleanup}")
+            except Exception as cleanup_error:
+                logger.warning(f"[EXPORT] Failed to cleanup temp file: {cleanup_error}")
+            return response
+
         # Send file as download
         return send_file(
             str(output_path),
@@ -250,7 +263,16 @@ def export_data() -> ResponseReturnValue:
 
     except Exception as e:
         logger.error(f"Error during export: {str(e)}", exc_info=True)
-        return jsonify({"success": False, "error": f"Export failed: {str(e)}"}), 500
+        # Sanitize error message to avoid leaking internal details
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Export failed. Please try again or contact support.",
+                }
+            ),
+            500,
+        )
 
 
 def _sanitize_export_params() -> Tuple[str, str, bool]:

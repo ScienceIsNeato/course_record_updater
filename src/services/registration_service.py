@@ -38,8 +38,6 @@ DEFAULT_PROGRAM_NAME = "Unclassified"
 class RegistrationError(Exception):
     """Raised when registration process encounters an error"""
 
-    pass
-
 
 class RegistrationService:
     """

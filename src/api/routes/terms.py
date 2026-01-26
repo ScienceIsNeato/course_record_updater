@@ -14,7 +14,6 @@ from flask.typing import ResponseReturnValue
 from src.api.utils import (
     InstitutionContextMissingError,
     get_current_institution_id_safe,
-    get_current_user_safe,
     handle_api_error,
     resolve_institution_scope,
 )

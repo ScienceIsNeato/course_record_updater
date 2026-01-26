@@ -135,8 +135,6 @@ class TestAdminInstructorReminderSingleRecipient:
         # last_reminded = instructor_row.locator(".last-reminded-date").text_content()
         # assert "Today" in last_reminded or datetime.now().strftime("%Y-%m-%d") in last_reminded
 
-        pass
-
     def test_reminder_email_template_contains_required_elements(
         self, browser, base_url
     ):
@@ -153,7 +151,6 @@ class TestAdminInstructorReminderSingleRecipient:
         - Personal message section (if provided)
         - Support/help contact info
         """
-        pass
 
 
 class TestAdminInstructorReminderBulkSend:
@@ -254,8 +251,6 @@ class TestAdminInstructorReminderBulkSend:
         #     # Verify not BCC'd (each email is individual)
         #     assert reminder_email.to_email == instructor['email']
 
-        pass
-
     def test_bulk_reminder_handles_email_failures_gracefully(self, browser, base_url):
         """
         ERROR HANDLING: If some emails fail, report which succeeded/failed
@@ -263,7 +258,6 @@ class TestAdminInstructorReminderBulkSend:
         Scenario: Bulk send to 5 instructors, 1 has invalid email
         Expected: 4 succeed, 1 fails, admin sees detailed report
         """
-        pass
 
 
 class TestInstructorReminderFeaturePermissions:
@@ -282,7 +276,6 @@ class TestInstructorReminderFeaturePermissions:
         """
         PERMISSIONS: Institution admin can remind instructors across all programs
         """
-        pass
 
     def test_program_admin_can_only_remind_instructors_in_their_programs(
         self, browser, base_url
@@ -296,7 +289,6 @@ class TestInstructorReminderFeaturePermissions:
         3. Verify only Program A instructors visible
         4. Attempt to send reminder to Program B instructor (should fail)
         """
-        pass
 
     def test_instructor_cannot_send_reminders(self, browser, base_url):
         """
@@ -308,7 +300,6 @@ class TestInstructorReminderFeaturePermissions:
         3. Verify "Send Reminder" button not visible
         4. Attempt direct API call to send reminder (should return 403)
         """
-        pass
 
 
 class TestInstructorReminderRateLimiting:
@@ -350,15 +341,12 @@ class TestInstructorReminderRateLimiting:
         # reminder_emails = [e for e in emails if "Reminder" in e.subject]
         # assert len(reminder_emails) == 1, "Should not send duplicate"
 
-        pass
-
     def test_admin_can_send_reminder_after_cooldown_period(self, browser, base_url):
         """
         RATE LIMITING: After 24 hour cooldown, reminder can be sent again
 
         NOTE: This test would require time manipulation or long wait
         """
-        pass
 
 
 class TestInstructorResponseToReminder:
@@ -385,7 +373,6 @@ class TestInstructorResponseToReminder:
 
         This combines admin reminder + instructor action flows.
         """
-        pass
 
 
 # API/Service Layer Pseudo-code

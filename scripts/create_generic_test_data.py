@@ -15,7 +15,7 @@ import sys
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, cast
+from typing import Dict, List, cast
 
 # Import test constants
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -23,11 +23,6 @@ from tests.test_constants import (
     CREATED_AT,
     TEST_ADMIN_ID,
     TEST_ADMIN_USER,
-    TEST_ASSESSMENT_DATA_EMPTY,
-    TEST_ASSESSMENT_DATA_SAMPLE,
-    TEST_ASSESSMENT_METHOD_ASSIGNMENT,
-    TEST_ASSESSMENT_METHOD_EXAM,
-    TEST_ASSESSMENT_METHOD_PROBLEM_SET,
     TEST_COURSE_CS101,
     TEST_COURSE_CS101_DUP,
     TEST_COURSE_CS202,
@@ -35,9 +30,6 @@ from tests.test_constants import (
     TEST_COURSE_ENG301,
     TEST_COURSE_MATH201,
     TEST_COURSE_MATH401,
-    TEST_GRADE_DIST_COMPLETED,
-    TEST_GRADE_DIST_EMPTY,
-    TEST_GRADE_DIST_SAMPLE,
     TEST_INSTITUTION,
     TEST_INSTRUCTOR_1,
     TEST_INSTRUCTOR_2,

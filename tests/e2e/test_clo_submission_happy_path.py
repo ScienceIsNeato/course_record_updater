@@ -15,7 +15,7 @@ Workflow:
 import json
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page
 
 from src.utils.constants import TEST_USER_PASSWORD
 from tests.e2e.conftest import BASE_URL

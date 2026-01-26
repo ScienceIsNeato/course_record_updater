@@ -289,6 +289,7 @@ def create_course_offering_endpoint() -> ResponseReturnValue:
         offering_id = database_service.create_course_offering(offering_payload)
 
         if offering_id:
+            failed_sections = []
             for sec in sections_data:
                 section_payload = {
                     "offering_id": offering_id,
@@ -296,7 +297,16 @@ def create_course_offering_endpoint() -> ResponseReturnValue:
                     "enrollment": 0,
                     "status": "assigned",
                 }
-                database_service.create_course_section(section_payload)
+                section_id = database_service.create_course_section(section_payload)
+                if not section_id:
+                    failed_sections.append(sec.get("section_number", "001"))
+
+            if failed_sections:
+                logger.warning(
+                    "Some sections failed to create for offering %s: %s",
+                    offering_id,
+                    failed_sections,
+                )
 
             return (
                 jsonify(
@@ -304,6 +314,7 @@ def create_course_offering_endpoint() -> ResponseReturnValue:
                         "success": True,
                         "offering_id": offering_id,
                         "message": "Course offering created successfully",
+                        "sections_failed": failed_sections if failed_sections else None,
                     }
                 ),
                 201,

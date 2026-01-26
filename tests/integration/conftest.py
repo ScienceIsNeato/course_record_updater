@@ -103,7 +103,7 @@ def client(isolated_integration_db):
 def site_admin(isolated_integration_db):
     """Get the seeded site admin user."""
     import src.database.database_service as db
-    from tests.test_credentials import SITE_ADMIN_EMAIL
+    from src.utils.constants import SITE_ADMIN_EMAIL
 
     user = db.get_user_by_email(SITE_ADMIN_EMAIL)
     assert user, f"Site admin {SITE_ADMIN_EMAIL} not found in seeded data"
@@ -114,7 +114,7 @@ def site_admin(isolated_integration_db):
 def institution_admin(isolated_integration_db):
     """Get the seeded institution admin (Sarah)."""
     import src.database.database_service as db
-    from tests.test_credentials import INSTITUTION_ADMIN_EMAIL
+    from src.utils.constants import INSTITUTION_ADMIN_EMAIL
 
     user = db.get_user_by_email(INSTITUTION_ADMIN_EMAIL)
     assert user, f"Institution admin {INSTITUTION_ADMIN_EMAIL} not found"
@@ -125,7 +125,7 @@ def institution_admin(isolated_integration_db):
 def program_admin(isolated_integration_db):
     """Get the seeded program admin (Bob)."""
     import src.database.database_service as db
-    from tests.test_credentials import PROGRAM_ADMIN_EMAIL
+    from src.utils.constants import PROGRAM_ADMIN_EMAIL
 
     user = db.get_user_by_email(PROGRAM_ADMIN_EMAIL)
     assert user, f"Program admin {PROGRAM_ADMIN_EMAIL} not found"
@@ -136,7 +136,7 @@ def program_admin(isolated_integration_db):
 def instructor(isolated_integration_db):
     """Get the seeded instructor (John)."""
     import src.database.database_service as db
-    from tests.test_credentials import INSTRUCTOR_EMAIL
+    from src.utils.constants import INSTRUCTOR_EMAIL
 
     user = db.get_user_by_email(INSTRUCTOR_EMAIL)
     assert user, f"Instructor {INSTRUCTOR_EMAIL} not found"

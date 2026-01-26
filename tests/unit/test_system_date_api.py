@@ -95,6 +95,10 @@ class TestSystemDateEndpoints:
         mocker.patch(
             "src.api.routes.context.get_current_user_safe", return_value=mock_user
         )
+        mocker.patch(
+            "src.api.routes.context.get_current_user_id_safe",
+            return_value="test-user-id",
+        )
         mock_update = mocker.patch(
             "src.api.routes.context.update_user", return_value=True
         )
@@ -167,6 +171,10 @@ class TestSystemDateEndpoints:
 
         mocker.patch(
             "src.api.routes.context.get_current_user_safe", return_value=mock_user
+        )
+        mocker.patch(
+            "src.api.routes.context.get_current_user_id_safe",
+            return_value="test-user-id",
         )
         mock_update = mocker.patch(
             "src.api.routes.context.update_user", return_value=True

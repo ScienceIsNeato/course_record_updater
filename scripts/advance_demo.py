@@ -19,7 +19,7 @@ import os
 import sys
 import time
 from types import ModuleType
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 from flask import Flask

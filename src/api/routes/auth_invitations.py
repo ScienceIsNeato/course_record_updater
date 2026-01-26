@@ -128,7 +128,7 @@ def create_invitation_api() -> ResponseReturnValue:
 
     except Exception as e:
         logger.error(f"Error creating invitation: {e}")
-        if "already exists" in str(e) or "already exists" in str(e):
+        if "already exists" in str(e):
             return jsonify({"success": False, "error": str(e)}), 409
         elif "Invalid role" in str(e):
             return jsonify({"success": False, "error": str(e)}), 400

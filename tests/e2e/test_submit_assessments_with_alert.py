@@ -15,13 +15,13 @@ import json
 import pytest
 from playwright.sync_api import Page, expect
 
+from src.utils.constants import TEST_USER_PASSWORD
 from tests.e2e.conftest import BASE_URL
 from tests.e2e.test_helpers import (
     create_test_user_via_api,
     get_institution_id_from_user,
     login_as_user,
 )
-from tests.test_credentials import TEST_USER_PASSWORD
 
 
 def _create_test_course_with_sections(

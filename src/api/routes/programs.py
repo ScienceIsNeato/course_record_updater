@@ -111,11 +111,15 @@ def create_program_api() -> ResponseReturnValue:
                     400,
                 )
 
+        user_id = get_current_user_id_safe()
+        if not user_id:
+            return jsonify({"success": False, "error": "Authentication required"}), 401
+
         program_data = Program.create_schema(
             name=data["name"],
             short_name=data["short_name"],
             institution_id=institution_id,
-            created_by=get_current_user_id_safe(),
+            created_by=user_id,
             description=data.get("description"),
             is_default=data.get("is_default", False),
             program_admins=data.get("program_admins", []),
@@ -381,7 +385,9 @@ def _get_default_program_id(institution_id: str) -> Optional[str]:
     if not programs:
         return None
     default_program = next((p for p in programs if p.get("is_default", False)), None)
-    return default_program["id"] if default_program else None
+    if not default_program:
+        return None
+    return default_program.get("program_id") or default_program.get("id")
 
 
 def _remove_course_with_orphan_handling(
