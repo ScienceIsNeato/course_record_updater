@@ -1,0 +1,33 @@
+rules:
+  - id: no-sleep-in-tests
+    patterns:
+      - pattern: time.sleep(...)
+    paths:
+      include:
+        - tests/
+      exclude:
+        - tests/e2e/  # E2E tests may legitimately need waits for browser/server sync
+    message: |
+      Avoid time.sleep() in unit/integration tests.
+      
+      Instead use:
+      - Mocking: Mock the time-dependent behavior
+      - Polling: Use retry/wait utilities with timeouts
+      - Async: Use asyncio.sleep() with proper async test fixtures
+      
+      If this sleep is truly necessary, add a comment explaining why and use:
+      # nosemgrep: no-sleep-in-tests
+    severity: WARNING
+    languages:
+      - python
+    metadata:
+      category: performance
+      confidence: HIGH
+      impact: MEDIUM
+      likelihood: HIGH
+      subcategory:
+        - audit
+      technology:
+        - pytest
+      references:
+        - https://docs.pytest.org/en/stable/how-to/monkeypatch.html

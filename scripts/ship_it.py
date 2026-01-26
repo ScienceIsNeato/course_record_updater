@@ -111,6 +111,30 @@ class CheckStatus(Enum):
     SKIPPED = "skipped"
 
 
+# =============================================================================
+# Performance Thresholds
+# =============================================================================
+# These thresholds detect performance regressions in the test suite.
+# If a check exceeds its threshold, it will WARN (not fail) to alert developers.
+# Adjust thresholds as the codebase evolves.
+# =============================================================================
+
+# Maximum allowed duration in seconds for each check type
+# Exceeding these triggers a warning (not failure) to catch regressions early
+CHECK_DURATION_THRESHOLDS: dict[str, float] = {
+    "python-unit-tests": 30.0,      # Unit tests should be fast
+    "python-coverage": 5.0,         # Coverage analysis (tests already ran)
+    "python-new-code-coverage": 5.0, # New code coverage analysis
+    "js-tests": 30.0,               # JavaScript tests
+    "js-coverage": 5.0,             # JS coverage analysis
+    "python-lint-format": 30.0,     # Linting and formatting
+    "python-static-analysis": 60.0, # Type checking can be slow
+    "integration": 60.0,            # Integration tests
+    "e2e": 180.0,                   # E2E tests with browser
+    "smoke": 120.0,                 # Smoke tests
+}
+
+
 @dataclass
 class CheckResult:
     name: str
@@ -1048,6 +1072,14 @@ class QualityGateExecutor:
                     self.logger.info(
                         f"{status_icon} {result.name} completed in {result.duration:.1f}s"
                     )
+
+                    # Check for duration threshold violations (warn, don't fail)
+                    threshold = CHECK_DURATION_THRESHOLDS.get(check_info.flag)
+                    if threshold and result.duration > threshold:
+                        self.logger.warning(
+                            f"⚠️  PERFORMANCE: {check_info.flag} took {result.duration:.1f}s "
+                            f"(threshold: {threshold:.0f}s). Investigate for regression."
+                        )
 
                     # Fail-fast: exit immediately on first failure (only if enabled)
                     if fail_fast and result.status == CheckStatus.FAILED:

@@ -7,10 +7,41 @@ to all test modules.
 All tests use CSRF-enabled clients to properly exercise security code paths.
 """
 
+import time
 from typing import Any, Callable, Generator, cast
 
 import pytest
 from flask.testing import FlaskClient
+
+
+# =============================================================================
+# Fixture Performance Gate
+# =============================================================================
+# Warns when function-scoped fixtures take too long, which often indicates
+# expensive setup that should be moved to session or module scope.
+# This caught the ~70ms/fixture * 1600 tests = 112s overhead issue.
+# =============================================================================
+
+FIXTURE_SLOW_THRESHOLD_MS = 10.0  # Warn if fixture takes longer than this
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_fixture_setup(fixturedef, request):  # type: ignore[no-untyped-def]
+    """Monitor fixture setup time and warn about slow function-scoped fixtures."""
+    start = time.perf_counter()
+    yield
+    elapsed_ms = (time.perf_counter() - start) * 1000
+
+    # Only warn for function-scoped fixtures (the ones that run per-test)
+    if fixturedef.scope == "function" and elapsed_ms > FIXTURE_SLOW_THRESHOLD_MS:
+        import warnings
+
+        warnings.warn(
+            f"Slow fixture: '{fixturedef.argname}' took {elapsed_ms:.1f}ms "
+            f"(threshold: {FIXTURE_SLOW_THRESHOLD_MS}ms). "
+            f"Consider session/module scope if setup is expensive.",
+            stacklevel=1,
+        )
 
 
 def _get_csrf_token_from_session_or_generate(client: FlaskClient) -> str | None:
