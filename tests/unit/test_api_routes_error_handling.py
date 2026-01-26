@@ -10,6 +10,7 @@ import tempfile
 from unittest.mock import patch
 
 from src.app import app
+from src.utils.constants import GENERIC_PASSWORD
 from tests.test_utils import CommonAuthMixin
 
 
@@ -42,7 +43,7 @@ class TestAPIErrorHandling(CommonAuthMixin):
                 "last_name": "User",
                 "role": "instructor",
                 "institution_id": "inst-123",  # Required for non-site_admin roles
-                "password": "TestPass123!",
+                "password": GENERIC_PASSWORD,
             }
 
             response = self.client.post("/api/users", json=user_data)

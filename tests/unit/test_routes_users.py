@@ -1,17 +1,15 @@
 """Unit tests for user API routes (migrated from test_api_routes.py)."""
 
 import json
-import os
 from unittest.mock import patch
 
 import pytest
 
 from src.app import app
+from src.utils.constants import GENERIC_PASSWORD
 from tests.test_utils import CommonAuthMixin
 
-TEST_PASSWORD = os.environ.get(
-    "TEST_PASSWORD", "SecurePass123!"
-)  # Test password for unit tests only
+TEST_PASSWORD = GENERIC_PASSWORD  # Test password for unit tests
 
 
 class TestUserEndpoints(CommonAuthMixin):
@@ -107,7 +105,7 @@ class TestUserEndpoints(CommonAuthMixin):
             "last_name": "User",
             "role": "instructor",
             "institution_id": "inst-123",  # Required for non-site_admin roles
-            "password": "TestPass123!",  # pragma: allowlist secret
+            "password": GENERIC_PASSWORD,
         }
 
         # Mock database failure
@@ -141,7 +139,7 @@ class TestUserEndpoints(CommonAuthMixin):
             "last_name": "User",
             "role": "instructor",
             "institution_id": "inst-123",  # Required for non-site_admin roles
-            "password": "TestPass123!",  # pragma: allowlist secret
+            "password": GENERIC_PASSWORD,
         }
 
         # Mock database exception
@@ -212,7 +210,7 @@ class TestUserEndpoints(CommonAuthMixin):
             "first_name": "New",
             "last_name": "User",
             "institution_id": "inst-123",  # Required for non-site_admin roles
-            "password": "TestPass123!",  # pragma: allowlist secret  # Provide password for immediate activation
+            "password": GENERIC_PASSWORD,  # Provide password for immediate activation
         }
 
         response = self.client.post(

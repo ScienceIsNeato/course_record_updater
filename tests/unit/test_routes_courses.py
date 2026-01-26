@@ -1,16 +1,14 @@
 """Unit tests for course API routes (migrated from test_api_routes.py)."""
 
 import json
-import os
 from unittest.mock import patch
 
 import pytest
 
 from src.app import app
+from src.utils.constants import GENERIC_PASSWORD
 
-TEST_PASSWORD = os.environ.get(
-    "TEST_PASSWORD", "SecurePass123!"
-)  # Test password for unit tests only
+TEST_PASSWORD = GENERIC_PASSWORD  # Test password for unit tests
 
 
 class TestCourseEndpoints:

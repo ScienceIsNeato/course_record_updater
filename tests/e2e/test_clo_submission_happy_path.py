@@ -154,7 +154,7 @@ def _login_as_instructor(admin_page, instructor_email, csrf_token):
     admin_page.goto(f"{BASE_URL}/login")
     admin_page.wait_for_selector("input[name='email']")
     admin_page.fill("input[name='email']", instructor_email)
-    admin_page.fill("input[name='password']", "Password123!")
+    admin_page.fill("input[name='password']", GENERIC_PASSWORD)
     admin_page.click("#login-form button[type='submit']")
     admin_page.wait_for_selector("text=Dashboard")
 

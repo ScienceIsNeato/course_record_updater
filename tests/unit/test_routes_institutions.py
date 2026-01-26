@@ -4,6 +4,7 @@ import json
 from unittest.mock import patch
 
 from src.app import app
+from src.utils.constants import INVALID_PASSWORD
 
 
 class TestInstitutionEndpoints:
@@ -70,7 +71,7 @@ class TestInstitutionEndpoints:
                 "email": "admin@test.edu",
                 "first_name": "Admin",
                 "last_name": "User",
-                "password": "password123",  # pragma: allowlist secret
+                "password": INVALID_PASSWORD,
             },
         }
 
@@ -150,8 +151,7 @@ class TestInstitutionEndpoints:
                     "admin_user": {
                         "first_name": "John",
                         "last_name": "Doe",
-                        "password": "SecurePassword123!",  # pragma: allowlist secret
-                        # Missing email field
+                        "password": "SecurePassword123!",  # Missing email field
                     },
                 },
             )
@@ -180,7 +180,7 @@ class TestInstitutionEndpoints:
                         "email": "admin@testuniversity.edu",
                         "first_name": "John",
                         "last_name": "Doe",
-                        "password": "SecurePassword123!",  # pragma: allowlist secret
+                        "password": "SecurePassword123!",
                     },
                 },
             )
@@ -209,7 +209,7 @@ class TestInstitutionEndpoints:
                         "email": "admin@testuniversity.edu",
                         "first_name": "John",
                         "last_name": "Doe",
-                        "password": "SecurePassword123!",  # pragma: allowlist secret
+                        "password": "SecurePassword123!",
                     },
                 },
             )

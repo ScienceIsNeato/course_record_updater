@@ -1,14 +1,12 @@
 """Unit tests for invitations API routes (migrated from test_api_routes.py)."""
 
 import json
-import os
 from unittest.mock import patch
 
 from src.app import app
+from src.utils.constants import GENERIC_PASSWORD, WEAK_PASSWORD
 
-TEST_PASSWORD = os.environ.get(
-    "TEST_PASSWORD", "SecurePass123!"
-)  # Test password for unit tests only
+TEST_PASSWORD = GENERIC_PASSWORD  # Test password for unit tests
 
 
 class TestInvitationEndpoints:
@@ -377,7 +375,7 @@ class TestAcceptInvitationEndpoints:
                 "/api/auth/accept-invitation",
                 json={
                     "invitation_token": "valid-token-123",
-                    "password": os.environ.get("TEST_WEAK_PASSWORD", "weak"),
+                    "password": WEAK_PASSWORD,
                 },
             )
 

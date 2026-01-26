@@ -1,14 +1,11 @@
 """Unit tests for validation API routes (migrated from test_api_routes.py)."""
 
-import os
 from unittest.mock import patch
 
 from src.app import app
-from src.utils.constants import USER_NOT_FOUND_MSG
+from src.utils.constants import GENERIC_PASSWORD, USER_NOT_FOUND_MSG
 
-TEST_PASSWORD = os.environ.get(
-    "TEST_PASSWORD", "SecurePass123!"
-)  # Test password for unit tests only
+TEST_PASSWORD = GENERIC_PASSWORD  # Test password for unit tests
 
 
 class TestErrorHandling:
@@ -194,7 +191,7 @@ class TestAPIRoutesErrorHandling:
             "last_name": "User",
             "role": "instructor",
             "institution_id": "riverside-tech-institute",  # Required for non-site_admin roles
-            "password": "TestPass123!",  # pragma: allowlist secret
+            "password": GENERIC_PASSWORD,
         }
 
         response = self.client.post("/api/users", json=user_data)

@@ -10,6 +10,7 @@ from unittest.mock import patch
 import pytest
 
 from src.services.invitation_service import InvitationError, InvitationService
+from src.utils.constants import GENERIC_PASSWORD, INVALID_PASSWORD
 
 
 class TestInvitationServiceCreation:
@@ -304,7 +305,7 @@ class TestInvitationServiceAcceptance:
         # Execute
         result = InvitationService.accept_invitation(
             invitation_token="secure-token-123",
-            password="ValidPassword123!",
+            password=GENERIC_PASSWORD,
             display_name="John Doe",
         )
 
@@ -317,9 +318,9 @@ class TestInvitationServiceAcceptance:
         assert result["email_verified"] is True
 
         mock_password_service.validate_password_strength.assert_called_once_with(
-            "ValidPassword123!"
+            GENERIC_PASSWORD
         )
-        mock_password_service.hash_password.assert_called_once_with("ValidPassword123!")
+        mock_password_service.hash_password.assert_called_once_with(GENERIC_PASSWORD)
         mock_db.create_user.assert_called_once()
         mock_db.update_invitation.assert_called_once()
         mock_email_service.send_welcome_email.assert_called_once()
@@ -364,7 +365,7 @@ class TestInvitationServiceAcceptance:
         # Execute
         result = InvitationService.accept_invitation(
             invitation_token="secure-token-123",
-            password="ValidPassword123!",
+            password=GENERIC_PASSWORD,
             display_name="John Doe",
         )
 
@@ -387,7 +388,7 @@ class TestInvitationServiceAcceptance:
 
         # Execute & Verify
         with pytest.raises(InvitationError, match="Invalid invitation token"):
-            InvitationService.accept_invitation("invalid-token", "password123")
+            InvitationService.accept_invitation("invalid-token", INVALID_PASSWORD)
 
     @patch("src.services.invitation_service.db")
     def test_accept_invitation_already_accepted(self, mock_db):
@@ -398,7 +399,7 @@ class TestInvitationServiceAcceptance:
 
         # Execute & Verify
         with pytest.raises(InvitationError, match="already been accepted"):
-            InvitationService.accept_invitation("token", "password123")
+            InvitationService.accept_invitation("token", INVALID_PASSWORD)
 
     @patch("src.services.invitation_service.db")
     def test_accept_invitation_expired(self, mock_db):
@@ -415,7 +416,7 @@ class TestInvitationServiceAcceptance:
 
         # Execute & Verify
         with pytest.raises(InvitationError, match="expired"):
-            InvitationService.accept_invitation("token", "password123")
+            InvitationService.accept_invitation("token", INVALID_PASSWORD)
 
         # Verify invitation was marked as expired
         mock_db.update_invitation.assert_called_once()
@@ -466,7 +467,7 @@ class TestInvitationServiceAcceptance:
         # Execute & Verify
         with pytest.raises(InvitationError, match="Failed to create user account"):
             InvitationService.accept_invitation(
-                "token", "ValidPassword123!", display_name="Test User"
+                "token", GENERIC_PASSWORD, display_name="Test User"
             )
 
     @patch("src.services.invitation_service.db")
@@ -478,7 +479,7 @@ class TestInvitationServiceAcceptance:
 
         # Execute & Verify
         with pytest.raises(InvitationError, match="Invitation has expired"):
-            InvitationService.accept_invitation("token", "ValidPassword123!")
+            InvitationService.accept_invitation("token", GENERIC_PASSWORD)
 
     @patch("src.services.invitation_service.db")
     def test_accept_invitation_unknown_status(self, mock_db):
@@ -491,7 +492,7 @@ class TestInvitationServiceAcceptance:
 
         # Execute & Verify
         with pytest.raises(InvitationError, match="not available for acceptance"):
-            InvitationService.accept_invitation("token", "ValidPassword123!")
+            InvitationService.accept_invitation("token", GENERIC_PASSWORD)
 
     @patch(
         "src.services.invitation_service.InvitationService._assign_instructor_to_section"
@@ -532,7 +533,7 @@ class TestInvitationServiceAcceptance:
 
         result = InvitationService.accept_invitation(
             invitation_token="secure-token-123",
-            password="ValidPassword123!",
+            password=GENERIC_PASSWORD,
             display_name="John Doe",
         )
 
@@ -810,7 +811,7 @@ class TestInvitationServiceIntegration:
 
         user = InvitationService.accept_invitation(
             invitation_token=invitation["token"],
-            password="ValidPassword123!",
+            password=GENERIC_PASSWORD,
             display_name="John Doe",
         )
 

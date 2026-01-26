@@ -24,6 +24,7 @@ from src.services.password_service import (
     validate_password_strength,
     verify_password,
 )
+from src.utils.constants import GENERIC_PASSWORD
 
 # Fast bcrypt mock for performance - returns predictable hash based on password
 _MOCK_HASH_PREFIX = b"$2b$04$mockhash"
@@ -81,7 +82,7 @@ class TestPasswordHashing:
 
         # Execute & Verify
         with pytest.raises(Exception, match="bcrypt failed"):
-            hash_password("ValidPassword123!")
+            hash_password(GENERIC_PASSWORD)
 
     @patch("src.services.password_service.bcrypt.gensalt", _mock_gensalt)
     @patch("src.services.password_service.bcrypt.hashpw", _mock_hashpw)
@@ -142,7 +143,7 @@ class TestPasswordValidation:
     def test_valid_password(self):
         """Test that valid password passes validation"""
         # Should not raise exception
-        validate_password_strength("TestPass123!")
+        validate_password_strength(GENERIC_PASSWORD)
 
     def test_empty_password(self):
         """Test that empty password fails validation"""
@@ -445,7 +446,9 @@ class TestPasswordServiceIntegration:
     @patch("src.services.password_service.bcrypt.checkpw", _mock_checkpw)
     def test_complete_password_lifecycle(self):
         """Test complete password creation and verification cycle"""
-        password = "SecurePass123!"
+        from src.utils.constants import GENERIC_PASSWORD
+
+        password = GENERIC_PASSWORD
 
         # Hash password
         hashed = hash_password(password)

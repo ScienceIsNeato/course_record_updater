@@ -58,8 +58,8 @@ class TestNewUserRegistrationFlow:
         _test_email = "sarah.johnson@loopclosertests.mailtrap.io"  # noqa: F841
         # browser.fill("#name", "Dr. Sarah Johnson")
         # browser.fill("#email", test_email)
-        # browser.fill("#password", "SecurePass123!")
-        # browser.fill("#password_confirm", "SecurePass123!")
+        # browser.fill("#password", GENERIC_PASSWORD)
+        # browser.fill("#password_confirm", GENERIC_PASSWORD)
 
         # 3. Submit registration
         # browser.click("button[type='submit']")
@@ -98,7 +98,7 @@ class TestNewUserRegistrationFlow:
         # 8. Log in with new account
         # browser.goto(f"{base_url}/login")
         # browser.fill("#email", test_email)
-        # browser.fill("#password", "SecurePass123!")
+        # browser.fill("#password", GENERIC_PASSWORD)
         # browser.click("button[type='submit']")
 
         # 9. Verify dashboard access
@@ -367,5 +367,7 @@ class GmailHelper:
         
     def extract_link(self, email, link_text=None):
         '''Extract URL from email body'''
+
+from src.utils.constants import GENERIC_PASSWORD
         pass
 """

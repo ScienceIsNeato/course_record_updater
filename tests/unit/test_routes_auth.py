@@ -1,15 +1,12 @@
 """Unit tests for authentication API routes (migrated from test_api_routes.py)."""
 
 import json
-import os
 from unittest.mock import patch
 
 from src.app import app
-from src.utils.constants import USER_NOT_FOUND_MSG
+from src.utils.constants import GENERIC_PASSWORD, INVALID_PASSWORD, USER_NOT_FOUND_MSG
 
-TEST_PASSWORD = os.environ.get(
-    "TEST_PASSWORD", "SecurePass123!"
-)  # Test password for unit tests only
+TEST_PASSWORD = GENERIC_PASSWORD  # Test password for unit tests
 
 
 class TestLoginAPI:
@@ -26,7 +23,7 @@ class TestLoginAPI:
                 "/api/auth/login",
                 json={
                     "email": "test@example.com",
-                    "password": "password123",  # pragma: allowlist secret
+                    "password": INVALID_PASSWORD,
                 },
                 headers={"X-CSRFToken": csrf_token},
             )
@@ -42,7 +39,7 @@ class TestLoginAPI:
                 "/api/auth/login",
                 json={
                     "email": "test@example.com",
-                    "password": "password123",  # pragma: allowlist secret
+                    "password": INVALID_PASSWORD,
                 },
                 headers={"X-CSRFToken": csrf_token},
             )
@@ -66,7 +63,7 @@ class TestLoginAPI:
                 "/api/auth/login",
                 json={
                     "email": "test@example.com",
-                    "password": "password123",  # pragma: allowlist secret
+                    "password": INVALID_PASSWORD,
                 },
                 headers={"X-CSRFToken": csrf_token},
             )

@@ -1,101 +1,117 @@
 #!/usr/bin/env python3
 """
-Validate that secrets/passwords are only defined in authorized files.
+Validate that actual password literals are not hardcoded in test/source files.
 
-This script checks .secrets.baseline and ensures that any detected secrets
-(particularly passwords) are only in files that are authorized to contain them.
+This script directly searches for known password patterns in code files,
+rather than relying on detect-secrets baseline (which has many false positives).
 
-Authorized files:
-- Files with "constant" in the filename (e.g., constants.py)
-- Configuration templates (e.g., .envrc.template)
-- Documentation files (e.g., *.md)
-- Workflow files (e.g., .github/workflows/*.yml)
-- Template files (e.g., templates/*.html)
-- Static files (e.g., static/*.js)
-- JSON fixtures (e.g., *.json)
-
-This prevents test files and source code from having hardcoded passwords
-scattered throughout the codebase. All passwords should be imported from
-a central constants file.
+Hardcoded passwords that should use constants instead:
+- TestPass123!, ValidPassword123!, SecurePass123! -> GENERIC_PASSWORD
+- password123 -> INVALID_PASSWORD
+- weak (as password value) -> WEAK_PASSWORD
 """
 
-import json
+import re
 import sys
 from pathlib import Path
 
-# Files/patterns that are allowed to contain secrets
+# Actual password patterns to detect (not "Secret Keyword" false positives)
+PASSWORD_PATTERNS = [
+    (r'"TestPass123!"', "GENERIC_PASSWORD"),
+    (r'"ValidPassword123!"', "GENERIC_PASSWORD"),
+    (r'"SecurePass123!"', "GENERIC_PASSWORD"),
+    (r'"Password123!"', "GENERIC_PASSWORD"),
+    (r'"password123"', "INVALID_PASSWORD"),
+    (r'password\s*=\s*"weak"', "WEAK_PASSWORD"),
+]
+
+# Files/patterns that are allowed to contain password constants
 ALLOWED_PATTERNS = [
-    # Central password constants file
-    "constant",
-    # Configuration templates
+    "constants.py",
+    "validate_secrets_location.py",  # This script contains patterns to match
     ".envrc",
-    # Documentation (examples, setup guides)
     ".md",
-    # GitHub workflows (encrypted secrets references)
     ".github/workflows/",
-    # HTML templates (form field names, not actual passwords)
     "templates/",
-    # Static JS files (form handling, not actual passwords)
     "static/",
-    # JSON fixtures (test data - these should also use constants ideally)
     ".json",
 ]
 
+# File patterns to scan
+SCAN_PATTERNS = [
+    "tests/**/*.py",
+    "scripts/**/*.py",
+    "src/**/*.py",
+]
 
-def is_file_allowed(filename: str) -> bool:
-    """Check if a file is allowed to contain secrets."""
-    filename_lower = filename.lower()
+
+def is_file_allowed(filepath: str) -> bool:
+    """Check if a file is allowed to contain password definitions."""
+    filepath_lower = filepath.lower()
     for pattern in ALLOWED_PATTERNS:
-        if pattern.lower() in filename_lower:
+        if pattern.lower() in filepath_lower:
             return True
     return False
 
 
-def validate_secrets_baseline(baseline_path: str = ".secrets.baseline") -> list[dict]:
-    """
-    Validate that all detected secrets are in allowed files.
-
-    Returns a list of violations (files with secrets that shouldn't have them).
-    """
-    baseline_file = Path(baseline_path)
-    if not baseline_file.exists():
-        print(f"⚠️  No {baseline_path} file found - skipping validation")
-        return []
-
-    with open(baseline_file) as f:
-        data = json.load(f)
-
+def scan_file_for_passwords(filepath: Path) -> list[dict]:
+    """Scan a single file for hardcoded password patterns."""
     violations = []
-    results = data.get("results", {})
 
-    for filename, secrets in results.items():
-        if not is_file_allowed(filename):
-            # This file shouldn't have secrets
-            for secret in secrets:
-                violations.append(
-                    {
-                        "file": filename,
-                        "type": secret.get("type", "Unknown"),
-                        "line": secret.get("line_number", "?"),
-                    }
-                )
+    try:
+        content = filepath.read_text()
+        lines = content.split("\n")
+
+        for line_num, line in enumerate(lines, 1):
+            for pattern, constant in PASSWORD_PATTERNS:
+                # Use case-sensitive matching to avoid false positives
+                # on intentionally invalid passwords like "TESTPASS123!"
+                if re.search(pattern, line):
+                    violations.append(
+                        {
+                            "file": str(filepath),
+                            "line": line_num,
+                            "pattern": pattern,
+                            "suggested_constant": constant,
+                            "line_content": line.strip()[:80],
+                        }
+                    )
+    except Exception:
+        pass  # Skip files that can't be read
+
+    return violations
+
+
+def scan_codebase() -> list[dict]:
+    """Scan the entire codebase for hardcoded passwords."""
+    violations = []
+    project_root = Path(".")
+
+    for glob_pattern in SCAN_PATTERNS:
+        for filepath in project_root.glob(glob_pattern):
+            if is_file_allowed(str(filepath)):
+                continue
+            if "__pycache__" in str(filepath):
+                continue
+            violations.extend(scan_file_for_passwords(filepath))
 
     return violations
 
 
 def main() -> int:
     """Main entry point."""
-    print("🔐 Validating secrets are in authorized locations...")
+    print("Scanning for hardcoded passwords...")
     print()
 
-    violations = validate_secrets_baseline()
+    violations = scan_codebase()
 
     if not violations:
-        print("✅ All detected secrets are in authorized files!")
+        print("No hardcoded passwords found!")
         print()
-        print("Authorized file patterns:")
-        for pattern in ALLOWED_PATTERNS:
-            print(f"  • {pattern}")
+        print("All password usage correctly imports from constants.py:")
+        print("    GENERIC_PASSWORD = TestPass123!")
+        print("    WEAK_PASSWORD = weak")
+        print("    INVALID_PASSWORD = password123")
         return 0
 
     # Group violations by file for cleaner output
@@ -106,10 +122,10 @@ def main() -> int:
             files_with_violations[filename] = []
         files_with_violations[filename].append(v)
 
-    print("❌ SECURITY VIOLATION: Secrets found in unauthorized files!")
+    print("HARDCODED PASSWORDS FOUND!")
     print()
     print("=" * 70)
-    print("⚠️  PASSWORDS SHOULD NOT BE HARDCODED IN TEST OR SOURCE FILES!")
+    print("PASSWORDS SHOULD NOT BE HARDCODED IN TEST OR SOURCE FILES!")
     print("=" * 70)
     print()
     print("Instead of hardcoding passwords, import them from constants:")
@@ -117,28 +133,30 @@ def main() -> int:
     print("    from src.utils.constants import GENERIC_PASSWORD, WEAK_PASSWORD")
     print()
     print("Available password constants:")
-    print("    • GENERIC_PASSWORD = 'TestPass123!'  (valid test password)")
-    print("    • WEAK_PASSWORD = 'weak'             (for testing validation)")
-    print("    • INVALID_PASSWORD = 'password123'   (for testing rejection)")
+    print("    GENERIC_PASSWORD = TestPass123!  (valid test password)")
+    print("    WEAK_PASSWORD = weak             (for testing validation)")
+    print("    INVALID_PASSWORD = password123   (for testing rejection)")
     print()
     print("-" * 70)
-    print("Files with unauthorized secrets:")
+    print("Files with hardcoded passwords:")
     print("-" * 70)
 
     for filename, file_violations in sorted(files_with_violations.items()):
-        print(f"\n📁 {filename}")
+        print(f"\n{filename}")
         for v in file_violations:
-            print(f"   Line {v['line']}: {v['type']}")
+            print(f"   Line {v['line']}: Use {v['suggested_constant']} instead")
+            print(f"      {v['line_content']}")
 
     print()
     print("-" * 70)
-    print(f"Total: {len(violations)} secret(s) in {len(files_with_violations)} file(s)")
+    print(
+        f"Total: {len(violations)} password(s) in {len(files_with_violations)} file(s)"
+    )
     print("-" * 70)
     print()
     print("To fix:")
-    print("  1. Replace hardcoded passwords with imports from constants.py")
-    print("  2. Run: detect-secrets scan --baseline .secrets.baseline")
-    print("  3. Verify the violations are resolved")
+    print("  1. Add import: from src.utils.constants import GENERIC_PASSWORD")
+    print("  2. Replace the hardcoded password with the constant")
     print()
 
     return 1

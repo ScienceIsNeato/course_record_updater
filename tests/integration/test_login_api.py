@@ -10,6 +10,7 @@ from unittest.mock import patch
 import pytest
 
 from src.app import app
+from src.utils.constants import INVALID_PASSWORD
 
 
 @pytest.fixture
@@ -65,7 +66,9 @@ class TestLoginAPI:
         # Execute
         response = client.post(
             "/api/auth/login",
-            data=json.dumps({"email": "test@example.com", "password": "password123"}),
+            data=json.dumps(
+                {"email": "test@example.com", "password": INVALID_PASSWORD}
+            ),
             content_type="application/json",
         )
 
@@ -115,7 +118,9 @@ class TestLoginAPI:
         # Execute
         response = client.post(
             "/api/auth/login",
-            data=json.dumps({"email": "test@example.com", "password": "password123"}),
+            data=json.dumps(
+                {"email": "test@example.com", "password": INVALID_PASSWORD}
+            ),
             content_type="application/json",
         )
 
@@ -179,7 +184,7 @@ class TestLoginAPI:
             data=json.dumps(
                 {
                     "email": "test@example.com",
-                    "password": "password123",
+                    "password": INVALID_PASSWORD,
                     "remember_me": True,
                 }
             ),
@@ -460,7 +465,9 @@ class TestLoginFlowIntegration:
 
         login_response = client.post(
             "/api/auth/login",
-            data=json.dumps({"email": "test@example.com", "password": "password123"}),
+            data=json.dumps(
+                {"email": "test@example.com", "password": INVALID_PASSWORD}
+            ),
             content_type="application/json",
         )
 

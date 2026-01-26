@@ -5,13 +5,12 @@ TDD tests for:
 - Password change (POST /api/auth/change-password)
 """
 
-import os
 from unittest.mock import patch
 
 from src.app import app
 from src.utils.constants import GENERIC_PASSWORD
 
-TEST_PASSWORD = os.environ.get("TEST_PASSWORD", GENERIC_PASSWORD)
+TEST_PASSWORD = GENERIC_PASSWORD  # Test password for unit tests
 NEW_TEST_PASSWORD = GENERIC_PASSWORD
 
 

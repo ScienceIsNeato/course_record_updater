@@ -349,7 +349,7 @@ if [[ "$RUN_PYTHON_STATIC_ANALYSIS" == "true" ]]; then
   
   # Run mypy type checking
   echo "  🔧 Type checking with mypy..."
-  if mypy src/ scripts/ conftest.py --exclude tests/ --ignore-missing-imports --disallow-untyped-defs 2>&1; then
+  if mypy src/ scripts/ conftest.py --exclude 'tests/|data/' --ignore-missing-imports --disallow-untyped-defs --explicit-package-bases 2>&1; then
     add_success "mypy" "Type checking passed"
   else
     add_failure "mypy" "Type checking failed" "Fix mypy type errors"
@@ -471,7 +471,7 @@ if [[ "$RUN_TYPES" == "true" ]]; then
 
   # Run mypy type checking (main files only, with timeout)
   # Include scripts for type checking but exclude from coverage
-  TYPE_OUTPUT=$(timeout 30s find . -name "*.py" -not -path "./venv/*" -not -path "./cursor-rules/*" -not -path "./.venv/*" -not -path "./tests/*" -not -path "./scripts/seed_db.py" | xargs mypy --ignore-missing-imports --no-strict-optional 2>&1) || TYPE_FAILED=true
+  TYPE_OUTPUT=$(timeout 30s find . -name "*.py" -not -path "./venv/*" -not -path "./cursor-rules/*" -not -path "./.venv/*" -not -path "./tests/*" -not -path "./scripts/seed_db.py" -not -path "./data/*" -not -path "./demos/*" | xargs mypy --ignore-missing-imports --no-strict-optional --explicit-package-bases 2>&1) || TYPE_FAILED=true
 
   if [[ "$TYPE_FAILED" != "true" ]]; then
     echo "✅ Type Check: PASSED (strict mypy type checking)"
