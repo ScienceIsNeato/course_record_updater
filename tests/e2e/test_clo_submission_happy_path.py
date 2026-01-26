@@ -15,9 +15,9 @@ Workflow:
 import json
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page
 
-from src.utils.constants import TEST_USER_PASSWORD
+from src.utils.constants import GENERIC_PASSWORD
 from tests.e2e.conftest import BASE_URL
 from tests.e2e.test_helpers import (
     create_test_user_via_api,
@@ -154,7 +154,7 @@ def _login_as_instructor(admin_page, instructor_email, csrf_token):
     admin_page.goto(f"{BASE_URL}/login")
     admin_page.wait_for_selector("input[name='email']")
     admin_page.fill("input[name='email']", instructor_email)
-    admin_page.fill("input[name='password']", "Password123!")
+    admin_page.fill("input[name='password']", GENERIC_PASSWORD)
     admin_page.click("#login-form button[type='submit']")
     admin_page.wait_for_selector("text=Dashboard")
 
@@ -370,7 +370,7 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
     # Login as instructor and execute workflow
     instructor_page = admin_page.context.new_page()
     login_as_user(
-        instructor_page, BASE_URL, "uat007.instructor@test.com", TEST_USER_PASSWORD
+        instructor_page, BASE_URL, "uat007.instructor@test.com", GENERIC_PASSWORD
     )
 
     # Execute the entire submission workflow

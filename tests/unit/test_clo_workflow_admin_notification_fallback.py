@@ -5,9 +5,7 @@ Tests that when a program has no program_admins, the system falls back
 to institution_admins for submission notifications.
 """
 
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from src.services.clo_workflow_service import CLOWorkflowService
 

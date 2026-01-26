@@ -11,6 +11,7 @@ import pytest
 
 from src.services.login_service import LoginError, LoginService
 from src.services.password_service import AccountLockedError
+from src.utils.constants import INVALID_PASSWORD
 
 
 class TestLoginServiceAuthentication:
@@ -43,7 +44,7 @@ class TestLoginServiceAuthentication:
 
         # Execute
         result = LoginService.authenticate_user(
-            "test@example.com", "password123", False
+            "test@example.com", INVALID_PASSWORD, False
         )
 
         # Verify
@@ -58,7 +59,7 @@ class TestLoginServiceAuthentication:
         )
         mock_db.get_user_by_email.assert_called_once_with("test@example.com")
         mock_password_service.verify_password.assert_called_once_with(
-            "password123", "hashed-password"
+            INVALID_PASSWORD, "hashed-password"
         )
         mock_password_service.clear_failed_attempts.assert_called_once_with(
             "test@example.com"
@@ -77,7 +78,7 @@ class TestLoginServiceAuthentication:
 
         # Execute & Verify
         with pytest.raises(LoginError, match="Invalid email or password"):
-            LoginService.authenticate_user("invalid@example.com", "password123")
+            LoginService.authenticate_user("invalid@example.com", INVALID_PASSWORD)
 
         mock_password_service.track_failed_login.assert_called_once_with(
             "invalid@example.com"
@@ -122,7 +123,7 @@ class TestLoginServiceAuthentication:
 
         # Execute & Verify
         with pytest.raises(LoginError, match="Account is pending activation"):
-            LoginService.authenticate_user("test@example.com", "password123")
+            LoginService.authenticate_user("test@example.com", INVALID_PASSWORD)
 
     @patch("src.services.login_service.PasswordService")
     @patch("src.services.login_service.db")
@@ -139,7 +140,7 @@ class TestLoginServiceAuthentication:
 
         # Execute & Verify
         with pytest.raises(LoginError, match="Account has been suspended"):
-            LoginService.authenticate_user("test@example.com", "password123")
+            LoginService.authenticate_user("test@example.com", INVALID_PASSWORD)
 
     @patch("src.services.login_service.PasswordService")
     def test_authenticate_user_account_locked(self, mock_password_service):
@@ -151,7 +152,7 @@ class TestLoginServiceAuthentication:
 
         # Execute & Verify
         with pytest.raises(AccountLockedError, match="Account is locked"):
-            LoginService.authenticate_user("test@example.com", "password123")
+            LoginService.authenticate_user("test@example.com", INVALID_PASSWORD)
 
     @patch("src.services.login_service.PasswordService")
     @patch("src.services.login_service.db")
@@ -171,7 +172,7 @@ class TestLoginServiceAuthentication:
         with pytest.raises(
             LoginError, match="Account is not configured for password login"
         ):
-            LoginService.authenticate_user("test@example.com", "password123")
+            LoginService.authenticate_user("test@example.com", INVALID_PASSWORD)
 
     @patch("src.services.login_service.SessionService")
     @patch("src.services.login_service.PasswordService")
@@ -198,7 +199,7 @@ class TestLoginServiceAuthentication:
 
         # Execute
         result = LoginService.authenticate_user(
-            "test@example.com", "password123", remember_me=True
+            "test@example.com", INVALID_PASSWORD, remember_me=True
         )
 
         # Verify
@@ -236,7 +237,7 @@ class TestLoginServiceAuthentication:
         # Execute & Verify
         with pytest.raises(LoginError, match="Login failed. Please try again."):
             LoginService.authenticate_user(
-                "test@example.com", "password123", remember_me=False
+                "test@example.com", INVALID_PASSWORD, remember_me=False
             )
 
 
@@ -476,12 +477,12 @@ class TestLoginServiceConvenienceFunctions:
         # Execute
         from src.services.login_service import login_user
 
-        result = login_user("test@example.com", "password123", True)
+        result = login_user("test@example.com", INVALID_PASSWORD, True)
 
         # Verify
         assert result == expected_result
         mock_authenticate.assert_called_once_with(
-            "test@example.com", "password123", True
+            "test@example.com", INVALID_PASSWORD, True
         )
 
     @patch("src.services.login_service.LoginService.logout_user")
@@ -577,7 +578,9 @@ class TestLoginServiceIntegration:
         mock_session.create_user_session.return_value = None
 
         # Step 1: Login
-        login_result = LoginService.authenticate_user("test@example.com", "password123")
+        login_result = LoginService.authenticate_user(
+            "test@example.com", INVALID_PASSWORD
+        )
         assert login_result["login_success"] is True
 
         # Setup for status check

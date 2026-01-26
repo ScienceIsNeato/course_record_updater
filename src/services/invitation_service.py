@@ -33,8 +33,6 @@ INVITATION_NOT_FOUND_MSG = "Invitation not found"
 class InvitationError(Exception):
     """Raised when invitation operations fail"""
 
-    pass
-
 
 class InvitationService:
     """Service for managing user invitations"""

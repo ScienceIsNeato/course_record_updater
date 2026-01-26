@@ -184,8 +184,6 @@ class TestToDictEdgeCases:
         class UnknownModel:
             """Mock unknown model."""
 
-            pass
-
         unknown = UnknownModel()
         result = to_dict(unknown)
 

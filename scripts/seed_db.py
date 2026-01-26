@@ -13,7 +13,7 @@ import json
 import os
 import sys
 from abc import ABC, abstractmethod
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # Typing imports for static analysis
@@ -465,9 +465,9 @@ class BaselineSeeder(ABC):
             return None
 
         try:
-            from tests import test_credentials  # Local import to avoid cycles
+            from src.utils import constants  # Local import to avoid cycles
 
-            return getattr(test_credentials, env_key, None)
+            return getattr(constants, env_key, None)
         except ImportError:
             return None
 
@@ -481,13 +481,13 @@ class BaselineSeeder(ABC):
             return password_hash
 
         try:
-            from tests import test_credentials
+            from src.utils import constants
 
-            password_value = getattr(test_credentials, env_key, None)
+            password_value = getattr(constants, env_key, None)
             if password_value:
                 password_hash = hash_password(password_value)
         except ImportError:
-            # Gracefully handle missing test_credentials module - use default password hash
+            # Gracefully handle missing constants module - use default password hash
             pass
 
         return password_hash
@@ -740,7 +740,7 @@ class BaselineSeeder(ABC):
         course_map: Dict[str, Dict[str, Any]],
         specific_clos: List[Dict[str, Any]],
     ) -> int:
-        from src.utils.constants import CLOApprovalStatus, CLOStatus
+        from src.utils.constants import CLOStatus
 
         clo_count = 0
         status_lookup = self._status_lookup()
@@ -931,7 +931,6 @@ class BaselineSeeder(ABC):
     @abstractmethod
     def seed(self) -> bool:
         """Implement seeding logic in subclasses"""
-        pass
 
 
 class BaselineTestSeeder(BaselineSeeder):
@@ -1065,9 +1064,9 @@ class BaselineTestSeeder(BaselineSeeder):
 
         # Create users (site_admin, instructors, program admins, institution admins)
         self.log("👥 Creating users...")
-        from tests.test_credentials import INSTITUTION_ADMIN_PASSWORD
+        from src.utils.constants import GENERIC_PASSWORD
 
-        default_hash = hash_password(INSTITUTION_ADMIN_PASSWORD)
+        default_hash = hash_password(GENERIC_PASSWORD)
         # Use program_map if any user uses program_code, else fall back to list
         uses_program_code_users = any(
             "program_code" in u for u in manifest_data.get("users", [])
@@ -1250,9 +1249,9 @@ class DemoSeeder(BaselineSeeder):
 
         # 6. Create Users
         self.log("👥 Creating demo faculty/staff...")
-        from tests.test_credentials import DEMO_PASSWORD
+        from src.utils.constants import GENERIC_PASSWORD
 
-        default_hash = hash_password(DEMO_PASSWORD)
+        default_hash = hash_password(GENERIC_PASSWORD)
 
         user_ids = self.create_users_from_manifest(
             inst_ids, manifest["users"], program_map, default_hash
@@ -1304,7 +1303,7 @@ class DemoSeeder(BaselineSeeder):
         Returns:
             Number of overrides successfully applied
         """
-        from src.utils.constants import CLOApprovalStatus, CLOStatus
+        from src.utils.constants import CLOStatus
 
         applied_count = 0
         status_lookup = self._status_lookup()
@@ -1371,7 +1370,6 @@ class DemoSeeder(BaselineSeeder):
         """Create OutcomeHistory entries with relative dates from manifest."""
         from datetime import timedelta
 
-        from src.database.database_sqlite import SQLDatabase
         from src.models.models_sql import OutcomeHistory
 
         now = datetime.now(timezone.utc)

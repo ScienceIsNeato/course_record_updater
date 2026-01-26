@@ -273,12 +273,21 @@ if [[ "$RUN_PYTHON_LINT_FORMAT" == "true" ]]; then
     GROUPED_PASSED=false
   fi
   
-  # Run flake8 (critical errors only)
-  echo "  🔍 Checking critical lint issues with flake8..."
-  if flake8 --select=E9,F63,F7,F82 --show-source --statistics src/ tests/ scripts/ conftest.py 2>&1; then
-    add_success "flake8" "No critical lint errors found"
+  # Auto-remove unused imports with autoflake
+  echo "  🧹 Auto-removing unused imports with autoflake..."
+  if autoflake --in-place --remove-all-unused-imports --recursive --exclude=venv,__pycache__,.git src/ tests/ scripts/ conftest.py 2>/dev/null || true; then
+    add_success "autoflake" "Unused imports auto-removed"
   else
-    add_failure "flake8" "Critical lint errors found" "Fix the errors above"
+    add_failure "autoflake" "Unused import removal" "Run: autoflake --in-place --remove-all-unused-imports --recursive src/ tests/ scripts/ conftest.py"
+    GROUPED_PASSED=false
+  fi
+  
+  # Run flake8 (critical errors + unused imports)
+  echo "  🔍 Checking critical lint issues with flake8..."
+  if flake8 --select=E9,F63,F7,F82,F401 --show-source --statistics src/ tests/ scripts/ conftest.py 2>&1; then
+    add_success "flake8" "No critical lint errors or unused imports found"
+  else
+    add_failure "flake8" "Critical lint errors or unused imports found" "Fix the errors above"
     GROUPED_PASSED=false
   fi
   
@@ -340,7 +349,7 @@ if [[ "$RUN_PYTHON_STATIC_ANALYSIS" == "true" ]]; then
   
   # Run mypy type checking
   echo "  🔧 Type checking with mypy..."
-  if mypy src/ scripts/ conftest.py --exclude tests/ --ignore-missing-imports --disallow-untyped-defs 2>&1; then
+  if mypy src/ scripts/ conftest.py --exclude 'tests/|data/' --ignore-missing-imports --disallow-untyped-defs --explicit-package-bases 2>&1; then
     add_success "mypy" "Type checking passed"
   else
     add_failure "mypy" "Type checking failed" "Fix mypy type errors"
@@ -436,8 +445,8 @@ if [[ "$RUN_LINT" == "true" ]]; then
   # Run flake8 for critical errors only (much faster)
   # Only check tracked Python files to avoid processing non-Python files
   # Use xargs to avoid "argument list too long" error
-  echo "🔧 Running flake8 critical error check..."
-  FLAKE8_OUTPUT=$(git ls-files '*.py' 'adapters/**/*.py' 'tests/**/*.py' 'api/**/*.py' 'session/**/*.py' 'email_providers/**/*.py' 'bulk_email_models/**/*.py' 'scripts/**/*.py' 2>&1 | grep -v 'Dark Forest' | grep -v '__pycache__' | xargs -r flake8 --max-line-length=88 --select=E9,F63,F7,F82 2>&1 | grep -v 'Unable to find qualified name')
+  echo "🔧 Running flake8 critical error check (including unused imports)..."
+  FLAKE8_OUTPUT=$(git ls-files '*.py' 'adapters/**/*.py' 'tests/**/*.py' 'api/**/*.py' 'session/**/*.py' 'email_providers/**/*.py' 'bulk_email_models/**/*.py' 'scripts/**/*.py' 2>&1 | grep -v 'Dark Forest' | grep -v '__pycache__' | xargs -r flake8 --max-line-length=88 --select=E9,F63,F7,F82,F401 2>&1 | grep -v 'Unable to find qualified name')
   FLAKE8_EXIT=$?
 
   if [[ $FLAKE8_EXIT -ne 0 && -n "$FLAKE8_OUTPUT" ]]; then
@@ -462,7 +471,7 @@ if [[ "$RUN_TYPES" == "true" ]]; then
 
   # Run mypy type checking (main files only, with timeout)
   # Include scripts for type checking but exclude from coverage
-  TYPE_OUTPUT=$(timeout 30s find . -name "*.py" -not -path "./venv/*" -not -path "./cursor-rules/*" -not -path "./.venv/*" -not -path "./tests/*" -not -path "./scripts/seed_db.py" | xargs mypy --ignore-missing-imports --no-strict-optional 2>&1) || TYPE_FAILED=true
+  TYPE_OUTPUT=$(timeout 30s find . -name "*.py" -not -path "./venv/*" -not -path "./cursor-rules/*" -not -path "./.venv/*" -not -path "./tests/*" -not -path "./scripts/seed_db.py" -not -path "./data/*" -not -path "./demos/*" | xargs mypy --ignore-missing-imports --no-strict-optional --explicit-package-bases 2>&1) || TYPE_FAILED=true
 
   if [[ "$TYPE_FAILED" != "true" ]]; then
     echo "✅ Type Check: PASSED (strict mypy type checking)"
@@ -1108,6 +1117,29 @@ for r in d.get('results',[])[:5]:
   fi
   
   rm -f "$BANDIT_OUT" "$SEMGREP_OUT" "$SECRETS_OUT"
+
+  # 4. SECRETS LOCATION VALIDATION
+  # Ensure secrets are only in authorized files (constants.py, docs, templates, etc.)
+  echo "  🔍 Validating secrets are in authorized locations..."
+  if [[ -f scripts/validate_secrets_location.py ]]; then
+    set +e
+    SECRETS_LOCATION_OUTPUT=$(python3 scripts/validate_secrets_location.py 2>&1)
+    SECRETS_LOCATION_EXIT=$?
+    set -e
+    if [[ $SECRETS_LOCATION_EXIT -eq 0 ]]; then
+      echo "  ✅ Secrets location validation passed"
+    else
+      echo "  ❌ Secrets found in unauthorized files!"
+      echo "$SECRETS_LOCATION_OUTPUT" | head -50
+      echo ""
+      echo "  💡 Move hardcoded passwords to src/utils/constants.py and import from there:"
+      echo "     from src.utils.constants import GENERIC_PASSWORD, WEAK_PASSWORD"
+      echo ""
+      SECURITY_PASSED=false
+    fi
+  else
+    echo "  ⚠️  Secrets location validation script not found (scripts/validate_secrets_location.py)"
+  fi
 
 
   # Run safety scan for known vulnerabilities in dependencies

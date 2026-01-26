@@ -21,6 +21,7 @@ from src.models.models import (
     User,
     UserInvitation,
 )
+from src.utils.constants import GENERIC_PASSWORD
 
 
 class TestEnhancedUserModel:
@@ -386,7 +387,7 @@ class TestUserPasswordMethods:
 
     def test_create_password_hash(self):
         """Test password hashing through User model"""
-        password = "TestPass123!"
+        password = GENERIC_PASSWORD
         hashed = User.create_password_hash(password)
 
         assert isinstance(hashed, str)

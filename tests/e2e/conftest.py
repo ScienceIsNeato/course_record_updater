@@ -30,16 +30,19 @@ from playwright.sync_api import (
 # Import shared test utilities
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from src.services.password_service import PasswordService
-from src.utils.constants import E2E_TEST_PORT
-from tests.conftest import get_worker_id
-from tests.test_credentials import (
+from src.utils.constants import (
+    E2E_TEST_PORT,
+    GENERIC_PASSWORD,
     INSTITUTION_ADMIN_EMAIL,
-    INSTITUTION_ADMIN_PASSWORD,
     PROGRAM_ADMIN_EMAIL,
-    PROGRAM_ADMIN_PASSWORD,
     SITE_ADMIN_EMAIL,
-    SITE_ADMIN_PASSWORD,
 )
+from tests.conftest import get_worker_id
+
+# All test accounts use GENERIC_PASSWORD
+SITE_ADMIN_PASSWORD = GENERIC_PASSWORD
+INSTITUTION_ADMIN_PASSWORD = GENERIC_PASSWORD
+PROGRAM_ADMIN_PASSWORD = GENERIC_PASSWORD
 
 # E2E environment runs on dedicated port (worker-aware for parallel execution)
 

@@ -7,7 +7,6 @@ prevent broken templates from being deployed.
 """
 
 import pytest
-from flask import Flask
 
 
 def test_assessments_template_renders(client, authenticated_client):
@@ -106,7 +105,6 @@ def test_all_templates_compile(authenticated_client):
     - Unmatched {% ... %}
     - Invalid Jinja2 syntax
     """
-    from flask import current_app
     from jinja2.exceptions import TemplateSyntaxError
 
     env = authenticated_client.application.jinja_env

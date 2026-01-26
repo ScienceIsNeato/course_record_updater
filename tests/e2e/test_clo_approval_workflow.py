@@ -18,7 +18,7 @@ import json
 import pytest
 from playwright.sync_api import Page, expect
 
-from src.utils.constants import TEST_USER_PASSWORD
+from src.utils.constants import GENERIC_PASSWORD
 from tests.e2e.conftest import BASE_URL
 from tests.e2e.test_helpers import (
     create_test_user_via_api,
@@ -168,7 +168,7 @@ def _setup_approval_test_data(admin_page, institution_id):
     # Submit CLO via instructor context using SECTION OUTCOME ID
     instructor_context = admin_page.context.browser.new_context()
     instructor_page = instructor_context.new_page()
-    login_as_user(instructor_page, BASE_URL, instructor_email, TEST_USER_PASSWORD)
+    login_as_user(instructor_page, BASE_URL, instructor_email, GENERIC_PASSWORD)
 
     instructor_page.goto(f"{BASE_URL}/dashboard")
     instructor_page.wait_for_load_state("networkidle")

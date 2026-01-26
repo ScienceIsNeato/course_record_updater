@@ -5,14 +5,13 @@ TDD tests for:
 - Password change (POST /api/auth/change-password)
 """
 
-import os
 from unittest.mock import patch
 
 from src.app import app
-from tests.test_credentials import NEW_PASSWORD, SECURE_PASSWORD
+from src.utils.constants import GENERIC_PASSWORD
 
-TEST_PASSWORD = os.environ.get("TEST_PASSWORD", SECURE_PASSWORD)
-NEW_TEST_PASSWORD = NEW_PASSWORD
+TEST_PASSWORD = GENERIC_PASSWORD  # Test password for unit tests
+NEW_TEST_PASSWORD = GENERIC_PASSWORD
 
 
 class TestProfileUpdateAPI:
@@ -53,7 +52,7 @@ class TestProfileUpdateAPI:
         """Test successful profile update."""
         self._login_user()
 
-        with patch("src.api_routes.update_user_profile") as mock_update:
+        with patch("src.api.routes.auth_profile.update_user_profile") as mock_update:
             mock_update.return_value = True
 
             response = self.client.patch(
@@ -88,7 +87,7 @@ class TestProfileUpdateAPI:
         """Test that email cannot be changed via profile update."""
         self._login_user()
 
-        with patch("src.api_routes.update_user_profile") as mock_update:
+        with patch("src.api.routes.auth_profile.update_user_profile") as mock_update:
             mock_update.return_value = True
 
             response = self.client.patch(
@@ -108,7 +107,7 @@ class TestProfileUpdateAPI:
         """Test that role cannot be changed via profile update."""
         self._login_user()
 
-        with patch("src.api_routes.update_user_profile") as mock_update:
+        with patch("src.api.routes.auth_profile.update_user_profile") as mock_update:
             mock_update.return_value = True
 
             response = self.client.patch(
@@ -128,7 +127,7 @@ class TestProfileUpdateAPI:
         """Test profile update handles database errors."""
         self._login_user()
 
-        with patch("src.api_routes.update_user_profile") as mock_update:
+        with patch("src.api.routes.auth_profile.update_user_profile") as mock_update:
             mock_update.side_effect = Exception("Database error")
 
             response = self.client.patch(
@@ -183,10 +182,10 @@ class TestChangePasswordAPI:
         self._login_user()
 
         with (
-            patch("src.api_routes.get_user_by_id") as mock_get_user,
+            patch("src.api.routes.auth_profile.get_user_by_id") as mock_get_user,
             patch("src.services.password_service.verify_password") as mock_verify,
             patch("src.services.password_service.hash_password") as mock_hash,
-            patch("src.api_routes.update_user") as mock_update,
+            patch("src.api.routes.auth_profile.update_user") as mock_update,
         ):
             mock_get_user.return_value = {
                 "user_id": "user-123",
@@ -253,7 +252,7 @@ class TestChangePasswordAPI:
         self._login_user()
 
         with (
-            patch("src.api_routes.get_user_by_id") as mock_get_user,
+            patch("src.api.routes.auth_profile.get_user_by_id") as mock_get_user,
             patch("src.services.password_service.verify_password") as mock_verify,
         ):
             mock_get_user.return_value = {
@@ -280,7 +279,7 @@ class TestChangePasswordAPI:
         self._login_user()
 
         with (
-            patch("src.api_routes.get_user_by_id") as mock_get_user,
+            patch("src.api.routes.auth_profile.get_user_by_id") as mock_get_user,
             patch("src.services.password_service.verify_password") as mock_verify,
             patch("src.services.password_service.hash_password") as mock_hash,
         ):
@@ -313,10 +312,10 @@ class TestChangePasswordAPI:
         self._login_user()
 
         with (
-            patch("src.api_routes.get_user_by_id") as mock_get_user,
+            patch("src.api.routes.auth_profile.get_user_by_id") as mock_get_user,
             patch("src.services.password_service.verify_password") as mock_verify,
             patch("src.services.password_service.hash_password") as mock_hash,
-            patch("src.api_routes.update_user") as mock_update,
+            patch("src.api.routes.auth_profile.update_user") as mock_update,
         ):
             mock_get_user.return_value = {
                 "user_id": "user-123",

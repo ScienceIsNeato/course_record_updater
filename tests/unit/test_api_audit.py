@@ -10,10 +10,19 @@ from unittest.mock import patch
 import pytest
 from flask import Flask
 
+# Save original module so the reimport doesn't break patches in other test files
+_original_audit_module = sys.modules.get("src.api.routes.audit")
+
 with patch("src.services.auth_service.permission_required", lambda perm: lambda f: f):
     if "src.api.routes.audit" in sys.modules:
         del sys.modules["src.api.routes.audit"]
     from src.api.routes.audit import audit_bp
+
+# Restore original module or remove the tainted version so other tests get a clean import
+if _original_audit_module is not None:
+    sys.modules["src.api.routes.audit"] = _original_audit_module
+else:
+    sys.modules.pop("src.api.routes.audit", None)
 
 from src.services.audit_service import EntityType
 

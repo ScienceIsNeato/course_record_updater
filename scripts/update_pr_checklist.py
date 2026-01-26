@@ -22,7 +22,6 @@ import json
 import os
 import subprocess  # nosec B404
 import sys
-from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 

@@ -24,6 +24,7 @@ from src.services.password_service import (
     validate_password_strength,
     verify_password,
 )
+from src.utils.constants import GENERIC_PASSWORD
 
 # Fast bcrypt mock for performance - returns predictable hash based on password
 _MOCK_HASH_PREFIX = b"$2b$04$mockhash"
@@ -58,9 +59,9 @@ class TestPasswordHashing:
     @patch("src.services.password_service.bcrypt.hashpw", _mock_hashpw)
     def test_hash_password_success(self):
         """Test successful password hashing"""
-        from tests.test_credentials import TEST_PASSWORD
+        from src.utils.constants import GENERIC_PASSWORD
 
-        password = TEST_PASSWORD
+        password = GENERIC_PASSWORD
         hashed = hash_password(password)
 
         assert isinstance(hashed, str)
@@ -81,16 +82,16 @@ class TestPasswordHashing:
 
         # Execute & Verify
         with pytest.raises(Exception, match="bcrypt failed"):
-            hash_password("ValidPassword123!")
+            hash_password(GENERIC_PASSWORD)
 
     @patch("src.services.password_service.bcrypt.gensalt", _mock_gensalt)
     @patch("src.services.password_service.bcrypt.hashpw", _mock_hashpw)
     @patch("src.services.password_service.bcrypt.checkpw", _mock_checkpw)
     def test_verify_password_correct(self):
         """Test password verification with correct password"""
-        from tests.test_credentials import TEST_PASSWORD
+        from src.utils.constants import GENERIC_PASSWORD
 
-        password = TEST_PASSWORD
+        password = GENERIC_PASSWORD
         hashed = hash_password(password)
 
         assert verify_password(password, hashed) is True
@@ -100,9 +101,9 @@ class TestPasswordHashing:
     @patch("src.services.password_service.bcrypt.checkpw", _mock_checkpw)
     def test_verify_password_incorrect(self):
         """Test password verification with incorrect password"""
-        from tests.test_credentials import TEST_PASSWORD
+        from src.utils.constants import GENERIC_PASSWORD
 
-        password = TEST_PASSWORD
+        password = GENERIC_PASSWORD
         wrong_password = "WrongPass123!"
         hashed = hash_password(password)
 
@@ -110,9 +111,9 @@ class TestPasswordHashing:
 
     def test_verify_password_with_invalid_hash(self):
         """Test password verification with invalid hash"""
-        from tests.test_credentials import TEST_PASSWORD
+        from src.utils.constants import GENERIC_PASSWORD
 
-        password = TEST_PASSWORD
+        password = GENERIC_PASSWORD
         invalid_hash = "invalid_hash"
 
         assert verify_password(password, invalid_hash) is False
@@ -125,9 +126,9 @@ class TestPasswordHashing:
         It's intentionally slower (~0.5s) to test the real password flow.
         Mark with @pytest.mark.slow - skip in dev cycles with: pytest -m "not slow"
         """
-        from tests.test_credentials import TEST_PASSWORD
+        from src.utils.constants import GENERIC_PASSWORD
 
-        password = TEST_PASSWORD
+        password = GENERIC_PASSWORD
         hash1 = hash_password(password)
         hash2 = hash_password(password)
 
@@ -142,7 +143,7 @@ class TestPasswordValidation:
     def test_valid_password(self):
         """Test that valid password passes validation"""
         # Should not raise exception
-        validate_password_strength("TestPass123!")
+        validate_password_strength(GENERIC_PASSWORD)
 
     def test_empty_password(self):
         """Test that empty password fails validation"""
@@ -445,7 +446,9 @@ class TestPasswordServiceIntegration:
     @patch("src.services.password_service.bcrypt.checkpw", _mock_checkpw)
     def test_complete_password_lifecycle(self):
         """Test complete password creation and verification cycle"""
-        password = "SecurePass123!"
+        from src.utils.constants import GENERIC_PASSWORD
+
+        password = GENERIC_PASSWORD
 
         # Hash password
         hashed = hash_password(password)

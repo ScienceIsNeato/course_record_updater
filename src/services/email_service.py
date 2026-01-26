@@ -24,7 +24,6 @@ from flask import Flask, current_app
 # Import email provider infrastructure
 from src.email_providers import create_email_provider
 from src.email_providers.base_provider import EmailProvider
-from src.email_providers.brevo_provider import BrevoProvider
 
 # Import constants to avoid duplication
 from src.utils.constants import DEFAULT_BASE_URL

@@ -33,10 +33,11 @@ class TestFlaskAppSetup:
         assert app_module.app.secret_key == "test-secret"
 
     def test_api_blueprint_registered(self):
-        """Test that API blueprint is registered."""
-        # Check that blueprints are registered
-        blueprint_names = [bp.name for bp in app_module.app.blueprints.values()]
-        assert "api" in blueprint_names
+        """Test that API blueprints are registered."""
+        blueprint_names = list(app_module.app.blueprints.keys())
+        # After modular extraction, individual domain blueprints replace "api"
+        for expected in ("courses", "users", "institutions", "health"):
+            assert expected in blueprint_names, f"Blueprint '{expected}' not registered"
 
     def test_app_route_registration(self):
         """Test comprehensive route registration."""

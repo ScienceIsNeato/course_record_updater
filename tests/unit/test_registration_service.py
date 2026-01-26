@@ -19,6 +19,7 @@ from src.services.registration_service import (
     resend_verification_email,
     verify_email,
 )
+from src.utils.constants import GENERIC_PASSWORD, WEAK_PASSWORD
 
 
 class TestInstitutionAdminRegistration:
@@ -38,7 +39,7 @@ class TestInstitutionAdminRegistration:
         # Test registration
         result = register_institution_admin(
             email="admin@example.com",
-            password="SecurePass123!",
+            password=GENERIC_PASSWORD,
             first_name="John",
             last_name="Doe",
             institution_name="Example University",
@@ -79,7 +80,7 @@ class TestInstitutionAdminRegistration:
         with pytest.raises(RegistrationError, match="already exists"):
             register_institution_admin(
                 email="admin@example.com",
-                password="SecurePass123!",
+                password=GENERIC_PASSWORD,
                 first_name="John",
                 last_name="Doe",
                 institution_name="Example University",
@@ -90,7 +91,7 @@ class TestInstitutionAdminRegistration:
         with pytest.raises(PasswordValidationError):
             register_institution_admin(
                 email="admin@example.com",
-                password="weak",
+                password=WEAK_PASSWORD,
                 first_name="John",
                 last_name="Doe",
                 institution_name="Example University",
@@ -110,7 +111,7 @@ class TestInstitutionAdminRegistration:
         # Test registration
         result = register_institution_admin(
             email="admin@example.com",
-            password="SecurePass123!",
+            password=GENERIC_PASSWORD,
             first_name="John",
             last_name="Doe",
             institution_name="Example University",
@@ -131,7 +132,7 @@ class TestInstitutionAdminRegistration:
         with pytest.raises(RegistrationError, match="Registration failed"):
             register_institution_admin(
                 email="admin@example.com",
-                password="SecurePass123!",
+                password=GENERIC_PASSWORD,
                 first_name="John",
                 last_name="Doe",
                 institution_name="Example University",
@@ -495,7 +496,7 @@ class TestRegistrationServiceIntegration:
         # Test registration
         reg_result = register_institution_admin(
             email="admin@example.com",
-            password="SecurePass123!",
+            password=GENERIC_PASSWORD,
             first_name="John",
             last_name="Doe",
             institution_name="Example University",

@@ -10,6 +10,7 @@ from unittest.mock import patch
 import pytest
 
 from src.app import app
+from src.utils.constants import INVALID_PASSWORD
 
 
 @pytest.fixture
@@ -65,7 +66,9 @@ class TestLoginAPI:
         # Execute
         response = client.post(
             "/api/auth/login",
-            data=json.dumps({"email": "test@example.com", "password": "password123"}),
+            data=json.dumps(
+                {"email": "test@example.com", "password": INVALID_PASSWORD}
+            ),
             content_type="application/json",
         )
 
@@ -115,7 +118,9 @@ class TestLoginAPI:
         # Execute
         response = client.post(
             "/api/auth/login",
-            data=json.dumps({"email": "test@example.com", "password": "password123"}),
+            data=json.dumps(
+                {"email": "test@example.com", "password": INVALID_PASSWORD}
+            ),
             content_type="application/json",
         )
 
@@ -179,7 +184,7 @@ class TestLoginAPI:
             data=json.dumps(
                 {
                     "email": "test@example.com",
-                    "password": "password123",
+                    "password": INVALID_PASSWORD,
                     "remember_me": True,
                 }
             ),
@@ -365,8 +370,12 @@ class TestUnlockAccountAPI:
         self, mock_module_get_user, mock_service_get_user, mock_password_service, client
     ):
         """Test successful account unlock"""
-        # Setup
-        user_context = {"id": "admin-123", "institution_id": "inst-123"}
+        # Setup - must have admin role to unlock accounts
+        user_context = {
+            "user_id": "admin-123",
+            "institution_id": "inst-123",
+            "role": "institution_admin",
+        }
         mock_module_get_user.return_value = user_context
         mock_service_get_user.return_value = user_context
         mock_password_service.clear_failed_attempts.return_value = None
@@ -456,7 +465,9 @@ class TestLoginFlowIntegration:
 
         login_response = client.post(
             "/api/auth/login",
-            data=json.dumps({"email": "test@example.com", "password": "password123"}),
+            data=json.dumps(
+                {"email": "test@example.com", "password": INVALID_PASSWORD}
+            ),
             content_type="application/json",
         )
 

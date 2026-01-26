@@ -41,8 +41,6 @@ USE_ETHEREAL_IMAP = bool(ETHEREAL_USER and ETHEREAL_PASS)
 class MailtrapError(Exception):
     """Base exception for Mailtrap API errors."""
 
-    pass
-
 
 def get_mailtrap_auth() -> tuple:
     """

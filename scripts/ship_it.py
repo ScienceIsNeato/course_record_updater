@@ -1661,7 +1661,7 @@ def reply_to_pr_comment(
         True if successful, False otherwise
     """
     try:
-        import json
+        pass
 
         pr_number, owner, name = _get_pr_context()
         if not pr_number:

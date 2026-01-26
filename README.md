@@ -201,6 +201,9 @@ python scripts/seed_db.py --clear
 Test Passwords and Secrets Policy
 --------------------------------
 
-- **Do not hardcode password literals in tests.** Centralize test passwords in `src/utils/constants.py` as named constants (e.g., `TEST_USER_PASSWORD`).
+- **Do not hardcode password literals in tests.** Use centralized test passwords from `src/utils/constants.py`:
+  - `GENERIC_PASSWORD` - Use everywhere except password validation testing
+  - `WEAK_PASSWORD` - For testing rejection of weak passwords
+  - `INVALID_PASSWORD` - For testing password complexity requirements
 - When adding a new test secret constant intentionally, regenerate and commit the detect-secrets baseline (`.secrets.baseline`) so the scanner records the intentional test secret.
 - Contributors should import the constant from `src.utils.constants` in tests instead of using inline literals.

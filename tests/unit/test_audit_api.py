@@ -55,8 +55,10 @@ class TestAuditAPI:
         """Test successful retrieval of recent audit logs."""
         self._login_institution_admin()
 
-        with patch("src.api_routes.get_recent_audit_logs") as mock_get_logs:
-            mock_get_logs.return_value = [
+        with patch(
+            "src.api.routes.audit.AuditService.get_recent_activity"
+        ) as mock_get_activity:
+            mock_get_activity.return_value = [
                 {
                     "id": "log-1",
                     "action": "create",
@@ -74,14 +76,22 @@ class TestAuditAPI:
             assert len(data["logs"]) == 1
             assert data["logs"][0]["id"] == "log-1"
 
-            # Verify call with correct institution_id (positional args)
-            mock_get_logs.assert_called_once_with("inst-123", 50)
+            # New route uses AuditService.get_recent_activity with keyword args
+            mock_get_activity.assert_called_once_with(institution_id=None, limit=50)
 
     def test_search_audit_logs_success(self):
         """Test successful search of audit logs."""
         self._login_institution_admin()
 
-        with patch("src.api_routes.get_audit_logs_filtered") as mock_search:
+        with (
+            patch("src.api.routes.audit.resolve_institution_scope") as mock_scope,
+            patch("src.api.routes.audit.get_audit_logs_filtered") as mock_search,
+        ):
+            mock_scope.return_value = (
+                self.institution_admin_user,
+                ["inst-123"],
+                False,
+            )
             mock_search.return_value = [
                 {
                     "id": "log-2",
@@ -113,7 +123,15 @@ class TestAuditAPI:
         """Test audit log search handles database errors."""
         self._login_institution_admin()
 
-        with patch("src.api_routes.get_audit_logs_filtered") as mock_search:
+        with (
+            patch("src.api.routes.audit.resolve_institution_scope") as mock_scope,
+            patch("src.api.routes.audit.get_audit_logs_filtered") as mock_search,
+        ):
+            mock_scope.return_value = (
+                self.institution_admin_user,
+                ["inst-123"],
+                False,
+            )
             mock_search.side_effect = Exception("Database error")
 
             response = self.client.get("/api/audit/search")

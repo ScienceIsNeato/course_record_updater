@@ -19,7 +19,7 @@ import json
 import pytest
 from playwright.sync_api import Page, expect
 
-from src.utils.constants import TEST_USER_PASSWORD
+from src.utils.constants import GENERIC_PASSWORD
 from tests.e2e.conftest import BASE_URL
 from tests.e2e.test_helpers import (
     create_test_user_via_api,
@@ -472,7 +472,7 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     instructor_page = instructor_context.new_page()
     try:
         login_as_user(
-            instructor_page, BASE_URL, "uat010.instructor@test.com", TEST_USER_PASSWORD
+            instructor_page, BASE_URL, "uat010.instructor@test.com", GENERIC_PASSWORD
         )
 
         _step_3_instructor_edits(

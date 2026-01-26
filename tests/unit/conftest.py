@@ -52,6 +52,23 @@ def setup_unit_test_database(tmp_path_factory, worker_id):
     os.environ.pop("_UNIT_TEST_CLEANUP_ACTIVE", None)
 
 
+@pytest.fixture(scope="session", autouse=True)
+def disable_csrf_for_unit_tests():
+    """Disable CSRF validation for unit tests.
+
+    Unit tests focus on business logic, not CSRF protection. Without this
+    fixture, tests fail intermittently under pytest-xdist because some workers
+    never import modules that happen to set WTF_CSRF_ENABLED=False as a side
+    effect (e.g., test_ui_navigation.py). Tests that specifically verify CSRF
+    behavior (e.g., test_logout_csrf_issue.py) re-enable it locally.
+    """
+    from src.app import app
+
+    app.config["WTF_CSRF_ENABLED"] = False
+    yield
+    app.config["WTF_CSRF_ENABLED"] = True
+
+
 @pytest.fixture(scope="function", autouse=True)
 def reset_db_between_tests():
     """

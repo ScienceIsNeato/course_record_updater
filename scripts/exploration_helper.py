@@ -10,18 +10,13 @@ Provides utilities for:
 """
 
 import json
-import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict
 
 # Add src to path for constants import
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-from utils.constants import (  # noqa: E402
-    INSTITUTION_ADMIN_PASSWORD,
-    SITE_ADMIN_PASSWORD,
-    TEST_USER_PASSWORD,
-)
+from utils.constants import GENERIC_PASSWORD  # noqa: E402
 
 
 class ExplorationTracker:
@@ -108,19 +103,19 @@ def validate_test_accounts() -> Dict[str, bool]:
     accounts = {
         "site_admin": {
             "email": "siteadmin@system.local",
-            "password": SITE_ADMIN_PASSWORD,
+            "password": GENERIC_PASSWORD,
         },
         "institution_admin": {
             "email": "sarah.admin@mocku.test",
-            "password": INSTITUTION_ADMIN_PASSWORD,
+            "password": GENERIC_PASSWORD,
         },
         "program_admin": {
             "email": "lisa.prog@mocku.test",
-            "password": TEST_USER_PASSWORD,
+            "password": GENERIC_PASSWORD,
         },
         "instructor": {
             "email": "john.instructor@mocku.test",
-            "password": TEST_USER_PASSWORD,
+            "password": GENERIC_PASSWORD,
         },
     }
 

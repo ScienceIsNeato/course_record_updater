@@ -15,13 +15,13 @@ import json
 import pytest
 from playwright.sync_api import Page, expect
 
+from src.utils.constants import GENERIC_PASSWORD
 from tests.e2e.conftest import BASE_URL
 from tests.e2e.test_helpers import (
     create_test_user_via_api,
     get_institution_id_from_user,
     login_as_user,
 )
-from tests.test_credentials import TEST_USER_PASSWORD
 
 
 def _create_test_course_with_sections(
@@ -203,7 +203,7 @@ def test_submit_assessments_with_alert_checkbox(
     # Instructor logs in
     instructor_page = admin_page.context.new_page()
     login_as_user(
-        instructor_page, BASE_URL, "test.submit.alert@test.com", TEST_USER_PASSWORD
+        instructor_page, BASE_URL, "test.submit.alert@test.com", GENERIC_PASSWORD
     )
     instructor_page.on("console", lambda msg: print(f"BROWSER: {msg.text}"))
 

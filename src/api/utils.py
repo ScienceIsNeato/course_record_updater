@@ -35,6 +35,31 @@ class InstitutionContextMissingError(Exception):
     """Raised when a request requires institution scope but none is set."""
 
 
+def get_current_user_safe() -> Dict[str, Any]:
+    """Get current user and ensure it is not None (for type safety in protected routes)."""
+    user = get_current_user()
+    if user is None:
+        return {}
+    return user
+
+
+def get_current_user_id_safe() -> Optional[str]:
+    """Get current user's ID, returning None if unavailable."""
+    user = get_current_user_safe()
+    user_id = user.get("user_id")
+    if not user_id:
+        return None
+    return str(user_id)
+
+
+def get_current_institution_id_safe() -> str:
+    """Get current institution ID and ensure it is not None."""
+    inst_id = get_current_institution_id()
+    if not inst_id:
+        return ""
+    return inst_id
+
+
 def get_mimetype_for_extension(file_extension: str) -> str:
     """
     Get appropriate mimetype for a file extension.
@@ -63,11 +88,11 @@ def resolve_institution_scope(
     Raises:
         InstitutionContextMissingError: If require=True and no institution scope is available
     """
-    current_user = get_current_user()
-    institution_id = get_current_institution_id()
+    current_user = get_current_user_safe()
+    institution_id = get_current_institution_id_safe()
 
     if institution_id:
-        return current_user or {}, [institution_id], False
+        return current_user, [institution_id], False
 
     if current_user and current_user.get("role") == UserRole.SITE_ADMIN.value:
         institutions = get_all_institutions()
@@ -81,7 +106,7 @@ def resolve_institution_scope(
     if require:
         raise InstitutionContextMissingError()
 
-    return current_user or {}, [], False
+    return current_user, [], False
 
 
 def handle_api_error(
@@ -102,12 +127,8 @@ def handle_api_error(
     Returns:
         tuple: (JSON response, HTTP status code)
     """
-    # Log error with sanitized details (avoid logging user-controlled data)
-    # Only log the operation name and exception type, not the message
-    logger.error(
-        f"{operation_name} failed with {type(e).__name__}",
-        exc_info=True,  # This logs the traceback without the raw exception message
-    )
+    # Use logger.exception for proper traceback handling without embedding in message
+    logger.exception("%s failed", operation_name)
 
     # Return sanitized response to user
     return jsonify({"success": False, "error": user_message}), status_code

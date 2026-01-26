@@ -73,7 +73,7 @@ def get_csrf_token(client):
 class TestUsersCRUD:
     """Tests for Users CRUD endpoints."""
 
-    @patch("src.api_routes.get_user_by_id")
+    @patch("src.api.routes.users.get_user_by_id")
     def test_get_user_by_id_success(self, mock_get_user, client):
         """Test GET /api/users/<id> - success"""
         create_site_admin_session(client)
@@ -92,7 +92,7 @@ class TestUsersCRUD:
         assert data["success"] is True
         assert data["user"]["email"] == "test@example.com"
 
-    @patch("src.api_routes.get_user_by_id")
+    @patch("src.api.routes.users.get_user_by_id")
     def test_get_user_not_found(self, mock_get_user, client):
         """Test GET /api/users/<id> - user not found"""
         create_site_admin_session(client)
@@ -104,8 +104,8 @@ class TestUsersCRUD:
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("src.api_routes.update_user_profile")
-    @patch("src.api_routes.get_user_by_id")
+    @patch("src.api.routes.users.update_user_profile")
+    @patch("src.api.routes.users.get_user_by_id")
     def test_update_own_profile_success(self, mock_get_user, mock_update, client):
         """Test PATCH /api/users/<id>/profile - user updates own profile"""
         create_instructor_session(client)
@@ -129,7 +129,7 @@ class TestUsersCRUD:
         assert data["success"] is True
         assert "Profile updated successfully" in data["message"]
 
-    @patch("src.api_routes.has_permission")
+    @patch("src.api.routes.users.has_permission")
     def test_update_profile_permission_denied(self, mock_has_perm, client):
         """Test PATCH /api/users/<id>/profile - permission denied for other user"""
         create_instructor_session(client)
@@ -147,8 +147,8 @@ class TestUsersCRUD:
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("src.api_routes.deactivate_user")
-    @patch("src.api_routes.get_user_by_id")
+    @patch("src.api.routes.users.deactivate_user")
+    @patch("src.api.routes.users.get_user_by_id")
     def test_deactivate_user_success(self, mock_get_user, mock_deactivate, client):
         """Test POST /api/users/<id>/deactivate - success"""
         create_site_admin_session(client)
@@ -165,7 +165,7 @@ class TestUsersCRUD:
         assert data["success"] is True
         assert "deactivated successfully" in data["message"]
 
-    @patch("src.api_routes.get_user_by_id")
+    @patch("src.api.routes.users.get_user_by_id")
     def test_deactivate_user_not_found(self, mock_get_user, client):
         """Test POST /api/users/<id>/deactivate - user not found"""
         create_site_admin_session(client)
@@ -178,8 +178,8 @@ class TestUsersCRUD:
 
         assert response.status_code == 404
 
-    @patch("src.api_routes.delete_user")
-    @patch("src.api_routes.get_user_by_id")
+    @patch("src.api.routes.users.delete_user")
+    @patch("src.api.routes.users.get_user_by_id")
     def test_delete_user_success(self, mock_get_user, mock_delete, client):
         """Test DELETE /api/users/<id> - success"""
         create_site_admin_session(client)
@@ -214,8 +214,8 @@ class TestUsersCRUD:
 class TestInstitutionsCRUD:
     """Tests for Institutions CRUD endpoints."""
 
-    @patch("src.api_routes.update_institution")
-    @patch("src.api_routes.get_institution_by_id")
+    @patch("src.api.routes.institutions.update_institution")
+    @patch("src.api.routes.institutions.get_institution_by_id")
     def test_update_institution_success(self, mock_get_inst, mock_update, client):
         """Test PUT /api/institutions/<id> - success"""
         create_site_admin_session(client)
@@ -236,7 +236,7 @@ class TestInstitutionsCRUD:
         assert data["success"] is True
         assert data["institution"]["name"] == "New Name"
 
-    @patch("src.api_routes.get_institution_by_id")
+    @patch("src.api.routes.institutions.get_institution_by_id")
     def test_update_institution_not_found(self, mock_get_inst, client):
         """Test PUT /api/institutions/<id> - not found"""
         create_site_admin_session(client)
@@ -250,8 +250,8 @@ class TestInstitutionsCRUD:
 
         assert response.status_code == 404
 
-    @patch("src.api_routes.delete_institution")
-    @patch("src.api_routes.get_institution_by_id")
+    @patch("src.api.routes.institutions.delete_institution")
+    @patch("src.api.routes.institutions.get_institution_by_id")
     def test_delete_institution_success(self, mock_get_inst, mock_delete, client):
         """Test DELETE /api/institutions/<id> - success with confirmation"""
         create_site_admin_session(client)
@@ -278,7 +278,7 @@ class TestInstitutionsCRUD:
         data = response.get_json()
         assert "Confirmation required" in data["error"]
 
-    @patch("src.api_routes.get_institution_by_id")
+    @patch("src.api.routes.institutions.get_institution_by_id")
     def test_delete_institution_permission_denied_non_site_admin(
         self, mock_get_inst, client
     ):
@@ -302,7 +302,7 @@ class TestInstitutionsCRUD:
 class TestCoursesCRUD:
     """Tests for Courses CRUD endpoints."""
 
-    @patch("src.api_routes.get_course_by_id")
+    @patch("src.api.routes.courses.get_course_by_id")
     def test_get_course_by_id_success(self, mock_get_course, client):
         """Test GET /api/courses/by-id/<id> - success"""
         create_site_admin_session(client)
@@ -319,7 +319,7 @@ class TestCoursesCRUD:
         assert data["success"] is True
         assert data["course"]["course_number"] == "CS101"
 
-    @patch("src.api_routes.get_course_by_id")
+    @patch("src.api.routes.courses.get_course_by_id")
     def test_get_course_not_found(self, mock_get_course, client):
         """Test GET /api/courses/by-id/<id> - not found"""
         create_site_admin_session(client)
@@ -329,8 +329,8 @@ class TestCoursesCRUD:
 
         assert response.status_code == 404
 
-    @patch("src.api_routes.update_course")
-    @patch("src.api_routes.get_course_by_id")
+    @patch("src.api.routes.courses.update_course")
+    @patch("src.api.routes.courses.get_course_by_id")
     def test_update_course_success(self, mock_get_course, mock_update, client):
         """Test PUT /api/courses/<id> - success"""
         create_site_admin_session(client)
@@ -358,8 +358,8 @@ class TestCoursesCRUD:
         data = response.get_json()
         assert data["success"] is True
 
-    @patch("src.api_routes.delete_course")
-    @patch("src.api_routes.get_course_by_id")
+    @patch("src.api.routes.courses.delete_course")
+    @patch("src.api.routes.courses.get_course_by_id")
     def test_delete_course_success(self, mock_get_course, mock_delete, client):
         """Test DELETE /api/courses/<id> - success"""
         create_site_admin_session(client)
@@ -388,8 +388,8 @@ class TestCoursesCRUD:
 class TestTermsCRUD:
     """Tests for Terms CRUD endpoints."""
 
-    @patch("src.api_routes.get_current_institution_id")
-    @patch("src.api_routes.get_term_by_id")
+    @patch("src.api.routes.terms.get_current_institution_id_safe")
+    @patch("src.api.routes.terms.get_term_by_id")
     def test_get_term_by_id_success(self, mock_get_term, mock_get_inst_id, client):
         """Test GET /api/terms/<id> - success"""
         create_site_admin_session(client)
@@ -407,9 +407,9 @@ class TestTermsCRUD:
         assert data["success"] is True
         assert data["term"]["name"] == "Fall 2024"
 
-    @patch("src.api_routes.update_term")
-    @patch("src.api_routes.get_current_institution_id")
-    @patch("src.api_routes.get_term_by_id")
+    @patch("src.api.routes.terms.update_term")
+    @patch("src.api.routes.terms.get_current_institution_id_safe")
+    @patch("src.api.routes.terms.get_term_by_id")
     def test_update_term_success(
         self, mock_get_term, mock_get_inst_id, mock_update, client
     ):
@@ -436,9 +436,9 @@ class TestTermsCRUD:
         data = response.get_json()
         assert data["success"] is True
 
-    @patch("src.api_routes.delete_term")
-    @patch("src.api_routes.get_current_institution_id")
-    @patch("src.api_routes.get_term_by_id")
+    @patch("src.api.routes.terms.delete_term")
+    @patch("src.api.routes.terms.get_current_institution_id_safe")
+    @patch("src.api.routes.terms.get_term_by_id")
     def test_delete_term_success(
         self, mock_get_term, mock_get_inst_id, mock_delete, client
     ):
@@ -469,8 +469,8 @@ class TestTermsCRUD:
 class TestOfferingsCRUD:
     """Tests for Course Offerings CRUD endpoints."""
 
-    @patch("src.api_routes.database_service")
-    @patch("src.api_routes.get_current_institution_id")
+    @patch("src.api.routes.offerings.database_service")
+    @patch("src.api.routes.offerings.get_current_institution_id")
     def test_create_offering_success(self, mock_get_inst_id, mock_db_service, client):
         """Test POST /api/offerings - success"""
         create_site_admin_session(client)
@@ -501,7 +501,7 @@ class TestOfferingsCRUD:
         data = response.get_json()
         assert "Missing required fields" in data["error"]
 
-    @patch("src.api_routes.get_course_offering")
+    @patch("src.api.routes.offerings.get_course_offering")
     def test_get_offering_success(self, mock_get_offering, client):
         """Test GET /api/offerings/<id> - success"""
         create_site_admin_session(client)
@@ -518,8 +518,8 @@ class TestOfferingsCRUD:
         assert data["success"] is True
         assert data["offering"]["capacity"] == 30
 
-    @patch("src.api_routes.update_course_offering")
-    @patch("src.api_routes.get_course_offering")
+    @patch("src.api.routes.offerings.update_course_offering")
+    @patch("src.api.routes.offerings.get_course_offering")
     def test_update_offering_success(self, mock_get_offering, mock_update, client):
         """Test PUT /api/offerings/<id> - success"""
         create_site_admin_session(client)
@@ -539,8 +539,8 @@ class TestOfferingsCRUD:
         data = response.get_json()
         assert data["success"] is True
 
-    @patch("src.api_routes.delete_course_offering")
-    @patch("src.api_routes.get_course_offering")
+    @patch("src.api.routes.offerings.delete_course_offering")
+    @patch("src.api.routes.offerings.get_course_offering")
     def test_delete_offering_success(self, mock_get_offering, mock_delete, client):
         """Test DELETE /api/offerings/<id> - success"""
         create_site_admin_session(client)
@@ -565,9 +565,9 @@ class TestOfferingsCRUD:
 class TestSectionsCRUD:
     """Tests for Sections CRUD endpoints."""
 
-    @patch("src.api_routes.get_course_offering")
-    @patch("src.api_routes.get_current_institution_id")
-    @patch("src.api_routes.get_section_by_id")
+    @patch("src.api.routes.sections.get_course_offering")
+    @patch("src.api.routes.sections.get_current_institution_id_safe")
+    @patch("src.api.routes.sections.get_section_by_id")
     def test_get_section_by_id_success(
         self, mock_get_section, mock_get_inst_id, mock_get_offering, client
     ):
@@ -591,10 +591,10 @@ class TestSectionsCRUD:
         assert data["success"] is True
         assert data["section"]["section_number"] == "001"
 
-    @patch("src.api_routes.update_course_section")
-    @patch("src.api_routes.get_course_offering")
-    @patch("src.api_routes.get_current_institution_id")
-    @patch("src.api_routes.get_section_by_id")
+    @patch("src.api.routes.sections.update_course_section")
+    @patch("src.api.routes.sections.get_course_offering")
+    @patch("src.api.routes.sections.get_current_institution_id_safe")
+    @patch("src.api.routes.sections.get_section_by_id")
     def test_update_section_success(
         self, mock_get_section, mock_get_inst_id, mock_get_offering, mock_update, client
     ):
@@ -629,11 +629,11 @@ class TestSectionsCRUD:
         data = response.get_json()
         assert data["success"] is True
 
-    @patch("src.api_routes.assign_instructor")
-    @patch("src.api_routes.get_user_by_id")
-    @patch("src.api_routes.get_course_offering")
-    @patch("src.api_routes.get_current_institution_id")
-    @patch("src.api_routes.get_section_by_id")
+    @patch("src.api.routes.sections.assign_instructor")
+    @patch("src.api.routes.sections.get_user_by_id")
+    @patch("src.api.routes.sections.get_course_offering")
+    @patch("src.api.routes.sections.get_current_institution_id_safe")
+    @patch("src.api.routes.sections.get_section_by_id")
     def test_assign_instructor_success(
         self,
         mock_get_section,
@@ -691,10 +691,10 @@ class TestSectionsCRUD:
         data = response.get_json()
         assert "instructor_id is required" in data["error"]
 
-    @patch("src.api_routes.delete_course_section")
-    @patch("src.api_routes.get_course_offering")
-    @patch("src.api_routes.get_current_institution_id")
-    @patch("src.api_routes.get_section_by_id")
+    @patch("src.api.routes.sections.delete_course_section")
+    @patch("src.api.routes.sections.get_course_offering")
+    @patch("src.api.routes.sections.get_current_institution_id_safe")
+    @patch("src.api.routes.sections.get_section_by_id")
     def test_delete_section_success(
         self, mock_get_section, mock_get_inst_id, mock_get_offering, mock_delete, client
     ):
@@ -728,8 +728,8 @@ class TestSectionsCRUD:
 class TestOutcomesCRUD:
     """Tests for Course Outcomes CRUD endpoints."""
 
-    @patch("src.api_routes.database_service")
-    @patch("src.api_routes.get_course_by_id")
+    @patch("src.api.routes.outcomes.database_service")
+    @patch("src.api.routes.outcomes.get_course_by_id")
     def test_create_outcome_success(self, mock_get_course, mock_db_service, client):
         """Test POST /api/courses/<id>/outcomes - success"""
         create_site_admin_session(client)
@@ -747,7 +747,7 @@ class TestOutcomesCRUD:
         assert data["success"] is True
         assert data["outcome_id"] == "outcome-123"
 
-    @patch("src.api_routes.get_course_by_id")
+    @patch("src.api.routes.outcomes.get_course_by_id")
     def test_create_outcome_missing_description(self, mock_get_course, client):
         """Test POST /api/courses/<id>/outcomes - missing description"""
         create_site_admin_session(client)
@@ -763,10 +763,10 @@ class TestOutcomesCRUD:
         data = response.get_json()
         assert "description is required" in data["error"]
 
-    @patch("src.api_routes.get_course_by_id")
+    @patch("src.api.routes.outcomes.get_course_by_id")
     @patch("src.database.database_service.get_section_outcomes_by_criteria")
     @patch("src.database.database_service.get_sections_by_course")
-    @patch("src.api_routes.get_current_user")
+    @patch("src.api.routes.outcomes.get_current_user")
     def test_list_course_outcomes_instructor_view(
         self,
         mock_get_user,
@@ -807,9 +807,9 @@ class TestOutcomesCRUD:
         assert len(data["outcomes"]) == 1
         assert data["outcomes"][0]["id"] == "outcome-1"
 
-    @patch("src.api_routes.get_course_by_id")
-    @patch("src.api_routes.get_current_institution_id")
-    @patch("src.api_routes.get_course_outcome")
+    @patch("src.api.routes.outcomes.get_course_by_id")
+    @patch("src.api.routes.outcomes.get_current_institution_id_safe")
+    @patch("src.api.routes.outcomes.get_course_outcome")
     def test_get_outcome_success(
         self, mock_get_outcome, mock_get_inst_id, mock_get_course, client
     ):
@@ -833,10 +833,10 @@ class TestOutcomesCRUD:
         assert data["success"] is True
         assert data["outcome"]["description"] == "Learn X"
 
-    @patch("src.api_routes.update_course_outcome")
-    @patch("src.api_routes.get_course_by_id")
-    @patch("src.api_routes.get_current_institution_id")
-    @patch("src.api_routes.get_course_outcome")
+    @patch("src.api.routes.outcomes.update_course_outcome")
+    @patch("src.api.routes.outcomes.get_course_by_id")
+    @patch("src.api.routes.outcomes.get_current_institution_id_safe")
+    @patch("src.api.routes.outcomes.get_course_outcome")
     def test_update_outcome_success(
         self, mock_get_outcome, mock_get_inst_id, mock_get_course, mock_update, client
     ):
@@ -864,9 +864,9 @@ class TestOutcomesCRUD:
         assert data["success"] is True
 
     @patch("src.database.database_service.get_section_by_id")
-    @patch("src.api_routes.get_current_user")
-    @patch("src.api_routes.update_section_outcome")
-    @patch("src.api_routes.get_section_outcome")
+    @patch("src.api.routes.outcomes.get_current_user")
+    @patch("src.api.routes.outcomes.update_section_outcome")
+    @patch("src.api.routes.outcomes.get_section_outcome")
     def test_update_outcome_assessment_success(
         self,
         mock_get_outcome,
@@ -909,9 +909,9 @@ class TestOutcomesCRUD:
         # mock_auto_mark.assert_called_once_with("outcome-123", "user-456")
 
     @patch("src.database.database_service.get_section_by_id")
-    @patch("src.api_routes.get_current_user")
-    @patch("src.api_routes.update_section_outcome")
-    @patch("src.api_routes.get_section_outcome")
+    @patch("src.api.routes.outcomes.get_current_user")
+    @patch("src.api.routes.outcomes.update_section_outcome")
+    @patch("src.api.routes.outcomes.get_section_outcome")
     def test_update_outcome_assessment_tool_too_long(
         self,
         mock_get_outcome,
@@ -948,10 +948,10 @@ class TestOutcomesCRUD:
         data = response.get_json()
         assert data["success"] is True
 
-    @patch("src.api_routes.delete_course_outcome")
-    @patch("src.api_routes.get_course_by_id")
-    @patch("src.api_routes.get_current_institution_id")
-    @patch("src.api_routes.get_course_outcome")
+    @patch("src.api.routes.outcomes.delete_course_outcome")
+    @patch("src.api.routes.outcomes.get_course_by_id")
+    @patch("src.api.routes.outcomes.get_current_institution_id_safe")
+    @patch("src.api.routes.outcomes.get_course_outcome")
     def test_delete_outcome_success(
         self, mock_get_outcome, mock_get_inst_id, mock_get_course, mock_delete, client
     ):

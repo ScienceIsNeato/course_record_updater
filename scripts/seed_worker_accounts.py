@@ -23,29 +23,21 @@ import argparse
 import os
 import sys
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import src.database.database_service as database_service
 import src.database.database_service as db
 from src.models.models import User
 from src.services.password_service import hash_password
-from src.utils.constants import (
-    INSTITUTION_ADMIN_PASSWORD,
-    SITE_ADMIN_INSTITUTION_ID,
-    SITE_ADMIN_PASSWORD,
-    TEST_USER_PASSWORD,
-)
+from src.utils.constants import GENERIC_PASSWORD, SITE_ADMIN_INSTITUTION_ID
 
 # Import E2E test data contract
 from tests.e2e.e2e_test_data_contract import (
-    BASE_ACCOUNTS,
     MAX_PARALLEL_WORKERS,
     PROGRAMS_PER_ADMIN_WORKER,
     SECTIONS_PER_INSTRUCTOR_WORKER,
-    get_worker_email,
     validate_seeded_data,
 )
 
@@ -87,7 +79,7 @@ def _get_base_accounts() -> List[Dict[str, str]]:
         # Site admins
         {
             "email": "siteadmin@system.local",
-            "password": SITE_ADMIN_PASSWORD,
+            "password": GENERIC_PASSWORD,
             "first_name": "System",
             "last_name": "Administrator",
             "role": "site_admin",
@@ -97,7 +89,7 @@ def _get_base_accounts() -> List[Dict[str, str]]:
         # Institution admins (MockU)
         {
             "email": "sarah.admin@mocku.test",
-            "password": INSTITUTION_ADMIN_PASSWORD,
+            "password": GENERIC_PASSWORD,
             "first_name": "Sarah",
             "last_name": "Johnson",
             "role": "institution_admin",
@@ -107,7 +99,7 @@ def _get_base_accounts() -> List[Dict[str, str]]:
         # Program admins (MockU)
         {
             "email": "lisa.prog@mocku.test",
-            "password": TEST_USER_PASSWORD,
+            "password": GENERIC_PASSWORD,
             "first_name": "Lisa",
             "last_name": "Wang",
             "role": "program_admin",
@@ -117,7 +109,7 @@ def _get_base_accounts() -> List[Dict[str, str]]:
         # Instructors (MockU)
         {
             "email": "john.instructor@mocku.test",
-            "password": TEST_USER_PASSWORD,
+            "password": GENERIC_PASSWORD,
             "first_name": "John",
             "last_name": "Smith",
             "role": "instructor",

@@ -32,12 +32,15 @@ def pytest_collection_modifyitems(config, items):
 
 # Shared test credentials (seeded by seed_db.py)
 # Import from centralized test credentials module
-from tests.test_credentials import (
+from src.utils.constants import (
+    GENERIC_PASSWORD,
     INSTITUTION_ADMIN_EMAIL,
-    INSTITUTION_ADMIN_PASSWORD,
     SITE_ADMIN_EMAIL,
-    SITE_ADMIN_PASSWORD,
 )
+
+# All test accounts use GENERIC_PASSWORD
+SITE_ADMIN_PASSWORD = GENERIC_PASSWORD
+INSTITUTION_ADMIN_PASSWORD = GENERIC_PASSWORD
 
 
 def get_worker_id():
