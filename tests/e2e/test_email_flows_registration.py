@@ -109,64 +109,6 @@ class TestNewUserRegistrationFlow:
 
         pass  # Remove when implementing
 
-    def test_registration_with_invalid_email_does_not_send_email(
-        self, browser, base_url
-    ):
-        """
-        NEGATIVE TEST: Invalid email format should not trigger email send
-
-        Steps:
-        1. Attempt registration with invalid email
-        2. Verify form validation error
-        3. Verify NO email sent to Mailtrap/Gmail
-        """
-        # test_email = "invalid-email-format"
-        # browser.goto(f"{base_url}/register")
-        # browser.fill("#email", test_email)
-        # ... fill other fields ...
-        # browser.click("button[type='submit']")
-
-        # # Should show client-side validation error
-        # expect(browser.locator(".error-message")).to_contain_text(
-        #     "valid email"
-        # )
-
-        # # Verify no email sent
-        # email_helper = MailtrapHelper()
-        # emails = email_helper.get_recent_emails(limit=5)
-        # assert not any(e.to_email == test_email for e in emails)
-
-    def test_registration_with_duplicate_email_does_not_send_duplicate(
-        self, browser, base_url
-    ):
-        """
-        NEGATIVE TEST: Re-registering existing email should not send new verification
-
-        Prevents verification email spam if user forgets they registered.
-        """
-        # existing_email = "existing@loopclosertests.mailtrap.io"
-
-        # # First registration (setup)
-        # ... register account ...
-
-        # # Clear inbox
-        # email_helper = MailtrapHelper()
-        # email_helper.clear_inbox()
-
-        # # Attempt duplicate registration
-        # browser.goto(f"{base_url}/register")
-        # browser.fill("#email", existing_email)
-        # ... submit ...
-
-        # # Should show error, not send email
-        # expect(browser.locator(".error-message")).to_contain_text(
-        #     "already registered"
-        # )
-
-        # # Verify no new email sent
-        # emails = email_helper.get_recent_emails(limit=1)
-        # assert len(emails) == 0, "Should not send email for duplicate registration"
-
 
 class TestPasswordResetFlow:
     """
@@ -264,31 +206,6 @@ class TestPasswordResetFlow:
         # browser.fill("#password", new_password)
         # browser.click("button[type='submit']")
         # expect(browser).to_have_url(f"{base_url}/dashboard")
-
-    def test_password_reset_for_nonexistent_email_does_not_reveal_existence(
-        self, browser, base_url
-    ):
-        """
-        SECURITY TEST: Reset request for non-existent email should not reveal that
-
-        Shows same success message but doesn't send email.
-        Prevents account enumeration attacks.
-        """
-        # nonexistent_email = "nonexistent@loopclosertests.mailtrap.io"
-
-        # browser.goto(f"{base_url}/forgot-password")
-        # browser.fill("#email", nonexistent_email)
-        # browser.click("button[type='submit']")
-
-        # # Should show same success message (security)
-        # expect(browser.locator(".success-message")).to_contain_text(
-        #     "Check your email"
-        # )
-
-        # # But no email should be sent
-        # email_helper = MailtrapHelper()
-        # emails = email_helper.get_recent_emails(limit=5)
-        # assert not any(e.to_email == nonexistent_email for e in emails)
 
 
 class TestInvitationFlow:
@@ -394,79 +311,6 @@ class TestInvitationFlow:
         # expect(browser.locator(".welcome-message")).to_contain_text(
         #     "Prof. Bob Martinez"
         # )
-
-    def test_program_admin_invites_instructor(self, browser, base_url):
-        """
-        E2E: Program admin invites instructor to their program
-
-        Similar flow to institution admin but scoped to program.
-        """
-
-    def test_invitation_with_expired_token_shows_error(self, browser, base_url):
-        """
-        NEGATIVE TEST: Expired invitation token should not allow registration
-
-        Tests token expiration (typically 7 days).
-        """
-
-
-class TestWelcomeEmailFlow:
-    """
-    E2E: User receives welcome email after successful verification
-
-    Email Flow: Verification Complete → Welcome Email
-
-    NOTE: Check if welcome email is currently implemented.
-    If not, this is a Phase 4 feature candidate.
-    """
-
-    def test_welcome_email_sent_after_verification(self, browser, base_url):
-        """
-        E2E: After verification, user receives welcome email
-
-        Steps:
-        1. Complete registration flow
-        2. Verify account
-        3. Check for welcome email
-
-        Email Assertions:
-        - Welcome email received after verification
-        - Email contains user name
-        - Email contains getting started information
-        - Email contains useful links (dashboard, support, etc.)
-        """
-        # This might not be implemented yet - check EmailService
-
-
-class TestMultiUserEmailFlowIntegration:
-    """
-    E2E: Complex scenarios involving multiple users and email interactions
-
-    Tests realistic multi-user workflows.
-    """
-
-    def test_institution_onboarding_complete_flow(self, browser, base_url):
-        """
-        COMPREHENSIVE E2E: Full institution onboarding with all roles
-
-        Scenario:
-        1. New institution admin registers and verifies
-        2. Institution admin creates institution
-        3. Institution admin invites program admin
-        4. Program admin accepts invitation and registers
-        5. Program admin invites 3 instructors
-        6. Instructors accept invitations
-        7. Verify all email touchpoints
-
-        Email Count: 1 verification + 4 invitations = 5 emails minimum
-        """
-
-    def test_concurrent_registrations_all_receive_emails(self, browser, base_url):
-        """
-        STRESS TEST: Multiple simultaneous registrations
-
-        Verifies email system can handle concurrent sends without dropping emails.
-        """
 
 
 # Helper pseudo-code for email verification utilities

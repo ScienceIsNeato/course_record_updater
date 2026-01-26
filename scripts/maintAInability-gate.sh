@@ -1118,6 +1118,29 @@ for r in d.get('results',[])[:5]:
   
   rm -f "$BANDIT_OUT" "$SEMGREP_OUT" "$SECRETS_OUT"
 
+  # 4. SECRETS LOCATION VALIDATION
+  # Ensure secrets are only in authorized files (constants.py, docs, templates, etc.)
+  echo "  🔍 Validating secrets are in authorized locations..."
+  if [[ -f scripts/validate_secrets_location.py ]]; then
+    set +e
+    SECRETS_LOCATION_OUTPUT=$(python3 scripts/validate_secrets_location.py 2>&1)
+    SECRETS_LOCATION_EXIT=$?
+    set -e
+    if [[ $SECRETS_LOCATION_EXIT -eq 0 ]]; then
+      echo "  ✅ Secrets location validation passed"
+    else
+      echo "  ❌ Secrets found in unauthorized files!"
+      echo "$SECRETS_LOCATION_OUTPUT" | head -50
+      echo ""
+      echo "  💡 Move hardcoded passwords to src/utils/constants.py and import from there:"
+      echo "     from src.utils.constants import GENERIC_PASSWORD, WEAK_PASSWORD"
+      echo ""
+      SECURITY_PASSED=false
+    fi
+  else
+    echo "  ⚠️  Secrets location validation script not found (scripts/validate_secrets_location.py)"
+  fi
+
 
   # Run safety scan for known vulnerabilities in dependencies
   # Skip when using --security-local (for commit hooks - Safety is slow and requirements rarely change)
