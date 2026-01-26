@@ -28,13 +28,13 @@
       "purpose": "Introduce the LoopCloser interface, header elements, and dashboard panel organization",
       "pre_commands": [],
       "instructions": {
-        "human": "Login as Institution Admin (loopcloser_demo_admin@proton.me / Demo123!).\n\n**Header Tour (Left to Right):**\n- LoopCloser Logo (optional branding)\n- Quick Links: Dashboard, Programs, Courses, etc.\n- Current Term Indicator: 'Fall 2025 (Active)'\n- System Date Override Banner: 'Dec 23, 2025' (admin-only feature for demo/testing)\n- Profile Dropdown: Account Settings, Logout\n- Home Button: Returns to main dashboard\n\n**Dashboard Panels:**\nNotice the panels are grouped by concept:\n- **Programs Panel:** Quick view of program metrics, 'Add Program' button, 'Manage Programs' opens data grid\n- **Courses Panel:** Course summary, quick add, manage\n- **Faculty Panel:** Instructor assignments, invite button\n- **Outcomes Panel:** CLO status summary with filters\n- **Terms Panel:** Active/upcoming terms, create new term\n\nEach panel follows the pattern: Summary stats → Quick action button (opens dialog) → Manage button (opens full page).",
+        "human": "Login as Institution Admin (loopcloser_demo_admin@proton.me / TestPass123!).\n\n**Header Tour (Left to Right):**\n- LoopCloser Logo (optional branding)\n- Quick Links: Dashboard, Programs, Courses, etc.\n- Current Term Indicator: 'Fall 2025 (Active)'\n- System Date Override Banner: 'Dec 23, 2025' (admin-only feature for demo/testing)\n- Profile Dropdown: Account Settings, Logout\n- Home Button: Returns to main dashboard\n\n**Dashboard Panels:**\nNotice the panels are grouped by concept:\n- **Programs Panel:** Quick view of program metrics, 'Add Program' button, 'Manage Programs' opens data grid\n- **Courses Panel:** Course summary, quick add, manage\n- **Faculty Panel:** Instructor assignments, invite button\n- **Outcomes Panel:** CLO status summary with filters\n- **Terms Panel:** Active/upcoming terms, create new term\n\nEach panel follows the pattern: Summary stats → Quick action button (opens dialog) → Manage button (opens full page).",
         "automated": {
           "action": "api_post",
           "endpoint": "/api/auth/login",
           "data": {
             "email": "loopcloser_demo_admin@proton.me",
-            "password": "Demo123!"
+            "password": "TestPass123!"
           },
           "description": "Login as Institution Admin"
         }
@@ -51,7 +51,7 @@
       ],
       "inputs": {
         "email": "loopcloser_demo_admin@proton.me",
-        "password": "Demo123!"
+        "password": "TestPass123!"
       },
       "expected_results": [
         "Dashboard loads with all panels visible",
@@ -194,7 +194,7 @@
       "purpose": "Show the email integration—reminders and rework notifications sent to faculty",
       "pre_commands": [],
       "instructions": {
-        "human": "Open Gmail in a new browser tab/window.\n\nLogin to prof.raj.patel@gmail.com (Password: Demo123!).\n\nCheck the inbox for emails from LoopCloser:\n\n1. **Reminder Email:** \"Action Required: Submit Learning Outcomes for ZOOL-101\"\n   - Contains course details, due date, direct link to assessment form\n\n2. **Rework Notification:** \"Rework Requested: BIOL-101 Section 2, CLO #2\"\n   - Shows admin comments\n   - Contains direct link to edit the outcome\n\n**Key Point:** The email-driven workflow reduces friction—faculty can click directly from email to the exact form they need to complete.",
+        "human": "Open Gmail in a new browser tab/window.\n\nLogin to prof.raj.patel@gmail.com (Password: TestPass123!).\n\nCheck the inbox for emails from LoopCloser:\n\n1. **Reminder Email:** \"Action Required: Submit Learning Outcomes for ZOOL-101\"\n   - Contains course details, due date, direct link to assessment form\n\n2. **Rework Notification:** \"Rework Requested: BIOL-101 Section 2, CLO #2\"\n   - Shows admin comments\n   - Contains direct link to edit the outcome\n\n**Key Point:** The email-driven workflow reduces friction—faculty can click directly from email to the exact form they need to complete.",
         "automated": {
           "action": "none"
         }
@@ -207,7 +207,7 @@
       ],
       "inputs": {
         "email": "prof.raj.patel@gmail.com",
-        "password": "Demo123!"
+        "password": "TestPass123!"
       },
       "expected_results": [
         "Gmail inbox shows LoopCloser emails",
@@ -225,7 +225,7 @@
       "purpose": "Demonstrate instructor workflow for submitting outcomes from scratch",
       "pre_commands": [],
       "instructions": {
-        "human": "From the Gmail reminder email, click the direct link to the ZOOL-101 assessment form.\n\n(OR manually: Logout from admin account, login as prof.raj.patel@gmail.com / Demo123!, navigate to Assessments page, select ZOOL-101.)\n\nFill out CLO #1:\n- **Description:** \"Apply principles of animal physiology to real-world scenarios\"\n- **Assessment Method:** \"Lab practicals (40%), Final exam questions (30%), Research proposal (30%)\"\n- **Target Proficiency:** \"80% of students achieve 70% or better\"\n- **Actual Results:** \"85% of students scored 72% or better\"\n- **Narrative Reflections:** \"Students exceeded expectations on lab practicals. Will incorporate more research proposal practice next semester.\"\n\nClick 'Save' for the CLO.\n\nThen click 'Submit Course for Approval' at the bottom of the page.\n\n**Result:** All outcomes for this section are submitted to the institutional admin for review.",
+        "human": "From the Gmail reminder email, click the direct link to the ZOOL-101 assessment form.\n\n(OR manually: Logout from admin account, login as prof.raj.patel@gmail.com / TestPass123!, navigate to Assessments page, select ZOOL-101.)\n\nFill out CLO #1:\n- **Description:** \"Apply principles of animal physiology to real-world scenarios\"\n- **Assessment Method:** \"Lab practicals (40%), Final exam questions (30%), Research proposal (30%)\"\n- **Target Proficiency:** \"80% of students achieve 70% or better\"\n- **Actual Results:** \"85% of students scored 72% or better\"\n- **Narrative Reflections:** \"Students exceeded expectations on lab practicals. Will incorporate more research proposal practice next semester.\"\n\nClick 'Save' for the CLO.\n\nThen click 'Submit Course for Approval' at the bottom of the page.\n\n**Result:** All outcomes for this section are submitted to the institutional admin for review.",
         "automated": {
           "action": "none"
         }
@@ -283,7 +283,7 @@
       "purpose": "Tie up the loop by reviewing and approving the faculty submissions",
       "pre_commands": [],
       "instructions": {
-        "human": "Logout as prof.raj.patel@gmail.com.\n\nLogin again as loopcloser_demo_admin@proton.me / Demo123!.\n\nGo to the Audit page.\n\nAlso open Proton Mail in a new tab (https://mail.proton.me/u/0/inbox) and log in as prof.raj.patel@proton.me to show the notification email indicating the new submission (example subject: 'New submission received: ZOOL-101 CLO #1').\n\nYou should now see:\n- ZOOL-101 CLO #1: Fresh submission from Dr. Patel\n- BIOL-101 Section 2, CLO #2: Reworked submission\n\nReview both and click 'Approve' on each.\n\n**Result:** Both outcomes are now closed out for Fall 2025. Dr. Patel receives approval notifications.\n\n**Key Point:** This completes the full closed-loop workflow: Admin requests work → Faculty receives email → Faculty submits → Admin reviews → Loop closed.",
+        "human": "Logout as prof.raj.patel@gmail.com.\n\nLogin again as loopcloser_demo_admin@proton.me / TestPass123!.\n\nGo to the Audit page.\n\nAlso open Proton Mail in a new tab (https://mail.proton.me/u/0/inbox) and log in as prof.raj.patel@proton.me to show the notification email indicating the new submission (example subject: 'New submission received: ZOOL-101 CLO #1').\n\nYou should now see:\n- ZOOL-101 CLO #1: Fresh submission from Dr. Patel\n- BIOL-101 Section 2, CLO #2: Reworked submission\n\nReview both and click 'Approve' on each.\n\n**Result:** Both outcomes are now closed out for Fall 2025. Dr. Patel receives approval notifications.\n\n**Key Point:** This completes the full closed-loop workflow: Admin requests work → Faculty receives email → Faculty submits → Admin reviews → Loop closed.",
         "automated": {
           "action": "none"
         }
@@ -406,7 +406,7 @@
         }
       ],
       "instructions": {
-        "human": "Open Gmail in a new tab and log in as lassie.tests.instructor1.test@gmail.com (Demo123!).\n\nCheck the inbox for the LoopCloser invitation email (subject: 'You're invited to Demo University').\n\nClick the invitation link to accept and create an account.\n\nSet a password and display name (e.g., Lassie Demo).\n\nReturn to the inbox and confirm you received a welcome/confirmation email.\n\nFinally, log in to the application as lassie.tests.instructor1.test@gmail.com and navigate to 'Course Sections' → BIOL-101 Spring 2026 → Section 001 to confirm the assigned course appears.",
+        "human": "Open Gmail in a new tab and log in as lassie.tests.instructor1.test@gmail.com (TestPass123!).\n\nCheck the inbox for the LoopCloser invitation email (subject: 'You're invited to Demo University').\n\nClick the invitation link to accept and create an account.\n\nSet a password and display name (e.g., Lassie Demo).\n\nReturn to the inbox and confirm you received a welcome/confirmation email.\n\nFinally, log in to the application as lassie.tests.instructor1.test@gmail.com and navigate to 'Course Sections' → BIOL-101 Spring 2026 → Section 001 to confirm the assigned course appears.",
         "automated": {
           "action": "sequence",
           "steps": [
@@ -463,7 +463,7 @@
       "purpose": "Highlight bulk data management capabilities",
       "pre_commands": [],
       "instructions": {
-        "human": "Return to the dashboard.\n\n**Import Features:**\n- Navigate to 'Courses' → 'Import from Excel'\n- Supports bulk upload of: Courses, Learning Outcomes, Program Outcomes, Sections\n- Template download available\n- Validation errors shown inline\n\n**Export Features:**\n- From any management page (Courses, Outcomes, Faculty), click 'Export to CSV'\n- Audit page has 'Export Current View' to export filtered results\n- Useful for reporting and data backup\n\nFinally, login as Institution Admin (loopcloser_demo_admin@proton.me / Demo123!) and verify that BIOL-101 Spring 2026 Section 001 shows the newly assigned instructor (Lassie Demo) in the section assignment.\n\n**Future Work:**\n- Issue #45: Implement duplicate string checker to prevent test brittleness\n- Enhanced Excel templates with more validation\n- Batch instructor assignment via CSV\n\n**Demo Complete!**\n\nYou've seen:\n✓ Platform navigation and dashboard design\n✓ Complete outcome audit workflow\n✓ Email-driven instructor collaboration\n✓ Term/offering creation and instructor assignment\n✓ Profile management and import/export features",
+        "human": "Return to the dashboard.\n\n**Import Features:**\n- Navigate to 'Courses' → 'Import from Excel'\n- Supports bulk upload of: Courses, Learning Outcomes, Program Outcomes, Sections\n- Template download available\n- Validation errors shown inline\n\n**Export Features:**\n- From any management page (Courses, Outcomes, Faculty), click 'Export to CSV'\n- Audit page has 'Export Current View' to export filtered results\n- Useful for reporting and data backup\n\nFinally, login as Institution Admin (loopcloser_demo_admin@proton.me / TestPass123!) and verify that BIOL-101 Spring 2026 Section 001 shows the newly assigned instructor (Lassie Demo) in the section assignment.\n\n**Future Work:**\n- Issue #45: Implement duplicate string checker to prevent test brittleness\n- Enhanced Excel templates with more validation\n- Batch instructor assignment via CSV\n\n**Demo Complete!**\n\nYou've seen:\n✓ Platform navigation and dashboard design\n✓ Complete outcome audit workflow\n✓ Email-driven instructor collaboration\n✓ Term/offering creation and instructor assignment\n✓ Profile management and import/export features",
         "automated": {
           "action": "none"
         }
