@@ -122,17 +122,65 @@ class CheckStatus(Enum):
 # Maximum allowed duration in seconds for each check type
 # Exceeding these triggers a warning (not failure) to catch regressions early
 CHECK_DURATION_THRESHOLDS: dict[str, float] = {
-    "python-unit-tests": 30.0,      # Unit tests should be fast
-    "python-coverage": 5.0,         # Coverage analysis (tests already ran)
-    "python-new-code-coverage": 5.0, # New code coverage analysis
-    "js-tests": 30.0,               # JavaScript tests
-    "js-coverage": 5.0,             # JS coverage analysis
-    "python-lint-format": 30.0,     # Linting and formatting
-    "python-static-analysis": 60.0, # Type checking can be slow
-    "integration": 60.0,            # Integration tests
-    "e2e": 180.0,                   # E2E tests with browser
-    "smoke": 120.0,                 # Smoke tests
+    "python-unit-tests": 30.0,  # Unit tests should be fast
+    "python-coverage": 5.0,  # Coverage analysis (tests already ran)
+    "python-new-code-coverage": 5.0,  # New code coverage analysis
+    "js-tests": 30.0,  # JavaScript tests
+    "js-coverage": 5.0,  # JS coverage analysis
+    "python-lint-format": 30.0,  # Linting and formatting
+    "python-static-analysis": 60.0,  # Type checking can be slow
+    "integration": 60.0,  # Integration tests
+    "e2e": 180.0,  # E2E tests with browser
+    "smoke": 120.0,  # Smoke tests
 }
+
+# =============================================================================
+# Per-Check Environment Variable Requirements
+# =============================================================================
+# Maps check flags to required environment variables.
+# Only validates env vars needed for the checks being run, reducing friction
+# when running quick local checks that don't need API keys.
+# =============================================================================
+
+CHECK_REQUIRED_ENV_VARS: dict[str, list[str]] = {
+    # Most checks need no special env vars
+    "python-unit-tests": [],
+    "python-lint-format": [],
+    "python-static-analysis": [],
+    "js-tests": [],
+    "js-lint-format": [],
+    "js-coverage": [],
+    "python-coverage": [],
+    "python-new-code-coverage": [],
+    "complexity": [],
+    "duplication": [],
+    "template-validation": [],
+    # Security check needs SAFETY_API_KEY for authenticated safety scans
+    "security": ["SAFETY_API_KEY"],
+    # Integration/E2E/smoke tests need DATABASE_URL (defaults exist but warn if missing)
+    "integration": [],  # DATABASE_URL has fallback
+    "e2e": [],  # DATABASE_URL has fallback
+    "smoke": [],  # DATABASE_URL has fallback
+}
+
+
+def validate_environment_for_checks(check_flags: list[str]) -> list[str]:
+    """Validate that required environment variables are set for the given checks.
+
+    Returns list of warning messages (empty if all required vars are set).
+    Warnings are non-blocking but inform the user of potential issues.
+    """
+    warnings_list: list[str] = []
+
+    for flag in check_flags:
+        required_vars = CHECK_REQUIRED_ENV_VARS.get(flag, [])
+        for var in required_vars:
+            if not os.environ.get(var):
+                warnings_list.append(
+                    f"⚠️  {flag} may have reduced functionality: {var} not set"
+                )
+
+    return warnings_list
 
 
 @dataclass
@@ -1412,6 +1460,12 @@ class QualityGateExecutor:
             checks_to_run = self._checks_for_user_selected_checks(checks)
         except ValueError:
             return 1
+
+        # Validate environment variables for selected checks (Issue #4)
+        check_flags = [check.flag for check in checks_to_run]
+        env_warnings = validate_environment_for_checks(check_flags)
+        for warning in env_warnings:
+            self.logger.warning(warning)
 
         # Note: Each check manages its own server/resources independently
         # No shared server startup needed - checks are self-contained

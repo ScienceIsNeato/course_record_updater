@@ -13,7 +13,6 @@ from typing import Any, Callable, Generator, cast
 import pytest
 from flask.testing import FlaskClient
 
-
 # =============================================================================
 # Fixture Performance Gate
 # =============================================================================
@@ -42,6 +41,79 @@ def pytest_fixture_setup(fixturedef, request):  # type: ignore[no-untyped-def]
             f"Consider session/module scope if setup is expensive.",
             stacklevel=1,
         )
+
+
+# =============================================================================
+# Assertion Count Warning (Issue #7 from AI Evaluation)
+# =============================================================================
+# Detects tests that pass without any assertions - a potential indicator of
+# coverage padding (tests that run code but don't verify behavior).
+# These tests add coverage numbers but provide no regression protection.
+# =============================================================================
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):  # type: ignore[no-untyped-def]
+    """Warn about passing tests that made no assertions.
+
+    Tests without assertions may indicate coverage padding - they execute code
+    paths but don't verify correctness, providing false confidence.
+    """
+    outcome = yield
+    report = outcome.get_result()
+
+    # Only check the "call" phase (not setup/teardown) and only for passed tests
+    if call.when != "call" or report.outcome != "passed":
+        return
+
+    # Check if pytest-check or similar soft assertion plugin was used
+    # These plugins track assertions differently
+    if hasattr(item, "_num_assertions") and item._num_assertions > 0:
+        return
+
+    # Get the test function
+    test_func = getattr(item, "obj", None)
+    if test_func is None:
+        return
+
+    import inspect
+
+    try:
+        # Get source code of the test function
+        source = inspect.getsource(test_func)
+
+        # Check for assertion patterns in source code
+        # This is more reliable than bytecode analysis
+        assertion_patterns = [
+            "assert ",  # Standard Python assert
+            "assert(",  # assert with parentheses
+            ".assert_",  # Mock assertions (assert_called, assert_called_with, etc.)
+            "assertEqual",  # unittest assertions
+            "assertTrue",
+            "assertFalse",
+            "assertIn",
+            "assertIsNone",
+            "assertIsNotNone",
+            "assertRaises",
+            "pytest.raises",  # pytest exception testing
+            "pytest.warns",  # pytest warning testing
+            "pytest.approx",  # pytest approximate comparison
+        ]
+
+        has_assertion = any(pattern in source for pattern in assertion_patterns)
+
+        if not has_assertion:
+            import warnings
+
+            warnings.warn(
+                f"Test '{item.name}' passed without apparent assertions. "
+                f"Consider adding assertions to verify expected behavior, "
+                f"or document why this test intentionally has no assertions.",
+                stacklevel=1,
+            )
+    except (OSError, TypeError):
+        # If we can't get source (e.g., built-in or C extension), skip the warning
+        pass
 
 
 def _get_csrf_token_from_session_or_generate(client: FlaskClient) -> str | None:
