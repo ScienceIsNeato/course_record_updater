@@ -49,7 +49,7 @@ jobs:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       with:
         submodules: true
-- name: Set up Python ${{ env.PYTHON_VERSION }}
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
@@ -78,7 +78,7 @@ jobs:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       with:
         submodules: true
-- name: Set up Python ${{ env.PYTHON_VERSION }}
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
@@ -125,7 +125,7 @@ jobs:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       with:
         submodules: true
-- name: Set up Python ${{ env.PYTHON_VERSION }}
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
@@ -215,7 +215,7 @@ jobs:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       with:
         submodules: true
-- name: Set up Python ${{ env.PYTHON_VERSION }}
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
@@ -523,33 +523,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
-        pip install diff-cover
-    - name: Generate coverage data
-      run: |
-        # Ensure build directory exists
-        mkdir -p build
-        # Generate fresh coverage.xml for diff-cover analysis (include data/ for session code)
-        python -m pytest tests/unit/ -n auto --cov=src --cov=data --cov-report=xml:build/coverage.xml --tb=no -q
+    - name: Run Tests + Diff Coverage via slopbucket
+      run: python slopbucket/setup.py --verbose --checks python-tests python-diff-coverage
       env:
         PYTHONPATH: .
-    - name: Check Coverage on New Code (80% threshold)
-      run: |
-        echo "📊 Checking coverage on new code vs origin/${{ github.base_ref }}"
-        diff-cover build/coverage.xml \
-          --compare-branch=origin/${{ github.base_ref }} \
-          --fail-under=80 \
-          --html-report=coverage-diff.html \
-          | tee logs/diff_coverage_report.txt
-      env:
-        PYTHONPATH: .
-    - name: Upload Coverage Diff Report
+    - name: Upload Coverage Report
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: coverage-diff-report
-        path: |
-          coverage-diff.html
-          logs/diff_coverage_report.txt
+        path: coverage.xml
 
   complexity:
     runs-on: ubuntu-latest
