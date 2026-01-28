@@ -47,20 +47,22 @@ python src/app.py
 
 **Primary Quality Gate (Always Use This):**
 ```bash
-# Fast commit validation (excludes slow checks like smoke tests)
-python scripts/ship_it.py
+# Fast commit validation (parallel, fail-fast)
+python slopbucket/setup.py --checks commit
 
-# Full PR validation (all checks + comment resolution)
-python scripts/ship_it.py --checks PR
+# Full PR validation (all checks)
+python slopbucket/setup.py --checks pr
 
 # Run specific check suites
-python scripts/ship_it.py --checks format lint tests
-python scripts/ship_it.py --checks security-local  # Security without safety (no network)
-python scripts/ship_it.py --checks frontend-check  # Quick JS validation (5s)
-python scripts/ship_it.py --checks smoke          # Critical path tests (30-60s)
+python slopbucket/setup.py --checks format lint tests
+python slopbucket/setup.py --checks security-local  # Security without safety (no network)
+python slopbucket/setup.py --checks smoke           # Critical path tests
+
+# List all available checks
+python slopbucket/setup.py --list
 ```
 
-**IMPORTANT:** Always use `ship_it.py` for running tests. Do NOT run `pytest` or `npm test` directly unless running a single test file for quick verification during development.
+**IMPORTANT:** Always use `slopbucket/setup.py` for running quality gates. Do NOT run `pytest` or `npm test` directly unless running a single test file for quick verification during development.
 
 **Single Test File Verification (Development Only):**
 ```bash
@@ -75,7 +77,7 @@ pytest tests/unit/test_auth_service.py::test_login_success -v
 **Dev-Cycle Optimization (Rapid Iteration):**
 ```bash
 # Fast full unit suite (~10s, uses DELETE-based cleanup instead of DDL reset)
-python scripts/ship_it.py --checks python-unit-tests
+python slopbucket/setup.py --checks python-tests
 
 # Skip slow tests (e.g., real bcrypt hashing) during iteration
 pytest tests/unit/ -m "not slow" -x -q
@@ -83,16 +85,16 @@ pytest tests/unit/ -m "not slow" -x -q
 # Re-run only previously failed tests
 pytest tests/unit/ --lf -q
 
-# Always validate with ship_it.py before committing
-python scripts/ship_it.py --checks commit
+# Always validate with slopbucket before committing
+python slopbucket/setup.py --checks commit
 ```
 
 **Note:** The unit test suite uses fast DELETE-based database cleanup between tests (schema created once per session). This is handled automatically by `tests/unit/conftest.py`. Tests marked with `@pytest.mark.slow` can be skipped during rapid iteration with `-m "not slow"`.
 
 **Frontend Testing:**
 ```bash
-# Run through ship_it.py (preferred)
-python scripts/ship_it.py --checks frontend-check
+# Run through slopbucket (preferred)
+python slopbucket/setup.py --checks js-format js-tests js-coverage
 
 # Direct npm commands (if needed for development)
 npm test
@@ -356,10 +358,10 @@ logger.error("Error occurred", exc_info=True)
 
 **Feature Development:**
 1. Create feature branch from `main`
-2. Run `python scripts/ship_it.py` frequently during development
-3. Ensure all tests pass: `python scripts/ship_it.py --checks tests`
-4. Before commit: `python scripts/ship_it.py` (fast validation)
-5. Before PR: `python scripts/ship_it.py --validation-type PR` (full validation)
+2. Run `python slopbucket/setup.py --checks commit` frequently during development
+3. Ensure all tests pass: `python slopbucket/setup.py --checks tests`
+4. Before commit: `python slopbucket/setup.py --checks commit` (fast validation)
+5. Before PR: `python slopbucket/setup.py --checks pr` (full validation)
 
 **Commit Messages:**
 Use conventional commits format:
@@ -439,11 +441,11 @@ bash scripts/restart_server.sh dev
 - Check virtual environment activated: `which python` should show venv path
 
 **Quality gate failures:**
-- Run individual checks: `python scripts/ship_it.py --checks format`
+- Run individual checks: `python slopbucket/setup.py --checks format`
 - Auto-fix formatting: `black . && isort .`
-- Check detailed output: `python scripts/ship_it.py --verbose`
+- Check detailed output: `python slopbucket/setup.py --checks commit --verbose`
 
 **Coverage below 80%:**
-- Run with coverage report via ship_it: `python scripts/ship_it.py --checks tests`
+- Run with coverage report via slopbucket: `python slopbucket/setup.py --checks tests`
 - For detailed HTML report, the quality gate generates `htmlcov/index.html`
 - Add tests for uncovered code paths

@@ -1,0 +1,4 @@
+[submodule "slopbucket"]
+	path = slopbucket
+	url = https://github.com/ScienceIsNeato/slopbucket.git
+	branch = feat/core-validation-framework

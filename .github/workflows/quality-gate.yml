@@ -16,7 +16,9 @@ jobs:
       cache-key: ${{ steps.cache-key.outputs.key }}
     steps:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-    
+      with:
+        submodules: true
+
     - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
       with:
@@ -45,7 +47,9 @@ jobs:
     needs: setup
     steps:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      with:
+        submodules: true
+- name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
@@ -62,7 +66,7 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
     - name: Run Python Lint & Format (black, isort, flake8)
-      run: python scripts/ship_it.py --verbose --checks python-lint-format
+      run: python slopbucket/setup.py --verbose --checks python-format python-lint
       env:
         PYTHONPATH: .
 
@@ -72,7 +76,9 @@ jobs:
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      with:
+        submodules: true
+- name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
@@ -96,7 +102,7 @@ jobs:
         echo "PYTHONPATH=$PYTHONPATH"
         echo "=== Running Python unit tests + coverage analysis ==="
         # Run unit tests first (generates coverage.xml), then analyze coverage
-        python -u scripts/ship_it.py --verbose --checks python-unit-tests python-coverage python-new-code-coverage
+        python -u slopbucket/setup.py --verbose --checks python-tests python-coverage python-diff-coverage
         echo "=== Python tests and coverage complete ==="
       env:
         PYTHONPATH: .
@@ -117,7 +123,9 @@ jobs:
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      with:
+        submodules: true
+- name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
@@ -181,7 +189,7 @@ jobs:
         }
         
         echo "✅ Flask server started successfully on port 3001"
-    - name: Run Smoke Tests (using ship_it.py)
+    - name: Run Smoke Tests (using slopbucket)
       run: |
         # Set environment variables for SQLite (consistent with seed/server)
         export DATABASE_TYPE=sqlite
@@ -193,8 +201,8 @@ jobs:
         export PORT=3001
         export TEST_PORT=3001
         
-        # Run smoke tests using ship_it.py with SQLite backend (server already running)
-        python scripts/ship_it.py --verbose --checks smoke
+        # Run smoke tests using slopbucket (server already running)
+        python slopbucket/setup.py --verbose --checks smoke
       env:
         CI: true
         GITHUB_ACTIONS: true
@@ -205,7 +213,9 @@ jobs:
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      with:
+        submodules: true
+- name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
@@ -263,7 +273,7 @@ jobs:
         }
         
         echo "✅ Flask server started successfully on port 3001"
-    - name: Run Integration Tests (using ship_it.py)
+    - name: Run Integration Tests (using slopbucket)
       run: |
         # Set environment variables for SQLite
         export DATABASE_TYPE=sqlite
@@ -274,8 +284,8 @@ jobs:
         export PYTHONPATH=.
         export PORT=3001
         
-        # Run integration tests using ship_it.py with SQLite backend (server already running)
-        python scripts/ship_it.py --verbose --checks integration
+        # Run integration tests using slopbucket (server already running)
+        python slopbucket/setup.py --verbose --checks integration
       env:
         CI: true
         GITHUB_ACTIONS: true
@@ -286,6 +296,8 @@ jobs:
     timeout-minutes: 20  # 10 tests with 2-core parallelization (~7min) + setup/IMAP verification overhead
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: true
     - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
@@ -306,7 +318,7 @@ jobs:
       run: |
         # Install playwright with chromium browser for E2E tests
         python -m playwright install --with-deps chromium
-    - name: Run E2E Tests (using ship_it.py)
+    - name: Run E2E Tests (using slopbucket)
       run: |
         # Set E2E environment manually (don't source .envrc.template - it has placeholder credentials)
         export ENV="test"
@@ -323,8 +335,8 @@ jobs:
         export ETHEREAL_IMAP_HOST="imap.ethereal.email"
         export ETHEREAL_IMAP_PORT="993"
   
-        # Run E2E tests using ship_it.py (handles env setup via run_uat.sh)
-        python scripts/ship_it.py --verbose --checks e2e
+        # Run E2E tests using slopbucket (handles env setup via run_uat.sh)
+        python slopbucket/setup.py --verbose --checks e2e
       env:
         CI: true
         GITHUB_ACTIONS: true
@@ -344,6 +356,8 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: true
     - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
@@ -364,7 +378,7 @@ jobs:
     - name: Run Security Audit
       run: |
         # Force unbuffered output for real-time visibility in CI
-        python -u scripts/ship_it.py --verbose --checks security | tee security-output.log
+        python -u slopbucket/setup.py --verbose --checks security | tee security-output.log
         exit ${PIPESTATUS[0]}
       env:
         PYTHONPATH: .
@@ -393,6 +407,8 @@ jobs:
     needs: setup
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: true
     - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
@@ -410,7 +426,7 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
     - name: Run Python Static Analysis (mypy, imports)
-      run: python scripts/ship_it.py --verbose --checks python-static-analysis
+      run: python slopbucket/setup.py --verbose --checks python-types
       env:
         PYTHONPATH: .
 
@@ -419,6 +435,8 @@ jobs:
     needs: setup
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: true
     - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
@@ -436,7 +454,7 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
     - name: Run Code Duplication Check
-      run: python scripts/ship_it.py --verbose --checks duplication
+      run: python slopbucket/setup.py --verbose --checks python-duplication
       env:
         PYTHONPATH: .
 
@@ -468,15 +486,15 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
     - name: Run JavaScript Lint & Format (ESLint, Prettier)
-      run: python scripts/ship_it.py --verbose --checks js-lint-format
+      run: python slopbucket/setup.py --verbose --checks js-format
       env:
         PYTHONPATH: .
     - name: Run JavaScript Tests
-      run: python scripts/ship_it.py --verbose --checks js-tests
+      run: python slopbucket/setup.py --verbose --checks js-tests
       env:
         PYTHONPATH: .
     - name: Run JavaScript Coverage Analysis
-      run: python scripts/ship_it.py --verbose --checks js-coverage
+      run: python slopbucket/setup.py --verbose --checks js-coverage
       env:
         PYTHONPATH: .
 
@@ -488,6 +506,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0  # Need full git history for diff-cover
+        submodules: true
     - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
@@ -538,6 +557,8 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        submodules: true
     - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
       with:
@@ -547,4 +568,4 @@ jobs:
     - name: Check Complexity (threshold 15)
       run: |
         echo "🧠 Checking code complexity (threshold: 15)"
-        ./scripts/maintAInability-gate.sh --complexity
+        python slopbucket/setup.py --checks python-complexity
