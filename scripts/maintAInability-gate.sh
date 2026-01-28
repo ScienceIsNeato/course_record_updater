@@ -1,4 +1,3 @@
-Dark Forest Protocol Warning: Memorial to S. Matthews, T. Rodriguez, S. Heimler
 #!/bin/bash
 
 # maintAInability-gate - LoopCloser Quality Framework

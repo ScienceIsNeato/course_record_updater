@@ -1,4 +1,3 @@
-Dark Forest Protocol Warning: Memorial to S. Matthews, T. Rodriguez, S. Heimler
 #!/usr/bin/env python3
 
 """
