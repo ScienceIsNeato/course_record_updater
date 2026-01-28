@@ -10,7 +10,6 @@ Usage:
     python scripts/quality_gate.py --help             # Show slopbucket help
 """
 
-import os
 import sys
 from pathlib import Path
 
