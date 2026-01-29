@@ -45,22 +45,28 @@ python src/app.py
 
 ### Quality Gates & Testing
 
-**Primary Quality Gate (Always Use This):**
-```bash
-# Fast commit validation (excludes slow checks like smoke tests)
-python scripts/ship_it.py
+**Primary Quality Gate - slop-mop (Always Use This):**
 
-# Full PR validation (all checks + comment resolution)
-python scripts/ship_it.py --checks PR
+> After setup: `cd tools/slopmop && pip install -e .`
+
+```bash
+# Fast commit validation (preferred local workflow)
+sm validate commit
+
+# Full PR validation (all checks)
+sm validate pr
+
+# Quick lint-only check
+sm validate quick
 
 # Run specific check suites
-python scripts/ship_it.py --checks format lint tests
-python scripts/ship_it.py --checks security-local  # Security without safety (no network)
-python scripts/ship_it.py --checks frontend-check  # Quick JS validation (5s)
-python scripts/ship_it.py --checks smoke          # Critical path tests (30-60s)
+sm validate python-lint-format
+sm validate python-security-local  # Security without network access
+sm validate python-tests           # Run tests
+sm validate e2e                    # E2E tests
 ```
 
-**IMPORTANT:** Always use `ship_it.py` for running tests. Do NOT run `pytest` or `npm test` directly unless running a single test file for quick verification during development.
+**IMPORTANT:** Always use `sm validate` for running tests. Do NOT run `pytest` or `npm test` directly unless running a single test file for quick verification during development.
 
 **Single Test File Verification (Development Only):**
 ```bash
@@ -75,7 +81,7 @@ pytest tests/unit/test_auth_service.py::test_login_success -v
 **Dev-Cycle Optimization (Rapid Iteration):**
 ```bash
 # Fast full unit suite (~10s, uses DELETE-based cleanup instead of DDL reset)
-python scripts/ship_it.py --checks python-unit-tests
+sm validate python-tests
 
 # Skip slow tests (e.g., real bcrypt hashing) during iteration
 pytest tests/unit/ -m "not slow" -x -q
@@ -83,16 +89,18 @@ pytest tests/unit/ -m "not slow" -x -q
 # Re-run only previously failed tests
 pytest tests/unit/ --lf -q
 
-# Always validate with ship_it.py before committing
-python scripts/ship_it.py --checks commit
+# Always validate with slop-mop before committing
+sm validate commit
 ```
 
 **Note:** The unit test suite uses fast DELETE-based database cleanup between tests (schema created once per session). This is handled automatically by `tests/unit/conftest.py`. Tests marked with `@pytest.mark.slow` can be skipped during rapid iteration with `-m "not slow"`.
 
 **Frontend Testing:**
 ```bash
-# Run through ship_it.py (preferred)
-python scripts/ship_it.py --checks frontend-check
+# Run through slop-mop (preferred)
+sm validate js-lint-format
+sm validate js-tests
+sm validate js-coverage
 
 # Direct npm commands (if needed for development)
 npm test
@@ -356,10 +364,10 @@ logger.error("Error occurred", exc_info=True)
 
 **Feature Development:**
 1. Create feature branch from `main`
-2. Run `python scripts/ship_it.py` frequently during development
-3. Ensure all tests pass: `python scripts/ship_it.py --checks tests`
-4. Before commit: `python scripts/ship_it.py` (fast validation)
-5. Before PR: `python scripts/ship_it.py --validation-type PR` (full validation)
+2. Run `sm validate commit` frequently during development
+3. Ensure all tests pass: `sm validate python-tests`
+4. Before commit: `sm validate commit` (fast validation)
+5. Before PR: `sm validate pr` (full validation)
 
 **Commit Messages:**
 Use conventional commits format:
@@ -439,11 +447,11 @@ bash scripts/restart_server.sh dev
 - Check virtual environment activated: `which python` should show venv path
 
 **Quality gate failures:**
-- Run individual checks: `python scripts/ship_it.py --checks format`
+- Run individual checks: `sm validate python-lint-format`
 - Auto-fix formatting: `black . && isort .`
-- Check detailed output: `python scripts/ship_it.py --verbose`
+- Check help for a gate: `sm help python-lint-format`
 
 **Coverage below 80%:**
-- Run with coverage report via ship_it: `python scripts/ship_it.py --checks tests`
+- Run with coverage: `sm validate python-coverage`
 - For detailed HTML report, the quality gate generates `htmlcov/index.html`
 - Add tests for uncovered code paths

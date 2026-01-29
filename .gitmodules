@@ -1,4 +1,3 @@
-[submodule "tools/slopbucket"]
-	path = tools/slopbucket
-	url = git@github.com:ScienceIsNeato/slopbucket.git
-	branch = feat/quality-gate-framework
+[submodule "tools/slopmop"]
+	path = tools/slopmop
+	url = https://github.com/ScienceIsNeato/slop-mop.git

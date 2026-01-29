@@ -2,7 +2,7 @@
 
 > **⚠️ AUTO-GENERATED FILE - DO NOT EDIT DIRECTLY**
 > 
-> **Last Updated:** 2026-01-15 16:37:20 UTC  
+> **Last Updated:** 2026-01-29 21:18:17 UTC  
 > **Source:** `cursor-rules/.cursor/rules/`  
 > **To modify:** Edit source files in `cursor-rules/.cursor/rules/*.mdc` and run `cursor-rules/build_agent_instructions.sh`
 
@@ -630,7 +630,7 @@ gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "PRRT_
 echo "Already resolved in commit <SHA>: [explanation]" | gh pr comment <PR> --body-file -
 ```
 
-Create `PR_{PR}_RESOLUTION_PLAN.md` containing:
+Create `/tmp/PR_{PR}_RESOLUTION_PLAN.md` containing:
 
 ```markdown
 # PR #{PR} Resolution Plan
@@ -1184,10 +1184,10 @@ _Including project rules matching:
 
 **Key principle**: Resolve PR comments IMMEDIATELY after each commit that addresses them (Step 4).
 
-**Integration with ship_it.py:**
+**Integration with slop-mop:**
 ```bash
 # Step 1: Gather all issues
-python scripts/ship_it.py --validation-type PR --no-fail-fast
+sm validate pr
 
 # Step 6: Monitor CI
 python3 cursor-rules/scripts/pr_status.py --watch <PR_NUMBER>
