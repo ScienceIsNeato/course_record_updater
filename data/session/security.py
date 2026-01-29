@@ -13,8 +13,11 @@ from flask import request, session
 
 from src.utils.logging_config import get_logger
 
-from .config import (CSRF_TOKEN_LENGTH, DEFAULT_SESSION_TIMEOUT_HOURS,
-                     REMEMBER_ME_TIMEOUT_DAYS)
+from .config import (
+    CSRF_TOKEN_LENGTH,
+    DEFAULT_SESSION_TIMEOUT_HOURS,
+    REMEMBER_ME_TIMEOUT_DAYS,
+)
 
 logger = get_logger(__name__)
 
