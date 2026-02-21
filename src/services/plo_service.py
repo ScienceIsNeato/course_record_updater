@@ -43,7 +43,7 @@ def create_program_outcome(data: Dict[str, Any]) -> str:
         ValueError: if required fields are missing.
     """
     required = ("program_id", "institution_id", "plo_number", "description")
-    missing = [f for f in required if not data.get(f)]
+    missing = [f for f in required if f not in data or data[f] is None]
     if missing:
         raise ValueError(f"Missing required fields: {', '.join(missing)}")
 
@@ -212,6 +212,8 @@ def get_mapping_matrix(
         mapping = database_service.get_plo_mapping(mapping_id)
         if not mapping:
             raise ValueError(f"Mapping {mapping_id} not found")
+        if str(mapping.get("program_id")) != str(program_id):
+            raise ValueError(f"Mapping {mapping_id} not found")
     elif version is not None:
         mapping = database_service.get_plo_mapping_by_version(program_id, version)
         if not mapping:
@@ -262,6 +264,8 @@ def get_unmapped_clos(
     mapping: Optional[Dict[str, Any]] = None
     if mapping_id:
         mapping = database_service.get_plo_mapping(mapping_id)
+        if mapping and str(mapping.get("program_id")) != str(program_id):
+            mapping = None  # Mapping doesn't belong to this program
     else:
         mapping = database_service.get_plo_mapping_draft(program_id)
         if not mapping:
