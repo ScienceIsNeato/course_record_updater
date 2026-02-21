@@ -176,3 +176,106 @@ def get_latest_published_mapping(
 ) -> Optional[Dict[str, Any]]:
     """Return the highest-versioned published mapping, or None."""
     return database_service.get_latest_published_plo_mapping(program_id)
+
+
+# ---------------------------------------------------------------------------
+# Matrix / cross-cutting queries
+# ---------------------------------------------------------------------------
+
+
+def get_mapping_matrix(
+    program_id: str,
+    mapping_id: Optional[str] = None,
+    version: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Build a PLO × CLO matrix for the mapping UI.
+
+    Resolution order for which mapping to use:
+    1. Explicit *mapping_id* (draft or published)
+    2. Explicit *version* number
+    3. Current draft (if one exists)
+    4. Latest published version
+
+    Returns a dict with:
+    - mapping: the resolved mapping dict (or None)
+    - plos: list of active PLOs for the program
+    - courses: list of courses with their CLOs
+    - matrix: dict  ``{plo_id: {clo_id: entry_id | None}}``
+
+    Raises:
+        ValueError: when no mapping can be resolved.
+    """
+    # Resolve the target mapping
+    mapping: Optional[Dict[str, Any]] = None
+    if mapping_id:
+        mapping = database_service.get_plo_mapping(mapping_id)
+    elif version is not None:
+        mapping = database_service.get_plo_mapping_by_version(program_id, version)
+    else:
+        mapping = database_service.get_plo_mapping_draft(program_id)
+        if not mapping:
+            mapping = database_service.get_latest_published_plo_mapping(program_id)
+
+    # PLOs
+    plos = database_service.get_program_outcomes(program_id)
+
+    # Courses in the program, each with their CLOs
+    courses_raw = database_service.get_courses_by_program(program_id)
+    courses = []
+    for course in courses_raw:
+        clos = database_service.get_course_outcomes(course["course_id"])
+        active_clos = [c for c in clos if c.get("active", True)]
+        courses.append({**course, "clos": active_clos})
+
+    # Build the matrix grid  (plo_id → {clo_outcome_id → entry_id})
+    entries = mapping.get("entries", []) if mapping else []
+    entry_lookup: Dict[str, Dict[str, Optional[str]]] = {}
+    for plo in plos:
+        entry_lookup[plo["id"]] = {}
+    for entry in entries:
+        plo_id = entry.get("program_outcome_id")
+        clo_id = entry.get("course_outcome_id")
+        if plo_id in entry_lookup:
+            entry_lookup[plo_id][clo_id] = entry.get("id")
+
+    return {
+        "mapping": mapping,
+        "plos": plos,
+        "courses": courses,
+        "matrix": entry_lookup,
+    }
+
+
+def get_unmapped_clos(
+    program_id: str, mapping_id: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """Return CLOs in the program's courses that are NOT in the given mapping.
+
+    If *mapping_id* is omitted, uses the current draft or latest published.
+    """
+    # Resolve mapping
+    mapping: Optional[Dict[str, Any]] = None
+    if mapping_id:
+        mapping = database_service.get_plo_mapping(mapping_id)
+    else:
+        mapping = database_service.get_plo_mapping_draft(program_id)
+        if not mapping:
+            mapping = database_service.get_latest_published_plo_mapping(program_id)
+
+    mapped_clo_ids: set[str] = set()
+    if mapping:
+        for entry in mapping.get("entries", []):
+            cid = entry.get("course_outcome_id")
+            if cid:
+                mapped_clo_ids.add(cid)
+
+    # Gather all active CLOs across the program's courses
+    courses = database_service.get_courses_by_program(program_id)
+    unmapped: List[Dict[str, Any]] = []
+    for course in courses:
+        clos = database_service.get_course_outcomes(course["course_id"])
+        for clo in clos:
+            if clo.get("active", True) and clo["outcome_id"] not in mapped_clo_ids:
+                unmapped.append({**clo, "course": course})
+
+    return unmapped

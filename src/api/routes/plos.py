@@ -25,9 +25,11 @@ from src.services.plo_service import (
     get_latest_published_mapping,
     get_mapping,
     get_mapping_by_version,
+    get_mapping_matrix,
     get_or_create_draft,
     get_program_outcome,
     get_published_mappings,
+    get_unmapped_clos,
     list_program_outcomes,
     publish_mapping,
     remove_mapping_entry,
@@ -297,3 +299,50 @@ def get_mapping_by_id(program_id: str, mapping_id: str) -> ResponseReturnValue:
     if not mapping:
         return jsonify({"success": False, "error": MAPPING_NOT_FOUND_MSG}), 404
     return jsonify({"success": True, "mapping": mapping}), 200
+
+
+# ---------------------------------------------------------------------------
+# Matrix / cross-cutting queries
+# ---------------------------------------------------------------------------
+
+
+@plo_bp.route("/<program_id>/plo-mappings/matrix", methods=["GET"])
+@permission_required("view_program_data")
+def mapping_matrix(program_id: str) -> ResponseReturnValue:
+    """Return a PLO × CLO matrix grid for the mapping UI.
+
+    Query params (all optional, resolution order):
+      - mapping_id: explicit mapping UUID
+      - version: published version number
+      - (neither): draft → latest published
+    """
+    try:
+        mapping_id = request.args.get("mapping_id")
+        version_str = request.args.get("version")
+        version = int(version_str) if version_str else None
+
+        result = get_mapping_matrix(program_id, mapping_id=mapping_id, version=version)
+        return jsonify({"success": True, **result}), 200
+    except ValueError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 404
+    except Exception as exc:
+        return handle_api_error(exc, "fetching mapping matrix")
+
+
+@plo_bp.route("/<program_id>/plo-mappings/unmapped-clos", methods=["GET"])
+@permission_required("view_program_data")
+def unmapped_clos(program_id: str) -> ResponseReturnValue:
+    """Return CLOs in the program's courses not yet mapped in any PLO mapping.
+
+    Query params (optional):
+      - mapping_id: check against a specific mapping; otherwise draft → latest
+    """
+    try:
+        mapping_id = request.args.get("mapping_id")
+        clos = get_unmapped_clos(program_id, mapping_id=mapping_id)
+        return (
+            jsonify({"success": True, "unmapped_clos": clos, "count": len(clos)}),
+            200,
+        )
+    except Exception as exc:
+        return handle_api_error(exc, "fetching unmapped CLOs")

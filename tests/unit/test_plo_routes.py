@@ -524,3 +524,226 @@ class TestPLOMappingRetrievalRoutes:
         inst_id, prog_id = _setup_program("MR7")
         resp = client.get(f"/api/programs/{prog_id}/plo-mappings/nonexistent")
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Matrix / cross-cutting query routes
+# ---------------------------------------------------------------------------
+
+
+def _setup_program_with_courses(suffix, num_courses=2, clos_per_course=2):
+    """Create a fully wired program with courses linked and CLOs.
+
+    Returns (inst_id, prog_id, [(course_id, [clo_id, ...]), ...]).
+    """
+    inst_id, prog_id = _setup_program(suffix)
+    courses = []
+    for i in range(num_courses):
+        course_id = database_service.create_course(
+            {
+                "course_number": f"CS{suffix}{i}",
+                "course_title": f"Course {suffix} {i}",
+                "department": "CS",
+                "institution_id": inst_id,
+            }
+        )
+        database_service.add_course_to_program(course_id, prog_id)
+        clo_ids = []
+        for j in range(clos_per_course):
+            clo_id = database_service.create_course_outcome(
+                {
+                    "course_id": course_id,
+                    "clo_number": j + 1,
+                    "description": f"CLO {suffix} C{i} #{j+1}",
+                    "assessment_method": "exam",
+                    "active": True,
+                }
+            )
+            clo_ids.append(clo_id)
+        courses.append((course_id, clo_ids))
+    return inst_id, prog_id, courses
+
+
+class TestPLOMappingMatrixRoutes:
+    """Tests for GET /api/programs/<id>/plo-mappings/matrix."""
+
+    def test_matrix_empty_program(self, client):
+        """Matrix with no courses, PLOs, or mappings."""
+        _auth(client)
+        inst_id, prog_id = _setup_program("MX1")
+
+        resp = client.get(f"/api/programs/{prog_id}/plo-mappings/matrix")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["success"] is True
+        assert data["plos"] == []
+        assert data["courses"] == []
+        assert data["matrix"] == {}
+        # No draft or published mapping yet
+        assert data["mapping"] is None
+
+    def test_matrix_with_draft_entries(self, client):
+        """Matrix populates cells from a draft mapping."""
+        _auth(client)
+        inst_id, prog_id, courses = _setup_program_with_courses("MX2")
+        user_id = _setup_user(inst_id, email="mx2@test.edu")
+
+        # Create PLOs
+        plo_resp = client.post(
+            f"/api/programs/{prog_id}/plos",
+            json={"plo_number": 1, "description": "PLO MX2-1"},
+        )
+        plo_id = plo_resp.get_json()["plo"]["id"]
+
+        # Create draft & add an entry
+        draft_resp = client.post(f"/api/programs/{prog_id}/plo-mappings/draft")
+        mapping_id = draft_resp.get_json()["mapping"]["id"]
+        clo_id = courses[0][1][0]  # first CLO of first course
+        client.post(
+            f"/api/programs/{prog_id}/plo-mappings/{mapping_id}/entries",
+            json={"program_outcome_id": plo_id, "course_outcome_id": clo_id},
+        )
+
+        # Fetch matrix
+        resp = client.get(f"/api/programs/{prog_id}/plo-mappings/matrix")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert len(data["plos"]) == 1
+        assert len(data["courses"]) == 2
+        # Matrix should show the single entry
+        matrix = data["matrix"]
+        assert plo_id in matrix
+        assert clo_id in matrix[plo_id]
+        assert matrix[plo_id][clo_id] is not None  # has entry_id
+
+    def test_matrix_with_explicit_mapping_id(self, client):
+        """Matrix can target a specific mapping via query param."""
+        _auth(client)
+        inst_id, prog_id, courses = _setup_program_with_courses("MX3")
+        _setup_user(inst_id, email="mx3@test.edu")
+
+        # Create & publish one version
+        draft_resp = client.post(f"/api/programs/{prog_id}/plo-mappings/draft")
+        mapping_id = draft_resp.get_json()["mapping"]["id"]
+        client.post(f"/api/programs/{prog_id}/plo-mappings/{mapping_id}/publish")
+
+        resp = client.get(
+            f"/api/programs/{prog_id}/plo-mappings/matrix",
+            query_string={"mapping_id": mapping_id},
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["mapping"]["id"] == mapping_id
+
+    def test_matrix_with_version_param(self, client):
+        """Matrix can target a specific version number."""
+        _auth(client)
+        inst_id, prog_id, courses = _setup_program_with_courses("MX4")
+        _setup_user(inst_id, email="mx4@test.edu")
+
+        # Publish version 1
+        d = client.post(f"/api/programs/{prog_id}/plo-mappings/draft")
+        mid = d.get_json()["mapping"]["id"]
+        client.post(f"/api/programs/{prog_id}/plo-mappings/{mid}/publish")
+
+        resp = client.get(
+            f"/api/programs/{prog_id}/plo-mappings/matrix",
+            query_string={"version": "1"},
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["mapping"]["version"] == 1
+
+    def test_matrix_courses_include_clos(self, client):
+        """Each course in the response includes its CLOs."""
+        _auth(client)
+        inst_id, prog_id, courses = _setup_program_with_courses(
+            "MX5", num_courses=1, clos_per_course=3
+        )
+
+        resp = client.get(f"/api/programs/{prog_id}/plo-mappings/matrix")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert len(data["courses"]) == 1
+        assert len(data["courses"][0]["clos"]) == 3
+
+
+class TestPLOUnmappedCLOsRoutes:
+    """Tests for GET /api/programs/<id>/plo-mappings/unmapped-clos."""
+
+    def test_all_clos_unmapped_when_no_mapping(self, client):
+        """All CLOs are unmapped when no mapping exists."""
+        _auth(client)
+        inst_id, prog_id, courses = _setup_program_with_courses("UM1")
+
+        resp = client.get(f"/api/programs/{prog_id}/plo-mappings/unmapped-clos")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["success"] is True
+        total_clos = sum(len(clos) for _, clos in courses)
+        assert data["count"] == total_clos
+
+    def test_mapped_clo_excluded(self, client):
+        """A CLO that has a mapping entry should not appear in unmapped list."""
+        _auth(client)
+        inst_id, prog_id, courses = _setup_program_with_courses(
+            "UM2", num_courses=1, clos_per_course=3
+        )
+        user_id = _setup_user(inst_id, email="um2@test.edu")
+
+        # Create a PLO and a draft with one CLO mapped
+        plo_resp = client.post(
+            f"/api/programs/{prog_id}/plos",
+            json={"plo_number": 1, "description": "PLO UM2"},
+        )
+        plo_id = plo_resp.get_json()["plo"]["id"]
+
+        draft_resp = client.post(f"/api/programs/{prog_id}/plo-mappings/draft")
+        mapping_id = draft_resp.get_json()["mapping"]["id"]
+        mapped_clo = courses[0][1][0]
+        client.post(
+            f"/api/programs/{prog_id}/plo-mappings/{mapping_id}/entries",
+            json={"program_outcome_id": plo_id, "course_outcome_id": mapped_clo},
+        )
+
+        resp = client.get(f"/api/programs/{prog_id}/plo-mappings/unmapped-clos")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        # 3 total CLOs, 1 mapped → 2 unmapped
+        assert data["count"] == 2
+        unmapped_ids = [c["outcome_id"] for c in data["unmapped_clos"]]
+        assert mapped_clo not in unmapped_ids
+
+    def test_unmapped_with_explicit_mapping_id(self, client):
+        """Unmapped CLOs can target a specific mapping via query param."""
+        _auth(client)
+        inst_id, prog_id, courses = _setup_program_with_courses("UM3")
+        _setup_user(inst_id, email="um3@test.edu")
+
+        # Create and publish a draft
+        d = client.post(f"/api/programs/{prog_id}/plo-mappings/draft")
+        mid = d.get_json()["mapping"]["id"]
+        client.post(f"/api/programs/{prog_id}/plo-mappings/{mid}/publish")
+
+        resp = client.get(
+            f"/api/programs/{prog_id}/plo-mappings/unmapped-clos",
+            query_string={"mapping_id": mid},
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["success"] is True
+
+    def test_unmapped_includes_course_info(self, client):
+        """Each unmapped CLO includes its parent course info."""
+        _auth(client)
+        inst_id, prog_id, courses = _setup_program_with_courses(
+            "UM4", num_courses=1, clos_per_course=1
+        )
+
+        resp = client.get(f"/api/programs/{prog_id}/plo-mappings/unmapped-clos")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["count"] == 1
+        clo = data["unmapped_clos"][0]
+        assert "course" in clo
+        assert clo["course"]["course_id"] == courses[0][0]
