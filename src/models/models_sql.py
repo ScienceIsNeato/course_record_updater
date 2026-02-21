@@ -39,7 +39,6 @@ INSTITUTIONS_ID = "institutions.id"
 USERS_ID = "users.id"
 PROGRAM_OUTCOMES_ID = "program_outcomes.id"
 COURSE_OUTCOMES_ID = "course_outcomes.id"
-TERMS_ID = "terms.id"
 PLO_MAPPINGS_ID = "plo_mappings.id"
 CASCADE_OPTIONS = "all, delete-orphan"
 

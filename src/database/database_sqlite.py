@@ -2266,7 +2266,7 @@ class SQLDatabase(DatabaseInterface):
             plo_number=payload["plo_number"],
             description=payload.get("description", ""),
             is_active=payload.get("is_active", True),
-            extras=extras_dict if extras_dict else None,
+            extras=extras_dict if extras_dict else {},
         )
 
         with self.sql.session_scope() as session:
@@ -2421,9 +2421,17 @@ class SQLDatabase(DatabaseInterface):
         program_outcome_id: str,
         course_outcome_id: str,
     ) -> str:
-        """Add a PLO↔CLO link to a draft mapping. Returns entry ID."""
+        """Add a PLO↔CLO link to a draft mapping. Returns entry ID.
+
+        Raises ValueError if the mapping does not exist or is not a draft.
+        """
         entry_id = str(uuid.uuid4())
         with self.sql.session_scope() as session:
+            mapping = session.get(PloMapping, mapping_id)
+            if not mapping:
+                raise ValueError(f"Mapping {mapping_id} not found")
+            if mapping.status != "draft":
+                raise ValueError("Cannot add entries to a published mapping")
             entry = PloMappingEntry(
                 id=entry_id,
                 mapping_id=mapping_id,
@@ -2434,12 +2442,29 @@ class SQLDatabase(DatabaseInterface):
         return entry_id
 
     def remove_plo_mapping_entry(self, entry_id: str) -> bool:
-        """Remove a PLO↔CLO link from a draft mapping."""
+        """Remove a PLO↔CLO link from a draft mapping.
+
+        Returns False if the entry does not exist or the parent mapping
+        is not a draft (published mappings are immutable).
+        """
         try:
             with self.sql.session_scope() as session:
                 entry = session.get(PloMappingEntry, entry_id)
                 if not entry:
                     return False
+
+                # Ensure the parent mapping is still a draft
+                mapping = session.get(PloMapping, entry.mapping_id)
+                if not mapping or mapping.status != "draft":
+                    logger.warning(
+                        "Refused to remove entry %s: parent mapping %s "
+                        "is not a draft (status=%s)",
+                        entry_id,
+                        entry.mapping_id,
+                        getattr(mapping, "status", None),
+                    )
+                    return False
+
                 session.delete(entry)
                 return True
         except Exception as e:

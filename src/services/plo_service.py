@@ -203,14 +203,19 @@ def get_mapping_matrix(
     - matrix: dict  ``{plo_id: {clo_id: entry_id | None}}``
 
     Raises:
-        ValueError: when no mapping can be resolved.
+        ValueError: when an explicit mapping_id or version is given
+            but does not resolve to an existing mapping.
     """
     # Resolve the target mapping
     mapping: Optional[Dict[str, Any]] = None
     if mapping_id:
         mapping = database_service.get_plo_mapping(mapping_id)
+        if not mapping:
+            raise ValueError(f"Mapping {mapping_id} not found")
     elif version is not None:
         mapping = database_service.get_plo_mapping_by_version(program_id, version)
+        if not mapping:
+            raise ValueError(f"Mapping version {version} not found")
     else:
         mapping = database_service.get_plo_mapping_draft(program_id)
         if not mapping:

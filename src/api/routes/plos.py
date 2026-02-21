@@ -48,6 +48,49 @@ PLO_NOT_FOUND_MSG = "Program outcome not found"
 MAPPING_NOT_FOUND_MSG = "PLO mapping not found"
 
 
+def _validate_program(program_id: str) -> tuple:
+    """Validate program exists and belongs to the current institution.
+
+    Returns (program_dict, None) on success or (None, error_response) on failure.
+    """
+    institution_id = get_current_institution_id_safe()
+    program = get_program_by_id(program_id)
+    if not program or program.get("institution_id") != institution_id:
+        return None, (
+            jsonify({"success": False, "error": PROGRAM_NOT_FOUND_MSG}),
+            404,
+        )
+    return program, None
+
+
+def _validate_plo_ownership(program_id: str, plo_id: str) -> tuple:
+    """Validate PLO exists and belongs to the given program.
+
+    Returns (plo_dict, None) on success or (None, error_response) on failure.
+    """
+    plo = get_program_outcome(plo_id)
+    if not plo or str(plo.get("program_id")) != str(program_id):
+        return None, (
+            jsonify({"success": False, "error": PLO_NOT_FOUND_MSG}),
+            404,
+        )
+    return plo, None
+
+
+def _validate_mapping_ownership(program_id: str, mapping_id: str) -> tuple:
+    """Validate mapping exists and belongs to the given program.
+
+    Returns (mapping_dict, None) on success or (None, error_response) on failure.
+    """
+    mapping = get_mapping(mapping_id)
+    if not mapping or str(mapping.get("program_id")) != str(program_id):
+        return None, (
+            jsonify({"success": False, "error": MAPPING_NOT_FOUND_MSG}),
+            404,
+        )
+    return mapping, None
+
+
 # ---------------------------------------------------------------------------
 # PLO template CRUD
 # ---------------------------------------------------------------------------
@@ -59,9 +102,9 @@ def list_plos(program_id: str) -> ResponseReturnValue:
     """List all PLOs for a program."""
     include_inactive = request.args.get("include_inactive", "false").lower() == "true"
 
-    program = get_program_by_id(program_id)
-    if not program:
-        return jsonify({"success": False, "error": PROGRAM_NOT_FOUND_MSG}), 404
+    program, err = _validate_program(program_id)
+    if err:
+        return err
 
     plos = list_program_outcomes(program_id, include_inactive=include_inactive)
     return jsonify({"success": True, "plos": plos, "total": len(plos)}), 200
@@ -75,9 +118,12 @@ def create_plo(program_id: str) -> ResponseReturnValue:
     if not data:
         return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
-    institution_id = get_current_institution_id_safe()
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+
     data["program_id"] = program_id
-    data["institution_id"] = institution_id
+    data["institution_id"] = program.get("institution_id")
 
     try:
         plo_id = create_program_outcome(data)
@@ -93,9 +139,14 @@ def create_plo(program_id: str) -> ResponseReturnValue:
 @permission_required("view_program_data")
 def get_plo(program_id: str, plo_id: str) -> ResponseReturnValue:
     """Get a single PLO by ID."""
-    plo = get_program_outcome(plo_id)
-    if not plo:
-        return jsonify({"success": False, "error": PLO_NOT_FOUND_MSG}), 404
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+
+    plo, err = _validate_plo_ownership(program_id, plo_id)
+    if err:
+        return err
+
     return jsonify({"success": True, "plo": plo}), 200
 
 
@@ -106,6 +157,13 @@ def update_plo(program_id: str, plo_id: str) -> ResponseReturnValue:
     data = request.get_json(silent=True) or {}
     if not data:
         return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
+
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+    _, err = _validate_plo_ownership(program_id, plo_id)
+    if err:
+        return err
 
     try:
         success = update_program_outcome(plo_id, data)
@@ -123,6 +181,13 @@ def update_plo(program_id: str, plo_id: str) -> ResponseReturnValue:
 @permission_required("manage_programs")
 def delete_plo(program_id: str, plo_id: str) -> ResponseReturnValue:
     """Soft-delete a PLO."""
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+    _, err = _validate_plo_ownership(program_id, plo_id)
+    if err:
+        return err
+
     success = delete_program_outcome(plo_id)
     if not success:
         return jsonify({"success": False, "error": PLO_NOT_FOUND_MSG}), 404
@@ -142,9 +207,9 @@ def create_or_get_draft_mapping(program_id: str) -> ResponseReturnValue:
     If a published version exists the draft will be pre-populated with
     its entries.  Idempotent — calling twice returns the same draft.
     """
-    program = get_program_by_id(program_id)
-    if not program:
-        return jsonify({"success": False, "error": PROGRAM_NOT_FOUND_MSG}), 404
+    program, err = _validate_program(program_id)
+    if err:
+        return err
 
     user_id = get_current_user_id_safe()
 
@@ -159,6 +224,10 @@ def create_or_get_draft_mapping(program_id: str) -> ResponseReturnValue:
 @permission_required("view_program_data")
 def get_draft_mapping(program_id: str) -> ResponseReturnValue:
     """Get the current draft mapping for the program, if any."""
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+
     draft = get_draft(program_id)
     if not draft:
         return jsonify({"success": False, "error": "No draft mapping exists"}), 404
@@ -169,6 +238,10 @@ def get_draft_mapping(program_id: str) -> ResponseReturnValue:
 @permission_required("manage_programs")
 def discard_draft_mapping(program_id: str) -> ResponseReturnValue:
     """Discard the current draft mapping and all its entries."""
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+
     draft = get_draft(program_id)
     if not draft:
         return jsonify({"success": False, "error": "No draft mapping exists"}), 404
@@ -188,6 +261,19 @@ def discard_draft_mapping(program_id: str) -> ResponseReturnValue:
 @permission_required("manage_programs")
 def add_entry(program_id: str, mapping_id: str) -> ResponseReturnValue:
     """Add a PLO↔CLO link to a mapping."""
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+    mapping, err = _validate_mapping_ownership(program_id, mapping_id)
+    if err:
+        return err
+
+    if mapping.get("status") != "draft":
+        return (
+            jsonify({"success": False, "error": "Cannot modify a published mapping"}),
+            400,
+        )
+
     data = request.get_json(silent=True) or {}
     plo_id = data.get("program_outcome_id")
     clo_id = data.get("course_outcome_id")
@@ -221,6 +307,19 @@ def remove_entry(
     program_id: str, mapping_id: str, entry_id: str
 ) -> ResponseReturnValue:
     """Remove a PLO↔CLO link from a mapping."""
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+    mapping, err = _validate_mapping_ownership(program_id, mapping_id)
+    if err:
+        return err
+
+    # Verify entry belongs to this mapping
+    entries = mapping.get("entries") or []
+    entry_ids = {e.get("id") for e in entries}
+    if entry_id not in entry_ids:
+        return jsonify({"success": False, "error": "Entry not found"}), 404
+
     success = remove_mapping_entry(entry_id)
     if not success:
         return jsonify({"success": False, "error": "Entry not found"}), 404
@@ -243,6 +342,13 @@ def publish_draft(program_id: str, mapping_id: str) -> ResponseReturnValue:
     data = request.get_json(silent=True) or {}
     description = data.get("description")
 
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+    mapping, err = _validate_mapping_ownership(program_id, mapping_id)
+    if err:
+        return err
+
     try:
         published = publish_mapping(mapping_id, description)
         return jsonify({"success": True, "mapping": published}), 200
@@ -261,6 +367,10 @@ def publish_draft(program_id: str, mapping_id: str) -> ResponseReturnValue:
 @permission_required("view_program_data")
 def list_published_mappings(program_id: str) -> ResponseReturnValue:
     """List all published mapping versions for a program."""
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+
     mappings = get_published_mappings(program_id)
     return (
         jsonify({"success": True, "mappings": mappings, "total": len(mappings)}),
@@ -272,6 +382,10 @@ def list_published_mappings(program_id: str) -> ResponseReturnValue:
 @permission_required("view_program_data")
 def latest_published_mapping(program_id: str) -> ResponseReturnValue:
     """Return the most-recently published mapping version."""
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+
     mapping = get_latest_published_mapping(program_id)
     if not mapping:
         return (
@@ -285,6 +399,10 @@ def latest_published_mapping(program_id: str) -> ResponseReturnValue:
 @permission_required("view_program_data")
 def get_mapping_version(program_id: str, version: int) -> ResponseReturnValue:
     """Retrieve a specific published mapping version."""
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+
     mapping = get_mapping_by_version(program_id, version)
     if not mapping:
         return jsonify({"success": False, "error": MAPPING_NOT_FOUND_MSG}), 404
@@ -295,9 +413,13 @@ def get_mapping_version(program_id: str, version: int) -> ResponseReturnValue:
 @permission_required("view_program_data")
 def get_mapping_by_id(program_id: str, mapping_id: str) -> ResponseReturnValue:
     """Retrieve a mapping (draft or published) by ID."""
-    mapping = get_mapping(mapping_id)
-    if not mapping:
-        return jsonify({"success": False, "error": MAPPING_NOT_FOUND_MSG}), 404
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+    mapping, err = _validate_mapping_ownership(program_id, mapping_id)
+    if err:
+        return err
+
     return jsonify({"success": True, "mapping": mapping}), 200
 
 
@@ -316,11 +438,30 @@ def mapping_matrix(program_id: str) -> ResponseReturnValue:
       - version: published version number
       - (neither): draft → latest published
     """
-    try:
-        mapping_id = request.args.get("mapping_id")
-        version_str = request.args.get("version")
-        version = int(version_str) if version_str else None
+    program, err = _validate_program(program_id)
+    if err:
+        return err
 
+    mapping_id = request.args.get("mapping_id")
+    version_str = request.args.get("version")
+
+    if version_str is not None:
+        try:
+            version = int(version_str)
+        except (ValueError, TypeError):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Invalid version: {version_str!r}",
+                    }
+                ),
+                400,
+            )
+    else:
+        version = None
+
+    try:
         result = get_mapping_matrix(program_id, mapping_id=mapping_id, version=version)
         return jsonify({"success": True, **result}), 200
     except ValueError as exc:
@@ -337,6 +478,10 @@ def unmapped_clos(program_id: str) -> ResponseReturnValue:
     Query params (optional):
       - mapping_id: check against a specific mapping; otherwise draft → latest
     """
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+
     try:
         mapping_id = request.args.get("mapping_id")
         clos = get_unmapped_clos(program_id, mapping_id=mapping_id)
