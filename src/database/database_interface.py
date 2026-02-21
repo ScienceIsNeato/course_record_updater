@@ -565,3 +565,107 @@ class DatabaseInterface(ABC):
     def get_outcome_history(self, section_outcome_id: str) -> List[Dict[str, Any]]:
         """Get history entries for a section outcome, sorted by date DESC."""
         raise NotImplementedError
+
+    # Program Outcome (PLO) operations
+    @abstractmethod
+    def create_program_outcome(self, outcome_data: Dict[str, Any]) -> str:
+        """Create a new Program Level Outcome template."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_program_outcome(
+        self, outcome_id: str, outcome_data: Dict[str, Any]
+    ) -> bool:
+        """Update a Program Level Outcome template."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_program_outcome(self, outcome_id: str) -> bool:
+        """Soft-delete a PLO by setting is_active=False."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_program_outcomes(
+        self, program_id: str, include_inactive: bool = False
+    ) -> List[Dict[str, Any]]:
+        """Get all PLOs for a program, ordered by plo_number."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_program_outcome(self, outcome_id: str) -> Optional[Dict[str, Any]]:
+        """Get a single PLO by ID."""
+        raise NotImplementedError
+
+    # PLO Mapping (versioned draft/publish) operations
+    @abstractmethod
+    def get_or_create_plo_mapping_draft(
+        self, program_id: str, user_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get the current draft mapping for a program, or create one.
+
+        If a draft already exists, return it. Otherwise create a new draft,
+        optionally copying entries from the latest published version.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_plo_mapping_draft(self, program_id: str) -> Optional[Dict[str, Any]]:
+        """Get the current draft mapping for a program, or None."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_plo_mapping_entry(
+        self,
+        mapping_id: str,
+        program_outcome_id: str,
+        course_outcome_id: str,
+    ) -> str:
+        """Add a PLO↔CLO link to a draft mapping. Returns entry ID."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def remove_plo_mapping_entry(self, entry_id: str) -> bool:
+        """Remove a PLO↔CLO link from a draft mapping."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def publish_plo_mapping(
+        self,
+        mapping_id: str,
+        description: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Publish a draft mapping, assigning the next version number.
+
+        Snapshots PLO descriptions into each entry for historical preservation.
+        Returns the published mapping dict.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def discard_plo_mapping_draft(self, mapping_id: str) -> bool:
+        """Discard (delete) a draft mapping and all its entries."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_plo_mapping(self, mapping_id: str) -> Optional[Dict[str, Any]]:
+        """Get a single mapping by ID, including its entries."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_plo_mapping_by_version(
+        self, program_id: str, version: int
+    ) -> Optional[Dict[str, Any]]:
+        """Get a published mapping by program and version number."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_published_plo_mappings(self, program_id: str) -> List[Dict[str, Any]]:
+        """Get all published mappings for a program, ordered by version."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_latest_published_plo_mapping(
+        self, program_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Get the most recent published mapping for a program."""
+        raise NotImplementedError

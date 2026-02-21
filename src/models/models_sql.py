@@ -13,11 +13,14 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     PickleType,
     String,
     Table,
     Text,
+    UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import declarative_base, relationship
 
@@ -34,6 +37,10 @@ COURSES_ID = "courses.id"
 PROGRAMS_ID = "programs.id"
 INSTITUTIONS_ID = "institutions.id"
 USERS_ID = "users.id"
+PROGRAM_OUTCOMES_ID = "program_outcomes.id"
+COURSE_OUTCOMES_ID = "course_outcomes.id"
+TERMS_ID = "terms.id"
+PLO_MAPPINGS_ID = "plo_mappings.id"
 CASCADE_OPTIONS = "all, delete-orphan"
 
 
@@ -409,6 +416,112 @@ class CourseSectionOutcome(Base, TimestampMixin):  # type: ignore[valid-type,mis
     )
 
 
+# No association table needed — PLO↔CLO links live in PloMappingEntry
+
+
+class ProgramOutcome(Base, TimestampMixin):  # type: ignore[valid-type,misc]
+    """Program Level Outcome (PLO) template.
+
+    Defines a learning outcome at the program level. These are admin-managed
+    definitions (no approval workflow). PLO↔CLO mappings are versioned via
+    the PloMapping / PloMappingEntry models.
+    """
+
+    __tablename__ = "program_outcomes"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    program_id = Column(String, ForeignKey(PROGRAMS_ID), nullable=False)
+    institution_id = Column(String, ForeignKey(INSTITUTIONS_ID), nullable=False)
+    plo_number = Column(Integer, nullable=False)  # Display order, unique per program
+    description = Column(Text, nullable=False)
+    is_active = Column(Boolean, default=True)
+    extras = Column(JSON, default=dict)
+
+    program = relationship("Program", backref="program_outcomes")
+    institution = relationship("Institution")
+    mapping_entries = relationship(
+        "PloMappingEntry",
+        back_populates="program_outcome",
+        cascade=CASCADE_OPTIONS,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("program_id", "plo_number", name="uq_program_plo_number"),
+    )
+
+
+class PloMapping(Base, TimestampMixin):  # type: ignore[valid-type,misc]
+    """Versioned PLO↔CLO mapping for a program.
+
+    Each version captures the full state of which CLOs map to which PLOs.
+    Supports a draft/publish workflow: a single draft per program is edited
+    incrementally and then published with an auto-assigned version number.
+    """
+
+    __tablename__ = "plo_mappings"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    program_id = Column(String, ForeignKey(PROGRAMS_ID), nullable=False)
+    version = Column(Integer, nullable=True)  # NULL while draft, assigned on publish
+    status = Column(String, nullable=False, default="draft")  # "draft" | "published"
+    description = Column(Text, nullable=True)  # Optional changelog / label
+    created_by_user_id = Column(String, ForeignKey(USERS_ID), nullable=True)
+    published_at = Column(DateTime, nullable=True)
+    extras = Column(JSON, default=dict)
+
+    program = relationship("Program", backref="plo_mappings")
+    created_by = relationship("User")
+    entries = relationship(
+        "PloMappingEntry",
+        back_populates="mapping",
+        cascade=CASCADE_OPTIONS,
+    )
+
+    __table_args__ = (
+        # Version numbers are unique within a program (for published mappings)
+        UniqueConstraint("program_id", "version", name="uq_program_mapping_version"),
+        # Only one draft per program — enforced via partial unique index
+        Index(
+            "uq_program_draft",
+            "program_id",
+            unique=True,
+            sqlite_where=text("status = 'draft'"),
+        ),
+    )
+
+
+class PloMappingEntry(Base, TimestampMixin):  # type: ignore[valid-type,misc]
+    """Individual PLO↔CLO link within a versioned mapping.
+
+    Each entry connects one PLO to one CLO, optionally capturing a PLO
+    description snapshot so historical versions preserve the text.
+    """
+
+    __tablename__ = "plo_mapping_entries"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    mapping_id = Column(String, ForeignKey(PLO_MAPPINGS_ID), nullable=False)
+    program_outcome_id = Column(String, ForeignKey(PROGRAM_OUTCOMES_ID), nullable=False)
+    course_outcome_id = Column(String, ForeignKey(COURSE_OUTCOMES_ID), nullable=False)
+    plo_description_snapshot = Column(
+        Text, nullable=True
+    )  # Frozen PLO text at publish time
+    extras = Column(JSON, default=dict)
+
+    mapping = relationship("PloMapping", back_populates="entries")
+    program_outcome = relationship("ProgramOutcome", back_populates="mapping_entries")
+    course_outcome = relationship("CourseOutcome")
+
+    __table_args__ = (
+        # A CLO can only be mapped once per mapping version
+        UniqueConstraint(
+            "mapping_id",
+            "course_outcome_id",
+            name="uq_mapping_clo",
+        ),
+    )
+
+
 class UserInvitation(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     """User invitation model."""
 
@@ -474,6 +587,12 @@ def _get_model_data(model: Any) -> Dict[str, Any]:
         return _user_invitation_to_dict(model)
     elif model_type == CourseSectionOutcome:
         return _course_section_outcome_to_dict(model)
+    elif model_type == ProgramOutcome:
+        return _program_outcome_to_dict(model)
+    elif model_type == PloMapping:
+        return _plo_mapping_to_dict(model)
+    elif model_type == PloMappingEntry:
+        return _plo_mapping_entry_to_dict(model)
     else:
         return {}
 
@@ -846,6 +965,54 @@ def _user_invitation_to_dict(model: UserInvitation) -> Dict[str, Any]:
     }
 
 
+def _program_outcome_to_dict(model: ProgramOutcome) -> Dict[str, Any]:
+    """Convert ProgramOutcome model to dictionary."""
+    return {
+        "id": model.id,
+        "program_id": model.program_id,
+        "institution_id": model.institution_id,
+        "plo_number": model.plo_number,
+        "description": model.description,
+        "is_active": model.is_active,
+        "created_at": model.created_at.isoformat() if model.created_at else None,
+        "updated_at": model.updated_at.isoformat() if model.updated_at else None,
+    }
+
+
+def _plo_mapping_to_dict(model: PloMapping) -> Dict[str, Any]:
+    """Convert PloMapping model to dictionary."""
+    data: Dict[str, Any] = {
+        "id": model.id,
+        "program_id": model.program_id,
+        "version": model.version,
+        "status": model.status,
+        "description": model.description,
+        "created_by_user_id": model.created_by_user_id,
+        "published_at": (
+            model.published_at.isoformat() if model.published_at else None
+        ),
+        "created_at": model.created_at.isoformat() if model.created_at else None,
+        "updated_at": model.updated_at.isoformat() if model.updated_at else None,
+    }
+    # Include entries if eager-loaded
+    if "entries" in model.__dict__:
+        data["entries"] = [_plo_mapping_entry_to_dict(e) for e in model.entries]
+    return data
+
+
+def _plo_mapping_entry_to_dict(model: PloMappingEntry) -> Dict[str, Any]:
+    """Convert PloMappingEntry model to dictionary."""
+    return {
+        "id": model.id,
+        "mapping_id": model.mapping_id,
+        "program_outcome_id": model.program_outcome_id,
+        "course_outcome_id": model.course_outcome_id,
+        "plo_description_snapshot": model.plo_description_snapshot,
+        "created_at": model.created_at.isoformat() if model.created_at else None,
+        "updated_at": model.updated_at.isoformat() if model.updated_at else None,
+    }
+
+
 class AuditLog(Base):  # type: ignore[valid-type,misc]
     """Audit Log model for tracking all CRUD operations."""
 
@@ -947,6 +1114,9 @@ __all__ = [
     "CourseSection",
     "CourseOutcome",
     "CourseSectionOutcome",
+    "ProgramOutcome",
+    "PloMapping",
+    "PloMappingEntry",
     "UserInvitation",
     "AuditLog",
     "BulkEmailJob",
