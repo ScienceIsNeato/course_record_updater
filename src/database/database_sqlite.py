@@ -21,7 +21,10 @@ from src.models.models_sql import (
     CourseSection,
     CourseSectionOutcome,
     Institution,
+    PloMapping,
+    PloMappingEntry,
     Program,
+    ProgramOutcome,
     Term,
     User,
     UserInvitation,
@@ -2235,6 +2238,378 @@ class SQLDatabase(DatabaseInterface):
                 .all()
             )
             return [{"event": e.event, "occurred_at": e.occurred_at} for e in entries]
+
+    # ------------------------------------------------------------------
+    # Program Outcome (PLO) operations
+    # ------------------------------------------------------------------
+    def create_program_outcome(self, outcome_data: Dict[str, Any]) -> str:
+        """Create a new Program Level Outcome template."""
+        payload = dict(outcome_data)
+        outcome_id = _ensure_uuid(payload.pop("id", None))
+
+        exclude_fields = {
+            "id",
+            "program_id",
+            "institution_id",
+            "plo_number",
+            "description",
+            "is_active",
+            "created_at",
+            "updated_at",
+        }
+        extras_dict = {k: v for k, v in payload.items() if k not in exclude_fields}
+
+        outcome = ProgramOutcome(
+            id=outcome_id,
+            program_id=payload["program_id"],
+            institution_id=payload["institution_id"],
+            plo_number=payload["plo_number"],
+            description=payload.get("description", ""),
+            is_active=payload.get("is_active", True),
+            extras=extras_dict if extras_dict else {},
+        )
+
+        with self.sql.session_scope() as session:
+            session.add(outcome)
+            return outcome_id
+
+    def update_program_outcome(
+        self, outcome_id: str, outcome_data: Dict[str, Any]
+    ) -> bool:
+        """Update a Program Level Outcome template."""
+        try:
+            with self.sql.session_scope() as session:
+                outcome = session.get(ProgramOutcome, outcome_id)
+                if not outcome:
+                    return False
+
+                for key, value in outcome_data.items():
+                    if hasattr(outcome, key) and key != "id":
+                        setattr(outcome, key, value)
+
+                return True
+        except Exception as e:
+            logger.error(f"Failed to update program outcome: {e}")
+            return False
+
+    def delete_program_outcome(self, outcome_id: str) -> bool:
+        """Soft-delete a PLO by setting is_active=False."""
+        try:
+            with self.sql.session_scope() as session:
+                outcome = session.get(ProgramOutcome, outcome_id)
+                if not outcome:
+                    return False
+
+                outcome.is_active = False
+                return True
+        except Exception as e:
+            logger.error(f"Failed to soft-delete program outcome: {e}")
+            return False
+
+    def get_program_outcomes(
+        self, program_id: str, include_inactive: bool = False
+    ) -> List[Dict[str, Any]]:
+        """Get all PLOs for a program, ordered by plo_number."""
+        with self.sql.session_scope() as session:
+            stmt = select(ProgramOutcome).where(ProgramOutcome.program_id == program_id)
+            if not include_inactive:
+                stmt = stmt.where(ProgramOutcome.is_active.is_(True))
+            stmt = stmt.order_by(ProgramOutcome.plo_number)
+
+            outcomes = session.execute(stmt).scalars().all()
+            return [to_dict(o) for o in outcomes]
+
+    def get_program_outcome(self, outcome_id: str) -> Optional[Dict[str, Any]]:
+        """Get a single PLO by ID."""
+        with self.sql.session_scope() as session:
+            outcome = session.get(ProgramOutcome, outcome_id)
+            return to_dict(outcome) if outcome else None
+
+    # ------------------------------------------------------------------
+    # PLO Mapping (versioned draft/publish) operations
+    # ------------------------------------------------------------------
+    def get_or_create_plo_mapping_draft(
+        self, program_id: str, user_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get or create the draft mapping for a program.
+
+        If no draft exists, creates one and copies entries from the latest
+        published version (if any).
+        """
+        with self.sql.session_scope() as session:
+            # Check for existing draft
+            draft = (
+                session.execute(
+                    select(PloMapping).where(
+                        and_(
+                            PloMapping.program_id == program_id,
+                            PloMapping.status == "draft",
+                        )
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            if draft:
+                # Eager-load entries for the response
+                _ = draft.entries
+                return to_dict(draft)
+
+            # No draft — create one
+            draft_id = str(uuid.uuid4())
+            draft = PloMapping(
+                id=draft_id,
+                program_id=program_id,
+                status="draft",
+                created_by_user_id=user_id,
+            )
+            session.add(draft)
+            session.flush()
+
+            # Copy entries from latest published version (if any)
+            latest = (
+                session.execute(
+                    select(PloMapping)
+                    .where(
+                        and_(
+                            PloMapping.program_id == program_id,
+                            PloMapping.status == "published",
+                        )
+                    )
+                    .order_by(PloMapping.version.desc())
+                )
+                .scalars()
+                .first()
+            )
+            if latest:
+                for entry in latest.entries:
+                    new_entry = PloMappingEntry(
+                        id=str(uuid.uuid4()),
+                        mapping_id=draft_id,
+                        program_outcome_id=entry.program_outcome_id,
+                        course_outcome_id=entry.course_outcome_id,
+                    )
+                    session.add(new_entry)
+
+            # Eager-load entries for the response
+            session.flush()
+            _ = draft.entries
+            return to_dict(draft)
+
+    def get_plo_mapping_draft(self, program_id: str) -> Optional[Dict[str, Any]]:
+        """Get the current draft mapping for a program, or None."""
+        with self.sql.session_scope() as session:
+            draft = (
+                session.execute(
+                    select(PloMapping)
+                    .where(
+                        and_(
+                            PloMapping.program_id == program_id,
+                            PloMapping.status == "draft",
+                        )
+                    )
+                    .options(selectinload(PloMapping.entries))
+                )
+                .scalars()
+                .first()
+            )
+            return to_dict(draft) if draft else None
+
+    def add_plo_mapping_entry(
+        self,
+        mapping_id: str,
+        program_outcome_id: str,
+        course_outcome_id: str,
+    ) -> str:
+        """Add a PLO↔CLO link to a draft mapping. Returns entry ID.
+
+        Raises ValueError if the mapping does not exist or is not a draft.
+        """
+        entry_id = str(uuid.uuid4())
+        with self.sql.session_scope() as session:
+            mapping = session.get(PloMapping, mapping_id)
+            if not mapping:
+                raise ValueError(f"Mapping {mapping_id} not found")
+            if mapping.status != "draft":
+                raise ValueError("Cannot add entries to a published mapping")
+            entry = PloMappingEntry(
+                id=entry_id,
+                mapping_id=mapping_id,
+                program_outcome_id=program_outcome_id,
+                course_outcome_id=course_outcome_id,
+            )
+            session.add(entry)
+        return entry_id
+
+    def remove_plo_mapping_entry(self, entry_id: str) -> bool:
+        """Remove a PLO↔CLO link from a draft mapping.
+
+        Returns False if the entry does not exist or the parent mapping
+        is not a draft (published mappings are immutable).
+        """
+        try:
+            with self.sql.session_scope() as session:
+                entry = session.get(PloMappingEntry, entry_id)
+                if not entry:
+                    return False
+
+                # Ensure the parent mapping is still a draft
+                mapping = session.get(PloMapping, entry.mapping_id)
+                if not mapping or mapping.status != "draft":
+                    logger.warning(
+                        "Refused to remove entry %s: parent mapping %s "
+                        "is not a draft (status=%s)",
+                        entry_id,
+                        entry.mapping_id,
+                        getattr(mapping, "status", None),
+                    )
+                    return False
+
+                session.delete(entry)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to remove mapping entry: {e}")
+            return False
+
+    def publish_plo_mapping(
+        self,
+        mapping_id: str,
+        description: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Publish a draft mapping, assigning the next version number.
+
+        Snapshots current PLO descriptions into each entry for historical
+        preservation.
+        """
+        from datetime import datetime, timezone
+
+        with self.sql.session_scope() as session:
+            draft = session.get(PloMapping, mapping_id)
+            if not draft or draft.status != "draft":
+                raise ValueError(
+                    f"Mapping {mapping_id} is not a draft or does not exist"
+                )
+
+            # Determine next version number for this program
+            max_version = (
+                session.execute(
+                    select(func.max(PloMapping.version)).where(
+                        and_(
+                            PloMapping.program_id == draft.program_id,
+                            PloMapping.status == "published",
+                        )
+                    )
+                ).scalar()
+            ) or 0
+            next_version = max_version + 1
+
+            # Snapshot PLO descriptions into entries
+            for entry in draft.entries:
+                plo = session.get(ProgramOutcome, entry.program_outcome_id)
+                if plo:
+                    entry.plo_description_snapshot = plo.description
+
+            # Publish
+            draft.version = next_version
+            draft.status = "published"
+            draft.description = description
+            draft.published_at = datetime.now(timezone.utc)
+
+            session.flush()
+            # Eager-load entries for response
+            _ = draft.entries
+            return to_dict(draft)
+
+    def discard_plo_mapping_draft(self, mapping_id: str) -> bool:
+        """Discard (delete) a draft mapping and all its entries."""
+        try:
+            with self.sql.session_scope() as session:
+                draft = session.get(PloMapping, mapping_id)
+                if not draft or draft.status != "draft":
+                    return False
+                session.delete(draft)  # CASCADE deletes entries
+                return True
+        except Exception as e:
+            logger.error(f"Failed to discard draft mapping: {e}")
+            return False
+
+    def get_plo_mapping(self, mapping_id: str) -> Optional[Dict[str, Any]]:
+        """Get a single mapping by ID, including its entries."""
+        with self.sql.session_scope() as session:
+            mapping = (
+                session.execute(
+                    select(PloMapping)
+                    .where(PloMapping.id == mapping_id)
+                    .options(selectinload(PloMapping.entries))
+                )
+                .scalars()
+                .first()
+            )
+            return to_dict(mapping) if mapping else None
+
+    def get_plo_mapping_by_version(
+        self, program_id: str, version: int
+    ) -> Optional[Dict[str, Any]]:
+        """Get a published mapping by program and version number."""
+        with self.sql.session_scope() as session:
+            mapping = (
+                session.execute(
+                    select(PloMapping)
+                    .where(
+                        and_(
+                            PloMapping.program_id == program_id,
+                            PloMapping.version == version,
+                            PloMapping.status == "published",
+                        )
+                    )
+                    .options(selectinload(PloMapping.entries))
+                )
+                .scalars()
+                .first()
+            )
+            return to_dict(mapping) if mapping else None
+
+    def get_published_plo_mappings(self, program_id: str) -> List[Dict[str, Any]]:
+        """Get all published mappings for a program, ordered by version."""
+        with self.sql.session_scope() as session:
+            mappings = (
+                session.execute(
+                    select(PloMapping)
+                    .where(
+                        and_(
+                            PloMapping.program_id == program_id,
+                            PloMapping.status == "published",
+                        )
+                    )
+                    .order_by(PloMapping.version)
+                    .options(selectinload(PloMapping.entries))
+                )
+                .scalars()
+                .all()
+            )
+            return [to_dict(m) for m in mappings]
+
+    def get_latest_published_plo_mapping(
+        self, program_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Get the most recent published mapping for a program."""
+        with self.sql.session_scope() as session:
+            mapping = (
+                session.execute(
+                    select(PloMapping)
+                    .where(
+                        and_(
+                            PloMapping.program_id == program_id,
+                            PloMapping.status == "published",
+                        )
+                    )
+                    .order_by(PloMapping.version.desc())
+                    .options(selectinload(PloMapping.entries))
+                )
+                .scalars()
+                .first()
+            )
+            return to_dict(mapping) if mapping else None
 
     # ------------------------------------------------------------------
     # Delete operations (for testing/cleanup)

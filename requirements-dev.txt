@@ -22,6 +22,7 @@ pytest-xdist>=3.6.1        # Parallel test execution (35% faster)
 bandit>=1.7.5              # Security linter for Python
 safety>=2.3.0              # Dependency vulnerability scanner
 detect-secrets>=1.4.0        # Secret detection in code
+click>=8.2.0               # Required by typer>=0.15 (safety dep) for subscriptable Choice
 
 # Code quality and complexity
 radon>=6.0.1               # Code complexity analysis
