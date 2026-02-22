@@ -165,8 +165,16 @@ def update_plo(program_id: str, plo_id: str) -> ResponseReturnValue:
     if err:
         return err
 
+    allowed_fields = {"description", "plo_number"}
+    updates = {k: v for k, v in data.items() if k in allowed_fields}
+    if not updates:
+        return (
+            jsonify({"success": False, "error": "No updatable fields provided"}),
+            400,
+        )
+
     try:
-        success = update_program_outcome(plo_id, data)
+        success = update_program_outcome(plo_id, updates)
         if not success:
             return jsonify({"success": False, "error": PLO_NOT_FOUND_MSG}), 404
         plo = get_program_outcome(plo_id)

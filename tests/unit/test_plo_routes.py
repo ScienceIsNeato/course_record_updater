@@ -197,6 +197,54 @@ class TestPLOCrudRoutes:
         )
         assert resp.status_code == 404
 
+    def test_update_plo_filters_sensitive_fields(self, client):
+        inst_id, prog_id = _setup_program("U2b")
+        _auth(client, institution_id=inst_id)
+        plo_id = database_service.create_program_outcome(
+            {
+                "program_id": prog_id,
+                "institution_id": inst_id,
+                "plo_number": 1,
+                "description": "Original",
+            }
+        )
+        # Attempt to overwrite sensitive fields alongside a valid update
+        resp = client.put(
+            f"/api/programs/{prog_id}/plos/{plo_id}",
+            json={
+                "description": "Safe update",
+                "program_id": "evil-program",
+                "institution_id": "evil-inst",
+                "is_active": False,
+            },
+        )
+        assert resp.status_code == 200
+        plo = resp.get_json()["plo"]
+        assert plo["description"] == "Safe update"
+        # Sensitive fields must NOT be changed
+        assert plo["program_id"] == prog_id
+        assert plo["institution_id"] == inst_id
+        assert plo["is_active"] is True
+
+    def test_update_plo_only_sensitive_fields_rejected(self, client):
+        inst_id, prog_id = _setup_program("U2c")
+        _auth(client, institution_id=inst_id)
+        plo_id = database_service.create_program_outcome(
+            {
+                "program_id": prog_id,
+                "institution_id": inst_id,
+                "plo_number": 1,
+                "description": "Original",
+            }
+        )
+        # Only sensitive fields → no updatable fields → 400
+        resp = client.put(
+            f"/api/programs/{prog_id}/plos/{plo_id}",
+            json={"program_id": "evil", "is_active": False},
+        )
+        assert resp.status_code == 400
+        assert "No updatable fields" in resp.get_json()["error"]
+
     def test_update_plo_no_body(self, client):
         inst_id, prog_id = _setup_program("U3")
         _auth(client, institution_id=inst_id)

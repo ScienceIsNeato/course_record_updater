@@ -485,6 +485,7 @@ class PloMapping(Base, TimestampMixin):  # type: ignore[valid-type,misc]
             "program_id",
             unique=True,
             sqlite_where=text("status = 'draft'"),
+            postgresql_where=text("status = 'draft'"),
         ),
     )
 
