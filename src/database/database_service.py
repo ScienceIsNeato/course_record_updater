@@ -822,6 +822,104 @@ def get_outcome_history(section_outcome_id: str) -> List[Dict[str, Any]]:
     return _db_service.get_outcome_history(section_outcome_id)
 
 
+# Program Outcome (PLO) operations
+
+
+def create_program_outcome(outcome_data: Dict[str, Any]) -> str:
+    """Create a new Program Level Outcome template."""
+    return _db_service.create_program_outcome(outcome_data)
+
+
+def update_program_outcome(outcome_id: str, outcome_data: Dict[str, Any]) -> bool:
+    """Update a Program Level Outcome template."""
+    return _db_service.update_program_outcome(outcome_id, outcome_data)
+
+
+def delete_program_outcome(outcome_id: str) -> bool:
+    """Soft-delete a PLO by setting is_active=False."""
+    return _db_service.delete_program_outcome(outcome_id)
+
+
+def get_program_outcomes(
+    program_id: str, include_inactive: bool = False
+) -> List[Dict[str, Any]]:
+    """Get all PLOs for a program, ordered by plo_number."""
+    return _db_service.get_program_outcomes(program_id, include_inactive)
+
+
+def get_program_outcome(outcome_id: str) -> Optional[Dict[str, Any]]:
+    """Get a single PLO by ID."""
+    return _db_service.get_program_outcome(outcome_id)
+
+
+# PLO Mapping (versioned draft/publish) operations
+
+
+def get_or_create_plo_mapping_draft(
+    program_id: str, user_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """Get or create the draft mapping for a program."""
+    return _db_service.get_or_create_plo_mapping_draft(program_id, user_id)
+
+
+def get_plo_mapping_draft(program_id: str) -> Optional[Dict[str, Any]]:
+    """Get the current draft mapping for a program, or None."""
+    return _db_service.get_plo_mapping_draft(program_id)
+
+
+def add_plo_mapping_entry(
+    mapping_id: str,
+    program_outcome_id: str,
+    course_outcome_id: str,
+) -> str:
+    """Add a PLO↔CLO link to a draft mapping. Returns entry ID."""
+    return _db_service.add_plo_mapping_entry(
+        mapping_id, program_outcome_id, course_outcome_id
+    )
+
+
+def remove_plo_mapping_entry(entry_id: str) -> bool:
+    """Remove a PLO↔CLO link from a draft mapping."""
+    return _db_service.remove_plo_mapping_entry(entry_id)
+
+
+def publish_plo_mapping(
+    mapping_id: str,
+    description: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Publish a draft mapping, assigning the next version number."""
+    return _db_service.publish_plo_mapping(mapping_id, description)
+
+
+def discard_plo_mapping_draft(mapping_id: str) -> bool:
+    """Discard (delete) a draft mapping and all its entries."""
+    return _db_service.discard_plo_mapping_draft(mapping_id)
+
+
+def get_plo_mapping(mapping_id: str) -> Optional[Dict[str, Any]]:
+    """Get a single mapping by ID, including its entries."""
+    return _db_service.get_plo_mapping(mapping_id)
+
+
+def get_plo_mapping_by_version(
+    program_id: str, version: int
+) -> Optional[Dict[str, Any]]:
+    """Get a published mapping by program and version number."""
+    return _db_service.get_plo_mapping_by_version(program_id, version)
+
+
+def get_published_plo_mappings(program_id: str) -> List[Dict[str, Any]]:
+    """Get all published mappings for a program, ordered by version."""
+    return _db_service.get_published_plo_mappings(program_id)
+
+
+def get_latest_published_plo_mapping(
+    program_id: str,
+) -> Optional[Dict[str, Any]]:
+    """Get the most recent published mapping for a program."""
+    return _db_service.get_latest_published_plo_mapping(program_id)
+
+
 __all__ = [
     "COURSE_OFFERINGS_COLLECTION",
     "COURSE_OUTCOMES_COLLECTION",
@@ -908,4 +1006,21 @@ __all__ = [
     # Outcome history operations
     "add_outcome_history",
     "get_outcome_history",
+    # Program Outcome (PLO) operations
+    "create_program_outcome",
+    "update_program_outcome",
+    "delete_program_outcome",
+    "get_program_outcomes",
+    "get_program_outcome",
+    # PLO Mapping (versioned draft/publish) operations
+    "get_or_create_plo_mapping_draft",
+    "get_plo_mapping_draft",
+    "add_plo_mapping_entry",
+    "remove_plo_mapping_entry",
+    "publish_plo_mapping",
+    "discard_plo_mapping_draft",
+    "get_plo_mapping",
+    "get_plo_mapping_by_version",
+    "get_published_plo_mappings",
+    "get_latest_published_plo_mapping",
 ]
