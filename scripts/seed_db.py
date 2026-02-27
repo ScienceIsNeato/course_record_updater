@@ -1347,6 +1347,72 @@ class DemoSeeder(BaselineSeeder):
                 )
         return created
 
+    @staticmethod
+    def _build_plo_lookup(program_id: str) -> Dict[int, str]:
+        """Build plo_number -> plo_id lookup for a program."""
+        plos = database_service.get_program_outcomes(program_id)
+        lookup: Dict[int, str] = {}
+        for plo in plos:
+            plo_num = plo.get("plo_number")
+            plo_id = plo.get("id")
+            if plo_num is not None and plo_id:
+                lookup[int(plo_num)] = plo_id
+        return lookup
+
+    @staticmethod
+    def _build_clo_lookup(
+        entries: List[Dict[str, Any]], course_map: Dict[str, str]
+    ) -> Dict[tuple, str]:
+        """Build (course_code, clo_number) -> clo_id lookup."""
+        lookup: Dict[tuple, str] = {}
+        referenced_courses = {e["course_code"] for e in entries}
+        for course_code in referenced_courses:
+            course_id = course_map.get(course_code)
+            if not course_id:
+                continue
+            clos = database_service.get_course_outcomes(course_id)
+            for clo in clos or []:
+                clo_num = clo.get("clo_number")
+                clo_id = clo.get("outcome_id") or clo.get("id")
+                if clo_num is not None and clo_id:
+                    lookup[(course_code, int(clo_num))] = clo_id
+        return lookup
+
+    def _add_mapping_entries(
+        self,
+        draft_id: str,
+        entries: List[Dict[str, Any]],
+        plo_lookup: Dict[int, str],
+        clo_lookup: Dict[tuple, str],
+        program_code: str,
+    ) -> int:
+        """Add PLO-CLO mapping entries to a draft, returning count added."""
+        entry_count = 0
+        for entry in entries:
+            plo_num = int(entry["plo_number"])
+            course_code = entry["course_code"]
+            clo_num = int(entry["clo_number"])
+
+            plo_id = plo_lookup.get(plo_num)
+            clo_id = clo_lookup.get((course_code, clo_num))
+
+            if not plo_id:
+                self.log(f"   ⚠️ PLO {plo_num} not found for {program_code}")
+                continue
+            if not clo_id:
+                self.log(f"   ⚠️ CLO {clo_num} not found for {course_code}")
+                continue
+
+            try:
+                database_service.add_plo_mapping_entry(draft_id, plo_id, clo_id)
+                entry_count += 1
+            except Exception as e:
+                self.log(
+                    f"   ⚠️ Failed to add entry PLO{plo_num}↔"
+                    f"{course_code} CLO{clo_num}: {e}"
+                )
+        return entry_count
+
     def create_plo_mappings_from_manifest(
         self,
         program_map: Dict[str, str],
@@ -1354,11 +1420,6 @@ class DemoSeeder(BaselineSeeder):
         manifest: Dict[str, Any],
     ) -> int:
         """Create published PloMapping + PloMappingEntry records from manifest.
-
-        Workflow per mapping:
-        1. Get or create a draft mapping
-        2. Add all PLO↔CLO entries
-        3. Publish the mapping
 
         Args:
             program_map: program_code -> program_id
@@ -1378,30 +1439,9 @@ class DemoSeeder(BaselineSeeder):
                 self.log(f"   ⚠️ Program '{program_code}' not found, skipping mapping")
                 continue
 
-            # Build PLO lookup for this program: plo_number -> plo_id
-            plos = database_service.get_program_outcomes(program_id)
-            plo_lookup: Dict[int, str] = {}
-            for plo in plos:
-                plo_num = plo.get("plo_number")
-                plo_id = plo.get("id")
-                if plo_num is not None and plo_id:
-                    plo_lookup[int(plo_num)] = plo_id
-
-            # Build CLO lookup for referenced courses: (course_code, clo_number) -> clo_id
-            clo_lookup: Dict[tuple, str] = {}
-            referenced_courses = {
-                e["course_code"] for e in mapping_data.get("entries", [])
-            }
-            for course_code in referenced_courses:
-                course_id = course_map.get(course_code)
-                if not course_id:
-                    continue
-                clos = database_service.get_course_outcomes(course_id)
-                for clo in clos or []:
-                    clo_num = clo.get("clo_number")
-                    clo_id = clo.get("id")
-                    if clo_num is not None and clo_id:
-                        clo_lookup[(course_code, int(clo_num))] = clo_id
+            plo_lookup = self._build_plo_lookup(program_id)
+            entries = mapping_data.get("entries", [])
+            clo_lookup = self._build_clo_lookup(entries, course_map)
 
             # Create draft mapping
             try:
@@ -1414,31 +1454,9 @@ class DemoSeeder(BaselineSeeder):
                 self.log(f"   ⚠️ Failed to create draft for {program_code}: {e}")
                 continue
 
-            # Add entries
-            entry_count = 0
-            for entry in mapping_data.get("entries", []):
-                plo_num = int(entry["plo_number"])
-                course_code = entry["course_code"]
-                clo_num = int(entry["clo_number"])
-
-                plo_id = plo_lookup.get(plo_num)
-                clo_id = clo_lookup.get((course_code, clo_num))
-
-                if not plo_id:
-                    self.log(f"   ⚠️ PLO {plo_num} not found for {program_code}")
-                    continue
-                if not clo_id:
-                    self.log(f"   ⚠️ CLO {clo_num} not found for {course_code}")
-                    continue
-
-                try:
-                    database_service.add_plo_mapping_entry(draft_id, plo_id, clo_id)
-                    entry_count += 1
-                except Exception as e:
-                    self.log(
-                        f"   ⚠️ Failed to add entry PLO{plo_num}↔"
-                        f"{course_code} CLO{clo_num}: {e}"
-                    )
+            entry_count = self._add_mapping_entries(
+                draft_id, entries, plo_lookup, clo_lookup, program_code
+            )
 
             # Publish the mapping
             description = mapping_data.get("description", "")

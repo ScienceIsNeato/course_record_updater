@@ -132,7 +132,7 @@ def _build_program_node(
 
     Returns (program_node, plo_count, clos_with_data, clos_missing_data).
     """
-    pid = prog["id"]
+    pid = prog.get("id") or prog.get("program_id", "")
     display_mode = get_assessment_display_mode(prog)
 
     plos = database_service.get_program_outcomes(pid)
@@ -210,12 +210,20 @@ def get_plo_dashboard_tree(
     if term_id:
         term = database_service.get_term_by_id(term_id)
         if term:
-            term_info = {"id": term["id"], "name": term.get("name", "")}
+            tid = term.get("id") or term.get("term_id", "")
+            term_info = {
+                "id": tid,
+                "name": term.get("name") or term.get("term_name", ""),
+            }
 
     # Resolve programs
     all_programs = database_service.get_programs_by_institution(institution_id)
     if program_id:
-        all_programs = [p for p in all_programs if p.get("id") == program_id]
+        all_programs = [
+            p
+            for p in all_programs
+            if (p.get("id") or p.get("program_id")) == program_id
+        ]
 
     # Pre-fetch section outcomes for the term to avoid repeated queries
     all_section_outcomes: List[Dict[str, Any]] = []
