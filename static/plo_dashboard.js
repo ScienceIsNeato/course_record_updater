@@ -118,6 +118,12 @@
         return;
       }
 
+      // Normalize: API may return term_id instead of id
+      for (const t of terms) {
+        if (!t.id && t.term_id) t.id = t.term_id;
+        if (!t.name && t.term_name) t.name = t.term_name;
+      }
+
       // Find the active / current term
       let defaultTermId = "";
       for (const t of terms) {
@@ -153,6 +159,7 @@
       const programs = data.programs || data.data || [];
       programSelect.innerHTML = '<option value="">All Programs</option>';
       for (const p of programs) {
+        if (!p.id && p.program_id) p.id = p.program_id;
         const opt = document.createElement("option");
         opt.value = p.id;
         opt.textContent =

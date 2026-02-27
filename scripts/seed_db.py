@@ -1490,9 +1490,17 @@ class DemoSeeder(BaselineSeeder):
                 continue
 
             try:
-                database_service.update_program(
-                    program_id, {"extras": program_settings}
-                )
+                # PickleType needs full dict reassignment for change detection
+                from src.database.database_sql import SQLService
+                from src.models.models_sql import Program
+
+                sql: SQLService = getattr(database_service.db, "sql")
+                with sql.session_scope() as session:
+                    prog = session.get(Program, program_id)
+                    if prog:
+                        merged = dict(prog.extras or {})
+                        merged.update(program_settings)
+                        prog.extras = merged
                 self.log(f"   ✓ Applied settings for {program_code}")
             except Exception as e:
                 self.log(f"   ⚠️ Failed to apply settings for {program_code}: {e}")

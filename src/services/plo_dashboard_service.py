@@ -25,8 +25,11 @@ def get_assessment_display_mode(program: Dict[str, Any]) -> str:
     Reads from ``program.extras["plo_assessment_display"]``.
     Falls back to ``"percentage"`` when unset.
     """
+    # to_dict() flattens extras into the top-level dict, so check both
     extras = program.get("extras") or {}
-    mode = extras.get("plo_assessment_display", DEFAULT_DISPLAY_MODE)
+    mode = program.get("plo_assessment_display") or extras.get(
+        "plo_assessment_display", DEFAULT_DISPLAY_MODE
+    )
     if mode not in (DISPLAY_PERCENTAGE, DISPLAY_BINARY, DISPLAY_BOTH):
         return DEFAULT_DISPLAY_MODE
     return mode
