@@ -32,11 +32,11 @@ class BaseAdapter:
         ),
     }
 
-    def _prepare_raw_input_data(self, form_data: dict) -> dict:
+    def _prepare_raw_input_data(self, form_data: dict[str, Any]) -> dict[str, str]:
         """Prepare raw input data by stripping whitespace."""
         return {k: str(v).strip() for k, v in form_data.items()}
 
-    def _check_required_fields(self, raw_input_data: dict) -> list:
+    def _check_required_fields(self, raw_input_data: dict[str, str]) -> list[str]:
         """Check for missing required fields and return errors."""
         errors = []
         for field, config in self.EXPECTED_FIELDS.items():
@@ -47,7 +47,7 @@ class BaseAdapter:
 
     def _convert_field_value(
         self, field: str, value_str: str, expected_type: type
-    ) -> tuple:
+    ) -> tuple[Any, Optional[str]]:
         """Convert field value to expected type. Returns (processed_value, error_msg)."""
         if not expected_type:
             return value_str, None
@@ -83,7 +83,11 @@ class BaseAdapter:
         return None
 
     def _should_include_field(
-        self, field: str, processed_value: Any, is_required_field: bool, errors: list
+        self,
+        field: str,
+        processed_value: Any,
+        is_required_field: bool,
+        errors: list[str],
     ) -> bool:
         """Determine if field should be included in validated data."""
         # Check if field caused an error
@@ -94,7 +98,9 @@ class BaseAdapter:
         # Only add if it has a value or is explicitly required
         return processed_value is not None or is_required_field
 
-    def _process_single_field(self, field: str, value_str: str, config: tuple) -> tuple:
+    def _process_single_field(
+        self, field: str, value_str: str, config: tuple[bool, type, Any]
+    ) -> tuple[Any, list[str], Optional[int]]:
         """Process a single field through validation pipeline. Returns (processed_value, errors, parsed_num_students)."""
         is_required_field, expected_type, validator = config
         errors: list[str] = []
@@ -123,7 +129,9 @@ class BaseAdapter:
 
         return processed_value, errors, parsed_num_students
 
-    def _parse_form_data(self, form_data: dict) -> tuple:
+    def _parse_form_data(
+        self, form_data: dict[str, Any]
+    ) -> tuple[dict[str, Any], list[str]]:
         """Parse form data into typed values. Returns (parsed_data, conversion_errors)."""
         parsed_data = {}
         conversion_errors = []
@@ -149,7 +157,7 @@ class BaseAdapter:
 
         return parsed_data, conversion_errors
 
-    def _validate_parsed_data(self, parsed_data: dict) -> list:
+    def _validate_parsed_data(self, parsed_data: dict[str, Any]) -> list[str]:
         """
         Validate parsed data against field rules.
 
@@ -172,7 +180,7 @@ class BaseAdapter:
 
         return errors
 
-    def parse_and_validate(self, form_data: dict) -> Dict[str, Any]:
+    def parse_and_validate(self, form_data: dict[str, Any]) -> Dict[str, Any]:
         """
         Parses and validates data from a form-like dictionary.
         Includes logic for grade distribution validation.

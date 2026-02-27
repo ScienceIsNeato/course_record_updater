@@ -43,7 +43,7 @@ class SQLService:
         self._session_factory.remove()
 
     @contextmanager
-    def session_scope(self) -> Iterator:
+    def session_scope(self) -> Iterator[Any]:
         session = self.get_session()
         try:
             yield session

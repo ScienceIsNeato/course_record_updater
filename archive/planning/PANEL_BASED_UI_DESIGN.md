@@ -1,6 +1,7 @@
 # Panel-Based UI Design - Role-Specific Dashboard Layouts
 
 ## **Design Philosophy**
+
 - **Workflow-centered panels**: Each panel serves a specific task or information need
 - **Collapsible sections**: Users control information density
 - **Tabular data presentation**: Familiar spreadsheet-like interface
@@ -10,16 +11,19 @@
 ---
 
 ## **1. SITE ADMIN Dashboard**
+
 **Role**: System-wide oversight and configuration
 **Authority**: All institutions, programs, courses, and users
 
 ### **Header Section**
+
 ```
 🏛️ Site Administration | System-wide oversight and configuration
 Current Term: Fall 2024 | [3 Institutions] | [8 Programs] | [12 Courses] | [15 Users]
 ```
 
 **Interactive Header Stats**: Click any bracketed number to see inline preview:
+
 - **[3 Institutions]** → Shows mini-table: MockU, RCC, PTU with user counts
 - **[8 Programs]** → Shows mini-table: All programs across institutions
 - **[12 Courses]** → Shows mini-table: All courses with enrollment
@@ -28,7 +32,9 @@ Current Term: Fall 2024 | [3 Institutions] | [8 Programs] | [12 Courses] | [15 U
 ### **Panel Layout**
 
 #### **Panel 1: Institution Overview** `[▼]`
+
 **Purpose**: Monitor all institutions in the system
+
 ```
 ┌─ 🏛️ Institution Management ──────────────────────────── [▼] ─┐
 │ Institution ↕              │ Users ↕ │ Programs ↕ │ Courses ↕ │ Status ↕ │
@@ -40,7 +46,9 @@ Current Term: Fall 2024 | [3 Institutions] | [8 Programs] | [12 Courses] | [15 U
 ```
 
 #### **Panel 2: System Activity** `[▼]`
+
 **Purpose**: Monitor recent system-wide activity
+
 ```
 ┌─ 📊 Recent System Activity ──────────────────────────── [▼] ─┐
 │ Timestamp ↕ │ Institution ↕ │ User ↕        │ Action ↕         │ Details ↕ │
@@ -52,9 +60,10 @@ Current Term: Fall 2024 | [3 Institutions] | [8 Programs] | [12 Courses] | [15 U
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-
 #### **Panel 4: User Management** `[▼]`
+
 **Purpose**: Manage users across all institutions
+
 ```
 ┌─ 👥 User Management ─────────────────────────────────── [▼] ─┐
 │ Name ↕        │ Email ↕            │ Role ↕      │ Institution ↕ │ Status ↕ │
@@ -67,7 +76,9 @@ Current Term: Fall 2024 | [3 Institutions] | [8 Programs] | [12 Courses] | [15 U
 ```
 
 #### **Panel 5: Data Export** `[▲]`
+
 **Purpose**: Export system data (scoped to all institutions)
+
 ```
 ┌─ 📄 Data Export ─────────────────────────────────────── [▲] ─┐
 │ [Collapsed - click to expand]                                    │
@@ -79,16 +90,19 @@ Current Term: Fall 2024 | [3 Institutions] | [8 Programs] | [12 Courses] | [15 U
 ---
 
 ## **2. INSTITUTION ADMIN Dashboard**
+
 **Role**: Institution-wide management and oversight
 **Authority**: Single institution, all programs and courses within institution
 
 ### **Header Section**
+
 ```
 🏛️ Institution Administration | Manage programs and faculty and Outcomes
 California Engineering Institute | [3 Programs] | [4 Courses] | [7 Faculty]
 ```
 
 **Interactive Header Stats**: Click any bracketed number to see inline preview:
+
 - **[3 Programs]** → Shows: CS (45 students), EE (32 students), Unclassified (15 students)
 - **[4 Courses]** → Shows: CS-101, CS-201, EE-101, EE-201 with instructors
 - **[7 Faculty]** → Shows: Faculty list with teaching assignments
@@ -96,7 +110,9 @@ California Engineering Institute | [3 Programs] | [4 Courses] | [7 Faculty]
 ### **Panel Layout**
 
 #### **Panel 1: Programs** `[▼]`
+
 **Purpose**: Manage programs within the institution
+
 ```
 ┌─ 📚 Program Management ──────────────────────────────── [▼] ─┐
 │ Program ↕         │ Courses │ Faculty │ Students │ Progress │ Actions │
@@ -108,6 +124,7 @@ California Engineering Institute | [3 Programs] | [4 Courses] | [7 Faculty]
 ```
 
 **Manage Actions Available:**
+
 - Edit program details (name, description, requirements)
 - Assign/remove faculty to program
 - Manage course assignments within program
@@ -115,7 +132,9 @@ California Engineering Institute | [3 Programs] | [4 Courses] | [7 Faculty]
 - View detailed program statistics
 
 #### **Panel 2: Faculty Overview** `[▼]`
+
 **Purpose**: Monitor faculty and their course assignments
+
 ```
 ┌─ 👨‍🏫 Faculty Management ──────────────────────────────── [▼] ─┐
 │ Faculty Name ↕ │ Program │ Courses │ Sections │ CLO Progress │ Role ↕    │
@@ -128,7 +147,9 @@ California Engineering Institute | [3 Programs] | [4 Courses] | [7 Faculty]
 ```
 
 #### **Panel 3: Course Sections** `[▼]`
+
 **Purpose**: Monitor all course sections in the institution
+
 ```
 ┌─ 📖 Course Sections (Fall 2024) ──────────────────────── [▼] ─┐
 │ Course ↕ │ Section │ Faculty Name ↕ │ Enrolled Students ↕ │ CLO Assessments ↕ │
@@ -142,7 +163,9 @@ California Engineering Institute | [3 Programs] | [4 Courses] | [7 Faculty]
 ```
 
 #### **Panel 4: Assessment Progress** `[▼]`
+
 **Purpose**: Track CLO assessment completion across institution
+
 ```
 ┌─ 📊 Assessment Progress ─────────────────────────────── [▼] ─┐
 │ Course ↕ │ Faculty Name ↕ │ CLOs │ Complete ↕ │ Due Date ↕ │ Status ↕   │
@@ -155,7 +178,9 @@ California Engineering Institute | [3 Programs] | [4 Courses] | [7 Faculty]
 ```
 
 #### **Panel 5: Data Export** `[▲]`
+
 **Purpose**: Export institution data (scoped to California Engineering Institute)
+
 ```
 ┌─ 📄 Data Export ─────────────────────────────────────── [▲] ─┐
 │ [Collapsed - click to expand]                                    │
@@ -167,16 +192,19 @@ California Engineering Institute | [3 Programs] | [4 Courses] | [7 Faculty]
 ---
 
 ## **3. PROGRAM ADMIN Dashboard**
+
 **Role**: Program-specific management and oversight
 **Authority**: Single program, courses and faculty within that program
 
 ### **Header Section**
+
 ```
 📚 Program Administration | Manage curriculum and assessments
 Computer Science Program | [2 Courses] | [3 Faculty] | [45 Students]
 ```
 
 **Interactive Header Stats**: Click any bracketed number to see inline preview:
+
 - **[2 Courses]** → Shows: CS-101 (Dr. Chen), CS-201 (John Smith)
 - **[3 Faculty]** → Shows: Dr. Chen, John Smith, Lisa Wang (admin)
 - **[45 Students]** → Shows: Enrollment breakdown by course
@@ -184,7 +212,9 @@ Computer Science Program | [2 Courses] | [3 Faculty] | [45 Students]
 ### **Panel Layout**
 
 #### **Panel 1: Courses** `[▼]`
+
 **Purpose**: Manage courses within the program
+
 ```
 ┌─ 📖 Course Management ───────────────────────────────── [▼] ─┐
 │ Course ↕ │ Title ↕               │ Faculty Name ↕ │ Sections │ Students │ CLOs │
@@ -195,7 +225,9 @@ Computer Science Program | [2 Courses] | [3 Faculty] | [45 Students]
 ```
 
 #### **Panel 2: Faculty Assignments** `[▼]`
+
 **Purpose**: Manage faculty teaching assignments
+
 ```
 ┌─ 👨‍🏫 Faculty Assignments ──────────────────────────────── [▼] ─┐
 │ Name        │ Courses │ Sections │ Students │ CLO Progress │ Status  │
@@ -206,7 +238,9 @@ Computer Science Program | [2 Courses] | [3 Faculty] | [45 Students]
 ```
 
 #### **Panel 3: CLO Management** `[▼]`
+
 **Purpose**: Manage Course Learning Outcomes for the program
+
 ```
 ┌─ 🎯 Course Learning Outcomes ────────────────────────── [▼] ─┐
 │ Course  │ CLO ID  │ Description                    │ Status │ Actions │
@@ -219,7 +253,9 @@ Computer Science Program | [2 Courses] | [3 Faculty] | [45 Students]
 ```
 
 #### **Panel 4: Assessment Results** `[▼]`
+
 **Purpose**: Review assessment results for program courses
+
 ```
 ┌─ 📊 Assessment Results ──────────────────────────────── [▼] ─┐
 │ Course  │ CLO     │ Students │ Passed │ Rate │ Result │ Trend │
@@ -232,7 +268,9 @@ Computer Science Program | [2 Courses] | [3 Faculty] | [45 Students]
 ```
 
 #### **Panel 5: Data Export** `[▲]`
+
 **Purpose**: Export program data (scoped to Computer Science Program)
+
 ```
 ┌─ 📄 Data Export ─────────────────────────────────────── [▲] ─┐
 │ [Collapsed - click to expand]                                    │
@@ -244,16 +282,19 @@ Computer Science Program | [2 Courses] | [3 Faculty] | [45 Students]
 ---
 
 ## **4. INSTRUCTOR Dashboard**
+
 **Role**: Course instruction and assessment completion
 **Authority**: Only courses they are assigned to teach
 
 ### **Header Section**
+
 ```
 👨‍🏫 Instructor Dashboard | Complete course assessments
 John Smith | [2 Courses] | [3 Sections] | [42 Students] | [2/8 CLOs Complete]
 ```
 
 **Interactive Header Stats**: Click any bracketed item to see inline preview:
+
 - **[2 Courses]** → Shows: CS-101, CS-201 with schedules
 - **[3 Sections]** → Shows: Section details with room/time
 - **[42 Students]** → Shows: Enrollment by section
@@ -262,7 +303,9 @@ John Smith | [2 Courses] | [3 Sections] | [42 Students] | [2/8 CLOs Complete]
 ### **Panel Layout**
 
 #### **Panel 1: Teaching Assignment** `[▼]`
+
 **Purpose**: View assigned courses and sections
+
 ```
 ┌─ 📚 Teaching Assignment ─────────────────────────────── [▼] ─┐
 │ Course ↕ │ Title ↕          │ Section │ Students │ Schedule      │ Room   │
@@ -273,7 +316,9 @@ John Smith | [2 Courses] | [3 Sections] | [42 Students] | [2/8 CLOs Complete]
 ```
 
 #### **Panel 2: Assessment Tasks** `[▼]`
+
 **Purpose**: Track CLO assessment completion status
+
 ```
 ┌─ ⏰ Assessment Tasks ─────────────────────────────────── [▼] ─┐
 │ Course  │ CLO Description              │ Due Date │ Status     │ Action  │
@@ -290,7 +335,9 @@ John Smith | [2 Courses] | [3 Sections] | [42 Students] | [2/8 CLOs Complete]
 ```
 
 #### **Panel 3: Recent Activity** `[▲]`
+
 **Purpose**: Show recent assessment work (collapsed by default)
+
 ```
 ┌─ 📝 Recent Activity ─────────────────────────────────── [▲] ─┐
 │ [Collapsed - click to expand]                                │
@@ -299,7 +346,9 @@ John Smith | [2 Courses] | [3 Sections] | [42 Students] | [2/8 CLOs Complete]
 ```
 
 #### **Panel 4: Quick Course Summary** `[▼]`
+
 **Purpose**: Overview of course enrollment and basic stats
+
 ```
 ┌─ 📊 Course Summary ──────────────────────────────────── [▼] ─┐
 │ Course  │ Enrolled │ Withdrew │ Passed │ D/C/I │ Pass Rate │
@@ -310,7 +359,9 @@ John Smith | [2 Courses] | [3 Sections] | [42 Students] | [2/8 CLOs Complete]
 ```
 
 #### **Panel 5: Data Export** `[▲]`
+
 **Purpose**: Export course data (scoped to assigned courses only)
+
 ```
 ┌─ 📄 Data Export ─────────────────────────────────────── [▲] ─┐
 │ [Collapsed - click to expand]                                    │
@@ -324,6 +375,7 @@ John Smith | [2 Courses] | [3 Sections] | [42 Students] | [2/8 CLOs Complete]
 ## **Shared Panel Concepts**
 
 ### **Panel States**
+
 - **Expanded** `[▼]`: Full content visible
 - **Collapsed** `[▲]`: Header only with summary info
 - **Loading** `[⟳]`: Data being fetched
@@ -331,12 +383,14 @@ John Smith | [2 Courses] | [3 Sections] | [42 Students] | [2/8 CLOs Complete]
 - **Sortable** `↕`: Column can be sorted by clicking header
 
 ### **Data Filtering Rules**
+
 - **Site Admin**: Sees all data across all institutions
 - **Institution Admin**: Sees only data for their institution
 - **Program Admin**: Sees only data for their program(s)
 - **Instructor**: Sees only data for courses they teach
 
 ### **Common Actions**
+
 - **Export**: Download data as Excel/CSV
 - **Filter**: Search and filter table data
 - **Sort**: Click column headers to sort (↕ indicates sortable columns)
@@ -344,6 +398,7 @@ John Smith | [2 Courses] | [3 Sections] | [42 Students] | [2/8 CLOs Complete]
 - **Refresh**: Update panel data
 
 ### **Interactive Header Stats**
+
 - **Bracketed Numbers**: Clickable stats in headers (e.g., [3 Programs]) show inline previews
 - **Inline Expansion**: Clicking a stat temporarily expands a mini-table below the header
 - **Quick Preview**: Shows 3-5 most relevant items without navigation
@@ -351,6 +406,7 @@ John Smith | [2 Courses] | [3 Sections] | [42 Students] | [2/8 CLOs Complete]
 - **No Popup**: Avoids clunky modal dialogs - keeps context in place
 
 ### **Panel Focus Navigation**
+
 - **Clickable Panel Titles**: Click any panel title (e.g., "Programs") to focus that panel as main view
 - **Full-Screen Panel**: Focused panel expands to use full dashboard area
 - **Breadcrumb Navigation**: Shows "Dashboard > Programs" with clickable path back
@@ -358,6 +414,7 @@ John Smith | [2 Courses] | [3 Sections] | [42 Students] | [2/8 CLOs Complete]
 - **Return to Dashboard**: Breadcrumb "Dashboard" link returns to multi-panel view
 
 ### **Data Definitions**
+
 - **CLO Assessments**: Fraction showing submitted CLO assessments out of total (e.g., "4/4 Subm" = all 4 CLO assessments submitted by instructor)
 - **CLO Progress**: Same as CLO Assessments - tracks instructor submission status, not student performance
 - **Enrolled Students**: Total students registered for the course (from Excel `Enrolled Students`)
@@ -365,6 +422,7 @@ John Smith | [2 Courses] | [3 Sections] | [42 Students] | [2/8 CLOs Complete]
 - **Status**: Assessment submission status (Done = all CLOs submitted, Partial = some submitted, Behind = overdue)
 
 ### **Responsive Design**
+
 - **Desktop**: All panels side-by-side or stacked
 - **Tablet**: Panels stack vertically
 - **Mobile**: Single column, collapsible by default
@@ -374,6 +432,7 @@ John Smith | [2 Courses] | [3 Sections] | [42 Students] | [2/8 CLOs Complete]
 ## **Implementation Notes**
 
 ### **Panel Component Structure**
+
 ```javascript
 <Panel title="My Courses" icon="📚" collapsible={true} defaultExpanded={true}>
   <PanelHeader>
@@ -390,12 +449,14 @@ John Smith | [2 Courses] | [3 Sections] | [42 Students] | [2/8 CLOs Complete]
 ```
 
 ### **Data Loading Strategy**
+
 - **Lazy loading**: Panels load data when expanded
 - **Real-time updates**: WebSocket or polling for live data
 - **Caching**: Cache panel data to reduce API calls
 - **Pagination**: Handle large datasets efficiently
 
 ### **User Preferences**
+
 - **Panel layout**: Remember expanded/collapsed state
 - **Column visibility**: Hide/show table columns
 - **Sort preferences**: Remember sort order

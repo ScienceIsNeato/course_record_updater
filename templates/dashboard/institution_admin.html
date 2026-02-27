@@ -1,237 +1,263 @@
-{% extends "dashboard/base_dashboard.html" %}
-
-{% block title %}Institution Administrator Dashboard - Loopcloser{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
-{% endblock %}
-
-{% block nav_items %}
-<a class="nav-link btn btn-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Main Dashboard</a>
-<a class="nav-link btn btn-link" href="/programs"><i class="fas fa-graduation-cap me-1"></i>Program Management</a>
-<a class="nav-link btn btn-link" href="/faculty"><i class="fas fa-users me-1"></i>Faculty Management</a>
-<a class="nav-link btn btn-link" href="/outcomes"><i class="fas fa-chart-bar me-1"></i>Outcome Management</a>
-{% endblock %}
-
-{% block page_title %}<span id="page-title-text">🏛️ Institution Administration</span>{% endblock %}
-{% block page_subtitle %}Manage programs, faculty, and outcomes{% endblock %}
-
-{% block content %}
+{% extends "dashboard/base_dashboard.html" %} {% block title %}Institution
+Administrator Dashboard - Loopcloser{% endblock %} {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}" />
+{% endblock %} {% block nav_items %}
+<a class="nav-link btn btn-link" href="/dashboard"
+  ><i class="fas fa-tachometer-alt me-1"></i>Main Dashboard</a
+>
+<a class="nav-link btn btn-link" href="/programs"
+  ><i class="fas fa-graduation-cap me-1"></i>Program Management</a
+>
+<a class="nav-link btn btn-link" href="/faculty"
+  ><i class="fas fa-users me-1"></i>Faculty Management</a
+>
+<a class="nav-link btn btn-link" href="/outcomes"
+  ><i class="fas fa-chart-bar me-1"></i>Outcome Management</a
+>
+{% endblock %} {% block page_title %}<span id="page-title-text"
+  >🏛️ Institution Administration</span
+>{% endblock %} {% block page_subtitle %}Manage programs, faculty, and
+outcomes{% endblock %} {% block content %}
 <!-- Panel 1: CLO Audit & Approval -->
 <div class="dashboard-panel" id="institution-clo-audit-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">✓</span>
-            Learning Outcome Audit & Approval
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/audit-clo'">
-                <i class="fas fa-clipboard-check"></i> Review Submissions
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">✓</span>
+      Learning Outcome Audit & Approval
+    </h5>
+    <div class="panel-actions">
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        onclick="window.location.href='/audit-clo'"
+      >
+        <i class="fas fa-clipboard-check"></i> Review Submissions
+      </button>
     </div>
-    <div class="panel-content">
-        <div id="institutionCloAuditContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading audit data...
-            </div>
-        </div>
+    <button class="panel-toggle">▼</button>
+  </div>
+  <div class="panel-content">
+    <div id="institutionCloAuditContainer">
+      <div class="panel-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        Loading audit data...
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Panel 2: User Management -->
 <div class="dashboard-panel" id="institution-faculty-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">👤</span>
-            User Management
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-primary" onclick="openInviteModal()">
-                <i class="fas fa-user-plus"></i> Invite User
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/faculty'">
-                <i class="fas fa-list"></i> Manage Users
-            </button>
-            <button class="btn btn-sm btn-outline-primary" id="bulkReminderLauncher" data-bs-toggle="modal"
-                data-bs-target="#bulkReminderModal">
-                <i class="fas fa-bell"></i> Send Reminders
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">👤</span>
+      User Management
+    </h5>
+    <div class="panel-actions">
+      <button class="btn btn-sm btn-primary" onclick="openInviteModal()">
+        <i class="fas fa-user-plus"></i> Invite User
+      </button>
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        onclick="window.location.href='/faculty'"
+      >
+        <i class="fas fa-list"></i> Manage Users
+      </button>
+      <button
+        class="btn btn-sm btn-outline-primary"
+        id="bulkReminderLauncher"
+        data-bs-toggle="modal"
+        data-bs-target="#bulkReminderModal"
+      >
+        <i class="fas fa-bell"></i> Send Reminders
+      </button>
     </div>
-    <div class="panel-content">
-        <div id="facultyOverviewContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading users...
-            </div>
-        </div>
+    <button class="panel-toggle">▼</button>
+  </div>
+  <div class="panel-content">
+    <div id="facultyOverviewContainer">
+      <div class="panel-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        Loading users...
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Panel 4: Program Management -->
 <div class="dashboard-panel" id="institution-program-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">📚</span>
-            Program Management
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-primary" onclick="createProgram()">
-                <i class="fas fa-plus"></i> Add Program
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="managePrograms()">
-                <i class="fas fa-sliders-h"></i> Manage Programs
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">📚</span>
+      Program Management
+    </h5>
+    <div class="panel-actions">
+      <button class="btn btn-sm btn-primary" onclick="createProgram()">
+        <i class="fas fa-plus"></i> Add Program
+      </button>
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        onclick="managePrograms()"
+      >
+        <i class="fas fa-sliders-h"></i> Manage Programs
+      </button>
     </div>
-    <div class="panel-content">
-        <div id="programManagementContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading programs...
-            </div>
-        </div>
+    <button class="panel-toggle">▼</button>
+  </div>
+  <div class="panel-content">
+    <div id="programManagementContainer">
+      <div class="panel-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        Loading programs...
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Panel 5: Term Management -->
 <div class="dashboard-panel" id="institution-term-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">📅</span>
-            Term Management
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-primary" onclick="createTerm()">
-                <i class="fas fa-plus"></i> Add Term
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="manageTerms()">
-                <i class="fas fa-list"></i> Manage Terms
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">📅</span>
+      Term Management
+    </h5>
+    <div class="panel-actions">
+      <button class="btn btn-sm btn-primary" onclick="createTerm()">
+        <i class="fas fa-plus"></i> Add Term
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="manageTerms()">
+        <i class="fas fa-list"></i> Manage Terms
+      </button>
     </div>
-    <div class="panel-content">
-        <div id="termManagementContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading terms...
-            </div>
-        </div>
+    <button class="panel-toggle">▼</button>
+  </div>
+  <div class="panel-content">
+    <div id="termManagementContainer">
+      <div class="panel-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        Loading terms...
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Panel 6: Course Management -->
 <div class="dashboard-panel" id="institution-course-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">📚</span>
-            Course Management
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-primary" onclick="createCourse()">
-                <i class="fas fa-plus"></i> Add Course
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="manageCourses()">
-                <i class="fas fa-list"></i> Manage Courses
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">📚</span>
+      Course Management
+    </h5>
+    <div class="panel-actions">
+      <button class="btn btn-sm btn-primary" onclick="createCourse()">
+        <i class="fas fa-plus"></i> Add Course
+      </button>
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        onclick="manageCourses()"
+      >
+        <i class="fas fa-list"></i> Manage Courses
+      </button>
     </div>
-    <div class="panel-content">
-        <div id="courseManagementContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading courses...
-            </div>
-        </div>
+    <button class="panel-toggle">▼</button>
+  </div>
+  <div class="panel-content">
+    <div id="courseManagementContainer">
+      <div class="panel-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        Loading courses...
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Panel 7: Course Offerings -->
 <div class="dashboard-panel" id="institution-offering-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">📋</span>
-            Course Offerings
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-primary" onclick="createOffering()">
-                <i class="fas fa-plus"></i> Add Offering
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="manageOfferings()">
-                <i class="fas fa-list"></i> Manage Offerings
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">📋</span>
+      Course Offerings
+    </h5>
+    <div class="panel-actions">
+      <button class="btn btn-sm btn-primary" onclick="createOffering()">
+        <i class="fas fa-plus"></i> Add Offering
+      </button>
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        onclick="manageOfferings()"
+      >
+        <i class="fas fa-list"></i> Manage Offerings
+      </button>
     </div>
-    <div class="panel-content">
-        <div id="offeringManagementContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading offerings...
-            </div>
-        </div>
+    <button class="panel-toggle">▼</button>
+  </div>
+  <div class="panel-content">
+    <div id="offeringManagementContainer">
+      <div class="panel-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        Loading offerings...
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Panel 8: Course Sections -->
 <div class="dashboard-panel" id="institution-sections-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">📖</span>
-            Course Sections
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-primary" onclick="createSection()">
-                <i class="fas fa-plus"></i> Add Section
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/sections'">
-                <i class="fas fa-list"></i> Manage Sections
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">📖</span>
+      Course Sections
+    </h5>
+    <div class="panel-actions">
+      <button class="btn btn-sm btn-primary" onclick="createSection()">
+        <i class="fas fa-plus"></i> Add Section
+      </button>
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        onclick="window.location.href='/sections'"
+      >
+        <i class="fas fa-list"></i> Manage Sections
+      </button>
     </div>
-    <div class="panel-content">
-        <div id="courseSectionContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading sections...
-            </div>
-        </div>
+    <button class="panel-toggle">▼</button>
+  </div>
+  <div class="panel-content">
+    <div id="courseSectionContainer">
+      <div class="panel-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        Loading sections...
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Panel 9: Outcome (CLO) Management -->
 <div class="dashboard-panel" id="institution-outcome-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">🎯</span>
-            Course Learning Outcomes
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-primary" onclick="createOutcome()">
-                <i class="fas fa-plus"></i> Add Outcome
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="manageOutcomes()">
-                <i class="fas fa-list"></i> Manage Outcomes
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">🎯</span>
+      Course Learning Outcomes
+    </h5>
+    <div class="panel-actions">
+      <button class="btn btn-sm btn-primary" onclick="createOutcome()">
+        <i class="fas fa-plus"></i> Add Outcome
+      </button>
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        onclick="manageOutcomes()"
+      >
+        <i class="fas fa-list"></i> Manage Outcomes
+      </button>
     </div>
-    <div class="panel-content">
-        <div id="outcomeManagementContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading outcomes...
-            </div>
-        </div>
+    <button class="panel-toggle">▼</button>
+  </div>
+  <div class="panel-content">
+    <div id="outcomeManagementContainer">
+      <div class="panel-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        Loading outcomes...
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Panel 10: Data Management (Import/Export) -->
@@ -240,177 +266,350 @@
 <!-- CRUD Management Modals -->
 
 <!-- Program Management Modals -->
-<div class="modal fade" id="createProgramModal" tabindex="-1" aria-labelledby="createProgramModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="createProgramModalLabel">Create New Program</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<div
+  class="modal fade"
+  id="createProgramModal"
+  tabindex="-1"
+  aria-labelledby="createProgramModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="createProgramModalLabel">
+          Create New Program
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <form id="createProgramForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="programName" class="form-label">Program Name *</label>
+            <input
+              type="text"
+              class="form-control"
+              id="programName"
+              name="name"
+              required
+            />
+            <small class="form-text text-muted"
+              >E.g., "Computer Science", "Nursing"</small
+            >
+          </div>
+          <div class="mb-3">
+            <label for="programShortName" class="form-label"
+              >Short Name *</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="programShortName"
+              name="short_name"
+              required
+              maxlength="10"
+            />
+            <small class="form-text text-muted"
+              >Abbreviation, e.g., "CS", "NURS" (auto-uppercased)</small
+            >
+          </div>
+          <div class="mb-3">
+            <label for="programInstitutionId" class="form-label"
+              >Institution *</label
+            >
+            <select
+              class="form-control"
+              id="programInstitutionId"
+              name="institution_id"
+              required
+            >
+              <option value="">Select Institution</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <div class="form-check">
+              <input
+                type="checkbox"
+                class="form-check-input"
+                id="programActive"
+                name="active"
+                checked
+              />
+              <label class="form-check-label" for="programActive">Active</label>
             </div>
-            <form id="createProgramForm">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="programName" class="form-label">Program Name *</label>
-                        <input type="text" class="form-control" id="programName" name="name" required>
-                        <small class="form-text text-muted">E.g., "Computer Science", "Nursing"</small>
-                    </div>
-                    <div class="mb-3">
-                        <label for="programShortName" class="form-label">Short Name *</label>
-                        <input type="text" class="form-control" id="programShortName" name="short_name" required
-                            maxlength="10">
-                        <small class="form-text text-muted">Abbreviation, e.g., "CS", "NURS" (auto-uppercased)</small>
-                    </div>
-                    <div class="mb-3">
-                        <label for="programInstitutionId" class="form-label">Institution *</label>
-                        <select class="form-control" id="programInstitutionId" name="institution_id" required>
-                            <option value="">Select Institution</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="programActive" name="active" checked>
-                            <label class="form-check-label" for="programActive">Active</label>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="createProgramBtn">
-                        <span class="btn-text">Create Program</span>
-                        <span class="btn-spinner d-none">
-                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                            Creating...
-                        </span>
-                    </button>
-                </div>
-            </form>
+          </div>
         </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" id="createProgramBtn">
+            <span class="btn-text">Create Program</span>
+            <span class="btn-spinner d-none">
+              <span
+                class="spinner-border spinner-border-sm"
+                aria-hidden="true"
+              ></span>
+              Creating...
+            </span>
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
 </div>
 
-<div class="modal fade" id="editProgramModal" tabindex="-1" aria-labelledby="editProgramModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editProgramModalLabel">Edit Program</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<div
+  class="modal fade"
+  id="editProgramModal"
+  tabindex="-1"
+  aria-labelledby="editProgramModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editProgramModalLabel">Edit Program</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <form id="editProgramForm">
+        <input type="hidden" id="editProgramId" />
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="editProgramName" class="form-label"
+              >Program Name *</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="editProgramName"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <div class="form-check">
+              <input
+                type="checkbox"
+                class="form-check-input"
+                id="editProgramActive"
+              />
+              <label class="form-check-label" for="editProgramActive"
+                >Active</label
+              >
             </div>
-            <form id="editProgramForm">
-                <input type="hidden" id="editProgramId">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="editProgramName" class="form-label">Program Name *</label>
-                        <input type="text" class="form-control" id="editProgramName" required>
-                    </div>
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="editProgramActive">
-                            <label class="form-check-label" for="editProgramActive">Active</label>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <span class="btn-text">Update</span>
-                        <span class="btn-spinner d-none">
-                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                            Updating...
-                        </span>
-                    </button>
-                </div>
-            </form>
+          </div>
         </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <span class="btn-text">Update</span>
+            <span class="btn-spinner d-none">
+              <span
+                class="spinner-border spinner-border-sm"
+                aria-hidden="true"
+              ></span>
+              Updating...
+            </span>
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
 </div>
 
 <!-- Course Modals -->
 {% include '_course_modals.html' %}
 
 <!-- Term Management Modals -->
-<div class="modal fade" id="createTermModal" tabindex="-1" aria-labelledby="createTermModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="createTermModalLabel">Create New Term</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="createTermForm">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="termName" class="form-label">Term Name *</label>
-                        <input type="text" class="form-control" id="termName" name="name" required
-                            placeholder="e.g., FA2025">
-                    </div>
-                    <div class="mb-3">
-                        <label for="termStartDate" class="form-label">Start Date *</label>
-                        <input type="date" class="form-control" id="termStartDate" name="start_date" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="termEndDate" class="form-label">End Date *</label>
-                        <input type="date" class="form-control" id="termEndDate" name="end_date" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="termAssessmentDueDate" class="form-label">Assessment Due Date</label>
-                        <input type="date" class="form-control" id="termAssessmentDueDate" name="assessment_due_date">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="createTermBtn">
-                        <span class="btn-text">Create Term</span>
-                        <span class="btn-spinner d-none">
-                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                            Creating...
-                        </span>
-                    </button>
-                </div>
-            </form>
+<div
+  class="modal fade"
+  id="createTermModal"
+  tabindex="-1"
+  aria-labelledby="createTermModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="createTermModalLabel">Create New Term</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <form id="createTermForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="termName" class="form-label">Term Name *</label>
+            <input
+              type="text"
+              class="form-control"
+              id="termName"
+              name="name"
+              required
+              placeholder="e.g., FA2025"
+            />
+          </div>
+          <div class="mb-3">
+            <label for="termStartDate" class="form-label">Start Date *</label>
+            <input
+              type="date"
+              class="form-control"
+              id="termStartDate"
+              name="start_date"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="termEndDate" class="form-label">End Date *</label>
+            <input
+              type="date"
+              class="form-control"
+              id="termEndDate"
+              name="end_date"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="termAssessmentDueDate" class="form-label"
+              >Assessment Due Date</label
+            >
+            <input
+              type="date"
+              class="form-control"
+              id="termAssessmentDueDate"
+              name="assessment_due_date"
+            />
+          </div>
         </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" id="createTermBtn">
+            <span class="btn-text">Create Term</span>
+            <span class="btn-spinner d-none">
+              <span
+                class="spinner-border spinner-border-sm"
+                aria-hidden="true"
+              ></span>
+              Creating...
+            </span>
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
 </div>
 
-<div class="modal fade" id="editTermModal" tabindex="-1" aria-labelledby="editTermModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editTermModalLabel">Edit Term</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="editTermForm">
-                <input type="hidden" id="editTermId">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="editTermName" class="form-label">Term Name *</label>
-                        <input type="text" class="form-control" id="editTermName" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editTermStartDate" class="form-label">Start Date *</label>
-                        <input type="date" class="form-control" id="editTermStartDate" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editTermEndDate" class="form-label">End Date *</label>
-                        <input type="date" class="form-control" id="editTermEndDate" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editTermAssessmentDueDate" class="form-label">Assessment Due Date</label>
-                        <input type="date" class="form-control" id="editTermAssessmentDueDate">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <span class="btn-text">Update</span>
-                        <span class="btn-spinner d-none">
-                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                            Updating...
-                        </span>
-                    </button>
-                </div>
-            </form>
+<div
+  class="modal fade"
+  id="editTermModal"
+  tabindex="-1"
+  aria-labelledby="editTermModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editTermModalLabel">Edit Term</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <form id="editTermForm">
+        <input type="hidden" id="editTermId" />
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="editTermName" class="form-label">Term Name *</label>
+            <input
+              type="text"
+              class="form-control"
+              id="editTermName"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="editTermStartDate" class="form-label"
+              >Start Date *</label
+            >
+            <input
+              type="date"
+              class="form-control"
+              id="editTermStartDate"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="editTermEndDate" class="form-label">End Date *</label>
+            <input
+              type="date"
+              class="form-control"
+              id="editTermEndDate"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="editTermAssessmentDueDate" class="form-label"
+              >Assessment Due Date</label
+            >
+            <input
+              type="date"
+              class="form-control"
+              id="editTermAssessmentDueDate"
+            />
+          </div>
         </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <span class="btn-text">Update</span>
+            <span class="btn-spinner d-none">
+              <span
+                class="spinner-border spinner-border-sm"
+                aria-hidden="true"
+              ></span>
+              Updating...
+            </span>
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
 </div>
 
 {% include '_offering_modals.html' %}
@@ -418,148 +617,240 @@
 <!-- Section Management Modal -->
 {% include "components/section_modal.html" %}
 
-<div class="modal fade" id="editSectionModal" tabindex="-1" aria-labelledby="editSectionModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editSectionModalLabel">Edit Course Section</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="editSectionForm">
-                <input type="hidden" id="editSectionId">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="editSectionNumber" class="form-label">Section Number *</label>
-                        <input type="text" class="form-control" id="editSectionNumber" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editSectionInstructorId" class="form-label">Instructor</label>
-                        <select class="form-control" id="editSectionInstructorId">
-                            <option value="">Unassigned</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editSectionEnrollment" class="form-label">Enrollment</label>
-                        <input type="number" class="form-control" id="editSectionEnrollment" min="0">
-                    </div>
-                    <div class="mb-3">
-                        <label for="editSectionStatus" class="form-label">Status</label>
-                        <select class="form-control" id="editSectionStatus">
-                            <option value="scheduled">Scheduled</option>
-                            <option value="active">Active</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <span class="btn-text">Update</span>
-                        <span class="btn-spinner d-none">
-                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                            Updating...
-                        </span>
-                    </button>
-                </div>
-            </form>
+<div
+  class="modal fade"
+  id="editSectionModal"
+  tabindex="-1"
+  aria-labelledby="editSectionModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editSectionModalLabel">
+          Edit Course Section
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <form id="editSectionForm">
+        <input type="hidden" id="editSectionId" />
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="editSectionNumber" class="form-label"
+              >Section Number *</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="editSectionNumber"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="editSectionInstructorId" class="form-label"
+              >Instructor</label
+            >
+            <select class="form-control" id="editSectionInstructorId">
+              <option value="">Unassigned</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="editSectionEnrollment" class="form-label"
+              >Enrollment</label
+            >
+            <input
+              type="number"
+              class="form-control"
+              id="editSectionEnrollment"
+              min="0"
+            />
+          </div>
+          <div class="mb-3">
+            <label for="editSectionStatus" class="form-label">Status</label>
+            <select class="form-control" id="editSectionStatus">
+              <option value="scheduled">Scheduled</option>
+              <option value="active">Active</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
         </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <span class="btn-text">Update</span>
+            <span class="btn-spinner d-none">
+              <span
+                class="spinner-border spinner-border-sm"
+                aria-hidden="true"
+              ></span>
+              Updating...
+            </span>
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
 </div>
 
 <!-- Outcome Management Modals -->
 {% include "_outcome_modals.html" %}
 
 <!-- Invite User Modal (Unified) -->
-<div class="modal fade" id="inviteUserModal" tabindex="-1" aria-labelledby="inviteUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="inviteUserModalLabel">
-                    <i class="fas fa-user-plus"></i> Invite New User
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<div
+  class="modal fade"
+  id="inviteUserModal"
+  tabindex="-1"
+  aria-labelledby="inviteUserModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="inviteUserModalLabel">
+          <i class="fas fa-user-plus"></i> Invite New User
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <form id="inviteUserForm">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="inviteEmail" class="form-label">Email Address</label>
+              <input
+                type="email"
+                class="form-control"
+                id="inviteEmail"
+                name="invitee_email"
+                required
+              />
+              <div class="invalid-feedback">
+                Please enter a valid email address.
+              </div>
             </div>
-            <form id="inviteUserForm">
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="inviteEmail" class="form-label">Email Address</label>
-                            <input type="email" class="form-control" id="inviteEmail" name="invitee_email" required>
-                            <div class="invalid-feedback">
-                                Please enter a valid email address.
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="inviteRole" class="form-label">Role</label>
-                            <select class="form-select" id="inviteRole" name="invitee_role" required>
-                                <option value="">Select Role</option>
-                                <option value="instructor">Instructor</option>
-                                <option value="program_admin">Program Admin</option>
-                                {% if user.role == 'site_admin' %}
-                                <option value="institution_admin">Institution Admin</option>
-                                {% endif %}
-                            </select>
-                            <div class="invalid-feedback">
-                                Please select a role.
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="inviteFirstName" class="form-label">First Name</label>
-                            <input type="text" class="form-control" id="inviteFirstName" name="first_name"
-                                placeholder="First name">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="inviteLastName" class="form-label">Last Name</label>
-                            <input type="text" class="form-control" id="inviteLastName" name="last_name"
-                                placeholder="Last name">
-                        </div>
-                        <div class="col-12" id="programSelection" style="display: none;">
-                            <label for="invitePrograms" class="form-label">Programs (for Program Admin)</label>
-                            <select class="form-select" id="invitePrograms" name="program_ids" multiple>
-                                <!-- Programs will be loaded here -->
-                            </select>
-                            <div class="form-text">Hold Ctrl/Cmd to select multiple programs.</div>
-                        </div>
+            <div class="col-md-6">
+              <label for="inviteRole" class="form-label">Role</label>
+              <select
+                class="form-select"
+                id="inviteRole"
+                name="invitee_role"
+                required
+              >
+                <option value="">Select Role</option>
+                <option value="instructor">Instructor</option>
+                <option value="program_admin">Program Admin</option>
+                {% if user.role == 'site_admin' %}
+                <option value="institution_admin">Institution Admin</option>
+                {% endif %}
+              </select>
+              <div class="invalid-feedback">Please select a role.</div>
+            </div>
+            <div class="col-md-6">
+              <label for="inviteFirstName" class="form-label">First Name</label>
+              <input
+                type="text"
+                class="form-control"
+                id="inviteFirstName"
+                name="first_name"
+                placeholder="First name"
+              />
+            </div>
+            <div class="col-md-6">
+              <label for="inviteLastName" class="form-label">Last Name</label>
+              <input
+                type="text"
+                class="form-control"
+                id="inviteLastName"
+                name="last_name"
+                placeholder="Last name"
+              />
+            </div>
+            <div class="col-12" id="programSelection" style="display: none">
+              <label for="invitePrograms" class="form-label"
+                >Programs (for Program Admin)</label
+              >
+              <select
+                class="form-select"
+                id="invitePrograms"
+                name="program_ids"
+                multiple
+              >
+                <!-- Programs will be loaded here -->
+              </select>
+              <div class="form-text">
+                Hold Ctrl/Cmd to select multiple programs.
+              </div>
+            </div>
 
-                        <!-- Section Assignment (Optional - for inviting from sections page) -->
-                        <div class="col-12" id="sectionAssignmentGroup" style="display: none;">
-                            <hr class="my-3">
-                            <h6 class="mb-3">Section Assignment (Optional)</h6>
-                            <input type="hidden" id="inviteSectionId" name="section_id">
-                            <div class="alert alert-info mb-0">
-                                <i class="fas fa-info-circle"></i>
-                                If a section is pre-selected, the instructor will be automatically assigned to it upon
-                                accepting the invitation.
-                            </div>
-                        </div>
+            <!-- Section Assignment (Optional - for inviting from sections page) -->
+            <div
+              class="col-12"
+              id="sectionAssignmentGroup"
+              style="display: none"
+            >
+              <hr class="my-3" />
+              <h6 class="mb-3">Section Assignment (Optional)</h6>
+              <input type="hidden" id="inviteSectionId" name="section_id" />
+              <div class="alert alert-info mb-0">
+                <i class="fas fa-info-circle"></i>
+                If a section is pre-selected, the instructor will be
+                automatically assigned to it upon accepting the invitation.
+              </div>
+            </div>
 
-                        <div class="col-12">
-                            <label for="inviteMessage" class="form-label">Personal Message (Optional)</label>
-                            <textarea class="form-control" id="inviteMessage" name="personal_message" rows="3"
-                                placeholder="Welcome to our team! We're excited to have you join us."></textarea>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="sendInviteBtn">
-                        <span class="btn-text">
-                            <i class="fas fa-paper-plane"></i> Send Invitation
-                        </span>
-                        <span class="btn-spinner d-none">
-                            <i class="fas fa-spinner fa-spin"></i> Sending...
-                        </span>
-                    </button>
-                </div>
-            </form>
+            <div class="col-12">
+              <label for="inviteMessage" class="form-label"
+                >Personal Message (Optional)</label
+              >
+              <textarea
+                class="form-control"
+                id="inviteMessage"
+                name="personal_message"
+                rows="3"
+                placeholder="Welcome to our team! We're excited to have you join us."
+              ></textarea>
+            </div>
+          </div>
         </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" id="sendInviteBtn">
+            <span class="btn-text">
+              <i class="fas fa-paper-plane"></i> Send Invitation
+            </span>
+            <span class="btn-spinner d-none">
+              <i class="fas fa-spinner fa-spin"></i> Sending...
+            </span>
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
 </div>
 
-{% endblock %}
-
-{% block extra_js %}
+{% endblock %} {% block extra_js %}
 <script src="{{ url_for('static', filename='logger.js') }}"></script>
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 <script src="{{ url_for('static', filename='panels.js') }}"></script>
@@ -577,106 +868,131 @@
 <script src="{{ url_for('static', filename='admin.js') }}"></script>
 
 <script>
-    // Expose user context to JavaScript
-    window.userContext = {
-        institutionId: '{{ user.institution_id }}',
-        institutionName: '{{ user.institution_name }}',
-        role: '{{ user.role }}'
-    };
+  // Expose user context to JavaScript
+  window.userContext = {
+    institutionId: "{{ user.institution_id }}",
+    institutionName: "{{ user.institution_name }}",
+    role: "{{ user.role }}",
+  };
 
-    // Institution Data Management Functions
-    // Import functions are defined in the Excel import modal (templates/components/excel_import_modal.html)
+  // Institution Data Management Functions
+  // Import functions are defined in the Excel import modal (templates/components/excel_import_modal.html)
 
-    function institutionQuickExport() {
-        const format = document.querySelector('input[name="institutionExportFormat"]:checked').value;
-        alert(`Quick Export (${format}) feature coming soon!`);
-    }
+  function institutionQuickExport() {
+    const format = document.querySelector(
+      'input[name="institutionExportFormat"]:checked',
+    ).value;
+    alert(`Quick Export (${format}) feature coming soon!`);
+  }
 
-    function institutionExportData(type) {
-        const format = document.querySelector('input[name="institutionExportFormat"]:checked').value;
-        alert(`Export ${type} (${format}) feature coming soon!`);
-    }
+  function institutionExportData(type) {
+    const format = document.querySelector(
+      'input[name="institutionExportFormat"]:checked',
+    ).value;
+    alert(`Export ${type} (${format}) feature coming soon!`);
+  }
 
-    // Modal Helper Functions - Open CRUD modals
-    function createProgram() {
-        const modal = new bootstrap.Modal(document.getElementById('createProgramModal'));
-        modal.show();
-    }
-
-    function managePrograms() {
-        window.location.href = '/programs';
-    }
-
-    function createCourse() {
-        const modal = new bootstrap.Modal(document.getElementById('createCourseModal'));
-        modal.show();
-    }
-
-    function manageCourses() {
-        window.location.href = '/courses';
-    }
-
-    function createTerm() {
-        const modal = new bootstrap.Modal(document.getElementById('createTermModal'));
-        modal.show();
-    }
-
-    function manageTerms() {
-        window.location.href = '/terms';
-    }
-
-    function createOffering() {
-        const modal = new bootstrap.Modal(document.getElementById('createOfferingModal'));
-        modal.show();
-    }
-
-    function manageOfferings() {
-        window.location.href = '/offerings';
-    }
-
-    function createSection() {
-        const modal = new bootstrap.Modal(document.getElementById('createSectionModal'));
-        modal.show();
-    }
-
-    function manageSections() {
-        window.location.href = '/sections';
-    }
-
-    function createOutcome() {
-        const modal = new bootstrap.Modal(document.getElementById('createOutcomeModal'));
-        modal.show();
-    }
-
-    function manageOutcomes() {
-        window.location.href = '/outcomes';
-    }
-
-    // Configure dashboard navigation for Institution Admin role
-    configureDashboardFilter(
-        {
-            'programs': ['institution-program-panel', 'institution-course-panel'],
-            'faculty': ['institution-faculty-panel', 'institution-sections-panel'],
-            'outcomes': ['institution-clo-audit-panel', 'institution-outcome-panel'],
-            'all': ['institution-clo-audit-panel', 'institution-faculty-panel', 'institution-program-panel', 'institution-term-panel', 'institution-course-panel', 'institution-offering-panel', 'institution-sections-panel', 'institution-outcome-panel']
-        },
-        [
-            'institution-clo-audit-panel',
-            'institution-faculty-panel',
-            'institution-program-panel',
-            'institution-term-panel',
-            'institution-course-panel',
-            'institution-offering-panel',
-            'institution-sections-panel',
-            'institution-outcome-panel'
-        ],
-        {
-            'all': '🏛️ Institution Administration',
-            'programs': '📚 Program Management',
-            'faculty': '👥 Faculty Management',
-            'outcomes': '📊 Outcome Management'
-        }
+  // Modal Helper Functions - Open CRUD modals
+  function createProgram() {
+    const modal = new bootstrap.Modal(
+      document.getElementById("createProgramModal"),
     );
+    modal.show();
+  }
+
+  function managePrograms() {
+    window.location.href = "/programs";
+  }
+
+  function createCourse() {
+    const modal = new bootstrap.Modal(
+      document.getElementById("createCourseModal"),
+    );
+    modal.show();
+  }
+
+  function manageCourses() {
+    window.location.href = "/courses";
+  }
+
+  function createTerm() {
+    const modal = new bootstrap.Modal(
+      document.getElementById("createTermModal"),
+    );
+    modal.show();
+  }
+
+  function manageTerms() {
+    window.location.href = "/terms";
+  }
+
+  function createOffering() {
+    const modal = new bootstrap.Modal(
+      document.getElementById("createOfferingModal"),
+    );
+    modal.show();
+  }
+
+  function manageOfferings() {
+    window.location.href = "/offerings";
+  }
+
+  function createSection() {
+    const modal = new bootstrap.Modal(
+      document.getElementById("createSectionModal"),
+    );
+    modal.show();
+  }
+
+  function manageSections() {
+    window.location.href = "/sections";
+  }
+
+  function createOutcome() {
+    const modal = new bootstrap.Modal(
+      document.getElementById("createOutcomeModal"),
+    );
+    modal.show();
+  }
+
+  function manageOutcomes() {
+    window.location.href = "/outcomes";
+  }
+
+  // Configure dashboard navigation for Institution Admin role
+  configureDashboardFilter(
+    {
+      programs: ["institution-program-panel", "institution-course-panel"],
+      faculty: ["institution-faculty-panel", "institution-sections-panel"],
+      outcomes: ["institution-clo-audit-panel", "institution-outcome-panel"],
+      all: [
+        "institution-clo-audit-panel",
+        "institution-faculty-panel",
+        "institution-program-panel",
+        "institution-term-panel",
+        "institution-course-panel",
+        "institution-offering-panel",
+        "institution-sections-panel",
+        "institution-outcome-panel",
+      ],
+    },
+    [
+      "institution-clo-audit-panel",
+      "institution-faculty-panel",
+      "institution-program-panel",
+      "institution-term-panel",
+      "institution-course-panel",
+      "institution-offering-panel",
+      "institution-sections-panel",
+      "institution-outcome-panel",
+    ],
+    {
+      all: "🏛️ Institution Administration",
+      programs: "📚 Program Management",
+      faculty: "👥 Faculty Management",
+      outcomes: "📊 Outcome Management",
+    },
+  );
 </script>
 
 <!-- Include Bulk Reminder Modal -->

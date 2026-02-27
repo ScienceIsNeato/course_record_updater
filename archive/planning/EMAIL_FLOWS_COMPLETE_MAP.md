@@ -9,6 +9,7 @@ This document maps every email sent by the application, organized by user journe
 ## 🆕 New User Self-Registration Flow
 
 ### Flow Diagram
+
 ```
 User fills registration form → Submit
                               ↓
@@ -24,6 +25,7 @@ User fills registration form → Submit
 ```
 
 ### Emails Sent
+
 1. **Verification Email** (`send_verification_email`)
    - **Trigger**: User submits registration form
    - **Recipient**: New user's email address
@@ -33,7 +35,7 @@ User fills registration form → Submit
    - **Action Link**: `{BASE_URL}/verify?token={token}`
    - **Test File**: `test_email_flows_registration.py::TestNewUserRegistrationFlow`
 
-2. **Welcome Email** (`send_welcome_email`) - *Optional/Future*
+2. **Welcome Email** (`send_welcome_email`) - _Optional/Future_
    - **Trigger**: User verifies account
    - **Recipient**: Newly verified user
    - **Subject**: "Welcome to LoopCloser!"
@@ -46,6 +48,7 @@ User fills registration form → Submit
 ## 🔐 Password Reset Flow
 
 ### Flow Diagram
+
 ```
 User clicks "Forgot Password" → Enter email → Submit
                                               ↓
@@ -61,6 +64,7 @@ User clicks "Forgot Password" → Enter email → Submit
 ```
 
 ### Emails Sent
+
 3. **Password Reset Email** (`send_password_reset_email`)
    - **Trigger**: User requests password reset
    - **Recipient**: User's registered email
@@ -84,6 +88,7 @@ User clicks "Forgot Password" → Enter email → Submit
 ## 📬 User Invitation Flow
 
 ### Flow Diagram
+
 ```
 Admin navigates to user management → Click "Invite User"
                                               ↓
@@ -103,11 +108,12 @@ Admin navigates to user management → Click "Invite User"
 ```
 
 ### Emails Sent
+
 5. **Invitation Email** (`send_invitation_email`)
    - **Trigger**: Admin invites user to join institution/program
    - **Recipient**: Invitee's email address
    - **Subject**: "You're invited to join {institution_name} on LoopCloser"
-   - **Content**: 
+   - **Content**:
      - Inviter's name and role
      - Institution/program name
      - Role being invited to
@@ -127,6 +133,7 @@ Admin navigates to user management → Click "Invite User"
 ## 📋 Admin Instructor Reminder Flow (Phase 4 - Not Yet Implemented)
 
 ### Flow Diagram
+
 ```
 Admin navigates to course management → View pending submissions
                                               ↓
@@ -146,7 +153,8 @@ Admin navigates to course management → View pending submissions
 ```
 
 ### Emails Sent
-6. **Instructor Reminder Email** (`send_instructor_reminder_email`) - *Phase 4*
+
+6. **Instructor Reminder Email** (`send_instructor_reminder_email`) - _Phase 4_
    - **Trigger**: Admin sends reminder to instructor to submit course data
    - **Recipient**: Instructor(s) who haven't submitted data
    - **Subject**: "Reminder: Please submit your course data for {term}"
@@ -173,51 +181,63 @@ Admin navigates to course management → View pending submissions
 
 ## 📊 Email Flow Summary Table
 
-| # | Email Type | EmailService Method | Trigger | Recipients | Status |
-|---|------------|---------------------|---------|------------|--------|
-| 1 | Verification | `send_verification_email` | User registers | New users | ✅ Implemented |
-| 2 | Welcome | `send_welcome_email` | User verifies account | Verified users | ⚠️ Method exists, may need activation |
-| 3 | Password Reset | `send_password_reset_email` | User requests reset | Existing users | ✅ Implemented |
-| 4 | Reset Confirmation | `send_password_reset_confirmation_email` | User resets password | Users who reset | ✅ Implemented |
-| 5 | Invitation | `send_invitation_email` | Admin invites user | Invitees | ✅ Implemented |
-| 6 | Instructor Reminder | `send_instructor_reminder_email` | Admin pushes instructor | Instructors | ⏳ Phase 4 (not yet implemented) |
+| #   | Email Type          | EmailService Method                      | Trigger                 | Recipients      | Status                                |
+| --- | ------------------- | ---------------------------------------- | ----------------------- | --------------- | ------------------------------------- |
+| 1   | Verification        | `send_verification_email`                | User registers          | New users       | ✅ Implemented                        |
+| 2   | Welcome             | `send_welcome_email`                     | User verifies account   | Verified users  | ⚠️ Method exists, may need activation |
+| 3   | Password Reset      | `send_password_reset_email`              | User requests reset     | Existing users  | ✅ Implemented                        |
+| 4   | Reset Confirmation  | `send_password_reset_confirmation_email` | User resets password    | Users who reset | ✅ Implemented                        |
+| 5   | Invitation          | `send_invitation_email`                  | Admin invites user      | Invitees        | ✅ Implemented                        |
+| 6   | Instructor Reminder | `send_instructor_reminder_email`         | Admin pushes instructor | Instructors     | ⏳ Phase 4 (not yet implemented)      |
 
 ---
 
 ## 🎯 User Personas & Email Touchpoints
 
 ### New Instructor (Self-Registration)
+
 **Journey**: Discovers app → Registers → Verifies → Uses app
 **Emails Remockuved**:
+
 1. Verification email (immediately after registration)
 2. Welcome email (optional, after verification)
 
 ### Invited Instructor
+
 **Journey**: Remockuves invitation → Accepts → Registers → Verifies → Uses app
 **Emails Remockuved**:
+
 1. Invitation email (sent by admin)
 2. Verification email (after accepting invitation) OR auto-verified
 
 ### Existing Instructor (Forgot Password)
+
 **Journey**: Forgets password → Requests reset → Resets password → Logs in
 **Emails Remockuved**:
+
 1. Password reset email (immediately after request)
 2. Password reset confirmation (after successful reset)
 
 ### Instructor (Needs Reminder)
+
 **Journey**: Hasn't submitted data → Admin sends reminder → Submits data
 **Emails Remockuved**:
+
 1. Instructor reminder email (Phase 4, sent by admin)
 
 ### Program Admin
+
 **Journey**: Invited by institution admin → Accepts → Manages program
 **Emails Remockuved**:
+
 1. Invitation email (sent by institution admin)
 2. Verification email (after accepting) OR auto-verified
 
 ### Institution Admin
+
 **Journey**: First user for institution → Self-registers → Creates institution
 **Emails Remockuved**:
+
 1. Verification email (after registration)
 2. Welcome email (optional)
 
@@ -226,22 +246,28 @@ Admin navigates to course management → View pending submissions
 ## 🔒 Email Security & Safety Measures
 
 ### Protected Domains
+
 Never send emails to these domains in non-production:
+
 - `mocku.test`
 - `coastaledu.org`
 - `coastal.edu`
 - `coastalcarolina.edu`
 
 ### Test Account Restrictions (Non-Production)
+
 **Allowed recipients only**:
+
 - `@mailtrap.io` (sandbox testing)
 - `lassie.tests@gmail.com` (our test accounts)
 - Domains containing "test", "example", or "localhost"
 
 **Blocked recipients**:
+
 - Any other real domain to prevent accidental sends
 
 ### Rate Limiting (Planned for Phase 4)
+
 - Instructor reminders: Max 1 per instructor per 24 hours
 - Prevents admin spam
 
@@ -250,6 +276,7 @@ Never send emails to these domains in non-production:
 ## 📝 Email Template Requirements
 
 ### All Emails Must Include
+
 1. **Personalized greeting** (recipient's name)
 2. **Clear purpose** (why they're remockuving this email)
 3. **Call-to-action** (what they should do)
@@ -258,6 +285,7 @@ Never send emails to these domains in non-production:
 6. **HTML + plain text versions** (accessibility)
 
 ### Email Template Structure
+
 ```
 [Logo/Header]
 
@@ -279,18 +307,21 @@ Hi {user_name},
 ## 🧪 Testing Strategy
 
 ### Unit Tests
+
 - Mock SMTP, test email content generation
 - Test token generation and embedding
 - Test template rendering
 - **Status**: ✅ Complete (49 tests passing)
 
 ### Integration Tests
+
 - Test with Mailtrap sandbox
 - Verify email delivery
 - Verify email formatting
 - **Status**: ⏳ Waiting for Mailtrap account setup
 
 ### E2E Tests
+
 - Full user journeys
 - Click links in emails
 - Verify end-to-end flows
@@ -301,21 +332,25 @@ Hi {user_name},
 ## 🚀 Implementation Phases
 
 ### Phase 1: Provider Infrastructure ✅ COMPLETE
+
 - Email provider pattern
 - Console, Gmail, Mailtrap providers
 - Safety measures
 
 ### Phase 2: Test Setup ⏳ IN PROGRESS
+
 - Mailtrap account creation
 - Bella's Gmail setup (optional)
 - Test script verification
 
 ### Phase 3: E2E Infrastructure (Next)
+
 - Mailtrap API integration
 - Email verification helpers
 - E2E test implementation
 
 ### Phase 4: Instructor Reminders (Future)
+
 - New email template
 - API endpoint
 - UI for admin
@@ -327,10 +362,10 @@ Hi {user_name},
 ## 📚 Related Documentation
 
 - **Implementation Plan**: `planning/EMAIL_SYSTEM_V1_IMPLEMENTATION.md`
-- **E2E Test Designs**: 
+- **E2E Test Designs**:
   - `tests/e2e/test_email_flows_registration.py`
   - `tests/e2e/test_email_flows_admin_reminders.py`
-- **Unit Tests**: 
+- **Unit Tests**:
   - `tests/unit/test_email_service.py`
   - `tests/unit/test_mailtrap_provider.py`
   - `tests/unit/test_console_provider.py`
@@ -343,4 +378,3 @@ Hi {user_name},
 
 **Last Updated**: October 14, 2025
 **Status**: Phase 2 (Test Infrastructure) - All code complete, waiting for account setup
-

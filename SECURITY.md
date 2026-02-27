@@ -3,6 +3,7 @@
 This repository runs automated security checks as part of the quality gate (bandit, semgrep, detect-secrets, safety).
 
 ## Goals
+
 - Surface real security problems (HIGH and MEDIUM severity) and fail CI on those.
 - Avoid noisy failures on developer helper scripts and false positives (LOW severity) so maintainers can iterate quickly.
 
@@ -10,12 +11,13 @@ This repository runs automated security checks as part of the quality gate (band
 
 **Hardcoded passwords are ONLY allowed in these files:**
 
-| File | Purpose |
-|------|---------|
-| `.envrc` | Environment variables (git-ignored, local only) |
-| `src/utils/constants.py` | Centralized test/demo password constants |
+| File                     | Purpose                                         |
+| ------------------------ | ----------------------------------------------- |
+| `.envrc`                 | Environment variables (git-ignored, local only) |
+| `src/utils/constants.py` | Centralized test/demo password constants        |
 
 All other code **MUST** import passwords from `constants.py`. This ensures:
+
 1. **detect-secrets baseline stability**: Line numbers only change when you intentionally add new secrets
 2. **Single source of truth**: All test passwords defined once with proper `# nosec` annotations
 3. **Easy auditing**: Security review only needs to check two files
@@ -24,11 +26,11 @@ All other code **MUST** import passwords from `constants.py`. This ensures:
 
 The codebase uses exactly THREE password constants:
 
-| Constant | Value | Purpose |
-|----------|-------|---------|
+| Constant           | Value          | Purpose                                            |
+| ------------------ | -------------- | -------------------------------------------------- |
 | `GENERIC_PASSWORD` | `TestPass123!` | **Use everywhere** - all test accounts, seeds, E2E |
-| `WEAK_PASSWORD` | `weak` | Testing rejection of weak passwords |
-| `INVALID_PASSWORD` | `password123` | Testing password complexity requirements |
+| `WEAK_PASSWORD`    | `weak`         | Testing rejection of weak passwords                |
+| `INVALID_PASSWORD` | `password123`  | Testing password complexity requirements           |
 
 **DO NOT** create role-specific passwords (e.g., `SITE_ADMIN_PASSWORD`, `INSTRUCTOR_PASSWORD`). Use `GENERIC_PASSWORD` for all test accounts.
 

@@ -1,262 +1,405 @@
-{% extends "dashboard/base_dashboard.html" %}
-
-{% block title %}Course Assessments{% endblock %}
-
-{% block extra_css %}
+{% extends "dashboard/base_dashboard.html" %} {% block title %}Course
+Assessments{% endblock %} {% block extra_css %}
 <style>
-    .outcomes-list .card {
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
+  .outcomes-list .card {
+    transition:
+      transform 0.2s,
+      box-shadow 0.2s;
+  }
 
-    .outcomes-list .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-    }
+  .outcomes-list .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  }
 
-    .bg-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-    }
+  .bg-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  }
 
-    .text-primary {
-        color: #667eea !important;
-    }
+  .text-primary {
+    color: #667eea !important;
+  }
 
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
+  .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+  }
 
-    .btn-primary:hover {
-        background: linear-gradient(135deg, #5568d3 0%, #63398b 100%);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #5568d3 0%, #63398b 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
 
-    .border-start {
-        border-left-width: 4px !important;
-    }
+  .border-start {
+    border-left-width: 4px !important;
+  }
 </style>
-{% endblock %}
-
-{% block page_title %}Course Assessments{% endblock %}
-{% block page_subtitle %}View and manage Course Assessments on a per-course-section basis, holistically{% endblock %}
-
-{% block nav_items %}
-<a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-<a class="nav-link" href="/assessments"><i class="fas fa-tasks me-1"></i>Assessments</a>
-{% endblock %}
-
-{% block content %}
-{% set can_edit_due_date = user.role in ['institution_admin', 'site_admin'] %}
+{% endblock %} {% block page_title %}Course Assessments{% endblock %} {% block
+page_subtitle %}View and manage Course Assessments on a per-course-section
+basis, holistically{% endblock %} {% block nav_items %}
+<a class="nav-link" href="/dashboard"
+  ><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a
+>
+<a class="nav-link" href="/assessments"
+  ><i class="fas fa-tasks me-1"></i>Assessments</a
+>
+{% endblock %} {% block content %} {% set can_edit_due_date = user.role in
+['institution_admin', 'site_admin'] %}
 <div class="container mt-4">
-    <!-- Filter Controls -->
-    <div class="row mb-3">
+  <!-- Filter Controls -->
+  <div class="row mb-3">
+    <div class="col-md-4">
+      <label for="termFilter" class="form-label">Filter by Term:</label>
+      <select class="form-select" id="termFilter">
+        <option value="">All Terms</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label for="courseFilter" class="form-label">Filter by Course:</label>
+      <select class="form-select" id="courseFilter">
+        <option value="">All Courses</option>
+      </select>
+    </div>
+    <div class="col-md-4 d-flex align-items-end">
+      <button id="clearFilters" class="btn btn-outline-secondary">
+        <i class="fas fa-times"></i> Clear Filters
+      </button>
+    </div>
+  </div>
+
+  <!-- Course Selector -->
+  <div class="mb-4">
+    <label for="courseSelect" class="form-label">Select Course:</label>
+    <select class="form-select" id="courseSelect">
+      <option value="">Loading courses...</option>
+    </select>
+  </div>
+
+  <!-- Success Message Alert -->
+  <div id="saveStatus" class="alert" style="display: none" role="alert"></div>
+
+  <!-- Outcomes List (CLOs shown FIRST) -->
+  <div id="outcomesContainer">
+    <p class="text-muted">Select a course to view its outcomes</p>
+  </div>
+
+  <!-- Course-Level Assessment Section (shown AFTER CLOs) -->
+  <div
+    id="courseLevelSection"
+    style="display: none"
+    class="card mb-4 border-primary"
+  >
+    <div class="card-header bg-primary text-white">
+      <h5 class="mb-0">
+        <i class="fas fa-chart-line"></i> Course-Section-Level Assessment Data
+      </h5>
+    </div>
+    <div class="card-body">
+      <!-- Enrollment Information (Read-Only) -->
+      <div class="row mb-4">
+        <div class="col-md-12">
+          <h6 class="text-primary mb-3">
+            Enrollment Information (Pre-Populated)
+          </h6>
+        </div>
         <div class="col-md-4">
-            <label for="termFilter" class="form-label">Filter by Term:</label>
-            <select class="form-select" id="termFilter">
-                <option value="">All Terms</option>
-            </select>
+          <label class="form-label fw-bold" for="courseEnrollment"
+            >Total Enrollment:</label
+          >
+          <input
+            type="text"
+            class="form-control-plaintext"
+            id="courseEnrollment"
+            readonly
+          />
         </div>
         <div class="col-md-4">
-            <label for="courseFilter" class="form-label">Filter by Course:</label>
-            <select class="form-select" id="courseFilter">
-                <option value="">All Courses</option>
-            </select>
+          <label class="form-label fw-bold" for="courseWithdrawals"
+            >Withdrawals:</label
+          >
+          <input
+            type="text"
+            class="form-control-plaintext"
+            id="courseWithdrawals"
+            readonly
+          />
         </div>
-        <div class="col-md-4 d-flex align-items-end">
-            <button id="clearFilters" class="btn btn-outline-secondary">
-                <i class="fas fa-times"></i> Clear Filters
-            </button>
+        <div class="col-md-4">
+          <label class="form-label fw-bold" for="courseDueDate"
+            >Assessment Due Date:</label
+          >
+          <input
+            type="{{ 'date' if can_edit_due_date else 'text' }}"
+            class="form-control{{ '' if can_edit_due_date else ' form-control-plaintext' }}"
+            id="courseDueDate"
+            {%
+            if
+            not
+            can_edit_due_date
+            %}readonly{%
+            endif
+            %}
+            {%
+            if
+            can_edit_due_date
+            %}placeholder="YYYY-MM-DD"
+            {%
+            endif
+            %}
+          />
+          <small class="text-muted">
+            {% if can_edit_due_date %} Editable by institution admins {% else %}
+            Set by program admin {% endif %}
+          </small>
         </div>
-    </div>
+      </div>
 
-    <!-- Course Selector -->
-    <div class="mb-4">
-        <label for="courseSelect" class="form-label">Select Course:</label>
-        <select class="form-select" id="courseSelect">
-            <option value="">Loading courses...</option>
-        </select>
-    </div>
-
-    <!-- Success Message Alert -->
-    <div id="saveStatus" class="alert" style="display: none;" role="alert"></div>
-
-    <!-- Outcomes List (CLOs shown FIRST) -->
-    <div id="outcomesContainer">
-        <p class="text-muted">Select a course to view its outcomes</p>
-    </div>
-
-    <!-- Course-Level Assessment Section (shown AFTER CLOs) -->
-    <div id="courseLevelSection" style="display: none;" class="card mb-4 border-primary">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="fas fa-chart-line"></i> Course-Section-Level Assessment Data</h5>
+      <!-- Grade Outcomes (Instructor Input) -->
+      <div class="row mb-4">
+        <div class="col-md-12">
+          <h6 class="text-primary mb-3">
+            Course Grade Outcomes (Instructor Input)
+          </h6>
         </div>
-        <div class="card-body">
-            <!-- Enrollment Information (Read-Only) -->
-            <div class="row mb-4">
-                <div class="col-md-12">
-                    <h6 class="text-primary mb-3">Enrollment Information (Pre-Populated)</h6>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-bold" for="courseEnrollment">Total Enrollment:</label>
-                    <input type="text" class="form-control-plaintext" id="courseEnrollment" readonly>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-bold" for="courseWithdrawals">Withdrawals:</label>
-                    <input type="text" class="form-control-plaintext" id="courseWithdrawals" readonly>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-bold" for="courseDueDate">Assessment Due Date:</label>
-                    <input type="{{ 'date' if can_edit_due_date else 'text' }}"
-                        class="form-control{{ '' if can_edit_due_date else ' form-control-plaintext' }}"
-                        id="courseDueDate" {% if not can_edit_due_date %}readonly{% endif %} {% if can_edit_due_date
-                        %}placeholder="YYYY-MM-DD" {% endif %}>
-                    <small class="text-muted">
-                        {% if can_edit_due_date %}
-                        Editable by institution admins
-                        {% else %}
-                        Set by program admin
-                        {% endif %}
-                    </small>
-                </div>
-            </div>
-
-            <!-- Grade Outcomes (Instructor Input) -->
-            <div class="row mb-4">
-                <div class="col-md-12">
-                    <h6 class="text-primary mb-3">Course Grade Outcomes (Instructor Input)</h6>
-                </div>
-                <div class="col-md-6">
-                    <label for="courseStudentsPassed" class="form-label">Students Passed (A/B/C) *</label>
-                    <input type="number" class="form-control" id="courseStudentsPassed" min="0"
-                        placeholder="Number of students with A, B, or C">
-                </div>
-                <div class="col-md-6">
-                    <label for="courseStudentsDFIC" class="form-label">Students D/F/Incomplete *</label>
-                    <input type="number" class="form-control" id="courseStudentsDFIC" min="0"
-                        placeholder="Number of students with D, F, or I">
-                </div>
-            </div>
-
-            <!-- Reconciliation -->
-            <div class="mb-4">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="cannotReconcile">
-                    <label class="form-check-label" for="cannotReconcile">
-                        <strong>Numbers Won't Add Up</strong> — <em>This is expected in some cases (e.g., late adds,
-                            incomplete data)</em>
-                    </label>
-                </div>
-                <div id="reconciliationNoteContainer" style="display: none;" class="mt-2">
-                    <label for="reconciliationNote" class="form-label">Reconciliation Note:</label>
-                    <textarea class="form-control" id="reconciliationNote" rows="2"
-                        placeholder="Explain why the numbers don't reconcile..."></textarea>
-                </div>
-            </div>
-
-            <!-- Course Narratives (NOT at CLO level - corrected from demo feedback) -->
-            <div class="mb-3">
-                <h6 class="text-primary mb-3">Course Reflections</h6>
-
-                <div class="mb-3">
-                    <label for="narrativeCelebrations" class="form-label">What Went Well (Celebrations)?</label>
-                    <textarea class="form-control" id="narrativeCelebrations" rows="3"
-                        placeholder="Describe what worked well in this course..."></textarea>
-                </div>
-
-                <div class="mb-3">
-                    <label for="narrativeChallenges" class="form-label">What Was Difficult (Challenges)?</label>
-                    <textarea class="form-control" id="narrativeChallenges" rows="3"
-                        placeholder="Describe challenges encountered..."></textarea>
-                </div>
-
-                <div class="mb-3">
-                    <label for="narrativeChanges" class="form-label">What to Do Differently (Changes)?</label>
-                    <textarea class="form-control" id="narrativeChanges" rows="3"
-                        placeholder="Describe what you would change next time..."></textarea>
-                </div>
-            </div>
-
-            <div class="d-flex justify-content-center align-items-center gap-4 mt-4">
-                <div class="form-check mb-0">
-                    <input class="form-check-input" type="checkbox" value="" id="alertProgramAdmins">
-                    <label class="form-check-label" for="alertProgramAdmins">
-                        Alert Program Admins to Submission
-                    </label>
-                </div>
-                <button type="button" class="btn btn-primary btn-lg" id="submitCourseBtn"><i class="fas fa-upload"></i>
-                    Submit Assessments</button>
-            </div>
+        <div class="col-md-6">
+          <label for="courseStudentsPassed" class="form-label"
+            >Students Passed (A/B/C) *</label
+          >
+          <input
+            type="number"
+            class="form-control"
+            id="courseStudentsPassed"
+            min="0"
+            placeholder="Number of students with A, B, or C"
+          />
         </div>
-    </div>
+        <div class="col-md-6">
+          <label for="courseStudentsDFIC" class="form-label"
+            >Students D/F/Incomplete *</label
+          >
+          <input
+            type="number"
+            class="form-control"
+            id="courseStudentsDFIC"
+            min="0"
+            placeholder="Number of students with D, F, or I"
+          />
+        </div>
+      </div>
 
+      <!-- Reconciliation -->
+      <div class="mb-4">
+        <div class="form-check">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            id="cannotReconcile"
+          />
+          <label class="form-check-label" for="cannotReconcile">
+            <strong>Numbers Won't Add Up</strong> —
+            <em
+              >This is expected in some cases (e.g., late adds, incomplete
+              data)</em
+            >
+          </label>
+        </div>
+        <div
+          id="reconciliationNoteContainer"
+          style="display: none"
+          class="mt-2"
+        >
+          <label for="reconciliationNote" class="form-label"
+            >Reconciliation Note:</label
+          >
+          <textarea
+            class="form-control"
+            id="reconciliationNote"
+            rows="2"
+            placeholder="Explain why the numbers don't reconcile..."
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Course Narratives (NOT at CLO level - corrected from demo feedback) -->
+      <div class="mb-3">
+        <h6 class="text-primary mb-3">Course Reflections</h6>
+
+        <div class="mb-3">
+          <label for="narrativeCelebrations" class="form-label"
+            >What Went Well (Celebrations)?</label
+          >
+          <textarea
+            class="form-control"
+            id="narrativeCelebrations"
+            rows="3"
+            placeholder="Describe what worked well in this course..."
+          ></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label for="narrativeChallenges" class="form-label"
+            >What Was Difficult (Challenges)?</label
+          >
+          <textarea
+            class="form-control"
+            id="narrativeChallenges"
+            rows="3"
+            placeholder="Describe challenges encountered..."
+          ></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label for="narrativeChanges" class="form-label"
+            >What to Do Differently (Changes)?</label
+          >
+          <textarea
+            class="form-control"
+            id="narrativeChanges"
+            rows="3"
+            placeholder="Describe what you would change next time..."
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-center align-items-center gap-4 mt-4">
+        <div class="form-check mb-0">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            value=""
+            id="alertProgramAdmins"
+          />
+          <label class="form-check-label" for="alertProgramAdmins">
+            Alert Program Admins to Submission
+          </label>
+        </div>
+        <button
+          type="button"
+          class="btn btn-primary btn-lg"
+          id="submitCourseBtn"
+        >
+          <i class="fas fa-upload"></i> Submit Assessments
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Update Assessment Modal -->
-<div class="modal fade" id="updateAssessmentModal" tabindex="-1" aria-labelledby="updateAssessmentModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="updateAssessmentModalLabel">Update Assessment</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="updateAssessmentForm">
-                <div class="modal-body">
-                    <input type="hidden" id="assessmentOutcomeId">
+<div
+  class="modal fade"
+  id="updateAssessmentModal"
+  tabindex="-1"
+  aria-labelledby="updateAssessmentModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="updateAssessmentModalLabel">
+          Update Assessment
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <form id="updateAssessmentForm">
+        <div class="modal-body">
+          <input type="hidden" id="assessmentOutcomeId" />
 
-                    <div class="mb-3">
-                        <div class="fw-bold mb-2">Outcome Description:</div>
-                        <p id="assessmentOutcomeDescription" class="text-muted"></p>
-                    </div>
+          <div class="mb-3">
+            <div class="fw-bold mb-2">Outcome Description:</div>
+            <p id="assessmentOutcomeDescription" class="text-muted"></p>
+          </div>
 
-                    <div class="mb-3">
-                        <label for="studentsTook" class="form-label">Students Who Took This Assessment *</label>
-                        <input type="number" class="form-control" id="studentsTook" name="students_took" required
-                            min="0">
-                        <small class="text-muted">How many students took THIS specific CLO assessment?</small>
-                    </div>
+          <div class="mb-3">
+            <label for="studentsTook" class="form-label"
+              >Students Who Took This Assessment *</label
+            >
+            <input
+              type="number"
+              class="form-control"
+              id="studentsTook"
+              name="students_took"
+              required
+              min="0"
+            />
+            <small class="text-muted"
+              >How many students took THIS specific CLO assessment?</small
+            >
+          </div>
 
-                    <div class="mb-3">
-                        <label for="studentsPassed" class="form-label">Students Who Passed This Assessment *</label>
-                        <input type="number" class="form-control" id="studentsPassed" name="students_passed" required
-                            min="0">
-                        <small class="text-muted">How many students passed THIS specific CLO assessment?</small>
-                    </div>
+          <div class="mb-3">
+            <label for="studentsPassed" class="form-label"
+              >Students Who Passed This Assessment *</label
+            >
+            <input
+              type="number"
+              class="form-control"
+              id="studentsPassed"
+              name="students_passed"
+              required
+              min="0"
+            />
+            <small class="text-muted"
+              >How many students passed THIS specific CLO assessment?</small
+            >
+          </div>
 
-                    <div class="mb-3">
-                        <label for="assessmentTool" class="form-label">Assessment Tool *</label>
-                        <input type="text" class="form-control" id="assessmentTool" name="assessment_tool" required
-                            maxlength="50" placeholder="e.g., Test #3, Lab 2, Final Project">
-                        <small class="text-muted">Brief description (50 characters max)</small>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Assessment</button>
-                </div>
-            </form>
+          <div class="mb-3">
+            <label for="assessmentTool" class="form-label"
+              >Assessment Tool *</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="assessmentTool"
+              name="assessment_tool"
+              required
+              maxlength="50"
+              placeholder="e.g., Test #3, Lab 2, Final Project"
+            />
+            <small class="text-muted"
+              >Brief description (50 characters max)</small
+            >
+          </div>
         </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> Save Assessment
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
+{% endblock %} {% block extra_js %}
 
 <!-- Inject server-side configuration for JavaScript -->
 <script>
-    window.ASSESSMENT_CONFIG = {
-        canEditDueDate: {{ 'true' if can_edit_due_date else 'false' }},
-        csrfToken: "{{ csrf_token() }}",
-        currentUser: {
-            id: "{{ user.user_id }}",
-            email: "{{ user.email }}",
-            role: "{{ user.role }}",
-            firstName: "{{ user.first_name }}",
-            lastName: "{{ user.last_name }}",
-            institutionId: "{{ user.institution_id }}"
-        }
-    };
+  window.ASSESSMENT_CONFIG = {
+      canEditDueDate: {{ 'true' if can_edit_due_date else 'false' }},
+      csrfToken: "{{ csrf_token() }}",
+      currentUser: {
+          id: "{{ user.user_id }}",
+          email: "{{ user.email }}",
+          role: "{{ user.role }}",
+          firstName: "{{ user.first_name }}",
+          lastName: "{{ user.last_name }}",
+          institutionId: "{{ user.institution_id }}"
+      }
+  };
 </script>
 
 <!-- Load external JavaScript -->

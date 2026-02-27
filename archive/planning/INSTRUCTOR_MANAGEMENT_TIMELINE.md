@@ -9,9 +9,11 @@
 ## Phase 1: Data Foundation & Import (Weeks 1-2)
 
 ### Milestone 1.1: MockU Data Import Utility
+
 **Goal:** Backfill Firestore with MockU's existing 1,543 CLO records
 
 **Week 1 Tasks:**
+
 - [ ] Create Excel import utility for MockU's 2024FA spreadsheet
 - [ ] Design enhanced data model supporting CLOs as primary entities
 - [ ] Map MockU fields to new data structure:
@@ -23,6 +25,7 @@
 - [ ] Test import with sample data
 
 **Week 2 Tasks:**
+
 - [ ] Execute full MockU data import (1,543 records)
 - [ ] Verify data integrity and completeness
 - [ ] Create instructor user accounts for all 145 faculty members
@@ -30,6 +33,7 @@
 - [ ] Generate import report and validation summary
 
 **Deliverables:**
+
 - ✅ MockU historical data fully imported
 - ✅ All instructor accounts created
 - ✅ Course-instructor relationships established
@@ -40,9 +44,11 @@
 ## Phase 2: Instructor Management Dashboard (Weeks 3-4)
 
 ### Milestone 2.1: Program Administrator Dashboard
+
 **Goal:** Create Leslie's primary interface for managing instructor workflow
 
 **Week 3 Tasks:**
+
 - [ ] Design instructor management dashboard UI
 - [ ] Implement course status overview with visual indicators:
   - 🔴 Needs Instructor Assignment
@@ -57,6 +63,7 @@
 - [ ] Build instructor progress tracking interface
 
 **Week 4 Tasks:**
+
 - [ ] Implement bulk course assignment workflow
 - [ ] Create instructor invitation system
 - [ ] Build individual instructor status cards
@@ -64,15 +71,18 @@
 - [ ] Implement real-time status updates
 
 **Deliverables:**
+
 - ✅ Program admin can see all courses and their status at a glance
 - ✅ Efficient course assignment workflow
 - ✅ Instructor invitation system ready for testing
 - ✅ Real-time progress tracking
 
 ### Milestone 2.2: Instructor Assignment Workflow
+
 **Goal:** Streamline the process of assigning instructors to courses
 
 **Week 4 Continued:**
+
 - [ ] Drag-and-drop course assignment interface
 - [ ] Auto-suggest instructors based on historical data
 - [ ] Handle multiple course sections efficiently
@@ -84,9 +94,11 @@
 ## Phase 3: Communication System (Weeks 5-6)
 
 ### Milestone 3.1: Email Notification Engine
+
 **Goal:** Automate instructor communications to reduce manual follow-up
 
 **Week 5 Tasks:**
+
 - [ ] Build email template system with customizable messages
 - [ ] Implement invitation emails with direct action links
 - [ ] Create automated reminder schedule:
@@ -102,6 +114,7 @@
   - Data validation issues
 
 **Week 6 Tasks:**
+
 - [ ] Implement bulk communication tools
 - [ ] Create targeted messaging (by course type, instructor experience, etc.)
 - [ ] Build communication log and tracking
@@ -109,15 +122,18 @@
 - [ ] Test email delivery and link functionality
 
 **Deliverables:**
+
 - ✅ Automated reminder system reduces manual follow-up by 80%
 - ✅ Comprehensive email templates for all scenarios
 - ✅ Communication tracking and escalation procedures
 - ✅ Reliable email delivery with action links
 
 ### Milestone 3.2: Instructor Notification Preferences
+
 **Goal:** Allow instructors to control their notification experience
 
 **Week 6 Continued:**
+
 - [ ] Instructor notification preference settings
 - [ ] Email frequency controls (daily digest vs. immediate)
 - [ ] SMS notifications for urgent deadlines (optional)
@@ -128,9 +144,11 @@
 ## Phase 4: Instructor Experience (Weeks 7-8)
 
 ### Milestone 4.1: Streamlined Instructor Dashboard
+
 **Goal:** Create focused instructor experience for efficient data entry
 
 **Week 7 Tasks:**
+
 - [ ] Design instructor dashboard showing assigned courses
 - [ ] Implement progress tracking with visual completion indicators
 - [ ] Create course prioritization (by deadline, importance)
@@ -138,6 +156,7 @@
 - [ ] Add auto-save functionality for data entry forms
 
 **Week 8 Tasks:**
+
 - [ ] Implement the exact data entry form from MockU screenshot:
   - Course info section (course, combo, term)
   - Enrollment data (Enrolled Students, Total W's, pass_course, DCIF)
@@ -148,15 +167,18 @@
 - [ ] Implement data correction request system
 
 **Deliverables:**
+
 - ✅ Instructors can complete course assessments in under 2 hours
 - ✅ Exact replica of MockU's current data entry workflow
 - ✅ Auto-save prevents data loss
 - ✅ Clear submission and confirmation process
 
 ### Milestone 4.2: Mobile-Responsive Design
+
 **Goal:** Allow instructors to work on assessments from any device
 
 **Week 8 Continued:**
+
 - [ ] Mobile-optimized data entry forms
 - [ ] Tablet-friendly interface for detailed work
 - [ ] Touch-friendly controls and navigation
@@ -167,9 +189,11 @@
 ## Phase 5: Data Quality & Reporting (Weeks 9-10)
 
 ### Milestone 5.1: Data Validation & Quality Control
+
 **Goal:** Ensure high-quality assessment data through automated validation
 
 **Week 9 Tasks:**
+
 - [ ] Implement real-time data validation rules:
   - Enrollment numbers must add up correctly
   - Pass rates must be mathematically accurate
@@ -180,6 +204,7 @@
 - [ ] Implement review and approval workflow
 
 **Week 10 Tasks:**
+
 - [ ] Create data correction request system
 - [ ] Build instructor notification for data issues
 - [ ] Implement batch approval for quality submissions
@@ -187,15 +212,18 @@
 - [ ] Create audit trail for all data changes
 
 **Deliverables:**
+
 - ✅ 95% of submissions require no corrections
 - ✅ Automated data quality validation
 - ✅ Efficient review and approval workflow
 - ✅ Complete audit trail for accountability
 
 ### Milestone 5.2: Export & Integration
+
 **Goal:** Maintain compatibility with existing systems (especially Access)
 
 **Week 10 Continued:**
+
 - [ ] Build Access database export functionality
 - [ ] Create Excel export matching MockU's current templates
 - [ ] Implement scheduled automatic exports
@@ -207,9 +235,11 @@
 ## Phase 6: Advanced Features (Weeks 11-12)
 
 ### Milestone 6.1: Analytics & Insights
+
 **Goal:** Provide program administrators with actionable insights
 
 **Week 11 Tasks:**
+
 - [ ] Build program-level assessment reporting
 - [ ] Create trend analysis comparing terms
 - [ ] Implement instructor performance analytics
@@ -217,6 +247,7 @@
 - [ ] Create data-driven improvement recommendations
 
 **Week 12 Tasks:**
+
 - [ ] Design executive dashboard for department leadership
 - [ ] Implement accreditation report generation
 - [ ] Create faculty development targeting based on assessment patterns
@@ -224,15 +255,18 @@
 - [ ] Build success story identification and sharing
 
 **Deliverables:**
+
 - ✅ Program administrators have actionable insights for improvement
 - ✅ Automated accreditation report generation
 - ✅ Data-driven faculty development recommendations
 - ✅ Predictive analytics for early intervention
 
 ### Milestone 6.2: System Optimization
+
 **Goal:** Ensure system performs well under full load
 
 **Week 12 Continued:**
+
 - [ ] Performance optimization for large datasets
 - [ ] Database indexing and query optimization
 - [ ] Caching implementation for frequently accessed data
@@ -244,9 +278,11 @@
 ## Phase 7: Deployment & Training (Weeks 13-14)
 
 ### Milestone 7.1: Production Deployment
+
 **Goal:** Deploy system to production with full MockU data
 
 **Week 13 Tasks:**
+
 - [ ] Production environment setup on Google Cloud Run
 - [ ] SSL certificate and domain configuration
 - [ ] Production database migration with full MockU data
@@ -254,6 +290,7 @@
 - [ ] Monitoring and alerting setup
 
 **Week 14 Tasks:**
+
 - [ ] User acceptance testing with Leslie and key instructors
 - [ ] Performance testing under realistic load
 - [ ] Security testing and vulnerability assessment
@@ -261,15 +298,18 @@
 - [ ] Go-live preparation and rollback procedures
 
 **Deliverables:**
+
 - ✅ System deployed to production with full MockU data
 - ✅ All 145 instructor accounts ready for use
 - ✅ Backup and recovery procedures tested
 - ✅ System ready for full faculty use
 
 ### Milestone 7.2: Training & Support
+
 **Goal:** Ensure successful adoption by instructors and administrators
 
 **Week 14 Continued:**
+
 - [ ] Create training materials specific to MockU workflow
 - [ ] Conduct program administrator training (Leslie and team)
 - [ ] Develop instructor onboarding materials
@@ -281,6 +321,7 @@
 ## Success Metrics & Validation
 
 ### Immediate Success Metrics (End of Phase 7):
+
 - [ ] **Data Import:** All 1,543 CLO records successfully imported
 - [ ] **User Accounts:** All 145 instructor accounts created and tested
 - [ ] **Workflow Efficiency:** Program admin can assign all courses in under 2 hours
@@ -290,6 +331,7 @@
 - [ ] **Integration:** Access export functionality working perfectly
 
 ### Long-term Success Metrics (After 1 full semester):
+
 - [ ] **Compliance:** 95% of instructors complete assessments before deadline
 - [ ] **Quality:** Significant improvement in data consistency and accuracy
 - [ ] **Efficiency:** Assessment compilation time reduced from weeks to hours
@@ -301,18 +343,21 @@
 ## Risk Mitigation
 
 ### Technical Risks:
+
 - **Data Migration Issues:** Comprehensive testing with sample data before full import
 - **Performance Problems:** Load testing and optimization throughout development
 - **Integration Failures:** Early testing of Access export functionality
 - **Security Vulnerabilities:** Regular security reviews and testing
 
 ### User Adoption Risks:
+
 - **Instructor Resistance:** Involve key instructors in design and testing
 - **Training Challenges:** Create comprehensive, role-specific training materials
 - **Change Management:** Gradual rollout with strong support systems
 - **Technical Support:** Dedicated support during initial deployment
 
 ### Project Risks:
+
 - **Scope Creep:** Clear focus on instructor management workflow
 - **Timeline Delays:** Built-in buffer time and parallel development streams
 - **Resource Constraints:** Clear prioritization and milestone-based delivery
@@ -323,12 +368,14 @@
 ## Post-Launch Evolution
 
 ### Phase 8: Optimization (Months 4-6)
+
 - Advanced analytics and reporting features
 - Mobile app development for better instructor experience
 - Integration with additional institutional systems
 - Advanced workflow automation
 
 ### Phase 9: Expansion (Months 7-12)
+
 - Multi-institution support for scaling
 - Advanced accreditation reporting templates
 - Faculty development integration

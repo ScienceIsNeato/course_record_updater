@@ -63,12 +63,14 @@ python scripts/ship_it.py --checks PR --checks format lint tests security types
 ### ⏱️ **Performance Results:**
 
 **Commit Validation (Default):**
+
 - **Format Check**: ~5-10 seconds
 - **Lint Check**: ~5-30 seconds
 - **Test Suite**: ~60-180 seconds (depends on coverage)
 - **Total (commit validation)**: ~2-3 minutes
 
 **PR Validation (Full Suite):**
+
 - **Security Audit**: ~30-45 seconds
 - **SonarCloud Analysis**: ~45-60 seconds
 - **Total (PR validation)**: ~3-5 minutes

@@ -167,7 +167,7 @@ class DataModel:
         return generate_reset_token()
 
     @staticmethod
-    def create_password_reset_data(user_id: str, email: str) -> Dict:
+    def create_password_reset_data(user_id: str, email: str) -> Dict[str, Any]:
         """
         Create password reset token data with expiry
 

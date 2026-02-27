@@ -112,6 +112,10 @@ def get_clos_for_audit():
     try:
         institution_id = get_current_institution_id()
         user = get_current_user()
+        if not user:
+            return jsonify({"success": False, "error": "Not authenticated"}), 401
+        if not institution_id:
+            return jsonify({"success": False, "error": "Not authenticated"}), 401
 
         status_param = request.args.get("status")
         status = None if status_param in (None, "all") else status_param

@@ -220,7 +220,12 @@ class DashboardService:
         return offering_to_course
 
     def _build_institution_summary(
-        self, programs: List, courses: List, users: List, faculty: List, sections: List
+        self,
+        programs: List[Any],
+        courses: List[Any],
+        users: List[Any],
+        faculty: List[Any],
+        sections: List[Any],
     ) -> Dict[str, int]:
         """Build summary statistics for institution."""
         return {
@@ -396,7 +401,7 @@ class DashboardService:
 
     def _process_admin_program_courses(
         self, scoped_programs: List[Dict[str, Any]], institution_id: str
-    ) -> tuple:
+    ) -> tuple[Any, ...]:
         """Process courses across all programs, handling deduplication."""
         courses_dict: Dict[str, Dict[str, Any]] = (
             {}
@@ -457,7 +462,7 @@ class DashboardService:
 
     def _get_sections_and_faculty(
         self, institution_id: str, courses: List[Dict[str, Any]], program_ids: List[str]
-    ) -> tuple:
+    ) -> tuple[Any, ...]:
         """Get sections and faculty data scoped to the programs."""
         # Get scoped sections
         all_sections = get_all_sections(institution_id) or []
@@ -1446,7 +1451,7 @@ class DashboardService:
         self,
         offering: Dict[str, Any],
         course_lookup: Dict[str, Dict[str, Any]],
-    ) -> set:
+    ) -> set[str]:
         """Extract all program IDs associated with an offering."""
         program_ids = set()
 
@@ -1534,7 +1539,7 @@ class DashboardService:
             term_copy["section_count"] = term_section_counts.get(term_key, 0)
 
             # Apply context-aware status (overrides individual calculation)
-            context_status = term_statuses.get(raw_term_id)
+            context_status = term_statuses.get(term_key)
             if context_status:
                 term_copy["status"] = context_status
                 term_copy["is_active"] = context_status == TERM_STATUS_ACTIVE

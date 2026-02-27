@@ -7,17 +7,20 @@ This repository uses GitHub Actions with automated quality gates. The CI system 
 ### 📊 CI Workflows
 
 #### 1. **Quality Gate** (`.github/workflows/quality-gate.yml`)
+
 - **Triggers**: Push/PR to `main`, `develop`
 - **Matrix**: Python 3.9, 3.11, 3.13
 - **Checks**: Format, Lint, Tests (80% coverage), Security, Types
 - **Artifacts**: Coverage reports, security scan results
 
 #### 2. **Pre-commit Hooks** (`.github/workflows/pre-commit.yml`)
+
 - **Triggers**: Push/PR to `main`, `develop`
 - **Purpose**: Validates pre-commit configuration
 - **Tools**: black, isort, flake8, bandit, mypy
 
 #### 3. **Security Scan** (`.github/workflows/security-scan.yml`)
+
 - **Triggers**: Daily at 2 AM UTC, dependency changes
 - **Tools**: Safety, Bandit, CodeQL
 - **Features**: Automatic issue creation on vulnerabilities
@@ -27,10 +30,12 @@ This repository uses GitHub Actions with automated quality gates. The CI system 
 The CI system requires these environment variables to be configured in GitHub repository settings:
 
 ### Required Secrets
+
 - `SAFETY_API_KEY`: For security vulnerability scanning
 - `SONAR_TOKEN`: For SonarCloud code quality analysis (cloud service)
 
 ### Automatic Setup
+
 - **Python version**: Managed via `PYTHON_VERSION` environment variable in workflow
 - **Dependencies**: Automatically cached and installed
 - **Quality checks**: Run automatically on every push/PR
@@ -39,6 +44,7 @@ The CI system requires these environment variables to be configured in GitHub re
 ## 🔧 Local Development Setup
 
 #### Install Pre-commit Hooks
+
 ```bash
 # Install pre-commit
 pip install pre-commit
@@ -51,6 +57,7 @@ pre-commit run --all-files
 ```
 
 #### Run Quality Gates Locally
+
 ```bash
 # Fast commit validation (default - excludes slow security & sonar)
 python scripts/ship_it.py
@@ -68,17 +75,20 @@ python scripts/ship_it.py --checks format lint tests security types
 ### 🎯 Quality Standards
 
 #### **80% Test Coverage Threshold**
+
 - Enforced in both local and CI environments
 - Builds fail if coverage drops below 80%
 - Coverage reports uploaded to Codecov
 
 #### **Security Standards**
+
 - Daily dependency vulnerability scanning
 - Static code analysis with Bandit
 - CodeQL security analysis
 - Automatic issue creation for vulnerabilities
 
 #### **Code Quality Standards**
+
 - Black formatting (88 char line length)
 - Import organization with isort
 - Critical lint errors only (E9, F63, F7, F82)
@@ -88,13 +98,16 @@ python scripts/ship_it.py --checks format lint tests security types
 ### 🏷️ Special CI Triggers
 
 #### **Comprehensive Check Label**
+
 Add the `comprehensive-check` label to a PR to trigger full validation:
+
 - All quality checks (format, lint, tests, security, types, imports)
 - Extended security scanning
 - Performance analysis
 - Full artifact collection
 
 #### **Matrix Testing**
+
 - Python 3.9: Minimum supported version
 - Python 3.11: Primary development version
 - Python 3.13: Latest stable version
@@ -102,16 +115,19 @@ Add the `comprehensive-check` label to a PR to trigger full validation:
 ### 📈 CI Performance
 
 #### **Parallel Execution**
+
 - Quality checks run in parallel jobs
 - Security and type checking as separate jobs
 - Matrix builds for multi-Python support
 
 #### **Caching Strategy**
+
 - pip dependencies cached
 - Pre-commit hooks cached
 - Reduces build time by ~60%
 
 #### **Fail-Fast Strategy**
+
 - Fail-fast behavior is always enabled for immediate feedback
 - Early failure detection saves CI resources and development time
 - Clear failure reporting with artifacts
@@ -120,7 +136,9 @@ Add the `comprehensive-check` label to a PR to trigger full validation:
 ### 🔍 Monitoring & Reporting
 
 #### **Status Badges**
+
 Add to README.md:
+
 ```markdown
 [![Quality Gate](https://github.com/ScienceIsNeato/course_record_updater/workflows/Quality%20Gate/badge.svg)](https://github.com/ScienceIsNeato/course_record_updater/actions/workflows/quality-gate.yml)
 [![Security Scan](https://github.com/ScienceIsNeato/course_record_updater/workflows/Security%20Scan/badge.svg)](https://github.com/ScienceIsNeato/course_record_updater/actions/workflows/security-scan.yml)
@@ -128,6 +146,7 @@ Add to README.md:
 ```
 
 #### **Artifact Collection**
+
 - Coverage reports (XML, HTML)
 - Security scan results (JSON)
 - Type checking reports
@@ -136,6 +155,7 @@ Add to README.md:
 ### 🛡️ Branch Protection
 
 Recommended branch protection rules for `main`:
+
 ```yaml
 # .github/branch-protection.yml
 protection_rules:
@@ -155,17 +175,20 @@ protection_rules:
 ### 📋 Troubleshooting
 
 #### **Common CI Failures**
+
 1. **Coverage Below 80%**: Add more unit tests
 2. **Security Vulnerabilities**: Update dependencies with `pip install --upgrade`
 3. **Type Errors**: Add type annotations or mypy ignores
 4. **Format Errors**: Run `black . && isort .` locally
 
 #### **Local vs CI Differences**
+
 - CI uses clean environment (no local configs)
 - Different Python versions may have different behaviors
 - Network timeouts may affect dependency installation
 
 #### **Performance Issues**
+
 - Use default commit validation for rapid development (78s faster than PR validation)
 - Use `--validation-type PR` only when preparing pull requests
 - Cache dependencies locally with pip-tools

@@ -136,7 +136,7 @@ class CLOWorkflowService:
         reviewer_id: str,
         comments: str,
         send_email: bool = False,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Request rework on a submitted section-level CLO with feedback comments.
 

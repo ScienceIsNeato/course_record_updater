@@ -28,7 +28,9 @@ class TestNewUserRegistrationFlow:
     Email Flow: Registration → Verification
     """
 
-    def test_complete_registration_and_verification_flow(self, browser, base_url):
+    def test_complete_registration_and_verification_flow(
+        self, browser, base_url
+    ):  # overconfidence:short-test-ok
         """
         FULL E2E: User registers → receives email → verifies → logs in
 

@@ -5,11 +5,13 @@
 ### For New Developers
 
 1. Copy the template to create your local environment file:
+
    ```bash
    cp .envrc.template .envrc
    ```
 
 2. Add your secrets to `.envrc`:
+
    ```bash
    # Uncomment and set real values in .envrc (not committed):
    export ETHEREAL_USER="your-username@ethereal.email"
@@ -17,7 +19,7 @@
    export BREVO_API_KEY="your-brevo-api-key"
    export BREVO_SENDER_EMAIL="noreply@yourdomain.com"
    export BREVO_SENDER_NAME="Your App Name"
-   
+
    # Optional (for quality gates):
    export SONAR_TOKEN="your-token-here"
    export SAFETY_API_KEY="your-key-here"
@@ -36,6 +38,7 @@
 The `.envrc.template` file follows a strict pattern to prevent credential override issues:
 
 **✅ DO: Export variables with valid default values**
+
 ```bash
 export DATABASE_URL="sqlite:///course_records.db"
 export LOG_LEVEL="INFO"
@@ -43,12 +46,14 @@ export ETHEREAL_SMTP_HOST="smtp.ethereal.email"  # Valid default
 ```
 
 **✅ DO: Comment out variables that require user-specific values**
+
 ```bash
 # export BREVO_API_KEY="your-api-key-here"
 # export ETHEREAL_USER="your-username@ethereal.email"
 ```
 
 **❌ DON'T: Export placeholder values that would break if used**
+
 ```bash
 export ETHEREAL_USER="your-username@ethereal.email"  # BAD!
 # This placeholder would override real credentials if template is sourced
@@ -65,11 +70,13 @@ When bash sources a file, every `export` statement **overwrites** that variable.
 ### Two-File Approach
 
 **`.envrc.template`** (version controlled):
+
 - Contains all environment logic
 - Defines dev/e2e/ci configurations
 - Safe to commit (no secrets)
 
 **`.envrc`** (gitignored):
+
 - Sources `.envrc.template`
 - Adds your personal secrets
 - Never committed
@@ -78,26 +85,29 @@ When bash sources a file, every `export` statement **overwrites** that variable.
 
 The `APP_ENV` variable controls which environment is active:
 
-| Environment | Port | Database | Use Case |
-|-------------|------|----------|----------|
-| `dev` | 3001 | `course_records_dev.db` | Local development |
-| `e2e` | 3002 | `course_records_e2e.db` | E2E testing (local & CI) |
+| Environment | Port | Database                | Use Case                 |
+| ----------- | ---- | ----------------------- | ------------------------ |
+| `dev`       | 3001 | `course_records_dev.db` | Local development        |
+| `e2e`       | 3002 | `course_records_e2e.db` | E2E testing (local & CI) |
 
 ### Usage Examples
 
 **Development (default)**:
+
 ```bash
 ./restart_server.sh dev
 # Starts on port 3001 with dev database
 ```
 
 **E2E Testing**:
+
 ```bash
 ./run_uat.sh
 # Automatically sets APP_ENV=e2e, uses port 3002
 ```
 
 **Manual Environment Override**:
+
 ```bash
 export APP_ENV="e2e"
 source .envrc
@@ -115,6 +125,7 @@ In CI (GitHub Actions), environment variables are handled differently to prevent
 Navigate to: Repository → Settings → Secrets and variables → Actions → New repository secret
 
 Required secrets:
+
 - `ETHEREAL_USER`: Your Ethereal email username (for E2E tests)
 - `ETHEREAL_PASS`: Your Ethereal email password (for E2E tests)
 - `BREVO_API_KEY`: Your Brevo API key (if testing real emails)
@@ -131,15 +142,16 @@ Required secrets:
     # 1. Export credentials from GitHub secrets FIRST
     export ETHEREAL_USER="${{ secrets.ETHEREAL_USER }}"
     export ETHEREAL_PASS="${{ secrets.ETHEREAL_PASS }}"
-    
+
     # 2. THEN source template (won't override because credentials are commented out)
     source .envrc.template
-    
+
     # 3. Run tests
     python scripts/ship_it.py --checks e2e
 ```
 
 **❌ WRONG ORDER (causes credential override)**:
+
 ```yaml
 - name: Run E2E Tests (BROKEN)
   run: |
@@ -171,13 +183,16 @@ This ensures credentials from GitHub secrets are never overridden.
 ## Troubleshooting
 
 **"Neither .envrc nor .envrc.template found"**
+
 - Solution: Copy `.envrc.template` to `.envrc`
 
 **"Port already in use"**
+
 - Solution: Check which environment is running: `lsof -i :3001 :3002`
 - Each environment uses a different port to avoid conflicts
 
 **Secrets not loading**
+
 - Solution: Verify `.envrc` sources the template and defines secrets after
 - Check: `echo $SONAR_TOKEN` should show your token
 
@@ -190,4 +205,3 @@ This ensures credentials from GitHub secrets are never overridden.
 restart_server.sh        # Sources .envrc or .envrc.template
 run_uat.sh              # Sets APP_ENV=e2e
 ```
-

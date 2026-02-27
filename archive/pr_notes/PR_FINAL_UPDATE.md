@@ -15,12 +15,14 @@ The `/api/outcomes/audit` endpoint exists and works correctly. The failure was d
 ### The Correct Fix
 
 **Graceful error handling IS the right architectural solution** because:
+
 - Stats are supplementary UI, not critical functionality
 - Should never crash the page regardless of backend state
 - Showing `0` is better than breaking the entire dashboard
 - Defense-in-depth approach to error handling
 
 **But I should have**:
+
 1. ✅ Investigated root cause FIRST (documented in `ROOT_CAUSE_ANALYSIS.md`)
 2. ✅ Explained why error handling is the correct fix
 3. ✅ Identified potential deeper fixes if needed (transaction handling, caching, debouncing)
@@ -29,6 +31,7 @@ The `/api/outcomes/audit` endpoint exists and works correctly. The failure was d
 ### Commit Updated
 
 Amended commit `a18775d` with:
+
 - Full root cause analysis
 - Explanation of why graceful degradation is correct
 - Future improvement suggestions
@@ -37,8 +40,8 @@ Amended commit `a18775d` with:
 ### Key Takeaway
 
 Error handling was the RIGHT fix, but the approach was wrong:
+
 - ❌ Jump to symptom treatment without diagnosis
 - ✅ Investigate → Understand → Fix symptom + Document root cause + Consider deeper fixes
 
 Thanks for pushing back on this - it's a better commit now.
-

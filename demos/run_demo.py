@@ -288,7 +288,7 @@ class DemoRunner:
             return False
 
         # Collect artifacts
-        self.collect_artifacts(step.get('artifacts', {}), step_num)
+        self.collect_artifacts(step_num)
 
         # Pause for human if needed
         if not self.auto_mode and step.get('pause_for_human', True) and not self.verify_only:
@@ -743,7 +743,7 @@ class DemoRunner:
             print(f"{RED}  ✗ API call failed: {e}{NC}")
             return False
 
-    def collect_artifacts(self, artifacts: Dict, step_num: int):
+    def collect_artifacts(self, step_num: int):
         """Collect logs for this step (screenshots removed - not needed)."""
         # Artifacts are now just for tracking purposes in JSON
         # Actual log files are written by the application itself

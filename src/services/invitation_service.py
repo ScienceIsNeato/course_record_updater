@@ -474,7 +474,7 @@ class InvitationService:
         return user_data
 
     @staticmethod
-    def _parse_display_name(display_name: Optional[str], email: str) -> tuple:
+    def _parse_display_name(display_name: Optional[str], email: str) -> tuple[str, str]:
         """Parse display name into first and last name components."""
         if display_name and " " in display_name:
             parts = display_name.split(" ")

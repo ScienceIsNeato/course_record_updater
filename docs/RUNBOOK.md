@@ -19,19 +19,19 @@
 
 ### Service URLs
 
-| Environment | URL | GCP Console |
-|-------------|-----|-------------|
-| Production | https://loopcloser.io | [Console](https://console.cloud.google.com/run/detail/us-central1/loopcloser-prod) |
-| Staging | https://staging.loopcloser.io | [Console](https://console.cloud.google.com/run/detail/us-central1/loopcloser-staging) |
-| Dev | https://dev.loopcloser.io | [Console](https://console.cloud.google.com/run/detail/us-central1/loopcloser-dev) |
+| Environment | URL                           | GCP Console                                                                           |
+| ----------- | ----------------------------- | ------------------------------------------------------------------------------------- |
+| Production  | https://loopcloser.io         | [Console](https://console.cloud.google.com/run/detail/us-central1/loopcloser-prod)    |
+| Staging     | https://staging.loopcloser.io | [Console](https://console.cloud.google.com/run/detail/us-central1/loopcloser-staging) |
+| Dev         | https://dev.loopcloser.io     | [Console](https://console.cloud.google.com/run/detail/us-central1/loopcloser-dev)     |
 
 ### Key Contacts
 
-| Role | Contact |
-|------|---------|
-| Primary Developer | (Add contact) |
+| Role                  | Contact       |
+| --------------------- | ------------- |
+| Primary Developer     | (Add contact) |
 | Pilot Partner Contact | (Add contact) |
-| GCP Admin | (Add contact) |
+| GCP Admin             | (Add contact) |
 
 ### Important Links
 
@@ -54,6 +54,7 @@ curl -s https://dev.loopcloser.io/health | jq .
 ```
 
 Expected response:
+
 ```json
 {
   "status": "healthy",
@@ -225,12 +226,12 @@ gcloud run services update-traffic loopcloser-prod \
 
 ### Severity Levels
 
-| Level | Description | Response Time |
-|-------|-------------|---------------|
-| SEV-1 | Service down, all users affected | Immediate |
-| SEV-2 | Major feature broken | Within 1 hour |
-| SEV-3 | Minor issue, workaround exists | Within 24 hours |
-| SEV-4 | Cosmetic/low impact | Next business day |
+| Level | Description                      | Response Time     |
+| ----- | -------------------------------- | ----------------- |
+| SEV-1 | Service down, all users affected | Immediate         |
+| SEV-2 | Major feature broken             | Within 1 hour     |
+| SEV-3 | Minor issue, workaround exists   | Within 24 hours   |
+| SEV-4 | Cosmetic/low impact              | Next business day |
 
 ### SEV-1: Service Down
 
@@ -307,6 +308,7 @@ gcloud run logs read --service=loopcloser-prod --region=us-central1 \
 Access: [Cloud Monitoring Console](https://console.cloud.google.com/monitoring)
 
 Key metrics to watch:
+
 - Request count
 - Latency (p50, p95, p99)
 - Error rate
@@ -417,5 +419,3 @@ sqlite3 /tmp/loopcloser.db
 SELECT COUNT(*) FROM users;
 SELECT * FROM users LIMIT 5;
 ```
-
-

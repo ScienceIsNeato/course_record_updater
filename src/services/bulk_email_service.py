@@ -5,7 +5,7 @@ Handles sending emails to multiple recipients with progress tracking.
 """
 
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from flask import current_app
 from sqlalchemy.orm import Session
@@ -69,7 +69,7 @@ class BulkEmailService:
                 )
                 continue
 
-            if not user.email:
+            if not cast(Optional[str], user.email):
                 logger.warning(
                     f"[BulkEmailService] Instructor {instructor_id} has no email, skipping"
                 )
@@ -127,7 +127,7 @@ class BulkEmailService:
     def _send_emails_background(
         app: "Any",
         job_id: str,
-        recipients: List[Dict],
+        recipients: List[Dict[str, Any]],
         personal_message: Optional[str],
         term: Optional[str],
         deadline: Optional[str],
@@ -394,7 +394,7 @@ class BulkEmailService:
         return text
 
     @staticmethod
-    def get_job_status(db: Session, job_id: str) -> Optional[Dict]:
+    def get_job_status(db: Session, job_id: str) -> Optional[Dict[str, Any]]:
         """
         Get status of a bulk email job.
 
@@ -414,7 +414,7 @@ class BulkEmailService:
     @staticmethod
     def get_recent_jobs(
         db: Session, user_id: Optional[str] = None, limit: int = 50
-    ) -> List[Dict]:
+    ) -> List[Dict[str, Any]]:
         """
         Get recent bulk email jobs.
 

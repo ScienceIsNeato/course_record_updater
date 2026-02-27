@@ -172,18 +172,21 @@
 ## Technical Considerations
 
 ### Database Access Patterns
+
 - Site admins need read/write access to all collections
 - Implement row-level security bypass for admin operations
 - Maintain audit logs for all admin actions
 - Ensure admin operations don't impact user performance
 
 ### UI/UX Requirements
+
 - Global search across all institutions and users
 - Bulk operation capabilities for efficiency
 - Advanced filtering and reporting tools
 - Clear visual indicators for different user contexts
 
 ### Security Requirements
+
 - Multi-factor authentication mandatory for site admins
 - IP restrictions for admin access
 - Session timeout policies for sensitive operations

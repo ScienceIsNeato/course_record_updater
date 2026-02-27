@@ -1,261 +1,375 @@
 <!-- Excel Import Modal -->
-<div class="modal fade" id="excelImportModal" tabindex="-1" aria-labelledby="excelImportModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="excelImportModalLabel">
-                    <i class="fas fa-file-excel text-success me-2"></i>Excel Data Import
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <strong>Import Data:</strong> <span id="importDataTypeLabel">Select data type to import</span>
-                </div>
-
-                <form id="excelImportForm" enctype="multipart/form-data">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                    <div class="row g-3">
-                        <!-- File Selection -->
-                        <div class="col-md-6">
-                            <label for="excel_file" class="form-label">Select Excel File (.xlsx, .xls):</label>
-                            <input type="file" class="form-control" id="excel_file" name="excel_file"
-                                accept=".xlsx,.xls" required>
-                        </div>
-
-                        <!-- Import Format -->
-                        <div class="col-md-6">
-                            <label for="import_adapter" class="form-label">Import Format:</label>
-                            <select class="form-select" id="import_adapter" name="import_adapter" required>
-                                <option value="mocku_excel_adapter" selected>MockU Excel Format</option>
-                                <option value="generic_excel_adapter">Generic Excel Format</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Conflict Resolution Strategy -->
-                    <div class="row g-3 mt-2">
-                        <div class="col-12">
-                            <fieldset>
-                                <legend class="form-label">Conflict Resolution Strategy:</legend>
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="conflict_strategy"
-                                                id="use_theirs" value="use_theirs" checked>
-                                            <label class="form-check-label" for="use_theirs">
-                                                <strong>Use Import Data</strong><br>
-                                                <small class="text-muted">Overwrite existing with imported
-                                                    values</small>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="conflict_strategy"
-                                                id="use_mine" value="use_mine">
-                                            <label class="form-check-label" for="use_mine">
-                                                <strong>Keep Existing</strong><br>
-                                                <small class="text-muted">Skip conflicts, keep database data</small>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="conflict_strategy"
-                                                id="merge" value="merge">
-                                            <label class="form-check-label" for="merge">
-                                                <strong>Merge Data</strong><br>
-                                                <small class="text-muted">Intelligently combine both</small>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="conflict_strategy"
-                                                id="manual_review" value="manual_review">
-                                            <label class="form-check-label" for="manual_review">
-                                                <strong>Manual Review</strong><br>
-                                                <small class="text-muted">Flag conflicts for review</small>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </fieldset>
-                        </div>
-                    </div>
-
-                    <!-- Options -->
-                    <div class="row g-3 mt-2">
-                        <div class="col-md-4">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="dry_run" name="dry_run">
-                                <label class="form-check-label" for="dry_run">
-                                    <strong>Dry Run (Test Mode)</strong><br>
-                                    <small class="text-muted">Preview changes without saving to database</small>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="verbose_output"
-                                    name="verbose_output">
-                                <label class="form-check-label" for="verbose_output">
-                                    <strong>Detailed Output</strong><br>
-                                    <small class="text-muted">Show detailed progress information</small>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="delete_existing_db"
-                                    name="delete_existing_db">
-                                <label class="form-check-label" for="delete_existing_db">
-                                    <strong>⚠️ Delete Existing Database</strong><br>
-                                    <small class="text-muted">Clear all data before import (DESTRUCTIVE)</small>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Hidden field for data type -->
-                    <input type="hidden" id="import_data_type" name="import_data_type" value="">
-                </form>
-
-                <!-- Progress Section -->
-                <div id="importProgress" class="mt-4" style="display: none;">
-                    <h6>Import Progress</h6>
-                    <progress id="importProgressBar" class="w-100" value="0" max="100" style="height: 1.5rem;"
-                        aria-label="Import progress">0%</progress>
-                    <div id="importStatus" class="mt-2 small text-muted">Ready to start import...</div>
-                </div>
-
-                <!-- Results Section -->
-                <div id="importResults" class="mt-4" style="display: none;">
-                    <h6>Import Results</h6>
-                    <div id="importResultsContent"></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-outline-success" id="validateFileBtn"
-                    onclick="validateImportFile()">
-                    <i class="fas fa-check-circle me-1"></i>Validate File Only
-                </button>
-                <button type="button" class="btn btn-success" id="executeImportBtn" onclick="executeImport()">
-                    <i class="fas fa-upload me-1"></i>Execute Import
-                </button>
-            </div>
+<div
+  class="modal fade"
+  id="excelImportModal"
+  tabindex="-1"
+  aria-labelledby="excelImportModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="excelImportModalLabel">
+          <i class="fas fa-file-excel text-success me-2"></i>Excel Data Import
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle me-2"></i>
+          <strong>Import Data:</strong>
+          <span id="importDataTypeLabel">Select data type to import</span>
         </div>
+
+        <form id="excelImportForm" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <div class="row g-3">
+            <!-- File Selection -->
+            <div class="col-md-6">
+              <label for="excel_file" class="form-label"
+                >Select Excel File (.xlsx, .xls):</label
+              >
+              <input
+                type="file"
+                class="form-control"
+                id="excel_file"
+                name="excel_file"
+                accept=".xlsx,.xls"
+                required
+              />
+            </div>
+
+            <!-- Import Format -->
+            <div class="col-md-6">
+              <label for="import_adapter" class="form-label"
+                >Import Format:</label
+              >
+              <select
+                class="form-select"
+                id="import_adapter"
+                name="import_adapter"
+                required
+              >
+                <option value="mocku_excel_adapter" selected>
+                  MockU Excel Format
+                </option>
+                <option value="generic_excel_adapter">
+                  Generic Excel Format
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Conflict Resolution Strategy -->
+          <div class="row g-3 mt-2">
+            <div class="col-12">
+              <fieldset>
+                <legend class="form-label">
+                  Conflict Resolution Strategy:
+                </legend>
+                <div class="row">
+                  <div class="col-md-3">
+                    <div class="form-check">
+                      <input
+                        class="form-check-input"
+                        type="radio"
+                        name="conflict_strategy"
+                        id="use_theirs"
+                        value="use_theirs"
+                        checked
+                      />
+                      <label class="form-check-label" for="use_theirs">
+                        <strong>Use Import Data</strong><br />
+                        <small class="text-muted"
+                          >Overwrite existing with imported values</small
+                        >
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="form-check">
+                      <input
+                        class="form-check-input"
+                        type="radio"
+                        name="conflict_strategy"
+                        id="use_mine"
+                        value="use_mine"
+                      />
+                      <label class="form-check-label" for="use_mine">
+                        <strong>Keep Existing</strong><br />
+                        <small class="text-muted"
+                          >Skip conflicts, keep database data</small
+                        >
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="form-check">
+                      <input
+                        class="form-check-input"
+                        type="radio"
+                        name="conflict_strategy"
+                        id="merge"
+                        value="merge"
+                      />
+                      <label class="form-check-label" for="merge">
+                        <strong>Merge Data</strong><br />
+                        <small class="text-muted"
+                          >Intelligently combine both</small
+                        >
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="form-check">
+                      <input
+                        class="form-check-input"
+                        type="radio"
+                        name="conflict_strategy"
+                        id="manual_review"
+                        value="manual_review"
+                      />
+                      <label class="form-check-label" for="manual_review">
+                        <strong>Manual Review</strong><br />
+                        <small class="text-muted"
+                          >Flag conflicts for review</small
+                        >
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+            </div>
+          </div>
+
+          <!-- Options -->
+          <div class="row g-3 mt-2">
+            <div class="col-md-4">
+              <div class="form-check form-switch">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="dry_run"
+                  name="dry_run"
+                />
+                <label class="form-check-label" for="dry_run">
+                  <strong>Dry Run (Test Mode)</strong><br />
+                  <small class="text-muted"
+                    >Preview changes without saving to database</small
+                  >
+                </label>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-check form-switch">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="verbose_output"
+                  name="verbose_output"
+                />
+                <label class="form-check-label" for="verbose_output">
+                  <strong>Detailed Output</strong><br />
+                  <small class="text-muted"
+                    >Show detailed progress information</small
+                  >
+                </label>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-check form-switch">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="delete_existing_db"
+                  name="delete_existing_db"
+                />
+                <label class="form-check-label" for="delete_existing_db">
+                  <strong>⚠️ Delete Existing Database</strong><br />
+                  <small class="text-muted"
+                    >Clear all data before import (DESTRUCTIVE)</small
+                  >
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hidden field for data type -->
+          <input
+            type="hidden"
+            id="import_data_type"
+            name="import_data_type"
+            value=""
+          />
+        </form>
+
+        <!-- Progress Section -->
+        <div id="importProgress" class="mt-4" style="display: none">
+          <h6>Import Progress</h6>
+          <progress
+            id="importProgressBar"
+            class="w-100"
+            value="0"
+            max="100"
+            style="height: 1.5rem"
+            aria-label="Import progress"
+          >
+            0%
+          </progress>
+          <div id="importStatus" class="mt-2 small text-muted">
+            Ready to start import...
+          </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="importResults" class="mt-4" style="display: none">
+          <h6>Import Results</h6>
+          <div id="importResultsContent"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-success"
+          id="validateFileBtn"
+          onclick="validateImportFile()"
+        >
+          <i class="fas fa-check-circle me-1"></i>Validate File Only
+        </button>
+        <button
+          type="button"
+          class="btn btn-success"
+          id="executeImportBtn"
+          onclick="executeImport()"
+        >
+          <i class="fas fa-upload me-1"></i>Execute Import
+        </button>
+      </div>
     </div>
+  </div>
 </div>
 
 <script>
-    // Global variable to track current import type
-    let currentImportType = '';
+  // Global variable to track current import type
+  let currentImportType = "";
 
-    // Function to open import modal for specific data type
-    function openImportModal(dataType) {
-        currentImportType = dataType;
-        document.getElementById('import_data_type').value = dataType;
+  // Function to open import modal for specific data type
+  function openImportModal(dataType) {
+    currentImportType = dataType;
+    document.getElementById("import_data_type").value = dataType;
 
-        // Update modal title and description based on data type
-        const dataTypeLabels = {
-            'institutions': 'Institution data (names, addresses, contact info)',
-            'programs': 'Academic program data (names, descriptions, requirements)',
-            'courses': 'Course catalog data (titles, descriptions, credit hours)',
-            'users': 'User account data (faculty, staff, administrators)',
-            'faculty': 'Faculty member data (names, departments, contact info)',
-            'students': 'Student enrollment data (names, IDs, program assignments)',
-            'sections': 'Course section data (schedules, instructors, enrollment)',
-            'assessments': 'Assessment and outcome data (Learning Outcomes, Program Outcomes, rubrics)'
-        };
+    // Update modal title and description based on data type
+    const dataTypeLabels = {
+      institutions: "Institution data (names, addresses, contact info)",
+      programs: "Academic program data (names, descriptions, requirements)",
+      courses: "Course catalog data (titles, descriptions, credit hours)",
+      users: "User account data (faculty, staff, administrators)",
+      faculty: "Faculty member data (names, departments, contact info)",
+      students: "Student enrollment data (names, IDs, program assignments)",
+      sections: "Course section data (schedules, instructors, enrollment)",
+      assessments:
+        "Assessment and outcome data (Learning Outcomes, Program Outcomes, rubrics)",
+    };
 
-        document.getElementById('importDataTypeLabel').textContent = dataTypeLabels[dataType] || 'Selected data type';
+    document.getElementById("importDataTypeLabel").textContent =
+      dataTypeLabels[dataType] || "Selected data type";
 
-        // Show the modal
-        const modal = new bootstrap.Modal(document.getElementById('excelImportModal'));
-        modal.show();
+    // Show the modal
+    const modal = new bootstrap.Modal(
+      document.getElementById("excelImportModal"),
+    );
+    modal.show();
+  }
+
+  // Function to validate import file
+  function validateImportFile() {
+    const form = document.getElementById("excelImportForm");
+    const formData = new FormData(form);
+    formData.set("dry_run", "true"); // Force dry run for validation
+
+    executeImportRequest(formData, true);
+  }
+
+  // Function to execute import
+  function executeImport() {
+    const form = document.getElementById("excelImportForm");
+    const formData = new FormData(form);
+
+    executeImportRequest(formData, false);
+  }
+
+  // Function to execute import request
+  function executeImportRequest(formData, isValidation) {
+    // Validate file is selected before proceeding
+    const fileInput = document.getElementById("excel_file");
+    if (!fileInput.files || fileInput.files.length === 0) {
+      alert("Please select an Excel file before proceeding.");
+      return;
     }
 
-    // Function to validate import file
-    function validateImportFile() {
-        const form = document.getElementById('excelImportForm');
-        const formData = new FormData(form);
-        formData.set('dry_run', 'true'); // Force dry run for validation
-
-        executeImportRequest(formData, true);
+    // Debug: Log form data contents
+    console.log("FormData contents:");
+    for (let [key, value] of formData.entries()) {
+      console.log(key, value);
     }
 
-    // Function to execute import
-    function executeImport() {
-        const form = document.getElementById('excelImportForm');
-        const formData = new FormData(form);
+    const progressDiv = document.getElementById("importProgress");
+    const resultsDiv = document.getElementById("importResults");
+    const progressBar = document.getElementById("importProgressBar");
+    const statusDiv = document.getElementById("importStatus");
+    const resultsContent = document.getElementById("importResultsContent");
 
-        executeImportRequest(formData, false);
-    }
+    // Show progress, hide results
+    progressDiv.style.display = "block";
+    resultsDiv.style.display = "none";
 
-    // Function to execute import request
-    function executeImportRequest(formData, isValidation) {
-        // Validate file is selected before proceeding
-        const fileInput = document.getElementById('excel_file');
-        if (!fileInput.files || fileInput.files.length === 0) {
-            alert('Please select an Excel file before proceeding.');
-            return;
-        }
+    // Reset progress
+    progressBar.style.width = "0%";
+    progressBar.setAttribute("aria-valuenow", 0);
+    progressBar.textContent = "0%";
+    statusDiv.textContent = isValidation
+      ? "Validating file..."
+      : "Starting import...";
 
-        // Debug: Log form data contents
-        console.log('FormData contents:');
-        for (let [key, value] of formData.entries()) {
-            console.log(key, value);
-        }
+    // Disable buttons
+    document.getElementById("validateFileBtn").disabled = true;
+    document.getElementById("executeImportBtn").disabled = true;
 
-        const progressDiv = document.getElementById('importProgress');
-        const resultsDiv = document.getElementById('importResults');
-        const progressBar = document.getElementById('importProgressBar');
-        const statusDiv = document.getElementById('importStatus');
-        const resultsContent = document.getElementById('importResultsContent');
+    // Make the API request
+    fetch("/api/import/excel", {
+      method: "POST",
+      body: formData,
+      credentials: "include",
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          // Update progress bar to 100% before hiding
+          progressBar.style.width = "100%";
+          progressBar.setAttribute("aria-valuenow", 100);
+          progressBar.textContent = "100%";
+          statusDiv.textContent = isValidation
+            ? "Validation completed!"
+            : "Import completed!";
 
-        // Show progress, hide results
-        progressDiv.style.display = 'block';
-        resultsDiv.style.display = 'none';
+          // Brief delay to show 100% completion
+          setTimeout(() => {
+            // Hide progress, show results
+            progressDiv.style.display = "none";
+            resultsDiv.style.display = "block";
 
-        // Reset progress
-        progressBar.style.width = '0%';
-        progressBar.setAttribute('aria-valuenow', 0);
-        progressBar.textContent = '0%';
-        statusDiv.textContent = isValidation ? 'Validating file...' : 'Starting import...';
-
-        // Disable buttons
-        document.getElementById('validateFileBtn').disabled = true;
-        document.getElementById('executeImportBtn').disabled = true;
-
-        // Make the API request
-        fetch('/api/import/excel', {
-            method: 'POST',
-            body: formData,
-            credentials: 'include'
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Update progress bar to 100% before hiding
-                    progressBar.style.width = '100%';
-                    progressBar.setAttribute('aria-valuenow', 100);
-                    progressBar.textContent = '100%';
-                    statusDiv.textContent = isValidation ? 'Validation completed!' : 'Import completed!';
-
-                    // Brief delay to show 100% completion
-                    setTimeout(() => {
-                        // Hide progress, show results
-                        progressDiv.style.display = 'none';
-                        resultsDiv.style.display = 'block';
-
-                        resultsContent.innerHTML = `
+            resultsContent.innerHTML = `
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle me-2"></i>
-                        <strong>${isValidation ? 'Validation' : 'Import'} completed successfully!</strong>
+                        <strong>${isValidation ? "Validation" : "Import"} completed successfully!</strong>
                         <div class="mt-2">
                             <div>Records processed: ${data.records_processed || 0}</div>
                             <div>Records created: ${data.records_created || 0}</div>
@@ -265,67 +379,67 @@
                     </div>
                 `;
 
-                        // Auto-reload the page after 2 seconds for successful imports (not validations)
-                        if (!isValidation) {
-                            setTimeout(() => {
-                                window.location.reload();
-                            }, 2000);
-                        }
-                    }, 500); // 500ms delay to show completion
-                } else {
-                    // Hide progress immediately on error
-                    progressDiv.style.display = 'none';
-                    resultsDiv.style.display = 'block';
-                    resultsContent.innerHTML = `
+            // Auto-reload the page after 2 seconds for successful imports (not validations)
+            if (!isValidation) {
+              setTimeout(() => {
+                window.location.reload();
+              }, 2000);
+            }
+          }, 500); // 500ms delay to show completion
+        } else {
+          // Hide progress immediately on error
+          progressDiv.style.display = "none";
+          resultsDiv.style.display = "block";
+          resultsContent.innerHTML = `
                 <div class="alert alert-danger">
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>${isValidation ? 'Validation' : 'Import'} failed:</strong>
-                    <div class="mt-2">${data.error || 'Unknown error occurred'}</div>
+                    <strong>${isValidation ? "Validation" : "Import"} failed:</strong>
+                    <div class="mt-2">${data.error || "Unknown error occurred"}</div>
                 </div>
             `;
-                }
-            })
-            .catch(error => {
-                // Hide progress, show results
-                progressDiv.style.display = 'none';
-                resultsDiv.style.display = 'block';
+        }
+      })
+      .catch((error) => {
+        // Hide progress, show results
+        progressDiv.style.display = "none";
+        resultsDiv.style.display = "block";
 
-                resultsContent.innerHTML = `
+        resultsContent.innerHTML = `
             <div class="alert alert-danger">
                 <i class="fas fa-exclamation-triangle me-2"></i>
-                <strong>Error:</strong> ${error.message || 'Network error occurred'}
+                <strong>Error:</strong> ${error.message || "Network error occurred"}
             </div>
         `;
-            })
-            .finally(() => {
-                // Re-enable buttons
-                document.getElementById('validateFileBtn').disabled = false;
-                document.getElementById('executeImportBtn').disabled = false;
-            });
-    }
+      })
+      .finally(() => {
+        // Re-enable buttons
+        document.getElementById("validateFileBtn").disabled = false;
+        document.getElementById("executeImportBtn").disabled = false;
+      });
+  }
 
-    // Functions called by dashboard panels
-    function importData(dataType) {
-        openImportModal(dataType);
-    }
+  // Functions called by dashboard panels
+  function importData(dataType) {
+    openImportModal(dataType);
+  }
 
-    function programImportData(dataType) {
-        openImportModal(dataType);
-    }
+  function programImportData(dataType) {
+    openImportModal(dataType);
+  }
 
-    function institutionImportData(dataType) {
-        openImportModal(dataType);
-    }
+  function institutionImportData(dataType) {
+    openImportModal(dataType);
+  }
 
-    function quickImport() {
-        openImportModal('courses'); // Default to courses for quick import
-    }
+  function quickImport() {
+    openImportModal("courses"); // Default to courses for quick import
+  }
 
-    function programQuickImport() {
-        openImportModal('courses'); // Default to courses for program quick import
-    }
+  function programQuickImport() {
+    openImportModal("courses"); // Default to courses for program quick import
+  }
 
-    function institutionQuickImport() {
-        openImportModal('programs'); // Default to programs for institution quick import
-    }
+  function institutionQuickImport() {
+    openImportModal("programs"); // Default to programs for institution quick import
+  }
 </script>

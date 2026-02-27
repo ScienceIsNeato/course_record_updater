@@ -4,9 +4,11 @@ Bulk Email Job Model
 Tracks bulk email operations for progress monitoring and history.
 """
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from sqlalchemy import JSON, Column, DateTime, Integer, String, Text
 from sqlalchemy.orm import Session
@@ -65,17 +67,18 @@ class BulkEmailJob(Base):  # type: ignore[misc,valid-type]
             f"status={self.status}, sent={self.emails_sent}/{self.recipient_count})>"
         )
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for API responses"""
+        created_at = cast(Optional[datetime], self.created_at)
+        started_at = cast(Optional[datetime], self.started_at)
+        completed_at = cast(Optional[datetime], self.completed_at)
         return {
             "id": self.id,
             "job_type": self.job_type,
             "created_by_user_id": self.created_by_user_id,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": (
-                self.completed_at.isoformat() if self.completed_at else None
-            ),
+            "created_at": created_at.isoformat() if created_at else None,
+            "started_at": started_at.isoformat() if started_at else None,
+            "completed_at": (completed_at.isoformat() if completed_at else None),
             "recipient_count": self.recipient_count,
             "status": self.status,
             "emails_sent": self.emails_sent,
@@ -89,17 +92,18 @@ class BulkEmailJob(Base):  # type: ignore[misc,valid-type]
 
     def _calculate_progress_percentage(self) -> int:
         """Calculate progress as percentage"""
-        if self.recipient_count == 0:
+        recipient_count = cast(int, self.recipient_count)
+        if recipient_count == 0:
             return 0
-        completed = self.emails_sent + self.emails_failed
-        return int((completed / self.recipient_count) * 100)
+        completed = cast(int, self.emails_sent) + cast(int, self.emails_failed)
+        return int((completed / recipient_count) * 100)
 
     def update_progress(
         self,
         emails_sent: int,
         emails_failed: int,
         emails_pending: int,
-        failed_recipients: Optional[List[Dict]] = None,
+        failed_recipients: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
         """Update job progress"""
         self.emails_sent = emails_sent  # type: ignore[assignment]
@@ -110,12 +114,12 @@ class BulkEmailJob(Base):  # type: ignore[misc,valid-type]
             self.failed_recipients = failed_recipients  # type: ignore[assignment]
 
         # Update status based on progress
-        if self.status == "pending":
+        if cast(str, self.status) == "pending":
             self.status = "running"  # type: ignore[assignment]
             self.started_at = datetime.now(timezone.utc)  # type: ignore[assignment]
 
         # Check if completed
-        if emails_pending == 0 and self.status == "running":
+        if emails_pending == 0 and cast(str, self.status) == "running":
             self.status = "completed"  # type: ignore[assignment]
             self.completed_at = datetime.now(timezone.utc)  # type: ignore[assignment]
             logger.info(
@@ -141,8 +145,8 @@ class BulkEmailJob(Base):  # type: ignore[misc,valid-type]
         db: Session,
         job_type: str,
         created_by_user_id: str,
-        recipients: List[Dict],
-        template_data: Optional[Dict] = None,
+        recipients: List[Dict[str, Any]],
+        template_data: Optional[Dict[str, Any]] = None,
         personal_message: Optional[str] = None,
     ) -> "BulkEmailJob":
         """
@@ -205,4 +209,4 @@ class BulkEmailJob(Base):  # type: ignore[misc,valid-type]
         if user_id:
             query = query.filter(BulkEmailJob.created_by_user_id == user_id)
 
-        return query.order_by(BulkEmailJob.created_at.desc()).limit(limit).all()
+        return query.order_by(BulkEmailJob.created_at.desc()).limit(limit).all()  # type: ignore[union-attr]

@@ -1,0 +1,46 @@
+{
+  "myopia": {
+    "exclude_dirs": [
+      "logs",
+      "templates",
+      ".agent",
+      ".vscode",
+      "docs",
+      "archive",
+      "flask_session",
+      "demos",
+      "deploy",
+      "research",
+      "static",
+      ".github",
+      "data"
+    ],
+    "gates": {
+      "source-duplication": {
+        "threshold": 6
+      },
+      "security-scan": {
+        "enabled": false,
+        "config_file_path": ".secrets.baseline"
+      },
+      "loc-lock": {
+        "max_file_lines": 3000,
+        "max_function_lines": 500
+      }
+    }
+  },
+  "overconfidence": {
+    "gates": {
+      "py-types": {
+        "strict": false
+      }
+    }
+  },
+  "laziness": {
+    "gates": {
+      "dead-code": {
+        "whitelist_file": "vulture_whitelist.py"
+      }
+    }
+  }
+}

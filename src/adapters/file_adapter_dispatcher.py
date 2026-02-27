@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import importlib
 import os
-from typing import Any, List, Optional
-
-import docx
+from typing import TYPE_CHECKING, Any, List, Optional
 
 from src.utils.logging_config import get_logger
 
 from .base_adapter import BaseAdapter, ValidationError
+
+if TYPE_CHECKING:
+    from docx.document import Document as DocxDocument
 
 # Get logger for file adapter operations
 logger = get_logger("FileAdapter")
@@ -78,7 +81,7 @@ class FileAdapterDispatcher:
         return adapter_names
 
     def process_file(
-        self, document: docx.document.Document, adapter_name: str
+        self, document: DocxDocument, adapter_name: str
     ) -> List[dict[str, Any]]:
         """
         Loads the specified adapter, calls its parse function, and optionally validates.
@@ -143,7 +146,7 @@ class FileAdapterDispatcher:
         return adapter_instance
 
     def _parse_document(
-        self, adapter_instance: Any, document: docx.document.Document
+        self, adapter_instance: Any, document: DocxDocument
     ) -> List[dict[str, Any]]:
         """Parse the document using the adapter instance."""
         class_name = adapter_instance.__class__.__name__

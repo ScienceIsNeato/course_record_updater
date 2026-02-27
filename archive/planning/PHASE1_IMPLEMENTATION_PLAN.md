@@ -17,6 +17,7 @@
 ## 1. Data Model Evolution
 
 ### Current State Analysis
+
 ```python
 # Current flat model (works, but limited)
 course_record = {
@@ -30,6 +31,7 @@ course_record = {
 ```
 
 ### Target Relational Model
+
 ```python
 # New entity structure
 User = {
@@ -95,6 +97,7 @@ CourseOutcome = {
 ```
 
 ### Migration Strategy
+
 1. **Dual-model support**: New collections alongside existing `courses` collection
 2. **Backward compatibility**: Keep current API working during transition
 3. **Data bridging**: Functions to convert between flat and relational models
@@ -105,6 +108,7 @@ CourseOutcome = {
 ## 2. Database Service Extensions
 
 ### Current `database_service.py` Strengths
+
 - ✅ Clean abstraction pattern
 - ✅ Error handling framework
 - ✅ Firestore client management
@@ -113,6 +117,7 @@ CourseOutcome = {
 ### Required Extensions
 
 **New Entity Collections:**
+
 ```python
 # Add to database_service.py
 USERS_COLLECTION = 'users'
@@ -125,6 +130,7 @@ COURSES_COLLECTION = 'courses'  # Current flat model
 ```
 
 **New Service Functions:**
+
 ```python
 # User management
 def create_user(user_data: dict) -> str
@@ -159,17 +165,21 @@ def update_outcome_assessment(outcome_id: str, assessment_data: dict) -> bool
 ## 3. Authentication & Authorization
 
 ### Authentication Strategy
+
 **Option A: Firebase Auth Integration** (Recommended)
+
 - ✅ Integrates seamlessly with Firestore
 - ✅ Handles email/password, SSO, MFA
 - ✅ Session management built-in
 - ✅ MockU can use existing institutional email
 
 **Option B: Custom JWT Implementation**
+
 - More control but more complexity
 - Would need separate session management
 
 ### Role-Based Access Control
+
 ```python
 ROLES = {
     'instructor': {
@@ -202,6 +212,7 @@ ROLES = {
 ```
 
 ### Flask Integration
+
 ```python
 # Add to app.py
 from functools import wraps
@@ -234,6 +245,7 @@ def role_required(required_role):
 ### Current Single-Page App → REST API
 
 **Current Routes:**
+
 ```python
 GET  /                    # Single page with forms and table
 POST /add                 # Manual course entry
@@ -243,6 +255,7 @@ DELETE /delete_course/<id> # Delete course
 ```
 
 **Target REST API Structure:**
+
 ```python
 # Authentication
 GET  /login              # Login page
@@ -291,38 +304,47 @@ GET    /api/import/status/<import_id>   # Import status
 ## 5. Implementation Sequence
 
 ### Week 1: Data Model & Database Service
+
 **Days 1-2:**
+
 - [ ] Design and document complete data model
 - [ ] Extend `database_service.py` with new entity functions
 - [ ] Create migration utilities for backward compatibility
 - [ ] Add comprehensive unit tests for new functions
 
 **Days 3-5:**
+
 - [ ] Implement User management functions
 - [ ] Implement Course and Term management
 - [ ] Implement CourseSection management
 - [ ] Test all new database operations
 
 ### Week 2: Authentication & Authorization
+
 **Days 1-3:**
+
 - [ ] Set up Firebase Auth integration
 - [ ] Implement login/logout functionality
 - [ ] Add role-based access control decorators
 - [ ] Create user registration/management UI
 
 **Days 4-5:**
+
 - [ ] Integrate authentication with existing routes
 - [ ] Add session management
 - [ ] Test authentication flow end-to-end
 
 ### Week 3: API Restructuring & UI Evolution
+
 **Days 1-3:**
+
 - [ ] Create new REST API endpoints
 - [ ] Maintain backward compatibility with existing routes
 - [ ] Add role-based dashboard views
 - [ ] Test API endpoints
 
 **Days 4-5:**
+
 - [ ] Begin UI transformation (instructor dashboard)
 - [ ] Add basic course section assignment interface
 - [ ] Integration testing with new data model
@@ -333,6 +355,7 @@ GET    /api/import/status/<import_id>   # Import status
 ## 6. Success Criteria
 
 ### Technical Milestones
+
 - [ ] All new database functions working with comprehensive tests
 - [ ] Authentication system functional with role-based access
 - [ ] REST API endpoints responding correctly
@@ -340,6 +363,7 @@ GET    /api/import/status/<import_id>   # Import status
 - [ ] New relational data model supports MockU requirements
 
 ### Business Validation
+
 - [ ] Can create users with different roles
 - [ ] Can assign instructors to course sections
 - [ ] Can track course outcomes separately from sections
@@ -351,11 +375,13 @@ GET    /api/import/status/<import_id>   # Import status
 ## 7. Risk Mitigation
 
 ### Technical Risks
+
 - **Database migration complexity**: Use dual-model approach, test extensively
 - **Authentication integration issues**: Start with simple email/password, add SSO later
 - **Backward compatibility breaks**: Maintain existing routes during transition
 
 ### Timeline Risks
+
 - **Scope creep**: Focus on core entities first, defer advanced features
 - **Testing overhead**: Build tests incrementally, not all at end
 - **Integration complexity**: Test each component independently first

@@ -869,7 +869,7 @@ def can_access_program(program_id: str, institution_id: Optional[str] = None) ->
 
 def require_program_access(
     program_id: str, institution_id: Optional[str] = None
-) -> Optional[tuple]:
+) -> Optional[tuple[Any, ...]]:
     """
     Check program access and return error response if denied.
 

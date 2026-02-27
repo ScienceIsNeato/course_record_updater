@@ -6,6 +6,8 @@ Provides endpoints for:
 - Mapping version retrieval and history
 """
 
+from typing import Any
+
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 
@@ -48,7 +50,7 @@ PLO_NOT_FOUND_MSG = "Program outcome not found"
 MAPPING_NOT_FOUND_MSG = "PLO mapping not found"
 
 
-def _validate_program(program_id: str) -> tuple:
+def _validate_program(program_id: str) -> tuple[Any, ...]:
     """Validate program exists and belongs to the current institution.
 
     Returns (program_dict, None) on success or (None, error_response) on failure.
@@ -63,7 +65,7 @@ def _validate_program(program_id: str) -> tuple:
     return program, None
 
 
-def _validate_plo_ownership(program_id: str, plo_id: str) -> tuple:
+def _validate_plo_ownership(program_id: str, plo_id: str) -> tuple[Any, ...]:
     """Validate PLO exists and belongs to the given program.
 
     Returns (plo_dict, None) on success or (None, error_response) on failure.
@@ -77,7 +79,7 @@ def _validate_plo_ownership(program_id: str, plo_id: str) -> tuple:
     return plo, None
 
 
-def _validate_mapping_ownership(program_id: str, mapping_id: str) -> tuple:
+def _validate_mapping_ownership(program_id: str, mapping_id: str) -> tuple[Any, ...]:
     """Validate mapping exists and belongs to the given program.
 
     Returns (mapping_dict, None) on success or (None, error_response) on failure.

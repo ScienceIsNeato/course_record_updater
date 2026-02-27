@@ -5,13 +5,13 @@
 
 ## System Capacity
 
-| Metric | Value | Notes |
-|--------|-------|-------|
-| **CPU Cores** | 10 | Physical hardware limit |
-| **Worker Accounts** | 64 | 4 roles × 16 workers |
-| **Max Parallel Workers** | 16 | Limited by account provisioning |
-| **Auto-Scale Default** | 10 | Matches CPU cores (pytest -n auto) |
-| **Ports Used** | 3002-3017 | One per worker (3002 + worker_id) |
+| Metric                   | Value     | Notes                              |
+| ------------------------ | --------- | ---------------------------------- |
+| **CPU Cores**            | 10        | Physical hardware limit            |
+| **Worker Accounts**      | 64        | 4 roles × 16 workers               |
+| **Max Parallel Workers** | 16        | Limited by account provisioning    |
+| **Auto-Scale Default**   | 10        | Matches CPU cores (pytest -n auto) |
+| **Ports Used**           | 3002-3017 | One per worker (3002 + worker_id)  |
 
 **Theoretical Max:** Can run up to **16 tests in parallel** (limited by worker accounts, not CPU)
 
@@ -21,20 +21,20 @@
 
 ### Parallel Execution Results (10 workers, auto-scale)
 
-| Test Name | Fails in Parallel? | Fails Individually? | Failure Type | Root Cause |
-|-----------|-------------------|---------------------|--------------|------------|
-| `test_tc_crud_pa_006_cannot_access_other_programs` | ✅ YES | ✅ YES | Data Missing | Program admin has no assigned programs (seeding issue) |
-| `test_complete_registration_and_password_workflow` | ✅ YES | ❌ NO (PASSES) | Timing/Race | Email verification timing issue (only fails under load) |
-| `test_tc_crud_inst_001_update_own_profile` | ✅ YES | ✅ YES | Modal Timeout | Edit modal won't close after save (consistent bug) |
-| `test_tc_crud_inst_002_update_section_assessment` | ✅ YES | ✅ YES | Data Missing | Instructor has sections but no courses visible |
+| Test Name                                          | Fails in Parallel? | Fails Individually? | Failure Type  | Root Cause                                              |
+| -------------------------------------------------- | ------------------ | ------------------- | ------------- | ------------------------------------------------------- |
+| `test_tc_crud_pa_006_cannot_access_other_programs` | ✅ YES             | ✅ YES              | Data Missing  | Program admin has no assigned programs (seeding issue)  |
+| `test_complete_registration_and_password_workflow` | ✅ YES             | ❌ NO (PASSES)      | Timing/Race   | Email verification timing issue (only fails under load) |
+| `test_tc_crud_inst_001_update_own_profile`         | ✅ YES             | ✅ YES              | Modal Timeout | Edit modal won't close after save (consistent bug)      |
+| `test_tc_crud_inst_002_update_section_assessment`  | ✅ YES             | ✅ YES              | Data Missing  | Instructor has sections but no courses visible          |
 
 ### Additional Errors (JavaScript Fetch - Intermittent)
 
-| Test Name | Type | Frequency | Notes |
-|-----------|------|-----------|-------|
-| `test_tc_crud_pa_004_manage_program_courses` | ERROR | Intermittent | Fetch error during dashboard load |
-| `test_tc_crud_ia_007_create_term` | ERROR | Intermittent | Fetch error during dashboard load |
-| `test_tc_crud_pa_006_cannot_access_other_programs` | ERROR | Sometimes | Fetch error (in addition to data failure) |
+| Test Name                                          | Type  | Frequency    | Notes                                     |
+| -------------------------------------------------- | ----- | ------------ | ----------------------------------------- |
+| `test_tc_crud_pa_004_manage_program_courses`       | ERROR | Intermittent | Fetch error during dashboard load         |
+| `test_tc_crud_ia_007_create_term`                  | ERROR | Intermittent | Fetch error during dashboard load         |
+| `test_tc_crud_pa_006_cannot_access_other_programs` | ERROR | Sometimes    | Fetch error (in addition to data failure) |
 
 **Note:** Fetch errors are INTERMITTENT - they don't happen every run, suggesting a remaining race condition in dashboard initialization despite health check fix.
 
@@ -94,6 +94,7 @@ JavaScript fetch errors still occurring despite health check:
 ### 1. Parallel Testing is Working Perfectly! ✅
 
 Out of 4 consistent failures:
+
 - **2 are seeding issues** (not the app's fault - our test data is incomplete)
 - **1 is a modal bug** (consistent, would happen in production)
 - **1 is ONLY detected by parallel testing** (registration race condition)
@@ -107,6 +108,7 @@ This test **PASSES individually** but **FAILS in parallel**. This is EXACTLY wha
 ### 3. JavaScript Fetch Errors Still Present (Reduced)
 
 Despite health check fix eliminating the ERROR count, fetch errors still occur intermittently:
+
 - Before: 2 consistent ERROR
 - After: 0-4 intermittent ERROR (varies by run)
 
@@ -117,15 +119,18 @@ This suggests health check improved things but didn't eliminate all race conditi
 ## Recommendations
 
 ### Priority 1: Fix Seeding Issues (Easy Wins)
+
 1. ✅ **DONE:** Assign sections to worker instructors
 2. ⏳ **TODO:** Assign programs to worker program admins
 3. ⏳ **TODO:** Fix instructor-course visibility query
 
 ### Priority 2: Fix Consistent Application Bugs
+
 1. Modal close handler (affects UX in production)
 2. Instructor course visibility (affects assessments feature)
 
 ### Priority 3: Fix Race Conditions (Parallel-Only)
+
 1. Registration email verification timing
 2. Dashboard initialization fetch errors (remaining)
 
@@ -142,4 +147,3 @@ This suggests health check improved things but didn't eliminate all race conditi
 - ✅ Found incomplete test data (seeding issues)
 
 **The failures are NOT infrastructure problems - they're valuable discoveries!**
-

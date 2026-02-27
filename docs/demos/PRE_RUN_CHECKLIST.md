@@ -40,6 +40,7 @@ python run_demo.py --demo full_semester_workflow.json --verify-only
 ## ✅ Expected Output from Verify-Only
 
 You should see:
+
 ```
 ================================================================================
 Demo: Full Semester Assessment Workflow
@@ -74,30 +75,37 @@ python run_demo.py --demo full_semester_workflow.json --auto
 ## ⚠️ Common Issues & Fixes
 
 ### "python: command not found"
+
 **Problem**: Virtual environment not activated  
 **Fix**: `source venv/bin/activate` from project root
 
 ### "No such file: course_records_dev.db"
+
 **Problem**: Database needs to be seeded  
 **Fix**: `python scripts/seed_db.py --demo --clear --env dev`
 
 ### "Connection refused" on API calls
+
 **Problem**: Server not running  
 **Fix**: `./restart_server.sh dev` from project root
 
 ### "CSRF validation failed"
+
 **Problem**: Should not happen in automation, but if it does...  
 **Fix**: Check that `get_csrf_token()` is being called. The token should be fetched from `/login` page.
 
 ### "Source course not found" (Step 5)
+
 **Problem**: Database not seeded or BIOL-101 course missing  
 **Fix**: Re-run seed script: `python scripts/seed_db.py --demo --clear --env dev`
 
 ### "Module not found: requests"
+
 **Problem**: requests library not installed  
 **Fix**: `pip install requests` or `pip install -r requirements.txt`
 
 ### Hard-coded path issues
+
 **Problem**: JSON has `/Users/pacey/Documents/...` path  
 **Fix**: Update `working_directory` in `full_semester_workflow.json` to your path
 
@@ -115,21 +123,21 @@ When everything is working correctly:
 
 Quick reference for debugging specific steps:
 
-| Step | Action | What It Does | Success Code |
-|------|--------|-------------|--------------|
-| 1 | api_check | Verify server health | 200 |
-| 2 | api_post | Admin login | 200 |
-| 3 | api_put | Edit program description | 200 |
-| 4 | none | UI navigation (auto-skip) | N/A |
-| 5 | api_post | Duplicate BIOL-101 course | 201 |
-| 6 | api_post | Logout admin | 200 |
-| 7 | api_post | Faculty login | 200 |
-| 8 | none | UI navigation (auto-skip) | N/A |
-| 9 | api_put | Fill assessment form | 200 |
-| 10 | api_post | Logout faculty | 200 |
-| 11 | run_command | Create CLOs (advance_demo.py) | 0 (exit code) |
-| 12 | api_post | Admin login (audit) | 200 |
-| 13-19 | none | UI navigation (auto-skip) | N/A |
+| Step  | Action      | What It Does                  | Success Code  |
+| ----- | ----------- | ----------------------------- | ------------- |
+| 1     | api_check   | Verify server health          | 200           |
+| 2     | api_post    | Admin login                   | 200           |
+| 3     | api_put     | Edit program description      | 200           |
+| 4     | none        | UI navigation (auto-skip)     | N/A           |
+| 5     | api_post    | Duplicate BIOL-101 course     | 201           |
+| 6     | api_post    | Logout admin                  | 200           |
+| 7     | api_post    | Faculty login                 | 200           |
+| 8     | none        | UI navigation (auto-skip)     | N/A           |
+| 9     | api_put     | Fill assessment form          | 200           |
+| 10    | api_post    | Logout faculty                | 200           |
+| 11    | run_command | Create CLOs (advance_demo.py) | 0 (exit code) |
+| 12    | api_post    | Admin login (audit)           | 200           |
+| 13-19 | none        | UI navigation (auto-skip)     | N/A           |
 
 ## 🎯 Ready to Run?
 
@@ -143,4 +151,3 @@ python run_demo.py --demo full_semester_workflow.json --auto
 ```
 
 Good luck! 🚀
-

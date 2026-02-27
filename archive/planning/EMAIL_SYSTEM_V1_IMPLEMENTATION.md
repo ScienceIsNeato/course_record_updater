@@ -9,22 +9,26 @@ Implementing swappable email infrastructure for MockU demo with Gmail SMTP integ
 ### What Was Built
 
 **New Infrastructure (`email_providers/` package):**
+
 - `base_provider.py`: Abstract EmailProvider interface
 - `console_provider.py`: Development mode provider (logs to console/files)
-- `gmail_provider.py`: Gmail SMTP provider for production  
+- `gmail_provider.py`: Gmail SMTP provider for production
 - `factory.py`: Provider selection based on configuration
 
 **Refactored:**
+
 - `email_service.py`: Now uses provider pattern
 - Maintains 100% backward compatibility
 - All existing public methods unchanged
 
 ### Benefits
+
 - Zero breaking changes
 - Swappable email providers (Gmail → SendGrid/Mailgun later)
 - Clean separation of concerns (templates vs. transport)
 
 ### Testing
+
 - All 36 email service unit tests pass
 - Global coverage maintained at 81.92%
 - Type-safe with mypy strict mode
@@ -36,18 +40,20 @@ Implementing swappable email infrastructure for MockU demo with Gmail SMTP integ
 ### Test Email Strategy (Hybrid Approach)
 
 **🎯 Best of Both Worlds:**
+
 - **Bella Barkington** = Real Gmail (test actual delivery)
 - **Everyone else** = Mailtrap (sandbox testing, no phone verification needed)
 
-| # | Email Address | Display Name | Role | Provider | Status |
-|---|--------------|--------------|------|----------|--------|
-| 1 | lassie.tests.instructor1.test@gmail.com | Bella Barkington | Instructor | Gmail | ✅ Created |
-| 2 | rufus@loopclosertests.mailtrap.io | Rufus McWoof | Instructor | Mailtrap | ⬜ Auto-configured |
-| 3 | fido@loopclosertests.mailtrap.io | Fido Fetchsworth | Program Admin | Mailtrap | ⬜ Auto-configured |
-| 4 | daisy@loopclosertests.mailtrap.io | Daisy Pawsalot | Institution Admin | Mailtrap | ⬜ Auto-configured |
-| 5 | system@loopclosertests.mailtrap.io | Loopcloser Test System | System Sender | Mailtrap | ⬜ Auto-configured |
+| #   | Email Address                           | Display Name           | Role              | Provider | Status             |
+| --- | --------------------------------------- | ---------------------- | ----------------- | -------- | ------------------ |
+| 1   | lassie.tests.instructor1.test@gmail.com | Bella Barkington       | Instructor        | Gmail    | ✅ Created         |
+| 2   | rufus@loopclosertests.mailtrap.io       | Rufus McWoof           | Instructor        | Mailtrap | ⬜ Auto-configured |
+| 3   | fido@loopclosertests.mailtrap.io        | Fido Fetchsworth       | Program Admin     | Mailtrap | ⬜ Auto-configured |
+| 4   | daisy@loopclosertests.mailtrap.io       | Daisy Pawsalot         | Institution Admin | Mailtrap | ⬜ Auto-configured |
+| 5   | system@loopclosertests.mailtrap.io      | Loopcloser Test System | System Sender     | Mailtrap | ⬜ Auto-configured |
 
 **Why This Works:**
+
 - ✅ No more phone verification issues
 - ✅ All emails caught in Mailtrap inbox (no spam risk)
 - ✅ Can test real Gmail delivery with Bella
@@ -89,6 +95,7 @@ Implementing swappable email infrastructure for MockU demo with Gmail SMTP integ
 ## Setup Part 2: Bella's Gmail Account (Already Done! ✅)
 
 **Completed:**
+
 - ✅ Account created: `lassie.tests.instructor1.test@gmail.com`
 - ✅ Name: Bella Barkington
 - ⏳ Still need: App Password for Gmail SMTP
@@ -152,6 +159,7 @@ python scripts/test_mailtrap_smtp.py
 ```
 
 **Expected Output:**
+
 ```
 🔍 Testing Mailtrap SMTP Configuration...
 ============================================================
@@ -186,6 +194,7 @@ python scripts/test_mailtrap_smtp.py
 If you want to test real Gmail delivery with Bella:
 
 1. Update `.env` to use Gmail:
+
 ```bash
 # Comment out Mailtrap, uncomment Gmail
 # MAIL_SERVER=sandbox.smtp.mailtrap.io
@@ -197,12 +206,14 @@ MAIL_PASSWORD=<bella-app-password>
 ```
 
 2. Run test:
+
 ```bash
 cd ${AGENT_HOME} && source venv/bin/activate && source .envrc
 python scripts/test_gmail_smtp.py
 ```
 
 3. Check Bella's inbox:
+
 - Login to `lassie.tests.instructor1.test@gmail.com`
 - Look for email from "LoopCloser (Test)"
 - Subject: "Verify your LoopCloser account"
@@ -213,12 +224,12 @@ python scripts/test_gmail_smtp.py
 
 ### Environment Configuration Matrix
 
-| Environment | Provider | Email Sending | Recipient Filter |
-|------------|----------|---------------|------------------|
-| Local Dev | mailtrap | Yes (sandbox) | All caught in Mailtrap |
-| CI/Testing | console | No (logs only) | N/A |
-| Staging | gmail | Yes | Test accounts only |
-| Production | gmail | Yes | Real users |
+| Environment | Provider | Email Sending  | Recipient Filter       |
+| ----------- | -------- | -------------- | ---------------------- |
+| Local Dev   | mailtrap | Yes (sandbox)  | All caught in Mailtrap |
+| CI/Testing  | console  | No (logs only) | N/A                    |
+| Staging     | gmail    | Yes            | Test accounts only     |
+| Production  | gmail    | Yes            | Real users             |
 
 ### Safety Measures
 
@@ -278,7 +289,7 @@ import re
 
 class GmailVerifier:
     """Helper to verify emails sent during E2E tests"""
-    
+
     def __init__(self, test_account_email: str, refresh_token: str):
         """Initialize with OAuth2 credentials"""
         self.email = test_account_email
@@ -290,7 +301,7 @@ class GmailVerifier:
             client_secret=os.getenv("GMAIL_CLIENT_SECRET")
         )
         self.service = build('gmail', 'v1', credentials=self.creds)
-        
+
     def wait_for_email(self, subject_contains: str, timeout: int = 30):
         """Poll inbox for email matching criteria"""
         start_time = time.time()
@@ -299,14 +310,14 @@ class GmailVerifier:
                 userId='me',
                 q=f'subject:{subject_contains} is:unread'
             ).execute()
-            
+
             if messages.get('messages'):
                 return self._get_message(messages['messages'][0]['id'])
-                
+
             time.sleep(2)
-            
+
         raise TimeoutError(f"Email with subject '{subject_contains}' not found within {timeout}s")
-        
+
     def extract_verification_link(self, message):
         """Parse email body for verification/reset links"""
         # Extract link from email body
@@ -315,7 +326,7 @@ class GmailVerifier:
         if match:
             return match.group(1)
         raise ValueError("Verification link not found in email")
-        
+
     def cleanup_inbox(self, older_than_hours: int = 24):
         """Delete old test emails"""
         # Implementation...
@@ -332,7 +343,7 @@ def test_registration_email_flow():
         "lassie.tests.instructor1.test@gmail.com",
         os.getenv("INSTRUCTOR1_GMAIL_TOKEN")
     )
-    
+
     # 1. Register user
     response = client.post('/api/register/institution-admin', json={
         'email': 'lassie.tests.instructor1.test@gmail.com',
@@ -340,20 +351,20 @@ def test_registration_email_flow():
         # ... other fields
     })
     assert response.status_code == 201
-    
+
     # 2. Wait for verification email
     email = verifier.wait_for_email('Verify your', timeout=30)
     assert email is not None
-    
+
     # 3. Extract verification link
     verify_link = verifier.extract_verification_link(email)
     assert '/verify-email/' in verify_link
-    
+
     # 4. Click verification link
     token = verify_link.split('/verify-email/')[1]
     response = client.get(f'/verify-email/{token}')
     assert response.status_code == 200
-    
+
     # 5. Verify account activated
     # Check that user can now login...
 ```
@@ -396,7 +407,7 @@ def send_course_submission_reminder(
 ) -> bool:
     """
     Send course submission reminder to instructor
-    
+
     Args:
         email: Instructor email
         instructor_name: Instructor's name
@@ -406,12 +417,12 @@ def send_course_submission_reminder(
         personal_message: Optional message from admin
     """
     subject = f"Course Data Submission Reminder - {term_name}"
-    
+
     # Generate HTML and text templates
     # Include link to course management page
     # Include deadline if provided
     # Include personal message if provided
-    
+
     return EmailService._send_email(...)
 ```
 
@@ -444,6 +455,7 @@ Add to `templates/dashboard/institution_admin.html`:
   - Send button with confirmation
 
 JavaScript in `static/instructor_reminder.js`:
+
 - Handle instructor selection
 - Message preview
 - Batch sending with progress
@@ -467,7 +479,7 @@ JavaScript in `static/instructor_reminder.js`:
 ## Success Criteria
 
 - [x] Phase 1: Provider pattern implemented
-- [ ] Phase 2: Gmail SMTP sends real emails  
+- [ ] Phase 2: Gmail SMTP sends real emails
 - [ ] Phase 3: E2E tests verify email delivery
 - [ ] Phase 4: Admins can send course reminders
 - [ ] All transactional emails work (verification, reset, invitation, welcome)
@@ -494,4 +506,3 @@ JavaScript in `static/instructor_reminder.js`:
 - Email preference management
 - Bounce/complaint handling
 - Template versioning
-

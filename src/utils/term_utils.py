@@ -4,7 +4,7 @@ Replaces hardcoded ALLOWED_TERMS with flexible term management.
 """
 
 from datetime import date, datetime
-from typing import List, Optional, TypedDict, Union
+from typing import Any, List, Optional, TypedDict, Union
 
 from src.utils.time_utils import get_current_time
 
@@ -227,7 +227,9 @@ def _compare_date(ref: date, start: Optional[date], end: Optional[date]) -> str:
     return TERM_STATUS_ACTIVE
 
 
-def _parse_and_classify_terms(terms: List[dict], ref: date) -> List[ParsedTerm]:
+def _parse_and_classify_terms(
+    terms: List[dict[str, Any]], ref: date
+) -> List[ParsedTerm]:
     """Parse raw term dicts into structured ParsedTerm objects with basic status."""
     parsed_terms: List[ParsedTerm] = []
     for term in terms:
@@ -270,9 +272,9 @@ def _identify_continuously_active_terms(
 
 
 def get_all_term_statuses(
-    terms: List[dict],
+    terms: List[dict[str, Any]],
     reference_date: Optional[Union[str, datetime, date]] = None,
-) -> dict:
+) -> dict[str, str]:
     """
     Compute statuses for all terms using the "holds active" rule.
 
@@ -319,7 +321,7 @@ def get_all_term_statuses(
 def get_term_status_with_context(
     start_date: Union[str, datetime, date, None],
     end_date: Union[str, datetime, date, None],
-    all_terms: List[dict],
+    all_terms: List[dict[str, Any]],
     reference_date: Optional[Union[str, datetime, date]] = None,
 ) -> str:
     """

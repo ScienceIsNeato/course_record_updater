@@ -17,15 +17,16 @@ python demos/run_demo.py --demo full_semester_workflow.json --auto --start-step 
 
 ## Available Demos
 
-| Demo | Duration | Description |
-|------|----------|-------------|
-| `full_semester_workflow.json` | 20 min | Complete semester lifecycle from setup through audit |
+| Demo                          | Duration | Description                                          |
+| ----------------------------- | -------- | ---------------------------------------------------- |
+| `full_semester_workflow.json` | 20 min   | Complete semester lifecycle from setup through audit |
 
 ## Execution Modes
 
 ### Human-Guided Mode (Default)
 
 For live presentations. The script:
+
 - Executes pre-commands automatically (setup, data verification)
 - Shows clear instructions for UI interactions
 - Provides clickable URLs for navigation
@@ -38,6 +39,7 @@ For live presentations. The script:
 ### Automated Mode (`--auto`)
 
 For validation and iteration. The script:
+
 - Executes all commands automatically
 - Performs browser automation for UI steps
 - Runs straight through without pauses
@@ -65,22 +67,26 @@ python demos/run_demo.py --demo <file> [OPTIONS]
 ### Common Workflows
 
 **Full validation run:**
+
 ```bash
 python demos/run_demo.py --demo full_semester_workflow.json --auto --fail-fast
 ```
 
 **Iterate on failing step:**
+
 ```bash
 # Step 37 is failing, iterate quickly
 python demos/run_demo.py --demo full_semester_workflow.json --auto --start-step 37 --fail-fast
 ```
 
 **Preview demo without executing:**
+
 ```bash
 python demos/run_demo.py --demo full_semester_workflow.json --verify-only
 ```
 
 **Human presentation:**
+
 ```bash
 python demos/run_demo.py --demo full_semester_workflow.json
 # Press Enter to advance through each step
@@ -124,7 +130,7 @@ Each step should have:
   "phase": "Setup",
   "name": "Short step name",
   "purpose": "Why we're doing this step",
-  
+
   "pre_commands": [
     {
       "command": "sqlite3 db.db 'SELECT COUNT(*) FROM users'",
@@ -132,7 +138,7 @@ Each step should have:
       "expected_output": "5"
     }
   ],
-  
+
   "instructions": {
     "human": "Click X, then Y, then Z",
     "automated": {
@@ -140,7 +146,7 @@ Each step should have:
       "element": "Login Button"
     }
   },
-  
+
   "urls": [
     {
       "label": "Login Page",
@@ -148,17 +154,14 @@ Each step should have:
       "clickable": true
     }
   ],
-  
+
   "inputs": {
     "email": "user@example.com",
     "password": "pass123"
   },
-  
-  "expected_results": [
-    "Dashboard loads",
-    "User name appears in header"
-  ],
-  
+
+  "expected_results": ["Dashboard loads", "User name appears in header"],
+
   "post_commands": [
     {
       "command": "curl -s http://localhost:3001/api/me",
@@ -166,12 +169,12 @@ Each step should have:
       "expected_output_contains": "user@example.com"
     }
   ],
-  
+
   "artifacts": {
     "screenshots": ["01_dashboard.png"],
     "logs": []
   },
-  
+
   "pause_for_human": true
 }
 ```
@@ -207,6 +210,7 @@ Screenshots are automatically captured at each step that specifies them.
 ### Demo fails at step N
 
 Use `--start-step` to resume from that step:
+
 ```bash
 python run_demo.py --demo full_semester_workflow.json --auto --start-step N --fail-fast
 ```
@@ -228,7 +232,7 @@ Ensure the browser tab integration is connected and the server is running.
 1. **Keep steps atomic**: Each step should do one logical thing
 2. **Verify everything**: Add post_commands to verify the step worked
 3. **Clear instructions**: Write human instructions as if for someone unfamiliar with the app
-4. **Meaningful purposes**: Explain *why* each step matters
+4. **Meaningful purposes**: Explain _why_ each step matters
 5. **Capture artifacts**: Screenshot key moments for documentation
 6. **Test both modes**: Validate with `--auto`, present without it
 
@@ -242,9 +246,9 @@ Ensure the browser tab integration is connected and the server is running.
 ## Contributing
 
 When adding a new demo:
+
 1. Create the JSON file in `demos/`
 2. Test thoroughly with `--auto --fail-fast`
 3. Run through manually to verify instructions are clear
 4. Add entry to the "Available Demos" table above
 5. Commit with message: `demo: add {demo_name}`
-

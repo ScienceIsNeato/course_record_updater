@@ -5,6 +5,7 @@ Product demonstration materials for showcasing key workflows.
 ## Available Demos
 
 ### 1. Single Term Outcome Management (2025)
+
 **File:** `single_term_outcome_management.md`  
 **Duration:** 30 minutes  
 **Workflow:** Import → Assign → Complete → Audit → Export
@@ -23,6 +24,7 @@ python docs/workflow-walkthroughs/scripts/run_demo.py single_term_outcome_manage
 ```
 
 The interactive runner will:
+
 - Parse the demo markdown
 - Run setup commands (with your confirmation)
 - Guide you through each step
@@ -43,6 +45,7 @@ open docs/workflow-walkthroughs/single_term_outcome_management.md
 ```
 
 **Demo Account:**
+
 - URL: http://localhost:3001
 - Email: demo2025.admin@example.com
 - Password: Demo2024!
@@ -56,43 +59,48 @@ To add a new workflow demonstration:
 1. **Create markdown file** named after the workflow (e.g., `multi_year_assessment_tracking.md`)
 
 2. **Follow the standard structure:**
-   ```markdown
+
+   ````markdown
    # Workflow Name
-   
+
    **Duration:** X minutes
    **Year:** 2025
    **Workflow:** Brief description
-   
+
    ## Setup
-   
+
    ```bash
    # Setup commands
    python scripts/seed_db.py --demo --clear --env dev
    ./restart_server.sh dev
    ```
-   
+   ````
+
    **Demo Account:**
    - URL: http://localhost:3001
    - Email: demo2025.admin@example.com
    - Password: Demo2024!
-   
-   ---
-   
+
+   ***
+
    ## Demo Flow
-   
+
    ### Step 1: Title
-   
+
    Instructions for what to do and expect.
-   
+
    **Press Enter to continue →**
-   
-   ---
-   
+
+   ***
+
    ### Step 2: Title
-   
+
    More instructions...
-   
+
    **Press Enter to continue →**
+
+   ```
+
    ```
 
 3. **Test with run_demo.py:**
@@ -105,7 +113,7 @@ To add a new workflow demonstration:
 For compatibility with `run_demo.py`, demos should follow these conventions:
 
 - **`## Setup` section** with bash code block containing setup commands
-- **`### Step N: Title`** for each demo step  
+- **`### Step N: Title`** for each demo step
 - **`**Press Enter to continue →**`** markers where demo should pause
 - Clear instructions for actions and expected results
 - **Demo Account** section with credentials
@@ -119,6 +127,7 @@ For compatibility with `run_demo.py`, demos should follow these conventions:
 Parses markdown demo files and provides step-by-step interactive guidance.
 
 **Features:**
+
 - Runs setup commands automatically (with confirmation)
 - Displays steps one at a time
 - Waits for Enter key to continue
@@ -126,6 +135,7 @@ Parses markdown demo files and provides step-by-step interactive guidance.
 - Color-coded output for readability
 
 **Usage:**
+
 ```bash
 # Basic usage
 python docs/workflow-walkthroughs/scripts/run_demo.py single_term_outcome_management.md
@@ -145,10 +155,11 @@ python scripts/seed_db.py --demo --clear --env dev
 ```
 
 This creates:
+
 - Institution: Demo University (DEMO2025)
 - Admin: demo2025.admin@example.com
 - Instructors: demo2025.instructor1@example.com, demo2025.instructor2@example.com
-- Programs: Computer Science, Business, General Education  
+- Programs: Computer Science, Business, General Education
 - Sample courses and terms
 
 **Why 2025 prefix?**  

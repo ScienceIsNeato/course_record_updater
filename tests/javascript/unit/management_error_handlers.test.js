@@ -1,7 +1,6 @@
+const { setBody, flushPromises } = require("../helpers/dom");
 
-const { setBody, flushPromises } = require('../helpers/dom');
-
-describe('Management Modules Error Handling', () => {
+describe("Management Modules Error Handling", () => {
   let consoleErrorSpy;
   let alertSpy;
   let confirmSpy;
@@ -9,25 +8,27 @@ describe('Management Modules Error Handling', () => {
 
   beforeEach(() => {
     jest.resetModules();
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-    alertSpy = jest.spyOn(window, 'alert').mockImplementation();
-    confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true);
-    promptSpy = jest.spyOn(window, 'prompt').mockReturnValue('DELETE User Name');
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation();
+    alertSpy = jest.spyOn(window, "alert").mockImplementation();
+    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+    promptSpy = jest
+      .spyOn(window, "prompt")
+      .mockReturnValue("DELETE User Name");
     global.fetch = jest.fn();
-    
+
     // Mock Bootstrap
     global.bootstrap = {
       Modal: jest.fn().mockImplementation(() => ({
         show: jest.fn(),
-        hide: jest.fn()
+        hide: jest.fn(),
       })),
-      Tooltip: jest.fn()
+      Tooltip: jest.fn(),
     };
     // Mock static getInstance
     global.bootstrap.Modal.getInstance = jest.fn(() => ({
-      hide: jest.fn()
+      hide: jest.fn(),
     }));
-    
+
     // Setup comprehensive DOM for all forms
     setBody(`
       <!-- User Management -->
@@ -114,219 +115,247 @@ describe('Management Modules Error Handling', () => {
 
   const loadAndInit = (path) => {
     require(path);
-    document.dispatchEvent(new Event('DOMContentLoaded'));
+    document.dispatchEvent(new Event("DOMContentLoaded"));
   };
 
   // --- User Management ---
-  test('userManagement createUser handles network error', async () => {
-    loadAndInit('../../../static/userManagement');
-    global.fetch.mockRejectedValueOnce(new Error('Network error'));
-    
-    const form = document.getElementById('inviteUserForm');
-    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  test("userManagement createUser handles network error", async () => {
+    loadAndInit("../../../static/userManagement");
+    global.fetch.mockRejectedValueOnce(new Error("Network error"));
+
+    const form = document.getElementById("inviteUserForm");
+    form.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
     await flushPromises();
-    
+
     expect(consoleErrorSpy).toHaveBeenCalled();
     // User management uses custom showAlert helper
-    const alerts = document.querySelectorAll('.alert-danger');
+    const alerts = document.querySelectorAll(".alert-danger");
     expect(alerts.length).toBeGreaterThan(0);
-    expect(alerts[0].textContent).toContain('Failed');
+    expect(alerts[0].textContent).toContain("Failed");
   });
 
-  test('userManagement updateUser handles network error', async () => {
-    loadAndInit('../../../static/userManagement');
-    global.fetch.mockRejectedValueOnce(new Error('Network error'));
-    
-    const form = document.getElementById('editUserForm');
-    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  test("userManagement updateUser handles network error", async () => {
+    loadAndInit("../../../static/userManagement");
+    global.fetch.mockRejectedValueOnce(new Error("Network error"));
+
+    const form = document.getElementById("editUserForm");
+    form.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
     await flushPromises();
-    
+
     expect(consoleErrorSpy).toHaveBeenCalled();
     // User management uses custom showAlert helper
-    const alerts = document.querySelectorAll('.alert-danger');
+    const alerts = document.querySelectorAll(".alert-danger");
     expect(alerts.length).toBeGreaterThan(0);
-    expect(alerts[0].textContent).toContain('Failed');
+    expect(alerts[0].textContent).toContain("Failed");
   });
-  
-  test('userManagement deactivateUser handles network error', async () => {
-    loadAndInit('../../../static/userManagement');
-    global.fetch.mockRejectedValueOnce(new Error('Network error'));
-    
+
+  test("userManagement deactivateUser handles network error", async () => {
+    loadAndInit("../../../static/userManagement");
+    global.fetch.mockRejectedValueOnce(new Error("Network error"));
+
     if (globalThis.deactivateUser) {
-        await globalThis.deactivateUser('u1', 'User');
-        expect(consoleErrorSpy).toHaveBeenCalled();
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Failed'));
+      await globalThis.deactivateUser("u1", "User");
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining("Failed"));
     }
   });
 
-  test('userManagement deleteUser handles network error', async () => {
-    require('../../../static/userManagement');
-    global.fetch.mockRejectedValueOnce(new Error('Network error'));
-    
+  test("userManagement deleteUser handles network error", async () => {
+    require("../../../static/userManagement");
+    global.fetch.mockRejectedValueOnce(new Error("Network error"));
+
     // Mock prompt for userManagement confirmation
-    promptSpy.mockReturnValue('DELETE User Name');
-    
+    promptSpy.mockReturnValue("DELETE User Name");
+
     if (globalThis.deleteUser) {
-        await globalThis.deleteUser('u1', 'User Name');
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Failed'));
-        expect(consoleErrorSpy).toHaveBeenCalled();
+      await globalThis.deleteUser("u1", "User Name");
+      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining("Failed"));
+      expect(consoleErrorSpy).toHaveBeenCalled();
     }
   });
 
-  test('userManagement deleteUser success calls loadUsers', async () => {
-    require('../../../static/userManagement');
-    global.fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) });
-    promptSpy.mockReturnValue('DELETE User Name');
-    
+  test("userManagement deleteUser success calls loadUsers", async () => {
+    require("../../../static/userManagement");
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true }),
+    });
+    promptSpy.mockReturnValue("DELETE User Name");
+
     globalThis.loadUsers = jest.fn();
-    
+
     if (globalThis.deleteUser) {
-        await globalThis.deleteUser('u1', 'User Name');
-        expect(globalThis.loadUsers).toHaveBeenCalled();
+      await globalThis.deleteUser("u1", "User Name");
+      expect(globalThis.loadUsers).toHaveBeenCalled();
     }
   });
 
   // --- Offering Management ---
-  test('offeringManagement createOffering handles network error', async () => {
-    loadAndInit('../../../static/offeringManagement');
-    global.fetch.mockRejectedValueOnce(new Error('Network error'));
-    
-    const form = document.getElementById('createOfferingForm');
-    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  test("offeringManagement createOffering handles network error", async () => {
+    loadAndInit("../../../static/offeringManagement");
+    global.fetch.mockRejectedValueOnce(new Error("Network error"));
+
+    const form = document.getElementById("createOfferingForm");
+    form.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
     await flushPromises();
-    
+
     expect(consoleErrorSpy).toHaveBeenCalled();
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Failed'));
-  });
-  
-  test('offeringManagement updateOffering handles network error', async () => {
-    loadAndInit('../../../static/offeringManagement');
-    global.fetch.mockRejectedValueOnce(new Error('Network error'));
-    
-    const form = document.getElementById('editOfferingForm');
-    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    await flushPromises();
-    
-    expect(consoleErrorSpy).toHaveBeenCalled();
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Failed'));
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining("Failed"));
   });
 
-  test('offeringManagement deleteOffering handles network error', async () => {
-    loadAndInit('../../../static/offeringManagement');
-    global.fetch.mockRejectedValueOnce(new Error('Network error'));
-    
+  test("offeringManagement updateOffering handles network error", async () => {
+    loadAndInit("../../../static/offeringManagement");
+    global.fetch.mockRejectedValueOnce(new Error("Network error"));
+
+    const form = document.getElementById("editOfferingForm");
+    form.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
+    await flushPromises();
+
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining("Failed"));
+  });
+
+  test("offeringManagement deleteOffering handles network error", async () => {
+    loadAndInit("../../../static/offeringManagement");
+    global.fetch.mockRejectedValueOnce(new Error("Network error"));
+
     if (globalThis.deleteOffering) {
-        await globalThis.deleteOffering('o1');
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Failed'));
-        expect(consoleErrorSpy).toHaveBeenCalled();
+      await globalThis.deleteOffering("o1");
+      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining("Failed"));
+      expect(consoleErrorSpy).toHaveBeenCalled();
     }
   });
 
-  test('offeringManagement deleteOffering success calls loadOfferings', async () => {
-    require('../../../static/offeringManagement');
-    global.fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) });
-    
+  test("offeringManagement deleteOffering success calls loadOfferings", async () => {
+    require("../../../static/offeringManagement");
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true }),
+    });
+
     globalThis.loadOfferings = jest.fn();
-    
+
     if (globalThis.deleteOffering) {
-        await globalThis.deleteOffering('o1');
-        expect(globalThis.loadOfferings).toHaveBeenCalled();
+      await globalThis.deleteOffering("o1");
+      expect(globalThis.loadOfferings).toHaveBeenCalled();
     }
   });
 
   // --- Section Management ---
-  test('sectionManagement createSection handles network error', async () => {
-    loadAndInit('../../../static/sectionManagement');
-    global.fetch.mockRejectedValueOnce(new Error('Network error'));
-    
-    const form = document.getElementById('createSectionForm');
-    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  test("sectionManagement createSection handles network error", async () => {
+    loadAndInit("../../../static/sectionManagement");
+    global.fetch.mockRejectedValueOnce(new Error("Network error"));
+
+    const form = document.getElementById("createSectionForm");
+    form.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
     await flushPromises();
-    
+
     expect(consoleErrorSpy).toHaveBeenCalled();
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Failed'));
-  });
-  
-  test('sectionManagement updateSection handles network error', async () => {
-    loadAndInit('../../../static/sectionManagement');
-    global.fetch.mockRejectedValueOnce(new Error('Network error'));
-    
-    const form = document.getElementById('editSectionForm');
-    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    await flushPromises();
-    
-    expect(consoleErrorSpy).toHaveBeenCalled();
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Failed'));
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining("Failed"));
   });
 
-  test('sectionManagement deleteSection handles network error', async () => {
-    loadAndInit('../../../static/sectionManagement');
-    global.fetch.mockRejectedValueOnce(new Error('Network error'));
-    
+  test("sectionManagement updateSection handles network error", async () => {
+    loadAndInit("../../../static/sectionManagement");
+    global.fetch.mockRejectedValueOnce(new Error("Network error"));
+
+    const form = document.getElementById("editSectionForm");
+    form.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
+    await flushPromises();
+
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining("Failed"));
+  });
+
+  test("sectionManagement deleteSection handles network error", async () => {
+    loadAndInit("../../../static/sectionManagement");
+    global.fetch.mockRejectedValueOnce(new Error("Network error"));
+
     if (globalThis.deleteSection) {
-        await globalThis.deleteSection('s1', 'Section 1');
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Failed'));
-        expect(consoleErrorSpy).toHaveBeenCalled();
+      await globalThis.deleteSection("s1", "Section 1");
+      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining("Failed"));
+      expect(consoleErrorSpy).toHaveBeenCalled();
     }
   });
 
-  test('sectionManagement deleteSection success calls loadSections', async () => {
-    loadAndInit('../../../static/sectionManagement');
-    global.fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) });
-    
+  test("sectionManagement deleteSection success calls loadSections", async () => {
+    loadAndInit("../../../static/sectionManagement");
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true }),
+    });
+
     globalThis.loadSections = jest.fn();
-    
+
     if (globalThis.deleteSection) {
-        await globalThis.deleteSection('s1', 'Section 1');
-        expect(globalThis.loadSections).toHaveBeenCalled();
+      await globalThis.deleteSection("s1", "Section 1");
+      expect(globalThis.loadSections).toHaveBeenCalled();
     }
   });
 
   // --- Course Management ---
-  test('courseManagement createCourse handles network error', async () => {
-    loadAndInit('../../../static/courseManagement');
-    global.fetch.mockRejectedValueOnce(new Error('Network error'));
-    
-    const form = document.getElementById('createCourseForm');
-    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  test("courseManagement createCourse handles network error", async () => {
+    loadAndInit("../../../static/courseManagement");
+    global.fetch.mockRejectedValueOnce(new Error("Network error"));
+
+    const form = document.getElementById("createCourseForm");
+    form.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
     await flushPromises();
-    
+
     expect(consoleErrorSpy).toHaveBeenCalled();
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Failed'));
-  });
-  
-  test('courseManagement updateCourse handles network error', async () => {
-    loadAndInit('../../../static/courseManagement');
-    global.fetch.mockRejectedValueOnce(new Error('Network error'));
-    
-    const form = document.getElementById('editCourseForm');
-    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    await flushPromises();
-    
-    expect(consoleErrorSpy).toHaveBeenCalled();
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Failed'));
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining("Failed"));
   });
 
-  test('courseManagement deleteCourse handles network error', async () => {
-    loadAndInit('../../../static/courseManagement');
-    global.fetch.mockRejectedValueOnce(new Error('Network error'));
-    
+  test("courseManagement updateCourse handles network error", async () => {
+    loadAndInit("../../../static/courseManagement");
+    global.fetch.mockRejectedValueOnce(new Error("Network error"));
+
+    const form = document.getElementById("editCourseForm");
+    form.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
+    await flushPromises();
+
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining("Failed"));
+  });
+
+  test("courseManagement deleteCourse handles network error", async () => {
+    loadAndInit("../../../static/courseManagement");
+    global.fetch.mockRejectedValueOnce(new Error("Network error"));
+
     if (globalThis.deleteCourse) {
-        await globalThis.deleteCourse('c1', 'Course 1');
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Failed'));
-        expect(consoleErrorSpy).toHaveBeenCalled();
+      await globalThis.deleteCourse("c1", "Course 1");
+      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining("Failed"));
+      expect(consoleErrorSpy).toHaveBeenCalled();
     }
   });
 
-  test('courseManagement deleteCourse success calls loadCourses', async () => {
-    loadAndInit('../../../static/courseManagement');
-    global.fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) });
-    
+  test("courseManagement deleteCourse success calls loadCourses", async () => {
+    loadAndInit("../../../static/courseManagement");
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true }),
+    });
+
     globalThis.loadCourses = jest.fn();
-    
+
     if (globalThis.deleteCourse) {
-        await globalThis.deleteCourse('c1', 'Course 1');
-        expect(globalThis.loadCourses).toHaveBeenCalled();
+      await globalThis.deleteCourse("c1", "Course 1");
+      expect(globalThis.loadCourses).toHaveBeenCalled();
     }
   });
 });

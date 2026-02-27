@@ -57,9 +57,9 @@ def create_invitation_api() -> ResponseReturnValue:
         409: User already exists or invitation pending
         500: Server error
     """
-    try:
-        from src.services.invitation_service import InvitationError, InvitationService
+    from src.services.invitation_service import InvitationError, InvitationService
 
+    try:
         # Get request data (silent=True prevents 415 exception, returns None instead)
         data = request.get_json(silent=True) or {}
         if not data:
@@ -417,9 +417,9 @@ def create_invitation_public_api() -> ResponseReturnValue:
 
     Returns 201 with invitation_id on success.
     """
-    try:
-        from src.services.invitation_service import InvitationError, InvitationService
+    from src.services.invitation_service import InvitationError, InvitationService
 
+    try:
         payload = request.get_json(silent=True)
         if not payload:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400

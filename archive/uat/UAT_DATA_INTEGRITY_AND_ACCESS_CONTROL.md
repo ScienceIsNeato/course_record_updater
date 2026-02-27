@@ -1,7 +1,9 @@
 # UAT: Data Integrity and Access Control
+
 **User Acceptance Testing for Multi-Tenant Data Isolation and Role-Based Access**
 
 ## Document Information
+
 - **Version**: 2.0
 - **Date**: October 2025
 - **Purpose**: Validate that each user role can access exactly the data they should, no more, no less
@@ -13,6 +15,7 @@
 ## 🎯 Testing Philosophy
 
 ### What This UAT Validates
+
 - **Multi-tenant data isolation**: Institution A cannot see Institution B's data
 - **Role-based access control**: Each role sees only their authorized scope
 - **Dashboard API data access**: `/api/dashboard/data` returns correctly scoped data
@@ -21,6 +24,7 @@
 - **Negative testing**: Confirms inaccessible data is properly hidden
 
 ### What This UAT Doesn't Cover (Yet)
+
 - **Frontend UI visibility**: Which buttons/panels appear per role (TODO: Add later)
 - **Other export formats**: Excel/JSON/other adapters (YAGNI for now)
 - **Import functionality**: Covered in UAT_IMPORT_EXPORT.md
@@ -31,6 +35,7 @@
 ## 📋 Test Environment Setup
 
 ### Prerequisites
+
 ```bash
 # 1. Ensure fresh database state
 cd /Users/pacey/Documents/SourceCode/course_record_updater
@@ -59,21 +64,26 @@ curl http://localhost:3001/api/health
 ```
 
 ### Test Users from seed_db.py
+
 All test users have password: `TestUser123!` or role-specific password
 
 **Site Admin** (system-wide):
+
 - `siteadmin@system.local` (password: `SiteAdmin123!`)
 
 **Institution Admins** (one per institution):
+
 - MockU: `sarah.admin@mocku.test` (password: `InstitutionAdmin123!`)
 - RCC: `mike.admin@riverside.edu` (password: `InstitutionAdmin123!`)
 - PTU: `admin@pactech.edu` (password: `InstitutionAdmin123!`)
 
 **Program Admins** (program-scoped):
+
 - MockU CS/EE: `lisa.prog@mocku.test`
 - RCC Liberal Arts: `robert.prog@riverside.edu`
 
 **Instructors** (section-scoped):
+
 - MockU: `john.instructor@mocku.test`
 - RCC: `susan.instructor@riverside.edu`
 - PTU: `david.instructor@pactech.edu`
@@ -81,18 +91,21 @@ All test users have password: `TestUser123!` or role-specific password
 ### Test Data Creation Strategy
 
 **IMPORTANT**: This test suite creates its OWN controlled test data using the Generic CSV adapter, ensuring:
+
 - Test isolation from production/development data
 - Predictable, known quantities for assertions
 - Reproducible test runs
 - No dependency on external test files
 
 **Approach**:
+
 1. Create minimal CSV files programmatically with known values
 2. Import via Generic CSV adapter to populate database
 3. Run data access tests against this controlled dataset
 4. Verify export contains exactly what was imported
 
 **Test Data Fixture** (created in test setup):
+
 ```python
 # Create ZIP of CSVs with controlled test data
 # institutions.csv: 3 rows (MockU, RCC, PTU)
@@ -107,16 +120,19 @@ All test users have password: `TestUser123!` or role-specific password
 ## 🧪 SCENARIO 1: Site Admin - Full System Access
 
 ### Test Objective
+
 Validate that Site Admin has unrestricted access to ALL data across ALL institutions.
 
 ---
 
 ### **TC-DAC-001: Site Admin Dashboard API - System-Wide Data**
+
 **Purpose**: Verify `/api/dashboard/data` returns aggregated data from all institutions
 
 **Prerequisites**: Database seeded with 3+ institutions
 
 **Test Steps**:
+
 ```bash
 # 1. Get auth token (or use test client with session)
 # 2. Call dashboard API
@@ -128,6 +144,7 @@ curl -X GET http://localhost:3001/api/dashboard/data \
 ```
 
 **Backend Validation** (Python test):
+
 ```python
 # Login as site admin
 client.post('/api/login', json={
@@ -158,6 +175,7 @@ assert 'Pacific Technical University' in institution_names
 ```
 
 **Expected Results**:
+
 - ✅ **Status**: 200 OK
 - ✅ **Summary Counts**: Shows aggregated data from all 3 institutions
 - ✅ **Institutions Array**: Contains MockU, RCC, PTU
@@ -166,6 +184,7 @@ assert 'Pacific Technical University' in institution_names
 - ✅ **Users Array**: Contains users from all institutions
 
 **Database Verification**:
+
 ```python
 # Verify API response matches database
 from database_service import (
@@ -189,6 +208,7 @@ assert summary['courses'] == len(courses)
 ```
 
 **Critical Assertions**:
+
 - [ ] Dashboard API returns 200 OK
 - [ ] Summary includes all institutions (3+)
 - [ ] Institution names match seeded data exactly
@@ -198,11 +218,13 @@ assert summary['courses'] == len(courses)
 ---
 
 ### **TC-DAC-002: Site Admin CSV Export - All Institutions**
+
 **Purpose**: Verify Generic CSV export includes data from all institutions
 
 **Prerequisites**: TC-DAC-001 passed
 
 **Test Steps**:
+
 ```python
 # Login as site admin
 client.post('/api/login', json={
@@ -231,6 +253,7 @@ with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
 ```
 
 **Expected Results**:
+
 - ✅ **Status**: 200 OK
 - ✅ **ZIP Format**: Response is valid ZIP file
 - ✅ **institutions.csv**: Contains 3+ rows (MockU, RCC, PTU)
@@ -239,19 +262,20 @@ with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
 - ✅ **users.csv**: Contains 9+ rows (all users, passwords excluded)
 
 **Data Integrity Validation**:
+
 ```python
 # Verify institution IDs in programs.csv all exist in institutions.csv
 with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
     inst_csv = zip_file.read('institutions.csv').decode('utf-8')
     prog_csv = zip_file.read('programs.csv').decode('utf-8')
-    
+
     # Parse institution IDs
     inst_ids = set()
     for line in inst_csv.split('\n')[1:]:  # Skip header
         if line:
             inst_id = line.split(',')[0]  # Assuming first column
             inst_ids.add(inst_id)
-    
+
     # Verify all program institution_ids are valid
     for line in prog_csv.split('\n')[1:]:
         if line:
@@ -261,6 +285,7 @@ with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
 ```
 
 **Critical Assertions**:
+
 - [ ] Export returns valid ZIP file
 - [ ] All institutions present in export
 - [ ] All programs present in export
@@ -273,16 +298,19 @@ with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
 ## 🎓 SCENARIO 2: Institution Admin - Single Institution Access
 
 ### Test Objective
+
 Validate that Institution Admin sees ONLY their institution's data, with complete isolation from other institutions.
 
 ---
 
 ### **TC-DAC-101: Institution Admin Dashboard API - MockU Only**
+
 **Purpose**: Verify MockU admin sees only MockU data, not RCC or PTU
 
 **Prerequisites**: Database seeded
 
 **Test Steps**:
+
 ```python
 # Login as MockU institution admin
 client.post('/api/login', json={
@@ -313,6 +341,7 @@ assert 'Pacific Technical University' not in {i.get('name', '') for i in data.ge
 ```
 
 **Expected Results**:
+
 - ✅ **Programs**: Exactly 3 (CS, EE, General Studies)
 - ✅ **Courses**: Only MockU courses visible
 - ✅ **Users**: Only MockU users visible
@@ -321,6 +350,7 @@ assert 'Pacific Technical University' not in {i.get('name', '') for i in data.ge
 - ✅ **Negative**: NO PTU programs (Mechanical Engineering)
 
 **Critical Assertions**:
+
 - [ ] Program count is exactly 3
 - [ ] All program names are MockU programs
 - [ ] No forbidden program names present (Liberal Arts, Business, etc.)
@@ -330,11 +360,13 @@ assert 'Pacific Technical University' not in {i.get('name', '') for i in data.ge
 ---
 
 ### **TC-DAC-102: Institution Admin CSV Export - MockU Only**
+
 **Purpose**: Verify export contains only MockU data
 
 **Prerequisites**: TC-DAC-101 passed
 
 **Test Steps**:
+
 ```python
 # Login as MockU admin
 client.post('/api/login', json={
@@ -357,15 +389,15 @@ with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
     inst_csv = zip_file.read('institutions.csv').decode('utf-8')
     inst_lines = inst_csv.strip().split('\n')
     assert len(inst_lines) == 2, f"Expected 1 institution (+ header), got {len(inst_lines)-1}"
-    
+
     # Check programs.csv - should have ONLY 3 rows (MockU programs)
     prog_csv = zip_file.read('programs.csv').decode('utf-8')
     prog_lines = prog_csv.strip().split('\n')
     assert len(prog_lines) == 4, f"Expected 3 programs (+ header), got {len(prog_lines)-1}"
-    
+
     # NEGATIVE TEST: Verify NO RCC/PTU data in export
     all_csv_content = ' '.join([
-        zip_file.read(f).decode('utf-8') 
+        zip_file.read(f).decode('utf-8')
         for f in zip_file.namelist() if f.endswith('.csv')
     ])
     assert 'Riverside Community College' not in all_csv_content
@@ -374,6 +406,7 @@ with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
 ```
 
 **Expected Results**:
+
 - ✅ **institutions.csv**: 1 row (MockU only)
 - ✅ **programs.csv**: 3 rows (CS, EE, General Studies)
 - ✅ **courses.csv**: Only MockU courses
@@ -381,6 +414,7 @@ with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
 - ✅ **Negative**: NO RCC or PTU program names in ANY CSV
 
 **Critical Assertions**:
+
 - [ ] Export contains exactly 1 institution
 - [ ] Export contains exactly 3 programs
 - [ ] No RCC text anywhere in ZIP
@@ -390,11 +424,13 @@ with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
 ---
 
 ### **TC-DAC-103: Cross-Institution Isolation - RCC vs MockU**
+
 **Purpose**: Verify RCC admin sees completely different data than MockU admin
 
 **Prerequisites**: TC-DAC-101 and TC-DAC-102 passed
 
 **Test Steps**:
+
 ```python
 # First, get MockU admin's data
 client.post('/api/login', json={
@@ -424,12 +460,14 @@ assert 'Electrical Engineering' not in rcc_programs
 ```
 
 **Expected Results**:
+
 - ✅ **Complete Isolation**: Zero overlap between MockU and RCC data
 - ✅ **RCC Programs**: Sees Liberal Arts, Business (not CS, EE)
 - ✅ **MockU Programs**: Sees CS, EE (not Liberal Arts, Business)
 - ✅ **Data Integrity**: Both institution admins see their complete data
 
 **Critical Assertions**:
+
 - [ ] No program name overlap between institutions
 - [ ] RCC admin sees RCC programs only
 - [ ] MockU admin sees MockU programs only
@@ -441,16 +479,19 @@ assert 'Electrical Engineering' not in rcc_programs
 ## 🎯 SCENARIO 3: Program Admin - Program-Scoped Access
 
 ### Test Objective
+
 Validate that Program Admin sees only data for their assigned programs, not other programs at the same institution.
 
 ---
 
 ### **TC-DAC-201: Program Admin Dashboard API - CS/EE Programs Only**
+
 **Purpose**: Verify MockU CS/EE program admin sees only CS and EE data, not General Studies
 
 **Prerequisites**: Database seeded with Lisa (CS/EE admin) at MockU
 
 **Test Steps**:
+
 ```python
 # Login as Lisa - CS and EE program admin at MockU
 client.post('/api/login', json={
@@ -472,19 +513,20 @@ courses = data.get('courses', [])
 if len(courses) > 0:
     # Courses should be CS or EE only
     course_numbers = {c.get('course_number', '') for c in courses}
-    
+
     # Should include CS/EE courses
     has_cs_course = any('CS-' in cn for cn in course_numbers)
     has_ee_course = any('EE-' in cn for cn in course_numbers)
-    
+
     # NEGATIVE: Should NOT include General Studies courses
     # (Implementation depends on how General Studies courses are identified)
-    
+
     # When dashboard is fixed, uncomment:
     # assert has_cs_course or has_ee_course, "Should see CS or EE courses"
 ```
 
 **Expected Results** (when program admin dashboard is fixed):
+
 - ✅ **Programs**: Sees only CS and EE (not General Studies)
 - ✅ **Courses**: Only CS-XXX and EE-XXX courses
 - ✅ **Sections**: Only sections for CS/EE courses
@@ -495,6 +537,7 @@ if len(courses) > 0:
 Program admin dashboard currently returns 0 courses/sections. This test validates expected behavior once fixed.
 
 **Critical Assertions**:
+
 - [ ] Program admin can access dashboard (200 OK)
 - [ ] When fixed: Sees only assigned program courses
 - [ ] When fixed: Does not see other programs at same institution
@@ -504,11 +547,13 @@ Program admin dashboard currently returns 0 courses/sections. This test validate
 ---
 
 ### **TC-DAC-202: Program Admin CSV Export - Program-Filtered**
+
 **Purpose**: Verify export contains only data for assigned programs
 
 **Prerequisites**: TC-DAC-201 passed
 
 **Test Steps**:
+
 ```python
 # Login as Lisa (CS/EE program admin)
 client.post('/api/login', json={
@@ -530,7 +575,7 @@ with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
     # Check courses.csv - should only have CS and EE courses
     if 'courses.csv' in zip_file.namelist():
         courses_csv = zip_file.read('courses.csv').decode('utf-8')
-        
+
         # Validate course numbers
         for line in courses_csv.split('\n')[1:]:  # Skip header
             if line.strip():
@@ -541,12 +586,14 @@ with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
 ```
 
 **Expected Results**:
+
 - ✅ **courses.csv**: Only CS and EE courses
 - ✅ **programs.csv**: Only CS and EE programs (2 rows)
 - ✅ **Negative**: NO General Studies courses
 - ✅ **Negative**: NO courses from other programs
 
 **Critical Assertions**:
+
 - [ ] Export succeeds (200 OK)
 - [ ] Only assigned program data in export
 - [ ] No other program data leaked
@@ -557,16 +604,19 @@ with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
 ## 👨‍🏫 SCENARIO 4: Instructor - Section-Level Access
 
 ### Test Objective
+
 Validate that Instructor sees only sections they are assigned to teach, not other instructors' sections.
 
 ---
 
 ### **TC-DAC-301: Instructor Dashboard API - Assigned Sections Only**
+
 **Purpose**: Verify instructor sees only their 6 assigned sections
 
 **Prerequisites**: Database seeded with John (instructor) assigned to 6 sections at MockU
 
 **Test Steps**:
+
 ```python
 # Login as John - instructor at MockU with 6 sections
 client.post('/api/login', json={
@@ -596,12 +646,14 @@ for section in sections:
 ```
 
 **Expected Results**:
+
 - ✅ **Section Count**: Exactly 6 sections
 - ✅ **Student Count**: 120 students total
 - ✅ **Instructor ID**: All sections assigned to John
 - ✅ **Negative**: NO sections from other instructors
 
 **Database Verification**:
+
 ```python
 from database_service import get_sections_by_instructor, get_user_by_email
 
@@ -618,6 +670,7 @@ assert total_enrollment == 120
 ```
 
 **Critical Assertions**:
+
 - [ ] Dashboard returns exactly 6 sections
 - [ ] All sections belong to logged-in instructor
 - [ ] Student count matches enrollment sum
@@ -627,11 +680,13 @@ assert total_enrollment == 120
 ---
 
 ### **TC-DAC-302: Instructor CSV Export - Own Sections Only**
+
 **Purpose**: Verify export contains only instructor's sections
 
 **Prerequisites**: TC-DAC-301 passed
 
 **Test Steps**:
+
 ```python
 # Login as John
 client.post('/api/login', json={
@@ -655,18 +710,20 @@ with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
         sections_csv = zip_file.read('sections.csv').decode('utf-8')
         section_lines = sections_csv.strip().split('\n')
         assert len(section_lines) == 7, f"Expected 6 sections (+ header), got {len(section_lines)-1}"
-        
+
         # Verify all sections belong to John
         # (Implementation depends on CSV schema)
 ```
 
 **Expected Results**:
+
 - ✅ **sections.csv**: Exactly 6 rows
 - ✅ **Instructor ID**: All sections assigned to John
 - ✅ **Enrollment**: Matches database enrollment
 - ✅ **Negative**: NO other instructors' sections
 
 **Critical Assertions**:
+
 - [ ] Export contains exactly 6 sections
 - [ ] All sections belong to instructor
 - [ ] No other instructors' data in export
@@ -677,14 +734,17 @@ with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
 ## 🔐 SCENARIO 5: Negative Access Testing
 
 ### Test Objective
+
 Validate that unauthorized access is properly denied.
 
 ---
 
 ### **TC-DAC-401: Unauthenticated Access Denied**
+
 **Purpose**: Verify dashboard and export require authentication
 
 **Test Steps**:
+
 ```python
 # Ensure no session (logout if needed)
 client.post('/api/logout')
@@ -703,11 +763,13 @@ assert export_response.status_code in [401, 302], \
 ```
 
 **Expected Results**:
+
 - ✅ **Dashboard**: 401 Unauthorized or 302 Redirect
 - ✅ **Export**: 401 Unauthorized or 302 Redirect
 - ✅ **No Data**: No data returned in responses
 
 **Critical Assertions**:
+
 - [ ] Dashboard access denied without auth
 - [ ] Export access denied without auth
 - [ ] No sensitive data in error responses
@@ -718,18 +780,21 @@ assert export_response.status_code in [401, 302], \
 ## 📊 Test Execution Checklist
 
 ### Pre-Execution
+
 - [ ] Database seeded with `python scripts/seed_db.py --clear`
 - [ ] Server running on port 3001
 - [ ] All test users have correct passwords
 - [ ] Generic CSV adapter registered and working
 
 ### During Execution
+
 - [ ] Run tests with `pytest tests/uat/test_role_data_access_integrity.py -v`
 - [ ] Monitor for API errors (check logs)
 - [ ] Verify database state between tests
 - [ ] Screenshot any unexpected behavior
 
 ### Post-Execution
+
 - [ ] All test cases pass
 - [ ] No data leakage detected
 - [ ] No orphaned database records
@@ -741,6 +806,7 @@ assert export_response.status_code in [401, 302], \
 ## 🚨 Known Issues and Limitations
 
 ### Current Limitations
+
 1. **Program Admin Dashboard**: Currently returns 0 courses/sections (known issue)
    - Tests validate expected behavior when fixed
    - TC-DAC-201 documents this limitation
@@ -757,6 +823,7 @@ assert export_response.status_code in [401, 302], \
    - Backend data access is the priority
 
 ### Future Enhancements (TODO)
+
 - [ ] **TODO**: Add frontend validation to existing tests
   - Verify which dashboard panels are visible per role
   - Confirm import/export buttons show/hide correctly
@@ -771,6 +838,7 @@ assert export_response.status_code in [401, 302], \
 ## ✅ Success Criteria
 
 ### Data Access Control
+
 - [ ] Site Admin sees all data (3+ institutions)
 - [ ] Institution Admin sees only their institution
 - [ ] Program Admin sees only their programs
@@ -778,6 +846,7 @@ assert export_response.status_code in [401, 302], \
 - [ ] No cross-boundary data leakage
 
 ### Export Integrity
+
 - [ ] Site Admin export contains all institutions
 - [ ] Institution Admin export filtered to institution
 - [ ] Program Admin export filtered to programs
@@ -785,6 +854,7 @@ assert export_response.status_code in [401, 302], \
 - [ ] No sensitive data (passwords) in exports
 
 ### Security
+
 - [ ] Unauthenticated access properly denied
 - [ ] Cross-institution access blocked
 - [ ] Cross-program access blocked
@@ -792,6 +862,7 @@ assert export_response.status_code in [401, 302], \
 - [ ] All API endpoints validate permissions
 
 ### Data Integrity
+
 - [ ] Dashboard counts match database
 - [ ] Export counts match dashboard
 - [ ] Referential integrity maintained
@@ -800,5 +871,4 @@ assert export_response.status_code in [401, 302], \
 
 ---
 
-*This UAT suite ensures comprehensive data access control across all user roles. Backend validation is complete; frontend validation to be added in future sprint.*
-
+_This UAT suite ensures comprehensive data access control across all user roles. Backend validation is complete; frontend validation to be added in future sprint._

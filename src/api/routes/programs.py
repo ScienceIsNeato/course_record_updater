@@ -476,7 +476,9 @@ def _validate_bulk_manage_request() -> Optional[ResponseReturnValue]:
     return None
 
 
-def _execute_bulk_add(course_ids: list, program_id: str) -> Tuple[Dict[str, Any], str]:
+def _execute_bulk_add(
+    course_ids: list[str], program_id: str
+) -> Tuple[Dict[str, Any], str]:
     """Execute bulk add operation."""
     result = bulk_add_courses_to_program(course_ids, program_id)
     message = f"Bulk add operation completed: {result['success_count']} added"
@@ -484,7 +486,7 @@ def _execute_bulk_add(course_ids: list, program_id: str) -> Tuple[Dict[str, Any]
 
 
 def _execute_bulk_remove(
-    course_ids: list, program_id: str
+    course_ids: list[str], program_id: str
 ) -> Tuple[Dict[str, Any], str]:
     """Execute bulk remove operation with orphan handling."""
     institution_id = get_current_institution_id_safe()

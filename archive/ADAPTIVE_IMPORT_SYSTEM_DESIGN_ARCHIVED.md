@@ -7,12 +7,14 @@ The LoopCloser uses a flexible, institution-specific adapter system that allows 
 ## Core Philosophy
 
 ### Institution-Centric Approach
+
 - **Each institution has unique data formats**: No two institutions structure their data identically
 - **One-off custom development**: Adapters are developed on-demand by the system developer
 - **Automatic format detection**: The system determines data types from file content, not user selection
 - **Scoped adapter access**: Users only see adapters relevant to their institution
 
 ### Adapter-Driven Data Detection
+
 - **No manual data type selection**: Users don't choose "courses" vs "students" - the adapter determines this
 - **File format flexibility**: Adapters can handle Excel, CSV, JSON, or any structured format
 - **Content-based validation**: Each adapter validates file compatibility before processing
@@ -76,6 +78,7 @@ Instructor:
 ## Adapter Development Process
 
 ### Request Workflow
+
 1. **Institution Request**: Institution admin contacts system developer
 2. **Data Analysis**: Developer analyzes institution's data format
 3. **Adapter Development**: Custom adapter created for institution
@@ -85,26 +88,28 @@ Instructor:
 ### Adapter Specifications
 
 #### Required Methods
+
 ```python
 class BaseAdapter:
     def validate_file_compatibility(self, file_path: str) -> bool:
         """Check if file format matches adapter expectations"""
         pass
-    
+
     def detect_data_types(self, file_path: str) -> List[str]:
         """Determine what types of data are in the file"""
         pass
-    
+
     def get_adapter_info(self) -> Dict[str, Any]:
         """Return adapter metadata for UI display"""
         pass
-    
+
     def parse_file(self, file_path: str, options: Dict) -> ImportResult:
         """Process the file and return structured data"""
         pass
 ```
 
 #### Adapter Metadata
+
 ```python
 def get_adapter_info(self) -> Dict[str, Any]:
     return {
@@ -124,70 +129,77 @@ def get_adapter_info(self) -> Dict[str, Any]:
 ### Import Panel Components
 
 #### File Upload Section
+
 ```html
 <div class="file-upload">
-    <label>Select Data File:</label>
-    <input type="file" accept="*" />
-    <small>Format will be detected by selected adapter</small>
+  <label>Select Data File:</label>
+  <input type="file" accept="*" />
+  <small>Format will be detected by selected adapter</small>
 </div>
 ```
 
 #### Adapter Selection
+
 ```html
 <div class="adapter-selection">
-    <label>Import Adapter:</label>
-    <select name="import_adapter">
-        <!-- Populated based on user's institution scope -->
-        <option value="mocku_excel_v1">MockU Excel Format v1.2</option>
-        <option value="mocku_csv_v1">MockU CSV Format v1.0</option>
-    </select>
-    <small>Only adapters for your institution are shown</small>
+  <label>Import Adapter:</label>
+  <select name="import_adapter">
+    <!-- Populated based on user's institution scope -->
+    <option value="mocku_excel_v1">MockU Excel Format v1.2</option>
+    <option value="mocku_csv_v1">MockU CSV Format v1.0</option>
+  </select>
+  <small>Only adapters for your institution are shown</small>
 </div>
 ```
 
 #### Compatibility Status
+
 ```html
 <div class="compatibility-check" id="compatibilityStatus">
-    <!-- Populated after file upload and adapter selection -->
-    <div class="alert alert-success">
-        ✅ File compatible with MockU Excel Format
-        Detected data types: Courses (45), Faculty (12), Assessments (180)
-    </div>
-    <!-- OR -->
-    <div class="alert alert-danger">
-        ❌ File incompatible with MockU Excel Format
-        Contact your institution admin to request a custom adapter for this format.
-    </div>
+  <!-- Populated after file upload and adapter selection -->
+  <div class="alert alert-success">
+    ✅ File compatible with MockU Excel Format Detected data types: Courses
+    (45), Faculty (12), Assessments (180)
+  </div>
+  <!-- OR -->
+  <div class="alert alert-danger">
+    ❌ File incompatible with MockU Excel Format Contact your institution admin
+    to request a custom adapter for this format.
+  </div>
 </div>
 ```
 
 ### Export Panel Components
 
 #### Output Format Selection
+
 ```html
 <div class="export-adapter">
-    <label>Output Format:</label>
-    <select name="export_adapter">
-        <!-- Same institution-scoped adapters -->
-        <option value="mocku_excel_v1">MockU Excel Format v1.2</option>
-        <option value="generic_csv">Generic CSV Format</option>
-    </select>
+  <label>Output Format:</label>
+  <select name="export_adapter">
+    <!-- Same institution-scoped adapters -->
+    <option value="mocku_excel_v1">MockU Excel Format v1.2</option>
+    <option value="generic_csv">Generic CSV Format</option>
+  </select>
 </div>
 ```
 
 ## Error Handling & User Guidance
 
 ### Compatibility Errors
+
 - **Primary Message**: "File incompatible with [Adapter Name]"
 - **Action Required**: "Contact your institution administrator to request a custom adapter"
 - **Technical Details**: Log specific validation failures for developer review
 
 ### Import Errors
+
 - **Data Validation Failures**: Show specific rows/fields that failed validation
 - **Conflict Resolution**: Present options based on adapter capabilities
 - **Partial Import Success**: Report what succeeded and what failed
 
 ### User Education
+
 - **Adapter Purpose**: Explain that adapters are custom-built for each institution
 - **File Format Guidance**: Provide examples of compatible file structures
 - **Support Channel**: Clear path to request new adapters
@@ -195,24 +207,28 @@ def get_adapter_info(self) -> Dict[str, Any]:
 ## Implementation Phases
 
 ### Phase 1: Core Infrastructure
+
 - [ ] Implement BaseAdapter abstract class
 - [ ] Create adapter registry and discovery system
 - [ ] Update UI to remove data type dropdown
 - [ ] Add file compatibility validation workflow
 
 ### Phase 2: Enhanced Validation
+
 - [ ] Implement detailed compatibility checking
 - [ ] Add data type detection and reporting
 - [ ] Create error messaging system
 - [ ] Update user interface with status feedback
 
 ### Phase 3: Institution Scoping
+
 - [ ] Implement role-based adapter filtering
 - [ ] Add adapter metadata management
 - [ ] Create adapter development documentation
 - [ ] Deploy institution-specific adapters
 
 ### Phase 4: Advanced Features
+
 - [ ] Add adapter versioning system
 - [ ] Implement adapter update notifications
 - [ ] Create adapter performance monitoring
@@ -221,6 +237,7 @@ def get_adapter_info(self) -> Dict[str, Any]:
 ## Technical Specifications
 
 ### Adapter Storage
+
 ```
 adapters/
 ├── base_adapter.py              # Abstract base class
@@ -232,6 +249,7 @@ adapters/
 ```
 
 ### Database Schema Extensions
+
 ```sql
 -- Adapter tracking table
 CREATE TABLE import_adapters (
@@ -248,12 +266,13 @@ CREATE TABLE import_adapters (
 );
 
 -- Import history with adapter tracking
-ALTER TABLE import_history 
+ALTER TABLE import_history
 ADD COLUMN adapter_id VARCHAR(255),
 ADD FOREIGN KEY (adapter_id) REFERENCES import_adapters(id);
 ```
 
 ### API Endpoints
+
 ```python
 # Adapter management
 GET    /api/adapters                    # List available adapters (scoped)
@@ -271,16 +290,19 @@ GET    /api/import/status/{id}          # Check import status
 ## Success Metrics
 
 ### User Experience
+
 - **Reduced Support Tickets**: Fewer requests for "unsupported format" issues
 - **Faster Onboarding**: New institutions can import data immediately after adapter development
 - **Higher Success Rate**: Improved import success rate due to format-specific validation
 
 ### System Flexibility
+
 - **Institution Coverage**: Each institution has adapters for their unique formats
 - **Format Diversity**: Support for Excel, CSV, JSON, and custom formats
 - **Scalable Development**: New institutions can be onboarded without system changes
 
 ### Developer Efficiency
+
 - **Reusable Framework**: BaseAdapter provides consistent development pattern
 - **Clear Requirements**: Adapter specifications guide development process
 - **Isolated Changes**: New adapters don't affect existing functionality
@@ -288,16 +310,19 @@ GET    /api/import/status/{id}          # Check import status
 ## Future Enhancements
 
 ### Automated Adapter Generation
+
 - AI-assisted adapter creation from sample files
 - Template-based adapter generation for common patterns
 - Institution self-service adapter customization tools
 
 ### Advanced Validation
+
 - Cross-reference validation between related data types
 - Historical data consistency checking
 - Real-time format change detection
 
 ### Integration Capabilities
+
 - Direct API connections to institution systems
 - Scheduled automatic imports
 - Real-time data synchronization
@@ -305,38 +330,48 @@ GET    /api/import/status/{id}          # Check import status
 ## Conflict Resolution Strategies
 
 ### `--use-mine` (Keep Existing)
+
 **When to use:** Protecting existing manually-entered data
+
 - Keeps all existing database records unchanged
 - Skips conflicting import records
 - Logs conflicts for review
 - Best for: Incremental updates where database is authoritative
 
 **Example:**
+
 ```bash
 python import_cli.py --file data.xlsx --adapter cei_excel_format_v1 --use-mine --dry-run
 ```
 
 ### `--use-theirs` (Overwrite with Import)
+
 **When to use:** Import file is the authoritative source
+
 - Overwrites existing data with import values
 - Updates conflicting fields
 - Maintains audit trail of changes
 - Best for: Initial data imports, refreshing from external systems
 
 **Example:**
+
 ```bash
 python import_cli.py --file institution_data.xlsx --adapter cei_excel_format_v1 --use-theirs
 ```
 
 ### `--manual-review` (Flag for Review)
+
 **When to use:** Critical data that requires human verification
+
 - Identifies conflicts without resolving them
 - Creates review queue for administrators
 - Provides detailed conflict reports
 - Best for: Sensitive data, complex validation scenarios
 
 ### `--merge` (Intelligent Merging)
+
 **When to use:** Future enhancement for sophisticated data combining
+
 - Combines data using predefined rules
 - Newer timestamps win for dated fields
 - Preserves important manual additions
@@ -345,6 +380,7 @@ python import_cli.py --file institution_data.xlsx --adapter cei_excel_format_v1 
 ## Command Line Interface
 
 ### Import Commands
+
 ```bash
 # Standard import with compatibility check
 python import_cli.py \
@@ -368,6 +404,7 @@ python import_cli.py --file sample.xlsx --adapter cei_excel_format_v1 --validate
 ```
 
 ### Export Commands
+
 ```bash
 # Export using institution-specific adapter
 python export_cli.py \
@@ -383,6 +420,7 @@ python export_cli.py \
 ```
 
 ### Round-Trip Validation
+
 ```bash
 # Run complete round-trip validation
 python scripts/round_trip_validate.py \
@@ -398,54 +436,58 @@ python scripts/round_trip_validate.py --all-adapters
 ## API Integration
 
 ### Import Endpoints
+
 ```javascript
 // Upload file with adapter selection
 const formData = new FormData();
-formData.append('file', dataFile);
-formData.append('adapter_id', 'cei_excel_format_v1');
-formData.append('conflict_strategy', 'use_theirs');
+formData.append("file", dataFile);
+formData.append("adapter_id", "cei_excel_format_v1");
+formData.append("conflict_strategy", "use_theirs");
 
-fetch('/api/import/upload', {
-    method: 'POST',
-    body: formData
+fetch("/api/import/upload", {
+  method: "POST",
+  body: formData,
 });
 ```
 
 ### Validation Endpoints
+
 ```javascript
 // Check file compatibility before import
-fetch('/api/adapters/cei_excel_format_v1/validate', {
-    method: 'POST',
-    body: formData
+fetch("/api/adapters/cei_excel_format_v1/validate", {
+  method: "POST",
+  body: formData,
 })
-.then(response => response.json())
-.then(result => {
+  .then((response) => response.json())
+  .then((result) => {
     if (result.compatible) {
-        console.log(`Detected data types: ${result.data_types.join(', ')}`);
-        proceedWithImport();
+      console.log(`Detected data types: ${result.data_types.join(", ")}`);
+      proceedWithImport();
     } else {
-        showError(`File incompatible: ${result.error_message}`);
+      showError(`File incompatible: ${result.error_message}`);
     }
-});
+  });
 ```
 
 ### Export Endpoints
+
 ```javascript
 // Request export in institution format
-fetch('/api/export/generate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-        adapter_id: 'cei_excel_format_v1',
-        data_types: ['courses', 'faculty'],
-        institution_id: 'mocku_institution_id'
-    })
+fetch("/api/export/generate", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    adapter_id: "cei_excel_format_v1",
+    data_types: ["courses", "faculty"],
+    institution_id: "mocku_institution_id",
+  }),
 });
 ```
 
 ## Quality Gates & Validation
 
 ### Pre-Import Validation
+
 - **File Format Compatibility**: Adapter validates file structure and format
 - **Required Columns**: Checks for all mandatory data fields
 - **Data Type Consistency**: Validates data formats (dates, numbers, IDs)
@@ -453,12 +495,14 @@ fetch('/api/export/generate', {
 - **File Size Limits**: Prevents processing of oversized files
 
 ### Post-Import Validation
+
 - **Data Integrity Checks**: Referential consistency between related records
 - **Statistical Sanity Checks**: Validates data distributions and ranges
 - **Duplicate Detection**: Identifies and handles duplicate records
 - **Audit Trail Creation**: Logs all import activities and changes
 
 ### Round-Trip Validation (CI)
+
 ```yaml
 # In .github/workflows/quality-gate.yml
 - name: Round-trip Validation
@@ -470,6 +514,7 @@ fetch('/api/export/generate', {
 ## Troubleshooting
 
 ### Adapter Compatibility Issues
+
 ```bash
 # List available adapters for your institution
 python import_cli.py --list-adapters
@@ -484,21 +529,25 @@ python import_cli.py --file data.xlsx --adapter cei_excel_format_v1 --debug --dr
 ### Common Error Messages
 
 #### "File incompatible with [Adapter Name]"
+
 **Cause**: File structure doesn't match adapter expectations
 **Solution**: Contact institution admin to request custom adapter for your file format
 **Details**: Check logs for specific validation failures
 
 #### "Missing required columns: [column_names]"
+
 **Cause**: Required data columns not found in uploaded file
 **Solution**: Add missing columns to file or use different adapter
 **Details**: Each adapter documents its required column structure
 
 #### "No adapters available for your institution"
+
 **Cause**: No custom adapters developed for your institution yet
 **Solution**: Institution admin should contact system developer to request adapter development
 **Timeline**: Custom adapter development typically takes 1-2 weeks
 
 ### Round-Trip Validation Failures
+
 ```bash
 # Run detailed round-trip analysis
 python scripts/round_trip_validate.py \
@@ -517,12 +566,14 @@ python scripts/compare_import_export.py \
 ## Best Practices
 
 ### For Institution Administrators
+
 1. **Provide Sample Data**: When requesting new adapters, provide representative sample files
 2. **Document Requirements**: Clearly specify what data needs to be imported/exported
 3. **Test Thoroughly**: Validate adapter functionality with real data before production use
 4. **Plan for Updates**: Consider how data formats might change over time
 
 ### For System Developers
+
 1. **Start with Compatibility**: Implement file validation before parsing logic
 2. **Handle Errors Gracefully**: Provide clear, actionable error messages
 3. **Test with Real Data**: Use sanitized versions of actual institution data
@@ -530,6 +581,7 @@ python scripts/compare_import_export.py \
 5. **Version Adapters**: Plan for adapter updates as institution needs evolve
 
 ### For End Users
+
 1. **Check Compatibility First**: Always validate file compatibility before importing
 2. **Use Dry-Run Mode**: Preview import results before committing changes
 3. **Monitor Import Results**: Review import logs and error reports

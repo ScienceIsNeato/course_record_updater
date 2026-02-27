@@ -1,6 +1,6 @@
-const { setBody } = require('../helpers/dom');
+const { setBody } = require("../helpers/dom");
 
-describe('programManagement.js', () => {
+describe("programManagement.js", () => {
   let mockFetch;
   let alertSpy;
   let confirmSpy;
@@ -11,9 +11,9 @@ describe('programManagement.js', () => {
 
   const loadAndInit = () => {
     jest.resetModules();
-    require('../../../static/programManagement');
+    require("../../../static/programManagement");
     // Manually trigger init if needed, or rely on DOMContentLoaded
-    document.dispatchEvent(new Event('DOMContentLoaded'));
+    document.dispatchEvent(new Event("DOMContentLoaded"));
   };
 
   beforeEach(() => {
@@ -48,28 +48,35 @@ describe('programManagement.js', () => {
     // Mocks
     mockFetch = jest.fn();
     global.fetch = mockFetch;
-    alertSpy = jest.spyOn(window, 'alert').mockImplementation();
-    confirmSpy = jest.spyOn(window, 'confirm').mockImplementation();
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
-    
+    alertSpy = jest.spyOn(window, "alert").mockImplementation();
+    confirmSpy = jest.spyOn(window, "confirm").mockImplementation();
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation();
+    consoleLogSpy = jest.spyOn(console, "log").mockImplementation();
+
     // Global function mocks
     loadProgramsSpy = jest.fn();
     global.loadPrograms = loadProgramsSpy;
-    
+
     institutionDashboardRefreshSpy = jest.fn();
     global.InstitutionDashboard = { refresh: institutionDashboardRefreshSpy };
 
-    global.userContext = { institutionId: 'inst-1', institutionName: 'Test Inst' };
+    global.userContext = {
+      institutionId: "inst-1",
+      institutionName: "Test Inst",
+    };
 
     // Bootstrap mock
     global.bootstrap = {
       Modal: class {
-        constructor(element) { this.element = element; }
+        constructor(element) {
+          this.element = element;
+        }
         show() {}
         hide() {}
-        static getInstance() { return { hide: jest.fn() }; }
-      }
+        static getInstance() {
+          return { hide: jest.fn() };
+        }
+      },
     };
   });
 
@@ -81,26 +88,26 @@ describe('programManagement.js', () => {
     delete global.bootstrap;
   });
 
-  test('loadInstitutionsForDropdown populates from userContext', () => {
+  test("loadInstitutionsForDropdown populates from userContext", () => {
     loadAndInit();
-    
+
     // Wait for async operations (though loadInstitutionsForDropdown is technically async, it just does DOM ops here)
-    const select = document.getElementById('programInstitutionId');
+    const select = document.getElementById("programInstitutionId");
     expect(select.options.length).toBe(2);
-    expect(select.options[1].value).toBe('inst-1');
-    expect(select.options[1].text).toBe('Test Inst');
+    expect(select.options[1].value).toBe("inst-1");
+    expect(select.options[1].text).toBe("Test Inst");
   });
 
-  test('createProgram calls loadPrograms on success', async () => {
+  test("createProgram calls loadPrograms on success", async () => {
     loadAndInit();
-    
+
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ message: 'Created' })
+      json: async () => ({ message: "Created" }),
     });
 
-    const form = document.getElementById('createProgramForm');
-    form.dispatchEvent(new Event('submit'));
+    const form = document.getElementById("createProgramForm");
+    form.dispatchEvent(new Event("submit"));
 
     // Wait for promise resolution
     await Promise.resolve();
@@ -109,16 +116,16 @@ describe('programManagement.js', () => {
     expect(loadProgramsSpy).toHaveBeenCalled();
   });
 
-  test('updateProgram calls loadPrograms on success', async () => {
+  test("updateProgram calls loadPrograms on success", async () => {
     loadAndInit();
-    
+
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ message: 'Updated' })
+      json: async () => ({ message: "Updated" }),
     });
 
-    const form = document.getElementById('editProgramForm');
-    form.dispatchEvent(new Event('submit'));
+    const form = document.getElementById("editProgramForm");
+    form.dispatchEvent(new Event("submit"));
 
     await Promise.resolve();
     await Promise.resolve();
@@ -126,31 +133,31 @@ describe('programManagement.js', () => {
     expect(loadProgramsSpy).toHaveBeenCalled();
   });
 
-  test('deleteProgram calls InstitutionDashboard.refresh on success', async () => {
+  test("deleteProgram calls InstitutionDashboard.refresh on success", async () => {
     loadAndInit();
     confirmSpy.mockReturnValue(true);
-    
+
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ message: 'Deleted' })
+      json: async () => ({ message: "Deleted" }),
     });
 
-    await global.deleteProgram('prog-1', 'Test Program');
+    await global.deleteProgram("prog-1", "Test Program");
 
     expect(institutionDashboardRefreshSpy).toHaveBeenCalled();
   });
 
-  test('deleteProgram calls loadPrograms if InstitutionDashboard missing', async () => {
+  test("deleteProgram calls loadPrograms if InstitutionDashboard missing", async () => {
     loadAndInit();
     confirmSpy.mockReturnValue(true);
     delete global.InstitutionDashboard; // Remove dashboard mock
-    
+
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ message: 'Deleted' })
+      json: async () => ({ message: "Deleted" }),
     });
 
-    await global.deleteProgram('prog-1', 'Test Program');
+    await global.deleteProgram("prog-1", "Test Program");
 
     expect(loadProgramsSpy).toHaveBeenCalled();
   });

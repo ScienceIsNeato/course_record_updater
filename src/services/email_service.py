@@ -537,7 +537,7 @@ class EmailService:
         Determine the log file destination for email previews.
         """
         try:
-            cfg: "Mapping[str, Any]" = current_app.config
+            cfg: Mapping[str, Any] = current_app.config
         except RuntimeError:
             cfg = {}
 

@@ -5,6 +5,8 @@ Provides endpoints for user registration, email verification,
 login/logout, session management, and account lockout handling.
 """
 
+from typing import Any, Dict
+
 from flask import Blueprint, flash, jsonify, redirect, request, url_for
 from flask.typing import ResponseReturnValue
 
@@ -282,6 +284,7 @@ def login_api() -> ResponseReturnValue:
     )
     from src.services.password_service import AccountLockedError
 
+    data: Dict[str, Any] = {}
     try:
 
         # Get request data

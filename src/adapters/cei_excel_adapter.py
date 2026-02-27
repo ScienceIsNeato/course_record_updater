@@ -802,7 +802,7 @@ class CEIExcelAdapter(FileBaseAdapter):
 
     def parse_file(
         self, file_path: str, options: Dict[str, Any]
-    ) -> Dict[str, List[Dict]]:
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """
         Parse CEI Excel file into structured data ready for database import.
 
@@ -863,10 +863,10 @@ class CEIExcelAdapter(FileBaseAdapter):
 
     def _process_excel_rows(
         self, df: pd.DataFrame, institution_id: str
-    ) -> Dict[str, List[Dict]]:
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """Process all Excel rows and collect entities by type."""
         # Initialize result structure
-        result: Dict[str, List[Dict]] = {
+        result: Dict[str, List[Dict[str, Any]]] = {
             "courses": [],
             "users": [],  # Note: using 'users' not 'faculty' to match database service
             "terms": [],
@@ -892,7 +892,7 @@ class CEIExcelAdapter(FileBaseAdapter):
         return result
 
     def _collect_row_entities(
-        self, entities: Dict[str, Any], result: Dict[str, List[Dict]]
+        self, entities: Dict[str, Any], result: Dict[str, List[Dict[str, Any]]]
     ) -> None:
         """Collect entities from a single row into the result structure."""
         timestamp = datetime.now().isoformat()
@@ -913,7 +913,9 @@ class CEIExcelAdapter(FileBaseAdapter):
                 entity["created_at"] = timestamp
                 result[result_key].append(entity)
 
-    def _finalize_results(self, result: Dict[str, List[Dict]]) -> Dict[str, List[Dict]]:
+    def _finalize_results(
+        self, result: Dict[str, List[Dict[str, Any]]]
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """Remove duplicates and validate final results."""
         # Remove duplicates from each data type
         result = self._deduplicate_results(result)
@@ -926,8 +928,8 @@ class CEIExcelAdapter(FileBaseAdapter):
         return result
 
     def _deduplicate_results(
-        self, result: Dict[str, List[Dict]]
-    ) -> Dict[str, List[Dict]]:
+        self, result: Dict[str, List[Dict[str, Any]]]
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """Remove duplicate records from parsed results."""
 
         # Define key fields for each data type to identify duplicates
@@ -972,7 +974,10 @@ class CEIExcelAdapter(FileBaseAdapter):
         return result
 
     def export_data(
-        self, data: Dict[str, List[Dict]], output_path: str, options: Dict[str, Any]
+        self,
+        data: Dict[str, List[Dict[str, Any]]],
+        output_path: str,
+        options: Dict[str, Any],
     ) -> Tuple[bool, str, int]:
         """
         Export structured data to CEI Excel format.
@@ -1044,7 +1049,7 @@ class CEIExcelAdapter(FileBaseAdapter):
             return False, f"Export failed: {str(e)}", 0
 
     def _build_cei_export_records(
-        self, data: Dict[str, List[Dict]], options: Dict[str, Any]
+        self, data: Dict[str, List[Dict[str, Any]]], options: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
         """
         Build CEI-format records from standardized database data.
@@ -1070,7 +1075,7 @@ class CEIExcelAdapter(FileBaseAdapter):
             return self._build_synthesized_records(data)
 
     def _build_records_from_sections(
-        self, data: Dict[str, List[Dict]]
+        self, data: Dict[str, List[Dict[str, Any]]]
     ) -> List[Dict[str, Any]]:
         """Build records from sections (preferred - most complete data)."""
         records = []
@@ -1120,7 +1125,7 @@ class CEIExcelAdapter(FileBaseAdapter):
         return records
 
     def _build_records_from_offerings(
-        self, data: Dict[str, List[Dict]]
+        self, data: Dict[str, List[Dict[str, Any]]]
     ) -> List[Dict[str, Any]]:
         """Build records from offerings (fallback when sections unavailable)."""
         records = []
@@ -1158,7 +1163,7 @@ class CEIExcelAdapter(FileBaseAdapter):
         return records
 
     def _build_synthesized_records(
-        self, data: Dict[str, List[Dict]]
+        self, data: Dict[str, List[Dict[str, Any]]]
     ) -> List[Dict[str, Any]]:
         """Synthesize records from courses and instructors (last resort)."""
         records = []

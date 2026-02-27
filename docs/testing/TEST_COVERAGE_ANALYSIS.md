@@ -1,7 +1,9 @@
 # Test Coverage Analysis for PR
 
 ## Overview
+
 This PR adds ~20,000 lines of new code including:
+
 - 91 API endpoints
 - Audit service (579 lines)
 - Database layer expansions (583+ lines)
@@ -15,9 +17,11 @@ This PR adds ~20,000 lines of new code including:
 ## Coverage Gaps by File
 
 ### 1. api_routes.py (226 uncovered lines)
+
 **New Endpoints (91 total)**
 
 Endpoints WITH tests (37 tests in test_crud_api_endpoints.py):
+
 - ✅ GET /users/<id>
 - ✅ PATCH /users/<id>/profile
 - ✅ POST /users/<id>/deactivate
@@ -46,6 +50,7 @@ Endpoints WITH tests (37 tests in test_crud_api_endpoints.py):
 - ✅ DELETE /outcomes/<id>
 
 Endpoints MISSING comprehensive tests (need validation + error path coverage):
+
 - ❌ GET /dashboard/data
 - ❌ GET /institutions
 - ❌ POST /institutions
@@ -67,20 +72,23 @@ Endpoints MISSING comprehensive tests (need validation + error path coverage):
 - ❌ POST/GET /offerings
 - ❌ GET/POST /sections
 - ❌ GET /outcomes
-- ❌ POST /audit/* (all audit endpoints)
+- ❌ POST /audit/\* (all audit endpoints)
 - ❌ POST /import/excel
-- ❌ POST /export/*
+- ❌ POST /export/\*
 
 **Strategy**: Focus on validation error paths (400-level errors) - these are quick wins and improve security rating
 
 ### 2. database_sqlite.py (144 uncovered lines)
+
 **New/Modified Methods**
 
 Areas with tests (from test_database_service.py):
+
 - ✅ Basic CRUD operations
 - ✅ Relationship management
 
 Missing error path coverage:
+
 - ❌ SQLAlchemy exception handling
 - ❌ Constraint violation handling
 - ❌ Transaction rollback scenarios
@@ -90,25 +98,30 @@ Missing error path coverage:
 **Strategy**: Add targeted error injection tests for each CRUD method
 
 ### 3. audit_service.py (12 uncovered lines)
+
 **New Service (579 total lines)**
 
 test_audit_service.py exists with comprehensive tests, but 12 lines uncovered:
-- Lines 276-279: Error path in _validate_log_level
-- Lines 319, 322: Error paths in _filter_events
-- Lines 373-376: Error paths in _format_timestamp
-- Lines 415, 418: Error paths in _paginate_results
+
+- Lines 276-279: Error path in \_validate_log_level
+- Lines 319, 322: Error paths in \_filter_events
+- Lines 373-376: Error paths in \_format_timestamp
+- Lines 415, 418: Error paths in \_paginate_results
 
 **Strategy**: Add error injection tests for these specific helper methods
 
 ### 4. database_service.py (9 uncovered lines)
+
 **Facade Layer**
 
 Missing coverage on error pass-through:
+
 - Lines 121, 213, 219, 228, 234, 244, 303, 323, 384
 
 **Strategy**: Add tests that verify exceptions are properly propagated
 
 ### 5. app.py (4 uncovered lines)
+
 **Application Initialization**
 
 Lines 209-212: Error handling in app initialization
@@ -120,6 +133,7 @@ Lines 209-212: Error handling in app initialization
 ## Systematic Test Plan
 
 ### Phase 1: Quick Wins (Target: +5% coverage)
+
 **Focus**: Input validation and 400-level errors
 
 1. Add validation error tests for POST /institutions
@@ -131,6 +145,7 @@ Lines 209-212: Error handling in app initialization
 **Rationale**: Validation logic is straightforward to test and improves security rating
 
 ### Phase 2: Error Paths (Target: +3% coverage)
+
 **Focus**: Database error handling
 
 1. Add constraint violation tests (SQLAlchemy IntegrityError)
@@ -141,6 +156,7 @@ Lines 209-212: Error handling in app initialization
 **Rationale**: Ensures graceful degradation and proper error messages
 
 ### Phase 3: Service Layer (Target: +2% coverage)
+
 **Focus**: audit_service.py and database_service.py
 
 1. Complete audit_service helper method tests
@@ -149,6 +165,7 @@ Lines 209-212: Error handling in app initialization
 **Rationale**: Completes coverage of new services
 
 ### Phase 4: Integration (Verify)
+
 **Focus**: Ensure workflows are covered
 
 1. Review existing integration tests
@@ -162,6 +179,7 @@ Lines 209-212: Error handling in app initialization
 **Required**: ~40 newly covered lines (10% of 398)
 
 **Approach**:
+
 - Phase 1: ~20 lines (validation logic)
 - Phase 2: ~15 lines (error handling)
 - Phase 3: ~10 lines (service layer)
@@ -195,4 +213,3 @@ Lines 209-212: Error handling in app initialization
 4. ⏳ Execute Phase 3 (service tests)
 5. ⏳ Verify integration coverage
 6. ⏳ Re-run SonarCloud analysis
-

@@ -42,8 +42,9 @@ def refresh_connection() -> DatabaseInterface:
 
 def reset_database() -> bool:
     """Drop and recreate all tables for a clean database state."""
-    if hasattr(_db_service, "sql"):
-        engine = _db_service.sql.engine
+    sql_backend: Any = getattr(_db_service, "sql", None)
+    if sql_backend is not None:
+        engine = sql_backend.engine
         Base.metadata.drop_all(engine)
         Base.metadata.create_all(engine)
         return True
@@ -53,8 +54,9 @@ def reset_database() -> bool:
 
 def close_connection() -> None:
     """Close the underlying database connection."""
-    if hasattr(_db_service, "sql"):
-        _db_service.sql.close()
+    sql_backend: Any = getattr(_db_service, "sql", None)
+    if sql_backend is not None:
+        sql_backend.close()
 
 
 def db_operation_timeout() -> AbstractContextManager[Any]:

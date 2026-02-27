@@ -106,8 +106,7 @@ def test_login_script_loading(page: Page, server_running: bool):
         print(f"   URL: {auth_js_url}")
 
     # Check if form exists and has properties
-    form_check = page.evaluate(
-        """
+    form_check = page.evaluate("""
         () => {
             const form = document.getElementById('loginForm');
             if (!form) return {exists: false};
@@ -119,14 +118,12 @@ def test_login_script_loading(page: Page, server_running: bool):
                 hasMethod: form.method || 'get'
             };
         }
-    """
-    )
+    """)
 
     print(f"🔍 Form properties: {form_check}")
 
     # Check if functions are defined in global scope
-    functions_check = page.evaluate(
-        """
+    functions_check = page.evaluate("""
         () => {
             return {
                 handleLogin: typeof handleLogin,
@@ -135,26 +132,22 @@ def test_login_script_loading(page: Page, server_running: bool):
                 getCSRFToken: typeof getCSRFToken
             };
         }
-    """
-    )
+    """)
 
     print(f"🔍 Global functions defined: {functions_check}")
 
     # Check if DOMContentLoaded event has fired
-    dom_ready = page.evaluate(
-        """
+    dom_ready = page.evaluate("""
         () => {
             return document.readyState === 'complete' || document.readyState === 'interactive';
         }
-    """
-    )
+    """)
 
     print(f"✅ DOM ready: {dom_ready}")
 
     # CRITICAL: Check if initializePage() was actually called
     # We can infer this by checking if event listeners were attached
-    initialization_check = page.evaluate(
-        """
+    initialization_check = page.evaluate("""
         () => {
             // Check current path that initializePage would see
             const currentPath = window.location.pathname;
@@ -171,8 +164,7 @@ def test_login_script_loading(page: Page, server_running: bool):
                 formListenerCount: form ? (form._events ? Object.keys(form._events).length : 'unknown') : 0
             };
         }
-    """
-    )
+    """)
 
     print(f"🔍 Initialization check: {initialization_check}")
 

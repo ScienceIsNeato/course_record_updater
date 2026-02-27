@@ -1,264 +1,318 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Loopcloser - Close the Assessment Loop</title>
     <!-- nosemgrep: html.security.audit.missing-integrity.missing-integrity -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
     <!-- nosemgrep: html.security.audit.missing-integrity.missing-integrity -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="icon" href="{{ url_for('static', filename='images/loopcloser_favicon.png') }}" type="image/png">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <link
+      rel="icon"
+      href="{{ url_for('static', filename='images/loopcloser_favicon.png') }}"
+      type="image/png"
+    />
     <style>
-        .flash-message {
-            margin-top: 1rem;
-        }
+      .flash-message {
+        margin-top: 1rem;
+      }
 
-        .navbar-brand img {
-            max-height: 40px;
-            /* Adjust logo height as needed */
-            margin-right: 10px;
-        }
+      .navbar-brand img {
+        max-height: 40px;
+        /* Adjust logo height as needed */
+        margin-right: 10px;
+      }
     </style>
-</head>
+  </head>
 
-<body>
+  <body>
     {# Bootstrap Navbar Header #}
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-        <div class="container-fluid">
-            <a class="navbar-brand d-flex align-items-center" href="/">
-                <img src="{{ url_for('static', filename='images/loopcloser_icon.png') }}" alt="Loopcloser Logo" height="30"
-                    class="d-inline-block align-text-top me-2">
-                Loopcloser
-            </a>
+      <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center" href="/">
+          <img
+            src="{{ url_for('static', filename='images/loopcloser_icon.png') }}"
+            alt="Loopcloser Logo"
+            height="30"
+            class="d-inline-block align-text-top me-2"
+          />
+          Loopcloser
+        </a>
 
-            <!-- Navigation Items (will be populated by JavaScript based on auth status) -->
-            <div class="navbar-nav me-auto" id="navItems"></div>
+        <!-- Navigation Items (will be populated by JavaScript based on auth status) -->
+        <div class="navbar-nav me-auto" id="navItems"></div>
 
-            <!-- User Info (will be populated by JavaScript if authenticated) -->
-            <div class="navbar-nav" id="userInfo">
-                <div class="nav-item">
-                    <button class="btn btn-outline-light btn-sm" onclick="showLogin()">
-                        <i class="fas fa-sign-in-alt me-1"></i>Login
-                    </button>
-                </div>
-            </div>
+        <!-- User Info (will be populated by JavaScript if authenticated) -->
+        <div class="navbar-nav" id="userInfo">
+          <div class="nav-item">
+            <button class="btn btn-outline-light btn-sm" onclick="showLogin()">
+              <i class="fas fa-sign-in-alt me-1"></i>Login
+            </button>
+          </div>
         </div>
+      </div>
     </nav>
 
     <div class="container mt-4">
+      <!-- Display Upload Results (If any) -->
+      {% include '_upload_results.html' %}
 
-        <!-- Display Upload Results (If any) -->
-        {% include '_upload_results.html' %}
+      <!-- Display Flash Messages -->
+      {% include '_flash_messages.html' %}
 
-        <!-- Display Flash Messages -->
-        {% include '_flash_messages.html' %}
-
-
-        <!-- Excel Import Form (Advanced) -->
-        <div class="card mb-4 border-info">
-            <div class="card-header bg-info text-white">
-                <i class="fas fa-file-excel"></i> Excel Data Import (Advanced)
-            </div>
-            <div class="card-body">
-                <p class="text-muted mb-3">
-                    Import course data from Excel files with conflict resolution and safety features.
-                </p>
-
-                <form id="excelImportForm" enctype="multipart/form-data">
-                    <div class="row g-3">
-                        <!-- File Selection -->
-                        <div class="col-md-6">
-                            <label for="excel_file" class="form-label">Select Excel File (.xlsx, .xls):</label>
-                            <input type="file" class="form-control" id="excel_file" name="excel_file"
-                                accept=".xlsx,.xls" required>
-                        </div>
-
-                        <!-- Import Adapter -->
-                        <div class="col-md-6">
-                            <label for="import_adapter" class="form-label">Import Format:</label>
-                            <select class="form-select" id="import_adapter" name="import_adapter" required>
-                                <option value="mocku_excel_adapter" selected>MockU Excel Format</option>
-                                <option value="generic_excel_adapter">Generic Excel Format</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Options -->
-                    <div class="row g-3 mt-2">
-                        <div class="col-md-4">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="dry_run" name="dry_run">
-                                <label class="form-check-label" for="dry_run">
-                                    <strong>Dry Run (Test Mode)</strong><br>
-                                    <small class="text-muted">Preview changes without saving to database</small>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-md-8">
-                            <!-- Reserved for future import options -->
-                        </div>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="row g-3 mt-3">
-                        <div class="col-md-6">
-                            <button type="button" class="btn btn-outline-info w-100" id="validateImportBtn">
-                                <i class="fas fa-check-circle"></i> Validate File Only
-                            </button>
-                        </div>
-                        <div class="col-md-6">
-                            <button type="submit" class="btn btn-info w-100" id="executeImportBtn">
-                                <i class="fas fa-upload"></i> <span id="importBtnText">Run Import</span>
-                            </button>
-                        </div>
-                    </div>
-                </form>
-
-                <!-- Progress and Results -->
-                <div id="importProgress" class="mt-4" style="display: none;">
-                    <div class="progress mb-3">
-                        <progress class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"
-                            value="0" max="100"></progress>
-                    </div>
-                    <div id="importStatus" class="text-center">
-                        <output class="spinner-border text-info">
-                            <span class="visually-hidden">Processing...</span>
-                        </output>
-                        <p class="mt-2">Processing import...</p>
-                    </div>
-                </div>
-
-                <!-- Results Display -->
-                <div id="importResults" class="mt-4" style="display: none;"></div>
-            </div>
+      <!-- Excel Import Form (Advanced) -->
+      <div class="card mb-4 border-info">
+        <div class="card-header bg-info text-white">
+          <i class="fas fa-file-excel"></i> Excel Data Import (Advanced)
         </div>
+        <div class="card-body">
+          <p class="text-muted mb-3">
+            Import course data from Excel files with conflict resolution and
+            safety features.
+          </p>
 
+          <form id="excelImportForm" enctype="multipart/form-data">
+            <div class="row g-3">
+              <!-- File Selection -->
+              <div class="col-md-6">
+                <label for="excel_file" class="form-label"
+                  >Select Excel File (.xlsx, .xls):</label
+                >
+                <input
+                  type="file"
+                  class="form-control"
+                  id="excel_file"
+                  name="excel_file"
+                  accept=".xlsx,.xls"
+                  required
+                />
+              </div>
 
-        <!-- Course Dashboard -->
-        <div class="card">
-            <div class="card-header">Course Management Dashboard</div>
-            <div class="card-body">
-                <p class="text-muted">
-                    After importing your Excel data, you can manage courses, terms, sections, and instructors through
-                    the API endpoints.
-                    A comprehensive dashboard interface will be added in future updates.
-                </p>
-                <div class="row">
-                    <div class="col-md-3">
-                        <div class="card border-primary">
-                            <div class="card-body">
-                                <h5 class="card-title">Courses</h5>
-                                <p class="card-text">Manage course catalog</p>
-                                <div id="coursesData">
-                                    <output class="spinner-border spinner-border-sm">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </output>
-                                    <small class="text-muted ms-2">Loading...</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card border-success">
-                            <div class="card-body">
-                                <h5 class="card-title">Instructors</h5>
-                                <p class="card-text">Manage faculty</p>
-                                <div id="instructorsData">
-                                    <output class="spinner-border spinner-border-sm">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </output>
-                                    <small class="text-muted ms-2">Loading...</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card border-warning">
-                            <div class="card-body">
-                                <h5 class="card-title">Sections</h5>
-                                <p class="card-text">Manage course sections</p>
-                                <div id="sectionsData">
-                                    <output class="spinner-border spinner-border-sm">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </output>
-                                    <small class="text-muted ms-2">Loading...</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card border-info">
-                            <div class="card-body">
-                                <h5 class="card-title">Terms</h5>
-                                <p class="card-text">Manage academic terms</p>
-                                <div id="termsData">
-                                    <output class="spinner-border spinner-border-sm">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </output>
-                                    <small class="text-muted ms-2">Loading...</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+              <!-- Import Adapter -->
+              <div class="col-md-6">
+                <label for="import_adapter" class="form-label"
+                  >Import Format:</label
+                >
+                <select
+                  class="form-select"
+                  id="import_adapter"
+                  name="import_adapter"
+                  required
+                >
+                  <option value="mocku_excel_adapter" selected>
+                    MockU Excel Format
+                  </option>
+                  <option value="generic_excel_adapter">
+                    Generic Excel Format
+                  </option>
+                </select>
+              </div>
             </div>
+
+            <!-- Options -->
+            <div class="row g-3 mt-2">
+              <div class="col-md-4">
+                <div class="form-check form-switch">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="dry_run"
+                    name="dry_run"
+                  />
+                  <label class="form-check-label" for="dry_run">
+                    <strong>Dry Run (Test Mode)</strong><br />
+                    <small class="text-muted"
+                      >Preview changes without saving to database</small
+                    >
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-8">
+                <!-- Reserved for future import options -->
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="row g-3 mt-3">
+              <div class="col-md-6">
+                <button
+                  type="button"
+                  class="btn btn-outline-info w-100"
+                  id="validateImportBtn"
+                >
+                  <i class="fas fa-check-circle"></i> Validate File Only
+                </button>
+              </div>
+              <div class="col-md-6">
+                <button
+                  type="submit"
+                  class="btn btn-info w-100"
+                  id="executeImportBtn"
+                >
+                  <i class="fas fa-upload"></i>
+                  <span id="importBtnText">Run Import</span>
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <!-- Progress and Results -->
+          <div id="importProgress" class="mt-4" style="display: none">
+            <div class="progress mb-3">
+              <progress
+                class="progress-bar progress-bar-striped progress-bar-animated"
+                style="width: 0%"
+                value="0"
+                max="100"
+              ></progress>
+            </div>
+            <div id="importStatus" class="text-center">
+              <output class="spinner-border text-info">
+                <span class="visually-hidden">Processing...</span>
+              </output>
+              <p class="mt-2">Processing import...</p>
+            </div>
+          </div>
+
+          <!-- Results Display -->
+          <div id="importResults" class="mt-4" style="display: none"></div>
         </div>
+      </div>
+
+      <!-- Course Dashboard -->
+      <div class="card">
+        <div class="card-header">Course Management Dashboard</div>
+        <div class="card-body">
+          <p class="text-muted">
+            After importing your Excel data, you can manage courses, terms,
+            sections, and instructors through the API endpoints. A comprehensive
+            dashboard interface will be added in future updates.
+          </p>
+          <div class="row">
+            <div class="col-md-3">
+              <div class="card border-primary">
+                <div class="card-body">
+                  <h5 class="card-title">Courses</h5>
+                  <p class="card-text">Manage course catalog</p>
+                  <div id="coursesData">
+                    <output class="spinner-border spinner-border-sm">
+                      <span class="visually-hidden">Loading...</span>
+                    </output>
+                    <small class="text-muted ms-2">Loading...</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card border-success">
+                <div class="card-body">
+                  <h5 class="card-title">Instructors</h5>
+                  <p class="card-text">Manage faculty</p>
+                  <div id="instructorsData">
+                    <output class="spinner-border spinner-border-sm">
+                      <span class="visually-hidden">Loading...</span>
+                    </output>
+                    <small class="text-muted ms-2">Loading...</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card border-warning">
+                <div class="card-body">
+                  <h5 class="card-title">Sections</h5>
+                  <p class="card-text">Manage course sections</p>
+                  <div id="sectionsData">
+                    <output class="spinner-border spinner-border-sm">
+                      <span class="visually-hidden">Loading...</span>
+                    </output>
+                    <small class="text-muted ms-2">Loading...</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card border-info">
+                <div class="card-body">
+                  <h5 class="card-title">Terms</h5>
+                  <p class="card-text">Manage academic terms</p>
+                  <div id="termsData">
+                    <output class="spinner-border spinner-border-sm">
+                      <span class="visually-hidden">Loading...</span>
+                    </output>
+                    <small class="text-muted ms-2">Loading...</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-
     <!-- nosemgrep: html.security.audit.missing-integrity.missing-integrity -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
-        crossorigin="anonymous"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+      crossorigin="anonymous"
+    ></script>
     <script src="{{ url_for('static', filename='logger.js') }}"></script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 
     <script>
-        // Authentication and Role-based UI Management
-        let currentUser = null;
+      // Authentication and Role-based UI Management
+      let currentUser = null;
 
-        // Check authentication status on page load
-        document.addEventListener('DOMContentLoaded', function () {
-            checkAuthStatus();
-        });
+      // Check authentication status on page load
+      document.addEventListener("DOMContentLoaded", function () {
+        checkAuthStatus();
+      });
 
-        async function checkAuthStatus() {
-            try {
-                const response = await fetch('/api/auth/status');
-                const data = await response.json();
+      async function checkAuthStatus() {
+        try {
+          const response = await fetch("/api/auth/status");
+          const data = await response.json();
 
-                if (data.success && data.authenticated) {
-                    currentUser = data.user;
-                    updateNavigation(data.user);
-                } else {
-                    currentUser = null;
-                    updateNavigation(null);
-                }
-            } catch (error) {
-                console.error('Error checking auth status:', error);
-                currentUser = null;
-                updateNavigation(null);
-            }
+          if (data.success && data.authenticated) {
+            currentUser = data.user;
+            updateNavigation(data.user);
+          } else {
+            currentUser = null;
+            updateNavigation(null);
+          }
+        } catch (error) {
+          console.error("Error checking auth status:", error);
+          currentUser = null;
+          updateNavigation(null);
         }
+      }
 
-        function updateNavigation(user) {
-            const navItems = document.getElementById('navItems');
-            const userInfo = document.getElementById('userInfo');
+      function updateNavigation(user) {
+        const navItems = document.getElementById("navItems");
+        const userInfo = document.getElementById("userInfo");
 
-            if (user) {
-                // Show role-based navigation
-                navItems.innerHTML = getRoleBasedNavigation(user.role);
+        if (user) {
+          // Show role-based navigation
+          navItems.innerHTML = getRoleBasedNavigation(user.role);
 
-                // Show user info with dropdown
-                userInfo.innerHTML = `
+          // Show user info with dropdown
+          userInfo.innerHTML = `
                     <div class="nav-item dropdown">
                         <button class="nav-link dropdown-toggle text-light btn btn-link" id="userDropdown" data-bs-toggle="dropdown">
                             <i class="fas fa-user-circle me-1"></i>
                             ${user.first_name} ${user.last_name}
-                            <span class="badge bg-secondary ms-1">${user.role.replaceAll('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                            <span class="badge bg-secondary ms-1">${user.role.replaceAll("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())}</span>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="/dashboard"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</a></li>
@@ -269,12 +323,12 @@
                     </div>
                 `;
 
-                // Show role-appropriate content
-                showAuthenticatedContent(user);
-            } else {
-                // Show login button
-                navItems.innerHTML = '';
-                userInfo.innerHTML = `
+          // Show role-appropriate content
+          showAuthenticatedContent(user);
+        } else {
+          // Show login button
+          navItems.innerHTML = "";
+          userInfo.innerHTML = `
                     <div class="nav-item">
                         <button class="btn btn-outline-light btn-sm" onclick="showLogin()">
                             <i class="fas fa-sign-in-alt me-1"></i>Login
@@ -282,97 +336,113 @@
                     </div>
                 `;
 
-                // Show public content
-                showPublicContent();
-            }
+          // Show public content
+          showPublicContent();
         }
+      }
 
-        function getRoleBasedNavigation(role) {
-            const baseNav = '<a class="nav-link" href="/"><i class="fas fa-home me-1"></i>Home</a>';
+      function getRoleBasedNavigation(role) {
+        const baseNav =
+          '<a class="nav-link" href="/"><i class="fas fa-home me-1"></i>Home</a>';
 
-            switch (role) {
-                case 'site_admin':
-                    return baseNav + `
+        switch (role) {
+          case "site_admin":
+            return (
+              baseNav +
+              `
                         <a class="nav-link" href="/api/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
                         <a class="nav-link" href="#"><i class="fas fa-university me-1"></i>Institutions</a>
                         <a class="nav-link" href="#"><i class="fas fa-users me-1"></i>Users</a>
                         <a class="nav-link" href="#"><i class="fas fa-cogs me-1"></i>System</a>
-                    `;
-                case 'institution_admin':
-                    return baseNav + `
+                    `
+            );
+          case "institution_admin":
+            return (
+              baseNav +
+              `
                         <a class="nav-link" href="/api/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
                         <a class="nav-link" href="#"><i class="fas fa-graduation-cap me-1"></i>Programs</a>
                         <a class="nav-link" href="#"><i class="fas fa-users me-1"></i>Users</a>
                         <a class="nav-link" href="#"><i class="fas fa-chart-bar me-1"></i>Reports</a>
-                    `;
-                case 'program_admin':
-                    return baseNav + `
+                    `
+            );
+          case "program_admin":
+            return (
+              baseNav +
+              `
                         <a class="nav-link" href="/api/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
                         <a class="nav-link" href="#"><i class="fas fa-book me-1"></i>Courses</a>
                         <a class="nav-link" href="#"><i class="fas fa-chalkboard-teacher me-1"></i>Instructors</a>
                         <a class="nav-link" href="#"><i class="fas fa-list me-1"></i>Sections</a>
-                    `;
-                case 'instructor':
-                    return baseNav + `
+                    `
+            );
+          case "instructor":
+            return (
+              baseNav +
+              `
                         <a class="nav-link" href="/api/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
                         <a class="nav-link" href="#"><i class="fas fa-list me-1"></i>My Sections</a>
                         <a class="nav-link" href="#"><i class="fas fa-book me-1"></i>My Courses</a>
                         <a class="nav-link" href="#"><i class="fas fa-chart-line me-1"></i>Assessments</a>
-                    `;
-                default:
-                    return baseNav;
-            }
+                    `
+            );
+          default:
+            return baseNav;
         }
+      }
 
-        function showAuthenticatedContent(user) {
-            // Hide public content, show authenticated content
-            // This would be expanded based on specific needs
-            console.log('User authenticated:', user);
+      function showAuthenticatedContent(user) {
+        // Hide public content, show authenticated content
+        // This would be expanded based on specific needs
+        console.log("User authenticated:", user);
+      }
+
+      function showPublicContent() {
+        // Show public content, hide authenticated content
+        console.log("User not authenticated - showing public content");
+      }
+
+      function showLogin() {
+        // For now, show an alert. In a real implementation, this would show a login modal
+        alert(
+          "Login functionality coming soon! For now, use the API endpoints directly.",
+        );
+      }
+
+      async function logout() {
+        try {
+          const csrfToken = document.querySelector(
+            'meta[name="csrf-token"]',
+          )?.content;
+
+          const response = await fetch("/api/auth/logout", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": csrfToken,
+            },
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            globalThis.location.href = "/";
+          } else {
+            console.error("Logout failed:", data);
+            // On logout failure, force a fresh login to clear broken session
+            globalThis.location.href = "/login?force=true";
+          }
+        } catch (error) {
+          console.error("Logout error:", error);
+          // On error, force a fresh login to clear broken session
+          globalThis.location.href = "/login?force=true";
         }
+      }
 
-        function showPublicContent() {
-            // Show public content, hide authenticated content
-            console.log('User not authenticated - showing public content');
-        }
-
-        function showLogin() {
-            // For now, show an alert. In a real implementation, this would show a login modal
-            alert('Login functionality coming soon! For now, use the API endpoints directly.');
-        }
-
-        async function logout() {
-            try {
-                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-
-                const response = await fetch('/api/auth/logout', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    }
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    globalThis.location.href = '/';
-                } else {
-                    console.error('Logout failed:', data);
-                    // On logout failure, force a fresh login to clear broken session
-                    globalThis.location.href = '/login?force=true';
-                }
-            } catch (error) {
-                console.error('Logout error:', error);
-                // On error, force a fresh login to clear broken session
-                globalThis.location.href = '/login?force=true';
-            }
-        }
-
-        // Make functions available globally
-        globalThis.checkAuthStatus = checkAuthStatus;
-        globalThis.showLogin = showLogin;
-        globalThis.logout = logout;
+      // Make functions available globally
+      globalThis.checkAuthStatus = checkAuthStatus;
+      globalThis.showLogin = showLogin;
+      globalThis.logout = logout;
     </script>
-</body>
-
+  </body>
 </html>

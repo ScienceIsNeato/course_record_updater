@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional, cast
 
 from sqlalchemy import (
     JSON,
@@ -250,9 +250,11 @@ class Term(Base, TimestampMixin):  # type: ignore[valid-type,misc]
 
     def get_status(self, reference_date: datetime | None = None) -> str:
         """Return computed status for this term."""
-        # Cast Column types to their runtime values for type checker
-        start = str(self.start_date) if self.start_date else None
-        end = str(self.end_date) if self.end_date else None
+        # Cast Column descriptors to runtime types for Pyright
+        start_raw = cast(Optional[str], self.start_date)
+        end_raw = cast(Optional[str], self.end_date)
+        start = str(start_raw) if start_raw else None
+        end = str(end_raw) if end_raw else None
         return get_term_status(start, end, reference_date)
 
 
@@ -751,9 +753,8 @@ def _program_to_dict(model: Program) -> Dict[str, Any]:
     }
     # Add program_admins if not already present
     if "program_admins" not in data:
-        data["program_admins"] = (
-            model.extras.get("program_admins", []) if model.extras else []
-        )
+        extras = cast(Optional[Dict[str, Any]], model.extras)
+        data["program_admins"] = extras.get("program_admins", []) if extras else []
     return data
 
 
@@ -825,9 +826,11 @@ def _course_offering_to_dict(model: CourseOffering) -> Dict[str, Any]:
     if term:
         term_start = term.start_date
         term_end = term.end_date
-    elif hasattr(model, "extras") and model.extras:
-        term_start = model.extras.get("term_start_date")
-        term_end = model.extras.get("term_end_date")
+    else:
+        extras = cast(Optional[Dict[str, Any]], getattr(model, "extras", None))
+        if extras:
+            term_start = extras.get("term_start_date")
+            term_end = extras.get("term_end_date")
 
     status = get_term_status(term_start, term_end)
     data = {
@@ -947,6 +950,11 @@ def _course_outcome_to_dict(model: CourseOutcome) -> Dict[str, Any]:
 
 def _user_invitation_to_dict(model: UserInvitation) -> Dict[str, Any]:
     """Convert UserInvitation model to dictionary."""
+    invited_at = cast(Optional[datetime], model.invited_at)
+    expires_at = cast(Optional[datetime], model.expires_at)
+    accepted_at = cast(Optional[datetime], model.accepted_at)
+    created_at = cast(Optional[datetime], model.created_at)
+    updated_at = cast(Optional[datetime], model.updated_at)
     return {
         "id": model.id,  # Primary key for update operations
         "invitation_id": model.id,  # Legacy compatibility
@@ -955,18 +963,20 @@ def _user_invitation_to_dict(model: UserInvitation) -> Dict[str, Any]:
         "institution_id": model.institution_id,
         "token": model.token,
         "invited_by": model.invited_by,
-        "invited_at": model.invited_at.isoformat() if model.invited_at else None,
-        "expires_at": model.expires_at.isoformat() if model.expires_at else None,
+        "invited_at": invited_at.isoformat() if invited_at else None,
+        "expires_at": expires_at.isoformat() if expires_at else None,
         "status": model.status,
-        "accepted_at": model.accepted_at.isoformat() if model.accepted_at else None,
+        "accepted_at": accepted_at.isoformat() if accepted_at else None,
         "personal_message": model.personal_message,
-        "created_at": model.created_at.isoformat() if model.created_at else None,
-        "updated_at": model.updated_at.isoformat() if model.updated_at else None,
+        "created_at": created_at.isoformat() if created_at else None,
+        "updated_at": updated_at.isoformat() if updated_at else None,
     }
 
 
 def _program_outcome_to_dict(model: ProgramOutcome) -> Dict[str, Any]:
     """Convert ProgramOutcome model to dictionary."""
+    created_at = cast(Optional[datetime], model.created_at)
+    updated_at = cast(Optional[datetime], model.updated_at)
     return {
         "id": model.id,
         "program_id": model.program_id,
@@ -974,13 +984,16 @@ def _program_outcome_to_dict(model: ProgramOutcome) -> Dict[str, Any]:
         "plo_number": model.plo_number,
         "description": model.description,
         "is_active": model.is_active,
-        "created_at": model.created_at.isoformat() if model.created_at else None,
-        "updated_at": model.updated_at.isoformat() if model.updated_at else None,
+        "created_at": created_at.isoformat() if created_at else None,
+        "updated_at": updated_at.isoformat() if updated_at else None,
     }
 
 
 def _plo_mapping_to_dict(model: PloMapping) -> Dict[str, Any]:
     """Convert PloMapping model to dictionary."""
+    published_at = cast(Optional[datetime], model.published_at)
+    created_at = cast(Optional[datetime], model.created_at)
+    updated_at = cast(Optional[datetime], model.updated_at)
     data: Dict[str, Any] = {
         "id": model.id,
         "program_id": model.program_id,
@@ -988,11 +1001,9 @@ def _plo_mapping_to_dict(model: PloMapping) -> Dict[str, Any]:
         "status": model.status,
         "description": model.description,
         "created_by_user_id": model.created_by_user_id,
-        "published_at": (
-            model.published_at.isoformat() if model.published_at else None
-        ),
-        "created_at": model.created_at.isoformat() if model.created_at else None,
-        "updated_at": model.updated_at.isoformat() if model.updated_at else None,
+        "published_at": published_at.isoformat() if published_at else None,
+        "created_at": created_at.isoformat() if created_at else None,
+        "updated_at": updated_at.isoformat() if updated_at else None,
     }
     # Include entries if eager-loaded
     if "entries" in model.__dict__:

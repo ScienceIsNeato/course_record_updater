@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Loopcloser (internally: LoopCloser) is an enterprise-grade Flask web application for managing course learning outcomes and assessment data. It serves educational institutions with multi-tenancy, role-based authentication, and comprehensive quality gates maintaining 80% test coverage.
 
 **Key Technologies:**
+
 - Backend: Python 3.13 (Flask 3.1+), SQLAlchemy 2.0+
 - Frontend: Vanilla JavaScript, HTML templates with Jinja2
 - Database: SQLite (via SQLAlchemy ORM)
@@ -16,6 +17,7 @@ Loopcloser (internally: LoopCloser) is an enterprise-grade Flask web application
 ## Development Commands
 
 ### Environment Setup
+
 ```bash
 # Create virtual environment
 python3 -m venv venv
@@ -30,6 +32,7 @@ npm install
 ```
 
 ### Running the Application
+
 ```bash
 # Start development server (port 3001)
 bash scripts/restart_server.sh dev
@@ -47,7 +50,7 @@ python src/app.py
 
 **Primary Quality Gate - slop-mop (Always Use This):**
 
-> After setup: `cd tools/slopmop && pip install -e .`
+> Install: `pipx install slopmop` (or `pip install slopmop`)
 
 ```bash
 # Fast commit validation (preferred local workflow)
@@ -69,6 +72,7 @@ sm validate e2e                    # E2E tests
 **IMPORTANT:** Always use `sm validate` for running tests. Do NOT run `pytest` or `npm test` directly unless running a single test file for quick verification during development.
 
 **Single Test File Verification (Development Only):**
+
 ```bash
 # Quick verification of a single test file during development
 pytest tests/unit/test_auth_service.py -q
@@ -79,6 +83,7 @@ pytest tests/unit/test_auth_service.py::test_login_success -v
 ```
 
 **Dev-Cycle Optimization (Rapid Iteration):**
+
 ```bash
 # Fast full unit suite (~10s, uses DELETE-based cleanup instead of DDL reset)
 sm validate python-tests
@@ -96,6 +101,7 @@ sm validate commit
 **Note:** The unit test suite uses fast DELETE-based database cleanup between tests (schema created once per session). This is handled automatically by `tests/unit/conftest.py`. Tests marked with `@pytest.mark.slow` can be skipped during rapid iteration with `-m "not slow"`.
 
 **Frontend Testing:**
+
 ```bash
 # Run through slop-mop (preferred)
 sm validate js-lint-format
@@ -110,6 +116,7 @@ npm run format:check
 ```
 
 ### Code Quality & Formatting
+
 ```bash
 # Auto-fix Python formatting (safe to run anytime)
 black .
@@ -132,6 +139,7 @@ npm run format
 ```
 
 ### Database Operations
+
 ```bash
 # Seed database with demo data
 python scripts/seed_db.py --demo --clear --env dev
@@ -194,22 +202,26 @@ src/
 Business logic lives in `src/services/`. Services are stateless, dependency-injected, and thoroughly tested.
 
 **2. Database Abstraction**
+
 - `database_service.py` provides a backwards-compatible facade
 - All database operations go through `database_factory.py` → `database_sqlite.py`
 - Direct SQLAlchemy session access via `db.sqlite.session`
 - Models defined in `models_sql.py` using declarative base
 
 **3. API Evolution**
+
 - **Legacy:** `api_routes.py` contains monolithic API (5000+ lines)
 - **New:** `src/api/routes/` contains extracted domain blueprints
 - **Migration:** Gradually extracting routes from api_routes.py to modular blueprints
 
 **4. Multi-Tenancy**
+
 - Institution-scoped data isolation
 - All queries automatically filtered by `institution_id`
 - Current user's institution retrieved via `get_current_user()` from session
 
 **5. Authentication & Authorization**
+
 - Session-based auth (Flask-Session with filesystem storage)
 - CSRF protection enabled globally (CSRFProtect)
 - Decorators: `@login_required`, `@permission_required`
@@ -218,6 +230,7 @@ Business logic lives in `src/services/`. Services are stateless, dependency-inje
 ### Database Schema
 
 **Core Entities:**
+
 - **Institutions** → **Users** (instructors, admins)
 - **Terms** (academic periods)
 - **Programs** (e.g., "Computer Science BS")
@@ -227,6 +240,7 @@ Business logic lives in `src/services/`. Services are stateless, dependency-inje
 - **Course Outcomes** (learning objectives for a course)
 
 **Key Relationships:**
+
 - Institution has many Users, Programs, Terms, Courses
 - Course has many Offerings (one per term)
 - Offering has many Sections (multiple instructors/times)
@@ -235,6 +249,7 @@ Business logic lives in `src/services/`. Services are stateless, dependency-inje
 ### Testing Strategy
 
 **Test Organization:**
+
 ```
 tests/
 ├── unit/           # Fast, isolated unit tests (services, utils)
@@ -247,6 +262,7 @@ tests/
 ```
 
 **Test Markers (pytest):**
+
 - `@pytest.mark.unit` - Fast unit tests
 - `@pytest.mark.integration` - Database integration tests
 - `@pytest.mark.smoke` - Critical path tests
@@ -254,6 +270,7 @@ tests/
 - `@pytest.mark.slow` - Long-running tests (deselect with `-m "not slow"`)
 
 **Key Testing Conventions:**
+
 1. **CSRF Always Enabled in Tests:** All test clients have CSRF wrapper (see `conftest.py`)
 2. **Database Fixtures:** Use `db_session`, `init_schema`, `test_db` fixtures
 3. **Auth Fixtures:** Use `authenticated_client` fixture for logged-in tests
@@ -285,6 +302,7 @@ response = client.post('/api/endpoint',
 **Coverage Threshold:** 80% (enforced in CI and locally)
 
 **Pre-commit Hooks:**
+
 - detect-secrets (secret scanning)
 - black (auto-format Python)
 - isort (import sorting)
@@ -292,6 +310,7 @@ response = client.post('/api/endpoint',
 - mypy (type checking)
 
 **CI Quality Gates:**
+
 1. Python formatting & linting (black, isort, flake8, pylint)
 2. JavaScript formatting & linting (ESLint, Prettier)
 3. Type checking (mypy --strict)
@@ -303,6 +322,7 @@ response = client.post('/api/endpoint',
 ### Common Patterns & Best Practices
 
 **1. Getting Current User & Institution:**
+
 ```python
 from src.services.auth_service import get_current_user
 
@@ -312,6 +332,7 @@ user_id = user['id']
 ```
 
 **2. Database Operations:**
+
 ```python
 from src.database.database_service import db
 
@@ -325,6 +346,7 @@ with db.sqlite.session.begin():
 ```
 
 **3. Error Handling in APIs:**
+
 ```python
 @api.route('/endpoint', methods=['POST'])
 def endpoint():
@@ -339,6 +361,7 @@ def endpoint():
 ```
 
 **4. Time & Date Handling:**
+
 ```python
 from src.utils.time_utils import get_current_time
 from src.utils.term_utils import get_current_term, TermGenerator
@@ -352,6 +375,7 @@ term_gen = TermGenerator(start_year=2025)
 ```
 
 **5. Logging:**
+
 ```python
 from src.utils.logging_config import get_app_logger
 
@@ -363,6 +387,7 @@ logger.error("Error occurred", exc_info=True)
 ### Development Workflow
 
 **Feature Development:**
+
 1. Create feature branch from `main`
 2. Run `sm validate commit` frequently during development
 3. Ensure all tests pass: `sm validate python-tests`
@@ -371,6 +396,7 @@ logger.error("Error occurred", exc_info=True)
 
 **Commit Messages:**
 Use conventional commits format:
+
 ```
 feat: add bulk email job status tracking
 fix: resolve CSRF token validation in API routes
@@ -380,6 +406,7 @@ docs: update API documentation for term endpoints
 ```
 
 **Git Operations:**
+
 ```bash
 # Create commit message file to avoid quote escaping issues
 echo "fix: resolve failing tests" > COMMIT_MSG.txt
@@ -389,18 +416,21 @@ git commit --file=COMMIT_MSG.txt
 ## Important Notes
 
 **Database Paths:**
+
 - Development: `course_records_dev.db`
 - E2E Tests: `course_records_e2e.db`
 - Unit Tests: `course_records_test.db`
 - Production: Configured via `DB_PATH` environment variable
 
 **Port Configuration:**
+
 - Dev server: 3001
 - E2E server: 3002
 - Direct Flask: 8080
 
 **Environment Variables:**
 See `.envrc.template` for all configuration options. Key variables:
+
 - `APP_ENV` (dev|e2e|production)
 - `DB_PATH` (database file path)
 - `SECRET_KEY` (Flask session secret)
@@ -408,6 +438,7 @@ See `.envrc.template` for all configuration options. Key variables:
 - `WTF_CSRF_ENABLED` (true|false, default: true)
 
 **Security Notes:**
+
 - Never commit `.envrc` (contains secrets)
 - Use `.envrc.template` as reference
 - All passwords hashed with bcrypt
@@ -417,14 +448,17 @@ See `.envrc.template` for all configuration options. Key variables:
 ## Demo & UAT Resources
 
 **Manual Testing Guides:**
+
 - `docs/testing/UAT_GUIDE.md` - Complete user acceptance testing protocol
 - `docs/testing/SMOKE_TESTING_GUIDE.md` - Quick smoke test procedures
 
 **Workflow Demos:**
+
 - `docs/workflow-walkthroughs/single_term_outcome_management.md` - 30-minute demo
 - Run interactive demo: `python docs/workflow-walkthroughs/scripts/run_demo.py single_term_outcome_management.md`
 
 **Demo Setup:**
+
 ```bash
 python scripts/seed_db.py --demo --clear --env dev
 bash scripts/restart_server.sh dev
@@ -435,23 +469,28 @@ bash scripts/restart_server.sh dev
 ## Troubleshooting
 
 **Tests failing with CSRF errors:**
+
 - Ensure using `client` fixture from conftest.py (has CSRF wrapper)
 - Check `WTF_CSRF_ENABLED` environment variable
 
 **Database locked errors:**
+
 - Stop any running servers: `pkill -f "python.*app.py"`
 - Remove lock: `rm course_records_*.db-*`
 
 **Import errors:**
+
 - Ensure `src` is in PYTHONPATH: `export PYTHONPATH=src:.`
 - Check virtual environment activated: `which python` should show venv path
 
 **Quality gate failures:**
+
 - Run individual checks: `sm validate python-lint-format`
 - Auto-fix formatting: `black . && isort .`
 - Check help for a gate: `sm help python-lint-format`
 
 **Coverage below 80%:**
+
 - Run with coverage: `sm validate python-coverage`
 - For detailed HTML report, the quality gate generates `htmlcov/index.html`
 - Add tests for uncovered code paths

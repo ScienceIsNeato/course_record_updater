@@ -7,6 +7,7 @@ This plan establishes comprehensive JavaScript testing coverage for the LoopClos
 ## Current State Analysis
 
 ### JavaScript Codebase Inventory
+
 - **Total JS Files**: 8 files (~1,553 lines of code)
 - **Current Coverage**: ~56% line / 41% branch / 57% function (Jest, 2025-09-23)
 - **Architecture**: Vanilla JavaScript with modular organization
@@ -23,12 +24,14 @@ This plan establishes comprehensive JavaScript testing coverage for the LoopClos
 ## Strategic Goals
 
 ### Primary Objectives
+
 1. **Establish 80% JavaScript test coverage** to match backend standards
 2. **Implement enterprise-grade testing infrastructure** with CI/CD integration
 3. **Create maintainable test patterns** for future development
 4. **Ensure user-facing functionality reliability** through comprehensive testing
 
 ### Success Metrics
+
 - 80% line coverage across all JavaScript files
 - 100% critical path coverage (auth, validation, API calls)
 - Zero untested user interactions
@@ -38,6 +41,7 @@ This plan establishes comprehensive JavaScript testing coverage for the LoopClos
 ## Technical Architecture
 
 ### Testing Stack Selection
+
 ```
 Core Framework: Jest (industry standard, excellent Node.js integration)
 DOM Testing: jsdom (lightweight DOM simulation)
@@ -47,6 +51,7 @@ CI Integration: GitHub Actions with coverage reporting
 ```
 
 ### Project Structure
+
 ```
 course_record_updater/
 ├── static/                     # Existing JS files
@@ -77,20 +82,23 @@ course_record_updater/
 ## Implementation Strategy
 
 ### AI Assistant Handoff Approach
+
 This implementation leverages the strengths of different AI assistants:
 
 **Phase 1: Codex Implementation (Single Session)**
+
 - **Objective**: One-shot comprehensive test suite implementation
 - **Rationale**: Codex excels at writing large amounts of coherent code but struggles with iterative testing/debugging
 - **Scope**: Complete test infrastructure + full test suite for all JavaScript files
-- **Deliverables**: 
+- **Deliverables**:
   - Complete Jest configuration
   - Full test coverage for all 8 JavaScript files (~1,553 lines)
   - Package.json with all dependencies
   - Test utilities and fixtures
   - Initial CI integration
 
-**Phase 2: Claude Iteration & Quality Gates (Multiple Sessions)**  
+**Phase 2: Claude Iteration & Quality Gates (Multiple Sessions)**
+
 - **Objective**: Debug, refine, and integrate with existing quality pipeline
 - **Rationale**: Claude excels at iterative debugging, quality gate integration, and process refinement
 - **Scope**: Fix any issues from Codex implementation, integrate with ship_it.py, achieve 80% coverage
@@ -103,7 +111,9 @@ This implementation leverages the strengths of different AI assistants:
 ### Codex Implementation Specification
 
 **Complete Task for Codex**:
+
 1. **Setup & Configuration**
+
    ```bash
    # Dependencies to install
    npm init -y
@@ -121,7 +131,7 @@ This implementation leverages the strengths of different AI assistants:
    - **Priority 1**: `static/auth.js` (287 lines) - Form validation, API calls, password strength
    - **Priority 2**: `static/admin.js` (414 lines) - User management, pagination, modals
    - **Priority 3**: `static/institution_dashboard.js` (129 lines) - Dashboard data, API integration
-   - **Priority 4**: `static/instructor_dashboard.js` (128 lines) - Instructor-specific functionality  
+   - **Priority 4**: `static/instructor_dashboard.js` (128 lines) - Instructor-specific functionality
    - **Priority 5**: `static/program_dashboard.js` (141 lines) - Program management
    - **Priority 6**: `static/panels.js` (212 lines) - UI panels and interactions
    - **Priority 7**: `static/script.js` (32 lines) - Global utilities
@@ -145,6 +155,7 @@ This implementation leverages the strengths of different AI assistants:
    ```
 
 **Success Criteria for Codex Handoff**:
+
 - All 8 JavaScript files have corresponding test files ✅ **COMPLETED**
 - Tests can run with `npm test` ✅ **COMPLETED**
 - Coverage report generates successfully ✅ **COMPLETED**
@@ -152,6 +163,7 @@ This implementation leverages the strengths of different AI assistants:
 - Test structure follows the patterns outlined in this plan ✅ **COMPLETED**
 
 **Phase 1 Results (COMPLETED)**:
+
 - **Jest Infrastructure**: Complete with jest.config.js, package.json scripts, setupTests.js
 - **Test Suite**: 45 passing tests across 8 test files covering all JavaScript modules
 - **Coverage**: 56.39% statements, 41.34% branches, 58.57% functions, 58.2% lines
@@ -159,15 +171,17 @@ This implementation leverages the strengths of different AI assistants:
 - **ESLint Integration**: Fixed module exports compatibility for testing environment
 
 **Current Coverage Gap Analysis**:
+
 ```
 Current vs Target Coverage:
 Statements   : 56.39% / 80% target  → Need +447 statements covered
-Branches     : 41.34% / 75% target  → Need +514 branches covered  
+Branches     : 41.34% / 75% target  → Need +514 branches covered
 Functions    : 58.57% / 90% target  → Need +110 functions covered
 Lines        : 58.2% / 80% target   → Need +385 lines covered
 ```
 
 **Files Requiring Additional Coverage**:
+
 - `static/admin.js` (414 lines) - User management, bulk operations, modal flows
 - `static/script.js` (32 lines) - Import execution, progress polling, grade validation
 - `static/auth.js` (287 lines) - Error handling branches, async fetch scenarios
@@ -179,6 +193,7 @@ Lines        : 58.2% / 80% target   → Need +385 lines covered
 **Objective**: Expand test coverage from 56.39% to 80%+ statements to meet quality gate requirements
 
 **Priority Coverage Targets**:
+
 1. **admin.js** - Focus on:
    - `loadInvitations()` and `loadPrograms()` functions with success/error scenarios
    - Invitation and user edit handlers with form validation
@@ -209,6 +224,7 @@ Lines        : 58.2% / 80% target   → Need +385 lines covered
    - Dashboard tile interactions and updates
 
 **Success Criteria for Phase 2**:
+
 - Achieve 80%+ statement coverage (currently 56.39%)
 - Achieve 75%+ branch coverage (currently 41.34%)
 - Achieve 90%+ function coverage (currently 58.57%)
@@ -216,6 +232,7 @@ Lines        : 58.2% / 80% target   → Need +385 lines covered
 - Coverage thresholds enforced by Jest configuration
 
 **Testing Strategy**:
+
 - Add comprehensive error scenarios and edge cases
 - Mock fetch API responses for success/failure paths
 - Test async operations with proper promise handling
@@ -224,6 +241,7 @@ Lines        : 58.2% / 80% target   → Need +385 lines covered
 - Focus on untested branches identified in coverage report
 
 **Implementation Notes**:
+
 - Current test infrastructure is solid - build upon existing patterns
 - Use MSW for API mocking where needed
 - Leverage existing DOM helpers and fixtures
@@ -233,21 +251,22 @@ Lines        : 58.2% / 80% target   → Need +385 lines covered
 ## Testing Patterns & Standards
 
 ### Test Organization
+
 ```javascript
 // Example: auth.test.js
-describe('Authentication Module', () => {
-  describe('Email Validation', () => {
-    test('should accept valid email addresses', () => {
+describe("Authentication Module", () => {
+  describe("Email Validation", () => {
+    test("should accept valid email addresses", () => {
       // Test implementation
     });
-    
-    test('should reject invalid email formats', () => {
+
+    test("should reject invalid email formats", () => {
       // Test implementation
     });
   });
-  
-  describe('Form Submission', () => {
-    test('should handle successful login', async () => {
+
+  describe("Form Submission", () => {
+    test("should handle successful login", async () => {
       // Mock API response
       // Test form submission
       // Verify redirect/state change
@@ -257,12 +276,14 @@ describe('Authentication Module', () => {
 ```
 
 ### Coverage Standards
+
 - **Line Coverage**: 80% minimum
-- **Function Coverage**: 90% minimum  
+- **Function Coverage**: 90% minimum
 - **Branch Coverage**: 75% minimum
 - **Critical Paths**: 100% coverage required
 
 ### Mock Strategy
+
 - **API Calls**: Use MSW for realistic HTTP mocking
 - **DOM Elements**: Use jsdom with realistic HTML fixtures
 - **Local Storage**: Mock browser APIs consistently
@@ -271,10 +292,13 @@ describe('Authentication Module', () => {
 ## Quality Gates Integration
 
 ### ship_it.py Integration ✅ **COMPLETED**
+
 JavaScript tests are now fully integrated into the existing `ship_it.py` quality gate system:
 
 **Required Changes to ship_it.py**:
+
 1. **Add JavaScript Test Check**
+
    ```python
    def check_javascript_tests():
        """Run JavaScript tests with Jest"""
@@ -282,6 +306,7 @@ JavaScript tests are now fully integrated into the existing `ship_it.py` quality
    ```
 
 2. **Add JavaScript Coverage Check**
+
    ```python
    def check_javascript_coverage():
        """Run JavaScript coverage and enforce 80% threshold"""
@@ -289,6 +314,7 @@ JavaScript tests are now fully integrated into the existing `ship_it.py` quality
    ```
 
 3. **Update Available Checks**
+
    ```python
    available_checks = {
        # ... existing checks ...
@@ -303,13 +329,15 @@ JavaScript tests are now fully integrated into the existing `ship_it.py` quality
    ```
 
 ### GitHub Actions Integration ⏳ **PENDING**
+
 Update `.github/workflows/quality-gate.yml`:
+
 ```yaml
 - name: Set up Node.js
   uses: actions/setup-node@v3
   with:
-    node-version: '18'
-    cache: 'npm'
+    node-version: "18"
+    cache: "npm"
 
 - name: Install JavaScript dependencies
   run: npm ci
@@ -319,7 +347,9 @@ Update `.github/workflows/quality-gate.yml`:
 ```
 
 ### SonarCloud Coverage Integration ⏳ **PENDING**
+
 Update `.github/workflows/sonarcloud.yml`:
+
 ```yaml
 - name: Install JavaScript dependencies
   run: npm ci
@@ -335,6 +365,7 @@ Update `.github/workflows/sonarcloud.yml`:
 ```
 
 Update `sonar-project.properties`:
+
 ```properties
 # JavaScript coverage reporting
 sonar.javascript.lcov.reportPaths=coverage/lcov.info
@@ -342,6 +373,7 @@ sonar.coverage.exclusions=tests/javascript/**/*,node_modules/**/*
 ```
 
 ### Local Development Integration
+
 - **Pre-commit hooks**: JavaScript tests run automatically via ship_it.py
 - **Coverage enforcement**: 80% threshold enforced locally and in CI
 - **Fast feedback**: `npm run test:watch` for development
@@ -350,6 +382,7 @@ sonar.coverage.exclusions=tests/javascript/**/*,node_modules/**/*
 ## Risk Mitigation
 
 ### Technical Risks
+
 1. **DOM Testing Complexity**
    - Mitigation: Use realistic HTML fixtures, comprehensive helpers
 
@@ -360,6 +393,7 @@ sonar.coverage.exclusions=tests/javascript/**/*,node_modules/**/*
    - Mitigation: Leverage Jest's excellent vanilla JS support
 
 ### Process Risks
+
 1. **Developer Adoption**
    - Mitigation: Clear documentation, examples, pair programming
 
@@ -369,6 +403,7 @@ sonar.coverage.exclusions=tests/javascript/**/*,node_modules/**/*
 ## Success Criteria
 
 ### Quantitative Metrics
+
 - ✅ 80% JavaScript line coverage achieved
 - ✅ All critical user paths tested
 - ✅ Zero untested API integrations
@@ -376,6 +411,7 @@ sonar.coverage.exclusions=tests/javascript/**/*,node_modules/**/*
 - ✅ SonarCloud tracks JS coverage
 
 ### Qualitative Metrics
+
 - ✅ Developers can confidently refactor JS code
 - ✅ Frontend bugs caught before production
 - ✅ Testing patterns established for new features
@@ -384,12 +420,14 @@ sonar.coverage.exclusions=tests/javascript/**/*,node_modules/**/*
 ## Timeline & Resources
 
 ### 4-Week Implementation Schedule
+
 - **Week 1**: Infrastructure setup
 - **Week 2**: Authentication testing (highest ROI)
 - **Week 3**: Admin/dashboard testing
 - **Week 4**: Remaining components + documentation
 
 ### Resource Requirements
+
 - **Development Time**: ~40 hours total
 - **Tools/Dependencies**: Free (Jest, jsdom, MSW)
 - **CI Resources**: Minimal additional compute time
@@ -397,11 +435,13 @@ sonar.coverage.exclusions=tests/javascript/**/*,node_modules/**/*
 ## Future Considerations
 
 ### Maintenance Strategy
+
 - **Test Reviews**: Include JS tests in code review process
 - **Coverage Monitoring**: Weekly coverage reports
 - **Pattern Evolution**: Quarterly review of testing patterns
 
 ### Scaling Approach
+
 - **Component Library**: As UI grows, consider component-based testing
 - **E2E Integration**: Future consideration for Playwright/Cypress
 - **Performance Testing**: Monitor bundle size impact of test dependencies
@@ -411,6 +451,7 @@ sonar.coverage.exclusions=tests/javascript/**/*,node_modules/**/*
 ## Current Implementation Status
 
 ### ✅ **Phase 1: Foundation & Integration (COMPLETED)**
+
 - **Jest Infrastructure**: Complete with jest.config.js, package.json, setupTests.js
 - **Test Suite**: 45 passing tests across all 8 JavaScript files (~1,553 lines)
 - **Quality Gate Integration**: JavaScript tests fully integrated into ship_it.py and maintAInability-gate.sh
@@ -418,17 +459,20 @@ sonar.coverage.exclusions=tests/javascript/**/*,node_modules/**/*
 - **Coverage Reporting**: LCOV format generated for SonarCloud integration
 
 ### ⏳ **Phase 2: Coverage Completion (READY FOR CODEX)**
+
 - **Current Coverage**: 56.39% statements (target: 80%+)
 - **Gap**: Need ~447 additional statements covered
 - **Focus Areas**: admin.js bulk operations, script.js error handling, auth.js edge cases
 - **Strategy**: Comprehensive error scenarios, API mocking, modal interactions
 
 ### ⏳ **Phase 3: CI/SonarCloud Integration (PENDING)**
+
 - **GitHub Actions**: Update workflows for Node.js setup and npm integration
 - **SonarCloud**: Configure JavaScript coverage reporting alongside Python
 - **Quality Gates**: Enable JavaScript checks in default commit validation once 80% achieved
 
 ### 🎯 **Ready for Handoff**
+
 The foundation is solid and the integration is complete. Codex can now focus purely on expanding test coverage to meet the 80% threshold. All infrastructure, patterns, and quality gates are in place.
 
 ## Conclusion
@@ -436,7 +480,7 @@ The foundation is solid and the integration is complete. Codex can now focus pur
 This implementation successfully establishes enterprise-grade JavaScript testing infrastructure for the LoopCloser. The systematic approach has delivered:
 
 1. **Complete test infrastructure** with Jest, coverage reporting, and quality gate integration
-2. **Solid foundation** with 45 passing tests and clear patterns for expansion  
+2. **Solid foundation** with 45 passing tests and clear patterns for expansion
 3. **Quality enforcement** through automated coverage thresholds and CI integration
 4. **Clear path forward** with specific coverage targets and testing strategies
 

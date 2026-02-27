@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
-const { setBody, flushPromises } = require('../helpers/dom');
+const { setBody, flushPromises } = require("../helpers/dom");
 
-describe('sectionManagement.js Coverage Boost', () => {
+describe("sectionManagement.js Coverage Boost", () => {
   let mockLoadSections;
 
   beforeEach(() => {
@@ -49,21 +49,21 @@ describe('sectionManagement.js Coverage Boost', () => {
     global.bootstrap = {
       Modal: jest.fn().mockImplementation(() => ({
         show: jest.fn(),
-        hide: jest.fn()
-      }))
+        hide: jest.fn(),
+      })),
     };
     global.bootstrap.Modal.getInstance = jest.fn(() => ({ hide: jest.fn() }));
 
     mockLoadSections = jest.fn();
     globalThis.loadSections = mockLoadSections;
 
-    jest.spyOn(window, 'alert').mockImplementation(() => { });
-    jest.spyOn(window, 'confirm').mockReturnValue(true);
-    jest.spyOn(console, 'error').mockImplementation(() => { });
+    jest.spyOn(window, "alert").mockImplementation(() => {});
+    jest.spyOn(window, "confirm").mockReturnValue(true);
+    jest.spyOn(console, "error").mockImplementation(() => {});
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ success: true, message: 'Success' })
+      json: async () => ({ success: true, message: "Success" }),
     });
   });
 
@@ -72,12 +72,15 @@ describe('sectionManagement.js Coverage Boost', () => {
     delete globalThis.loadSections;
   });
 
-  test('createSectionForm calls loadSections on success', async () => {
-    require('../../../static/sectionManagement.js');
-    document.dispatchEvent(new Event('DOMContentLoaded'));
+  test("createSectionForm calls loadSections on success", async () => {
+    require("../../../static/sectionManagement.js");
+    document.dispatchEvent(new Event("DOMContentLoaded"));
 
-    const form = document.getElementById('createSectionForm');
-    const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+    const form = document.getElementById("createSectionForm");
+    const submitEvent = new Event("submit", {
+      bubbles: true,
+      cancelable: true,
+    });
     form.dispatchEvent(submitEvent);
 
     await flushPromises();
@@ -85,12 +88,15 @@ describe('sectionManagement.js Coverage Boost', () => {
     expect(mockLoadSections).toHaveBeenCalled();
   });
 
-  test('editSectionForm calls loadSections on success', async () => {
-    require('../../../static/sectionManagement.js');
-    document.dispatchEvent(new Event('DOMContentLoaded'));
+  test("editSectionForm calls loadSections on success", async () => {
+    require("../../../static/sectionManagement.js");
+    document.dispatchEvent(new Event("DOMContentLoaded"));
 
-    const form = document.getElementById('editSectionForm');
-    const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+    const form = document.getElementById("editSectionForm");
+    const submitEvent = new Event("submit", {
+      bubbles: true,
+      cancelable: true,
+    });
     form.dispatchEvent(submitEvent);
 
     await flushPromises();
@@ -98,11 +104,10 @@ describe('sectionManagement.js Coverage Boost', () => {
     expect(mockLoadSections).toHaveBeenCalled();
   });
 
-  test('deleteSection calls loadSections on success', async () => {
-    require('../../../static/sectionManagement.js');
-    await global.deleteSection('s1');
+  test("deleteSection calls loadSections on success", async () => {
+    require("../../../static/sectionManagement.js");
+    await global.deleteSection("s1");
     await flushPromises();
     expect(mockLoadSections).toHaveBeenCalled();
   });
 });
-

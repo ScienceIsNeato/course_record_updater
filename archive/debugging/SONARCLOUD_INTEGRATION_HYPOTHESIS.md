@@ -7,29 +7,34 @@
 **⚠️ CRITICAL**: We have historically gone in circles on SonarCloud integration. This section tracks all previous hypotheses and conclusions to prevent repeating mistakes.
 
 #### Historical Context:
+
 - **Previous Issue**: Deprecated `SonarSource/sonarcloud-github-action@master` causing failures
-- **Previous Fix**: Updated to `SonarSource/sonarqube-scan-action@v1` 
+- **Previous Fix**: Updated to `SonarSource/sonarqube-scan-action@v1`
 - **Current Issue**: Wrong action type - `sonarqube-scan-action` is for self-hosted servers, not SonarCloud
 - **Current Fix**: Revert to `SonarSource/sonarcloud-github-action@v2` (non-deprecated version)
 
 #### Key Lessons:
+
 1. **Action Type Matters**: `sonarqube-scan-action` ≠ `sonarcloud-github-action`
 2. **Deprecation Warnings**: Don't ignore deprecation warnings, but verify the replacement is correct
 3. **Documentation Review**: Always check official docs for correct action usage
 4. **Chicken-and-Egg Problem**: SonarCloud in commit checks creates circular dependency
 
 #### Action Usage History:
+
 1. **Original**: `SonarSource/sonarcloud-github-action@master` (deprecated, caused failures)
 2. **First Fix**: `SonarSource/sonarqube-scan-action@v1` (wrong type - for self-hosted servers)
 3. **Current Fix**: `SonarSource/sonarcloud-github-action@v2` (correct type, non-deprecated)
 
 #### Current Status (2025-09-29):
+
 - ✅ **Solved**: Chicken-and-egg problem by excluding SonarCloud from commit checks
 - ✅ **Fixed**: Using correct SonarCloud action (`sonarcloud-github-action@v2`)
 - 🔄 **Testing**: New SonarCloud analysis should now run successfully
 - 📋 **Next**: Monitor results and verify string literal fixes are detected
 
 #### Anti-Patterns to Avoid:
+
 - ❌ **Don't**: Switch action types without understanding the difference
 - ❌ **Don't**: Ignore deprecation warnings without verifying replacement
 - ❌ **Don't**: Include SonarCloud in commit checks (creates circular dependency)
@@ -42,7 +47,7 @@
 
 1. **GitHub Actions Workflow** (`.github/workflows/sonarcloud.yml`)
    - **Purpose**: Triggers SonarCloud analysis when specific events occur
-   - **Triggers**: 
+   - **Triggers**:
      - `push` to `main` branch
      - `pull_request` to `main` branch
    - **What it does**: Runs SonarCloud scanner and reports results back to GitHub
@@ -64,6 +69,7 @@
 ### Expected Flow
 
 #### Normal Flow (GitHub Actions)
+
 1. Developer pushes to branch or creates PR to `main`
 2. GitHub Actions workflow triggers
 3. Workflow runs SonarCloud scanner
@@ -72,6 +78,7 @@
 6. Local quality gate can query SonarCloud API for results
 
 #### Manual Flow (Trigger Script)
+
 1. Developer runs trigger script
 2. Script calls SonarCloud API to trigger analysis
 3. SonarCloud analyzes code and updates results
@@ -87,21 +94,25 @@
 ### Working Hypotheses to Test
 
 #### Hypothesis 1: SonarCloud Web Interface Caching
+
 - **Theory**: SonarCloud web interface is showing cached/stale data
 - **Expected**: Web interface should show PR #9 after refresh or time passes
 - **Test**: Check SonarCloud web interface after waiting/refreshing
 
 #### Hypothesis 2: Branch vs PR Analysis
+
 - **Theory**: SonarCloud analyzes the branch, not the PR specifically
 - **Expected**: Analysis should be tied to the branch name, not PR number
 - **Test**: Check if SonarCloud shows analysis for `import_export_validation` branch
 
 #### Hypothesis 3: Analysis Timing
+
 - **Theory**: SonarCloud analysis takes time to propagate to web interface
 - **Expected**: Web interface will show PR #9 analysis after some delay
 - **Test**: Monitor SonarCloud web interface over time
 
 #### Hypothesis 4: Configuration Issue
+
 - **Theory**: SonarCloud configuration is not properly set up for PR analysis
 - **Expected**: Need to adjust SonarCloud project settings
 - **Test**: Check SonarCloud project configuration
@@ -133,12 +144,14 @@
 **Key Finding**: SonarCloud Analysis is failing with exit code 3
 
 **Updated Understanding**:
+
 - GitHub Actions IS triggering SonarCloud analysis on PR #9
 - SonarCloud Analysis is failing (exit code 3)
 - This explains why the quality gate is failing
 - The SonarCloud web interface might not show failed analyses or might be cached
 
 ## Current Status
+
 - **GitHub PR #9**: Shows SonarCloud checks failing ✅
 - **SonarCloud Web**: Shows old PR #8 analysis (likely cached/stale)
 - **Local Quality Gate**: Gets SonarCloud results from failed analysis
@@ -153,6 +166,7 @@
 **Action Taken**: Updated to `SonarSource/sonarqube-scan-action@v1`
 
 **Updated Understanding**:
+
 - The deprecated SonarCloud action was causing exit code 3 failures
 - Updated to the new recommended action
 - This should fix the SonarCloud Analysis failures
@@ -166,6 +180,7 @@
 **Key Finding**: SonarCloud is analyzing old code, not our current changes
 
 **Updated Understanding**:
+
 - SonarCloud workflow update was made but not yet analyzed
 - SonarCloud is still showing old analysis results
 - Need to trigger new analysis to see updated results
@@ -180,6 +195,7 @@
 **Key Finding**: The chicken-and-egg problem was solved by excluding SonarCloud from commit checks
 
 **Updated Understanding**:
+
 - SonarCloud was causing commit failures due to stale analysis
 - Excluding SonarCloud from commit checks allows us to commit workflow fixes
 - New SonarCloud analysis should now run with updated workflow
@@ -194,6 +210,7 @@
 **Key Finding**: `SonarSource/sonarqube-scan-action` is for **self-hosted SonarQube Server**, not **SonarCloud**
 
 **Root Cause Analysis**:
+
 - `sonarqube-scan-action` requires `SONAR_HOST_URL` (for self-hosted servers)
 - `sonarcloud-github-action` is for cloud-hosted SonarCloud (no SONAR_HOST_URL needed)
 - We were trying to use a server action for cloud service
@@ -209,12 +226,14 @@
 **Key Finding**: No more CI failures - the correct action is working
 
 **Updated Understanding**:
+
 - ✅ **CI Fixed**: No more failures with the correct SonarCloud action
 - 🔄 **Analysis Running**: SonarCloud analysis is in progress
 - ⏳ **Results Pending**: Need to wait for analysis completion and result propagation
 - 📋 **Next Step**: Monitor for updated SonarCloud results showing our string literal fixes
 
 ## Current Status Summary
+
 - ✅ **Chicken-and-Egg Problem**: Solved by excluding SonarCloud from commit checks
 - ✅ **Wrong Action Type**: Fixed by using `sonarcloud-github-action@v2`
 - ✅ **CI Failures**: Resolved with correct action
@@ -222,6 +241,7 @@
 - ⏳ **Results**: Waiting for updated analysis results to show our fixes
 
 ## Next Experiment
+
 **Hypothesis 7**: SonarCloud analysis should complete and show reduced string literal issues
 **Expected**: Analysis results should reflect our string literal duplication fixes
 **Action**: Monitor SonarCloud results for updated issue counts

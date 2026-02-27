@@ -17,15 +17,18 @@
 ## 2. GCP Project Setup (Completed)
 
 ### Create Project
+
 ```bash
 gcloud projects create loopcloser --name="Loopcloser"
 gcloud config set project loopcloser
 ```
 
 ### Enable Billing
+
 - Linked billing account via: https://console.cloud.google.com/billing/linkedaccount?project=loopcloser
 
 ### Enable Required APIs
+
 ```bash
 gcloud services enable \
   run.googleapis.com \
@@ -37,6 +40,7 @@ gcloud services enable \
 ```
 
 ### Create Artifact Registry
+
 ```bash
 gcloud artifacts repositories create loopcloser-images \
   --repository-format=docker \
@@ -46,6 +50,7 @@ gcloud artifacts repositories create loopcloser-images \
 ```
 
 ### Create GCS Buckets (for SQLite persistence)
+
 ```bash
 gsutil mb -l us-central1 -p loopcloser gs://loopcloser-db-dev
 gsutil mb -l us-central1 -p loopcloser gs://loopcloser-db-staging
@@ -53,6 +58,7 @@ gsutil mb -l us-central1 -p loopcloser gs://loopcloser-db-prod
 ```
 
 ### Configure Docker Authentication
+
 ```bash
 gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 ```
@@ -62,12 +68,14 @@ gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 ## 3. Docker Image Build (Completed)
 
 ### Build and Tag
+
 ```bash
 docker build -t loopcloser-app .
 docker tag loopcloser-app us-central1-docker.pkg.dev/loopcloser/loopcloser-images/loopcloser-app:latest
 ```
 
 ### Push to Registry
+
 ```bash
 docker push us-central1-docker.pkg.dev/loopcloser/loopcloser-images/loopcloser-app:latest
 ```
@@ -77,11 +85,13 @@ docker push us-central1-docker.pkg.dev/loopcloser/loopcloser-images/loopcloser-a
 ## 4. Cloud Run Deployment (COMPLETED)
 
 ### Issues Resolved
+
 1. Missing Python packages in Dockerfile (`api/`, `session/`, `bulk_email_models/`, `email_providers/`)
 2. Missing `openpyxl` in requirements.txt
 3. Architecture mismatch - needed `--platform linux/amd64` for Cloud Run
 
 ### Build Command (for Mac M-series)
+
 ```bash
 gcloud run deploy loopcloser-dev \
   --image=us-central1-docker.pkg.dev/loopcloser/loopcloser-images/loopcloser-app:latest \
@@ -102,13 +112,14 @@ gcloud run deploy loopcloser-dev \
 
 Once Cloud Run is deployed, configure Cloudflare DNS:
 
-| Type | Name | Value | Proxy |
-|------|------|-------|-------|
-| CNAME | dev | `loopcloser-dev-HASH.run.app` | DNS only |
+| Type  | Name    | Value                             | Proxy    |
+| ----- | ------- | --------------------------------- | -------- |
+| CNAME | dev     | `loopcloser-dev-HASH.run.app`     | DNS only |
 | CNAME | staging | `loopcloser-staging-HASH.run.app` | DNS only |
-| CNAME | @ | `loopcloser-prod-HASH.run.app` | DNS only |
+| CNAME | @       | `loopcloser-prod-HASH.run.app`    | DNS only |
 
 Then create Cloud Run domain mappings:
+
 ```bash
 gcloud run domain-mappings create --service=loopcloser-dev --domain=dev.loopcloser.io --region=us-central1
 ```
@@ -117,16 +128,17 @@ gcloud run domain-mappings create --service=loopcloser-dev --domain=dev.loopclos
 
 ## 6. Resources Created
 
-| Resource | Name/ID | Status |
-|----------|---------|--------|
-| GCP Project | `loopcloser` (952626409962) | ✅ Active |
-| Artifact Registry | `us-central1-docker.pkg.dev/loopcloser/loopcloser-images` | ✅ Created |
-| GCS Bucket (Dev) | `gs://loopcloser-db-dev` | ✅ Created |
-| GCS Bucket (Staging) | `gs://loopcloser-db-staging` | ✅ Created |
-| GCS Bucket (Prod) | `gs://loopcloser-db-prod` | ✅ Created |
-| Cloud Run (Dev) | `loopcloser-dev` | ✅ Live |
+| Resource             | Name/ID                                                   | Status     |
+| -------------------- | --------------------------------------------------------- | ---------- |
+| GCP Project          | `loopcloser` (952626409962)                               | ✅ Active  |
+| Artifact Registry    | `us-central1-docker.pkg.dev/loopcloser/loopcloser-images` | ✅ Created |
+| GCS Bucket (Dev)     | `gs://loopcloser-db-dev`                                  | ✅ Created |
+| GCS Bucket (Staging) | `gs://loopcloser-db-staging`                              | ✅ Created |
+| GCS Bucket (Prod)    | `gs://loopcloser-db-prod`                                 | ✅ Created |
+| Cloud Run (Dev)      | `loopcloser-dev`                                          | ✅ Live    |
 
 ### Dev Environment URL
+
 **https://loopcloser-dev-952626409962.us-central1.run.app**
 
 ---
@@ -134,6 +146,7 @@ gcloud run domain-mappings create --service=loopcloser-dev --domain=dev.loopclos
 ## 7. Cloudflare Configuration (TODO)
 
 Recommended security settings:
+
 - SSL/TLS: Full (strict)
 - Always Use HTTPS: ON
 - Bot Fight Mode: ON
@@ -147,13 +160,13 @@ Recommended security settings:
 
 For CI/CD workflows to work, add these secrets to GitHub repo settings:
 
-| Secret | Description | How to Get |
-|--------|-------------|------------|
-| `GCP_SA_KEY` | GCP service account JSON key | See below |
-| `SONAR_TOKEN` | SonarCloud token | Already configured |
+| Secret           | Description                  | How to Get         |
+| ---------------- | ---------------------------- | ------------------ |
+| `GCP_SA_KEY`     | GCP service account JSON key | See below          |
+| `SONAR_TOKEN`    | SonarCloud token             | Already configured |
 | `SAFETY_API_KEY` | Safety vulnerability scanner | Already configured |
-| `ETHEREAL_USER` | Ethereal email for E2E tests | Already configured |
-| `ETHEREAL_PASS` | Ethereal password | Already configured |
+| `ETHEREAL_USER`  | Ethereal email for E2E tests | Already configured |
+| `ETHEREAL_PASS`  | Ethereal password            | Already configured |
 
 ### Creating GCP Service Account Key
 
@@ -203,9 +216,9 @@ gcloud secrets add-iam-policy-binding loopcloser-secret-key \
 ## Cost Estimates
 
 Cloud Run free tier (monthly):
+
 - 2 million requests
 - 360,000 vCPU-seconds
 - 180,000 GiB-seconds
 
 For a dev environment, likely $0/month.
-

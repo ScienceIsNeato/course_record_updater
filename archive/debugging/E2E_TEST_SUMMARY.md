@@ -19,6 +19,7 @@
 ### ❌ Remaining Issues (3 actual test failures)
 
 #### 1. **Email Verification Port Mismatch** (CRITICAL)
+
 - **Test**: `test_complete_registration_and_password_workflow`
 - **Problem**: Verification link uses `localhost:5000` instead of worker-specific port
 - **Current behavior**: Email says `http://localhost:5000/api/auth/verify-email/...`
@@ -27,6 +28,7 @@
 - **Fix needed**: Update email templates to use dynamic BASE_URL instead of hardcoded port
 
 #### 2. **Instructor Profile Update Modal Won't Close**
+
 - **Test**: `test_tc_crud_inst_001_update_own_profile`
 - **Problem**: Edit user modal doesn't close after clicking "Save Changes"
 - **Symptoms**: 30-second timeout waiting for modal to hide
@@ -37,6 +39,7 @@
 - **Fix needed**: Investigate why save fails and/or why modal doesn't close on error
 
 #### 3. **Worker Account Visibility**
+
 - **Test**: `test_tc_crud_inst_001_update_own_profile`
 - **Observation**: Instructor sees all 18 worker accounts in users list
   - john.instructor@mocku.test
@@ -47,6 +50,7 @@
 ### ⚠️ Non-Blocking Issues (Tests Pass)
 
 #### Dashboard JavaScript Timing Errors
+
 - **Tests**: `test_tc_crud_pa_001_create_course`, `test_tc_crud_inst_001_update_own_profile`
 - **Problem**: "Failed to fetch" console errors during test teardown
 - **Root cause**: Dashboard JavaScript tries to load data before worker server fully ready
@@ -56,12 +60,14 @@
 ## Test Infrastructure Status
 
 ✅ **Working Well**:
+
 - Parallel execution (56/58 tests passing)
 - Worker-specific databases and servers
 - Account provisioning for 16 workers
 - Headless mode as default
 
 ⏳ **Needs Work**:
+
 - Email template port configuration
 - Instructor permission model
 - Modal close behavior on errors
@@ -72,4 +78,3 @@
 2. Debug instructor profile update permissions
 3. Decide on worker account visibility policy
 4. (Optional) Add retry logic for dashboard data fetching
-

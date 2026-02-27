@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-describe('Dashboard Navigation', () => {
+describe("Dashboard Navigation", () => {
   let mockDocument;
 
   beforeEach(() => {
@@ -21,7 +21,7 @@ describe('Dashboard Navigation', () => {
     `;
 
     // Load the module
-    require('../../../static/dashboard_navigation.js');
+    require("../../../static/dashboard_navigation.js");
   });
 
   afterEach(() => {
@@ -30,232 +30,275 @@ describe('Dashboard Navigation', () => {
     delete window.filterDashboard;
   });
 
-  describe('configureDashboardFilter', () => {
-    it('should expose configureDashboardFilter on window', () => {
-      expect(typeof window.configureDashboardFilter).toBe('function');
+  describe("configureDashboardFilter", () => {
+    it("should expose configureDashboardFilter on window", () => {
+      expect(typeof window.configureDashboardFilter).toBe("function");
     });
 
-    it('should configure dashboard with panel mappings', () => {
+    it("should configure dashboard with panel mappings", () => {
       const panelMapping = {
-        teaching: ['instructor-teaching-panel'],
-        assessments: ['instructor-assessment-panel'],
+        teaching: ["instructor-teaching-panel"],
+        assessments: ["instructor-assessment-panel"],
         all: [
-          'instructor-teaching-panel',
-          'instructor-assessment-panel',
-          'instructor-activity-panel',
-          'instructor-summary-panel'
-        ]
+          "instructor-teaching-panel",
+          "instructor-assessment-panel",
+          "instructor-activity-panel",
+          "instructor-summary-panel",
+        ],
       };
       const allPanelIds = [
-        'instructor-teaching-panel',
-        'instructor-assessment-panel',
-        'instructor-activity-panel',
-        'instructor-summary-panel'
+        "instructor-teaching-panel",
+        "instructor-assessment-panel",
+        "instructor-activity-panel",
+        "instructor-summary-panel",
       ];
 
       window.configureDashboardFilter(panelMapping, allPanelIds);
 
-      expect(typeof window.filterDashboard).toBe('function');
+      expect(typeof window.filterDashboard).toBe("function");
     });
 
-    it('should update the page title when titleMapping contains view', () => {
-      const panelMapping = { teaching: ['instructor-teaching-panel'], all: ['instructor-teaching-panel'] };
-      const allPanelIds = ['instructor-teaching-panel'];
-      const titleMapping = { teaching: 'Teaching View' };
+    it("should update the page title when titleMapping contains view", () => {
+      const panelMapping = {
+        teaching: ["instructor-teaching-panel"],
+        all: ["instructor-teaching-panel"],
+      };
+      const allPanelIds = ["instructor-teaching-panel"];
+      const titleMapping = { teaching: "Teaching View" };
 
       window.configureDashboardFilter(panelMapping, allPanelIds, titleMapping);
-      window.filterDashboard('teaching');
+      window.filterDashboard("teaching");
 
-      expect(document.getElementById('page-title-text').textContent).toBe('Teaching View');
+      expect(document.getElementById("page-title-text").textContent).toBe(
+        "Teaching View",
+      );
     });
 
-    it('should show only specified panels when filter is applied', () => {
+    it("should show only specified panels when filter is applied", () => {
       const panelMapping = {
-        teaching: ['instructor-teaching-panel'],
+        teaching: ["instructor-teaching-panel"],
         all: [
-          'instructor-teaching-panel',
-          'instructor-assessment-panel',
-          'instructor-activity-panel',
-          'instructor-summary-panel'
-        ]
+          "instructor-teaching-panel",
+          "instructor-assessment-panel",
+          "instructor-activity-panel",
+          "instructor-summary-panel",
+        ],
       };
       const allPanelIds = [
-        'instructor-teaching-panel',
-        'instructor-assessment-panel',
-        'instructor-activity-panel',
-        'instructor-summary-panel'
+        "instructor-teaching-panel",
+        "instructor-assessment-panel",
+        "instructor-activity-panel",
+        "instructor-summary-panel",
       ];
 
       window.configureDashboardFilter(panelMapping, allPanelIds);
-      window.filterDashboard('teaching');
+      window.filterDashboard("teaching");
 
-      expect(document.getElementById('instructor-teaching-panel').style.display).toBe('block');
-      expect(document.getElementById('instructor-assessment-panel').style.display).toBe('none');
-      expect(document.getElementById('instructor-activity-panel').style.display).toBe('none');
-      expect(document.getElementById('instructor-summary-panel').style.display).toBe('none');
+      expect(
+        document.getElementById("instructor-teaching-panel").style.display,
+      ).toBe("block");
+      expect(
+        document.getElementById("instructor-assessment-panel").style.display,
+      ).toBe("none");
+      expect(
+        document.getElementById("instructor-activity-panel").style.display,
+      ).toBe("none");
+      expect(
+        document.getElementById("instructor-summary-panel").style.display,
+      ).toBe("none");
     });
 
     it('should show all panels when "all" filter is applied', () => {
       const panelMapping = {
-        teaching: ['instructor-teaching-panel'],
+        teaching: ["instructor-teaching-panel"],
         all: [
-          'instructor-teaching-panel',
-          'instructor-assessment-panel',
-          'instructor-activity-panel',
-          'instructor-summary-panel'
-        ]
+          "instructor-teaching-panel",
+          "instructor-assessment-panel",
+          "instructor-activity-panel",
+          "instructor-summary-panel",
+        ],
       };
       const allPanelIds = [
-        'instructor-teaching-panel',
-        'instructor-assessment-panel',
-        'instructor-activity-panel',
-        'instructor-summary-panel'
+        "instructor-teaching-panel",
+        "instructor-assessment-panel",
+        "instructor-activity-panel",
+        "instructor-summary-panel",
       ];
 
       window.configureDashboardFilter(panelMapping, allPanelIds);
-      window.filterDashboard('all');
+      window.filterDashboard("all");
 
-      expect(document.getElementById('instructor-teaching-panel').style.display).toBe('block');
-      expect(document.getElementById('instructor-assessment-panel').style.display).toBe('block');
-      expect(document.getElementById('instructor-activity-panel').style.display).toBe('block');
-      expect(document.getElementById('instructor-summary-panel').style.display).toBe('block');
+      expect(
+        document.getElementById("instructor-teaching-panel").style.display,
+      ).toBe("block");
+      expect(
+        document.getElementById("instructor-assessment-panel").style.display,
+      ).toBe("block");
+      expect(
+        document.getElementById("instructor-activity-panel").style.display,
+      ).toBe("block");
+      expect(
+        document.getElementById("instructor-summary-panel").style.display,
+      ).toBe("block");
     });
 
-    it('should set active class on correct button', () => {
+    it("should set active class on correct button", () => {
       const panelMapping = {
-        teaching: ['instructor-teaching-panel'],
+        teaching: ["instructor-teaching-panel"],
         all: [
-          'instructor-teaching-panel',
-          'instructor-assessment-panel',
-          'instructor-activity-panel',
-          'instructor-summary-panel'
-        ]
+          "instructor-teaching-panel",
+          "instructor-assessment-panel",
+          "instructor-activity-panel",
+          "instructor-summary-panel",
+        ],
       };
       const allPanelIds = [
-        'instructor-teaching-panel',
-        'instructor-assessment-panel',
-        'instructor-activity-panel',
-        'instructor-summary-panel'
+        "instructor-teaching-panel",
+        "instructor-assessment-panel",
+        "instructor-activity-panel",
+        "instructor-summary-panel",
       ];
 
       window.configureDashboardFilter(panelMapping, allPanelIds);
-      window.filterDashboard('teaching');
+      window.filterDashboard("teaching");
 
-      const teachingBtn = document.getElementById('dashboard-teaching');
-      const allBtn = document.getElementById('dashboard-view-all');
+      const teachingBtn = document.getElementById("dashboard-teaching");
+      const allBtn = document.getElementById("dashboard-view-all");
 
-      expect(teachingBtn.classList.contains('active')).toBe(true);
-      expect(allBtn.classList.contains('active')).toBe(false);
+      expect(teachingBtn.classList.contains("active")).toBe(true);
+      expect(allBtn.classList.contains("active")).toBe(false);
     });
 
-    it('should remove active class from other buttons', () => {
+    it("should remove active class from other buttons", () => {
       const panelMapping = {
-        teaching: ['instructor-teaching-panel'],
-        assessments: ['instructor-assessment-panel'],
+        teaching: ["instructor-teaching-panel"],
+        assessments: ["instructor-assessment-panel"],
         all: [
-          'instructor-teaching-panel',
-          'instructor-assessment-panel',
-          'instructor-activity-panel',
-          'instructor-summary-panel'
-        ]
+          "instructor-teaching-panel",
+          "instructor-assessment-panel",
+          "instructor-activity-panel",
+          "instructor-summary-panel",
+        ],
       };
       const allPanelIds = [
-        'instructor-teaching-panel',
-        'instructor-assessment-panel',
-        'instructor-activity-panel',
-        'instructor-summary-panel'
+        "instructor-teaching-panel",
+        "instructor-assessment-panel",
+        "instructor-activity-panel",
+        "instructor-summary-panel",
       ];
 
       window.configureDashboardFilter(panelMapping, allPanelIds);
 
       // First click teaching
-      window.filterDashboard('teaching');
-      expect(document.getElementById('dashboard-teaching').classList.contains('active')).toBe(
-        true
-      );
+      window.filterDashboard("teaching");
+      expect(
+        document
+          .getElementById("dashboard-teaching")
+          .classList.contains("active"),
+      ).toBe(true);
 
       // Then click assessments
-      window.filterDashboard('assessments');
-      expect(document.getElementById('dashboard-teaching').classList.contains('active')).toBe(
-        false
-      );
-      expect(document.getElementById('dashboard-assessments').classList.contains('active')).toBe(
-        true
-      );
+      window.filterDashboard("assessments");
+      expect(
+        document
+          .getElementById("dashboard-teaching")
+          .classList.contains("active"),
+      ).toBe(false);
+      expect(
+        document
+          .getElementById("dashboard-assessments")
+          .classList.contains("active"),
+      ).toBe(true);
     });
 
-    it('should handle missing panels gracefully', () => {
+    it("should handle missing panels gracefully", () => {
       const panelMapping = {
-        teaching: ['instructor-teaching-panel', 'non-existent-panel'],
-        all: ['instructor-teaching-panel']
+        teaching: ["instructor-teaching-panel", "non-existent-panel"],
+        all: ["instructor-teaching-panel"],
       };
-      const allPanelIds = ['instructor-teaching-panel', 'non-existent-panel'];
+      const allPanelIds = ["instructor-teaching-panel", "non-existent-panel"];
 
       window.configureDashboardFilter(panelMapping, allPanelIds);
 
       // Should not throw error for missing panel
-      expect(() => window.filterDashboard('teaching')).not.toThrow();
+      expect(() => window.filterDashboard("teaching")).not.toThrow();
     });
 
     it('should default to "all" view if unknown view requested', () => {
       const panelMapping = {
-        teaching: ['instructor-teaching-panel'],
+        teaching: ["instructor-teaching-panel"],
         all: [
-          'instructor-teaching-panel',
-          'instructor-assessment-panel',
-          'instructor-activity-panel',
-          'instructor-summary-panel'
-        ]
+          "instructor-teaching-panel",
+          "instructor-assessment-panel",
+          "instructor-activity-panel",
+          "instructor-summary-panel",
+        ],
       };
       const allPanelIds = [
-        'instructor-teaching-panel',
-        'instructor-assessment-panel',
-        'instructor-activity-panel',
-        'instructor-summary-panel'
+        "instructor-teaching-panel",
+        "instructor-assessment-panel",
+        "instructor-activity-panel",
+        "instructor-summary-panel",
       ];
 
       window.configureDashboardFilter(panelMapping, allPanelIds);
-      window.filterDashboard('unknown-view');
+      window.filterDashboard("unknown-view");
 
       // Should show all panels when unknown view requested
-      expect(document.getElementById('instructor-teaching-panel').style.display).toBe('block');
-      expect(document.getElementById('instructor-assessment-panel').style.display).toBe('block');
-      expect(document.getElementById('instructor-activity-panel').style.display).toBe('block');
-      expect(document.getElementById('instructor-summary-panel').style.display).toBe('block');
+      expect(
+        document.getElementById("instructor-teaching-panel").style.display,
+      ).toBe("block");
+      expect(
+        document.getElementById("instructor-assessment-panel").style.display,
+      ).toBe("block");
+      expect(
+        document.getElementById("instructor-activity-panel").style.display,
+      ).toBe("block");
+      expect(
+        document.getElementById("instructor-summary-panel").style.display,
+      ).toBe("block");
     });
 
-    it('should initialize with all panels visible on DOMContentLoaded', () => {
+    it("should initialize with all panels visible on DOMContentLoaded", () => {
       const panelMapping = {
-        teaching: ['instructor-teaching-panel'],
+        teaching: ["instructor-teaching-panel"],
         all: [
-          'instructor-teaching-panel',
-          'instructor-assessment-panel',
-          'instructor-activity-panel',
-          'instructor-summary-panel'
-        ]
+          "instructor-teaching-panel",
+          "instructor-assessment-panel",
+          "instructor-activity-panel",
+          "instructor-summary-panel",
+        ],
       };
       const allPanelIds = [
-        'instructor-teaching-panel',
-        'instructor-assessment-panel',
-        'instructor-activity-panel',
-        'instructor-summary-panel'
+        "instructor-teaching-panel",
+        "instructor-assessment-panel",
+        "instructor-activity-panel",
+        "instructor-summary-panel",
       ];
 
       // Configure first
       window.configureDashboardFilter(panelMapping, allPanelIds);
 
       // Trigger DOMContentLoaded event
-      const event = new Event('DOMContentLoaded');
+      const event = new Event("DOMContentLoaded");
       document.dispatchEvent(event);
 
       // All panels should be visible after DOMContentLoaded
-      expect(document.getElementById('instructor-teaching-panel').style.display).toBe('block');
-      expect(document.getElementById('instructor-assessment-panel').style.display).toBe('block');
-      expect(document.getElementById('instructor-activity-panel').style.display).toBe('block');
-      expect(document.getElementById('instructor-summary-panel').style.display).toBe('block');
+      expect(
+        document.getElementById("instructor-teaching-panel").style.display,
+      ).toBe("block");
+      expect(
+        document.getElementById("instructor-assessment-panel").style.display,
+      ).toBe("block");
+      expect(
+        document.getElementById("instructor-activity-panel").style.display,
+      ).toBe("block");
+      expect(
+        document.getElementById("instructor-summary-panel").style.display,
+      ).toBe("block");
     });
 
-    it('should handle missing activeButton gracefully', () => {
+    it("should handle missing activeButton gracefully", () => {
       document.body.innerHTML = `
         <div class="navbar-nav">
           <!-- No button with id="dashboard-teaching" -->
@@ -264,49 +307,62 @@ describe('Dashboard Navigation', () => {
       `;
 
       const panelMapping = {
-        teaching: ['instructor-teaching-panel'],
-        all: ['instructor-teaching-panel']
+        teaching: ["instructor-teaching-panel"],
+        all: ["instructor-teaching-panel"],
       };
-      const allPanelIds = ['instructor-teaching-panel'];
+      const allPanelIds = ["instructor-teaching-panel"];
 
       window.configureDashboardFilter(panelMapping, allPanelIds);
 
       // Should not throw when activeButton doesn't exist
-      expect(() => window.filterDashboard('teaching')).not.toThrow();
+      expect(() => window.filterDashboard("teaching")).not.toThrow();
     });
 
-    it('should handle showing panels when visiblePanels includes them', () => {
+    it("should handle showing panels when visiblePanels includes them", () => {
       const panelMapping = {
-        teaching: ['instructor-teaching-panel'],
-        all: ['instructor-teaching-panel', 'instructor-assessment-panel']
+        teaching: ["instructor-teaching-panel"],
+        all: ["instructor-teaching-panel", "instructor-assessment-panel"],
       };
-      const allPanelIds = ['instructor-teaching-panel', 'instructor-assessment-panel'];
+      const allPanelIds = [
+        "instructor-teaching-panel",
+        "instructor-assessment-panel",
+      ];
 
       window.configureDashboardFilter(panelMapping, allPanelIds);
 
       // Test showing specific panel
-      window.filterDashboard('teaching');
-      expect(document.getElementById('instructor-teaching-panel').style.display).toBe('block');
+      window.filterDashboard("teaching");
+      expect(
+        document.getElementById("instructor-teaching-panel").style.display,
+      ).toBe("block");
 
       // Test showing all panels
-      window.filterDashboard('all');
-      expect(document.getElementById('instructor-teaching-panel').style.display).toBe('block');
-      expect(document.getElementById('instructor-assessment-panel').style.display).toBe('block');
+      window.filterDashboard("all");
+      expect(
+        document.getElementById("instructor-teaching-panel").style.display,
+      ).toBe("block");
+      expect(
+        document.getElementById("instructor-assessment-panel").style.display,
+      ).toBe("block");
     });
 
-    it('should handle hiding panels when visiblePanels does not include them', () => {
+    it("should handle hiding panels when visiblePanels does not include them", () => {
       const panelMapping = {
-        teaching: ['instructor-teaching-panel'],
-        all: ['instructor-teaching-panel', 'instructor-assessment-panel']
+        teaching: ["instructor-teaching-panel"],
+        all: ["instructor-teaching-panel", "instructor-assessment-panel"],
       };
-      const allPanelIds = ['instructor-teaching-panel', 'instructor-assessment-panel'];
+      const allPanelIds = [
+        "instructor-teaching-panel",
+        "instructor-assessment-panel",
+      ];
 
       window.configureDashboardFilter(panelMapping, allPanelIds);
 
       // Filter to teaching - should hide assessment panel
-      window.filterDashboard('teaching');
-      expect(document.getElementById('instructor-assessment-panel').style.display).toBe('none');
+      window.filterDashboard("teaching");
+      expect(
+        document.getElementById("instructor-assessment-panel").style.display,
+      ).toBe("none");
     });
   });
 });
-

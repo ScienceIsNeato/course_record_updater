@@ -9,6 +9,7 @@ See: https://ethereal.email/
 """
 
 import email
+import email.message
 import imaplib
 import smtplib
 import time

@@ -3,7 +3,7 @@
  *
  * Load the implementation at module level
  */
-require('../../../static/outcomeManagement.js');
+require("../../../static/outcomeManagement.js");
 
 /**
  * Unit Tests for Course Outcome (CLO) Management UI
@@ -17,7 +17,7 @@ require('../../../static/outcomeManagement.js');
  * FINAL ENTITY in TDD UI Implementation!
  */
 
-describe('Outcome Management - Create Outcome Modal', () => {
+describe("Outcome Management - Create Outcome Modal", () => {
   let mockFetch;
   let consoleErrorSpy;
 
@@ -51,153 +51,166 @@ describe('Outcome Management - Create Outcome Modal', () => {
     global.fetch = mockFetch;
 
     // Mock console.error
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation();
 
     // Mock Bootstrap Modal
     global.bootstrap = {
       Modal: {
         getInstance: jest.fn(() => ({
-          hide: jest.fn()
-        }))
-      }
+          hide: jest.fn(),
+        })),
+      },
     };
 
     global.loadOutcomes = jest.fn();
 
     // Trigger DOMContentLoaded to initialize event listeners
-    document.dispatchEvent(new Event('DOMContentLoaded'));
+    document.dispatchEvent(new Event("DOMContentLoaded"));
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  describe('Form Validation', () => {
-    test('should require course selection', () => {
-      const courseSelect = document.getElementById('outcomeCourseId');
+  describe("Form Validation", () => {
+    test("should require course selection", () => {
+      const courseSelect = document.getElementById("outcomeCourseId");
 
-      courseSelect.value = '';
+      courseSelect.value = "";
       expect(courseSelect.validity.valid).toBe(false);
 
-      courseSelect.value = 'course-1';
+      courseSelect.value = "course-1";
       expect(courseSelect.validity.valid).toBe(true);
     });
 
-    test('should require CLO number', () => {
-      const cloInput = document.getElementById('outcomeCloNumber');
+    test("should require CLO number", () => {
+      const cloInput = document.getElementById("outcomeCloNumber");
 
-      cloInput.value = '';
+      cloInput.value = "";
       expect(cloInput.validity.valid).toBe(false);
 
-      cloInput.value = 'CLO1';
+      cloInput.value = "CLO1";
       expect(cloInput.validity.valid).toBe(true);
     });
 
-    test('should require description', () => {
-      const descInput = document.getElementById('outcomeDescription');
+    test("should require description", () => {
+      const descInput = document.getElementById("outcomeDescription");
 
-      descInput.value = '';
+      descInput.value = "";
       expect(descInput.validity.valid).toBe(false);
 
-      descInput.value = 'Students will demonstrate understanding of...';
+      descInput.value = "Students will demonstrate understanding of...";
       expect(descInput.validity.valid).toBe(true);
     });
 
-    test('should have active checkbox checked by default', () => {
-      const activeCheckbox = document.getElementById('outcomeActive');
+    test("should have active checkbox checked by default", () => {
+      const activeCheckbox = document.getElementById("outcomeActive");
       expect(activeCheckbox.checked).toBe(true);
     });
 
-    test('should allow assessment method to be empty', () => {
-      const assessmentInput = document.getElementById('outcomeAssessmentMethod');
-      assessmentInput.value = '';
+    test("should allow assessment method to be empty", () => {
+      const assessmentInput = document.getElementById(
+        "outcomeAssessmentMethod",
+      );
+      assessmentInput.value = "";
       // Assessment method is not required
       expect(assessmentInput.validity.valid).toBe(true);
     });
   });
 
-  describe('Form Submission - API Call', () => {
-    test('should POST outcome data to /api/outcomes on form submit', async () => {
+  describe("Form Submission - API Call", () => {
+    test("should POST outcome data to /api/outcomes on form submit", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           success: true,
-          outcome_id: 'outcome-123',
-          message: 'Outcome created'
-        })
+          outcome_id: "outcome-123",
+          message: "Outcome created",
+        }),
       });
 
-      const form = document.getElementById('createOutcomeForm');
-      document.getElementById('outcomeCourseId').value = 'course-1';
-      document.getElementById('outcomeCloNumber').value = 'CLO1';
-      document.getElementById('outcomeDescription').value = 'Students will analyze...';
-      document.getElementById('outcomeAssessmentMethod').value = 'Final Exam';
-      document.getElementById('outcomeActive').checked = true;
+      const form = document.getElementById("createOutcomeForm");
+      document.getElementById("outcomeCourseId").value = "course-1";
+      document.getElementById("outcomeCloNumber").value = "CLO1";
+      document.getElementById("outcomeDescription").value =
+        "Students will analyze...";
+      document.getElementById("outcomeAssessmentMethod").value = "Final Exam";
+      document.getElementById("outcomeActive").checked = true;
 
-      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      const submitEvent = new Event("submit", {
+        bubbles: true,
+        cancelable: true,
+      });
       form.dispatchEvent(submitEvent);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/outcomes',
+        "/api/outcomes",
         expect.objectContaining({
-          method: 'POST',
+          method: "POST",
           headers: expect.objectContaining({
-            'Content-Type': 'application/json',
-            'X-CSRFToken': 'test-csrf-token'
+            "Content-Type": "application/json",
+            "X-CSRFToken": "test-csrf-token",
           }),
-          body: expect.stringContaining('CLO1')
-        })
+          body: expect.stringContaining("CLO1"),
+        }),
       );
     });
 
-    test('should include all outcome fields in POST body', async () => {
+    test("should include all outcome fields in POST body", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true, outcome_id: 'outcome-123' })
+        json: async () => ({ success: true, outcome_id: "outcome-123" }),
       });
 
-      const form = document.getElementById('createOutcomeForm');
-      document.getElementById('outcomeCourseId').value = 'course-2';
-      document.getElementById('outcomeCloNumber').value = 'CLO3';
-      document.getElementById('outcomeDescription').value = 'Apply data structures';
-      document.getElementById('outcomeAssessmentMethod').value = 'Project';
-      document.getElementById('outcomeActive').checked = false;
+      const form = document.getElementById("createOutcomeForm");
+      document.getElementById("outcomeCourseId").value = "course-2";
+      document.getElementById("outcomeCloNumber").value = "CLO3";
+      document.getElementById("outcomeDescription").value =
+        "Apply data structures";
+      document.getElementById("outcomeAssessmentMethod").value = "Project";
+      document.getElementById("outcomeActive").checked = false;
 
-      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      const submitEvent = new Event("submit", {
+        bubbles: true,
+        cancelable: true,
+      });
       form.dispatchEvent(submitEvent);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const callArgs = mockFetch.mock.calls[0];
       const body = JSON.parse(callArgs[1].body);
 
       expect(body).toMatchObject({
-        course_id: 'course-2',
-        clo_number: 'CLO3',
-        description: 'Apply data structures',
-        assessment_method: 'Project',
-        active: false
+        course_id: "course-2",
+        clo_number: "CLO3",
+        description: "Apply data structures",
+        assessment_method: "Project",
+        active: false,
       });
     });
 
-    test('should handle empty assessment method as null', async () => {
+    test("should handle empty assessment method as null", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true, outcome_id: 'outcome-123' })
+        json: async () => ({ success: true, outcome_id: "outcome-123" }),
       });
 
-      const form = document.getElementById('createOutcomeForm');
-      document.getElementById('outcomeCourseId').value = 'course-1';
-      document.getElementById('outcomeCloNumber').value = 'CLO1';
-      document.getElementById('outcomeDescription').value = 'Test description';
-      document.getElementById('outcomeAssessmentMethod').value = '';
+      const form = document.getElementById("createOutcomeForm");
+      document.getElementById("outcomeCourseId").value = "course-1";
+      document.getElementById("outcomeCloNumber").value = "CLO1";
+      document.getElementById("outcomeDescription").value = "Test description";
+      document.getElementById("outcomeAssessmentMethod").value = "";
 
-      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      const submitEvent = new Event("submit", {
+        bubbles: true,
+        cancelable: true,
+      });
       form.dispatchEvent(submitEvent);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const callArgs = mockFetch.mock.calls[0];
       const body = JSON.parse(callArgs[1].body);
@@ -205,146 +218,163 @@ describe('Outcome Management - Create Outcome Modal', () => {
       expect(body.assessment_method).toBeNull();
     });
 
-    test('should show loading state during API call', async () => {
+    test("should show loading state during API call", async () => {
       mockFetch.mockImplementationOnce(
         () =>
-          new Promise(resolve =>
+          new Promise((resolve) =>
             setTimeout(
               () =>
                 resolve({
                   ok: true,
-                  json: async () => ({ success: true })
+                  json: async () => ({ success: true }),
                 }),
-              100
-            )
-          )
+              100,
+            ),
+          ),
       );
 
-      const form = document.getElementById('createOutcomeForm');
-      document.getElementById('outcomeCourseId').value = 'course-1';
-      document.getElementById('outcomeCloNumber').value = 'CLO1';
-      document.getElementById('outcomeDescription').value = 'Test';
+      const form = document.getElementById("createOutcomeForm");
+      document.getElementById("outcomeCourseId").value = "course-1";
+      document.getElementById("outcomeCloNumber").value = "CLO1";
+      document.getElementById("outcomeDescription").value = "Test";
 
-      const btnText = document.querySelector('.btn-text');
-      const btnSpinner = document.querySelector('.btn-spinner');
+      const btnText = document.querySelector(".btn-text");
+      const btnSpinner = document.querySelector(".btn-spinner");
 
-      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      const submitEvent = new Event("submit", {
+        bubbles: true,
+        cancelable: true,
+      });
       form.dispatchEvent(submitEvent);
 
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Loading state should be active
-      expect(btnText.classList.contains('d-none')).toBe(true);
-      expect(btnSpinner.classList.contains('d-none')).toBe(false);
+      expect(btnText.classList.contains("d-none")).toBe(true);
+      expect(btnSpinner.classList.contains("d-none")).toBe(false);
 
       // Wait for completion
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Should return to normal
-      expect(btnText.classList.contains('d-none')).toBe(false);
-      expect(btnSpinner.classList.contains('d-none')).toBe(true);
+      expect(btnText.classList.contains("d-none")).toBe(false);
+      expect(btnSpinner.classList.contains("d-none")).toBe(true);
     });
 
-    test('should close modal and reset form on success', async () => {
+    test("should close modal and reset form on success", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           success: true,
-          outcome_id: 'outcome-123',
-          message: 'Outcome created'
-        })
+          outcome_id: "outcome-123",
+          message: "Outcome created",
+        }),
       });
 
-      const form = document.getElementById('createOutcomeForm');
-      const courseSelect = document.getElementById('outcomeCourseId');
+      const form = document.getElementById("createOutcomeForm");
+      const courseSelect = document.getElementById("outcomeCourseId");
 
-      courseSelect.value = 'course-1';
-      document.getElementById('outcomeCloNumber').value = 'CLO1';
-      document.getElementById('outcomeDescription').value = 'Test';
+      courseSelect.value = "course-1";
+      document.getElementById("outcomeCloNumber").value = "CLO1";
+      document.getElementById("outcomeDescription").value = "Test";
 
-      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      const submitEvent = new Event("submit", {
+        bubbles: true,
+        cancelable: true,
+      });
       form.dispatchEvent(submitEvent);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Modal should be closed
       expect(bootstrap.Modal.getInstance).toHaveBeenCalled();
 
       // Form should be reset
-      expect(courseSelect.value).toBe('');
+      expect(courseSelect.value).toBe("");
       expect(global.loadOutcomes).toHaveBeenCalled();
     });
 
-    test('should display error message on API failure', async () => {
+    test("should display error message on API failure", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 400,
-        json: async () => ({ error: 'CLO number already exists for this course' })
+        json: async () => ({
+          error: "CLO number already exists for this course",
+        }),
       });
 
       global.alert = jest.fn();
 
-      const form = document.getElementById('createOutcomeForm');
-      document.getElementById('outcomeCourseId').value = 'course-1';
-      document.getElementById('outcomeCloNumber').value = 'CLO1';
-      document.getElementById('outcomeDescription').value = 'Test';
+      const form = document.getElementById("createOutcomeForm");
+      document.getElementById("outcomeCourseId").value = "course-1";
+      document.getElementById("outcomeCloNumber").value = "CLO1";
+      document.getElementById("outcomeDescription").value = "Test";
 
-      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      const submitEvent = new Event("submit", {
+        bubbles: true,
+        cancelable: true,
+      });
       form.dispatchEvent(submitEvent);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(global.alert).toHaveBeenCalledWith(
-        expect.stringContaining('CLO number already exists')
+        expect.stringContaining("CLO number already exists"),
       );
     });
 
-    test('should handle network errors gracefully', async () => {
-      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+    test("should handle network errors gracefully", async () => {
+      mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
       global.alert = jest.fn();
 
-      const form = document.getElementById('createOutcomeForm');
-      document.getElementById('outcomeCourseId').value = 'course-1';
-      document.getElementById('outcomeCloNumber').value = 'CLO1';
-      document.getElementById('outcomeDescription').value = 'Test';
+      const form = document.getElementById("createOutcomeForm");
+      document.getElementById("outcomeCourseId").value = "course-1";
+      document.getElementById("outcomeCloNumber").value = "CLO1";
+      document.getElementById("outcomeDescription").value = "Test";
 
-      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      const submitEvent = new Event("submit", {
+        bubbles: true,
+        cancelable: true,
+      });
       form.dispatchEvent(submitEvent);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(global.alert).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to create outcome')
+        expect.stringContaining("Failed to create outcome"),
       );
       expect(consoleErrorSpy).toHaveBeenCalled();
     });
   });
 
-  describe('CSRF Token Handling', () => {
-    test('should include CSRF token in headers', async () => {
+  describe("CSRF Token Handling", () => {
+    test("should include CSRF token in headers", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true, outcome_id: 'outcome-123' })
+        json: async () => ({ success: true, outcome_id: "outcome-123" }),
       });
 
-      const form = document.getElementById('createOutcomeForm');
-      document.getElementById('outcomeCourseId').value = 'course-1';
-      document.getElementById('outcomeCloNumber').value = 'CLO1';
-      document.getElementById('outcomeDescription').value = 'Test';
+      const form = document.getElementById("createOutcomeForm");
+      document.getElementById("outcomeCourseId").value = "course-1";
+      document.getElementById("outcomeCloNumber").value = "CLO1";
+      document.getElementById("outcomeDescription").value = "Test";
 
-      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      const submitEvent = new Event("submit", {
+        bubbles: true,
+        cancelable: true,
+      });
       form.dispatchEvent(submitEvent);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const callArgs = mockFetch.mock.calls[0];
-      expect(callArgs[1].headers['X-CSRFToken']).toBe('test-csrf-token');
+      expect(callArgs[1].headers["X-CSRFToken"]).toBe("test-csrf-token");
     });
   });
 });
 
-describe('Outcome Management - Edit Outcome Modal', () => {
+describe("Outcome Management - Edit Outcome Modal", () => {
   let mockFetch;
 
   beforeEach(() => {
@@ -373,92 +403,102 @@ describe('Outcome Management - Edit Outcome Modal', () => {
     global.bootstrap = {
       Modal: {
         getInstance: jest.fn(() => ({
-          hide: jest.fn()
+          hide: jest.fn(),
         })),
         prototype: {
-          show: jest.fn()
-        }
-      }
+          show: jest.fn(),
+        },
+      },
     };
 
     global.loadOutcomes = jest.fn();
 
     // Trigger DOMContentLoaded to initialize event listeners
-    document.dispatchEvent(new Event('DOMContentLoaded'));
+    document.dispatchEvent(new Event("DOMContentLoaded"));
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  test('openEditOutcomeModal should populate form and show modal', () => {
+  test("openEditOutcomeModal should populate form and show modal", () => {
     const mockModal = { show: jest.fn() };
     global.bootstrap.Modal = jest.fn(() => mockModal);
 
-    window.openEditOutcomeModal('outcome-123', {
-      clo_number: 'CLO2',
-      description: 'Students will evaluate...',
-      assessment_method: 'Midterm',
-      active: true
+    window.openEditOutcomeModal("outcome-123", {
+      clo_number: "CLO2",
+      description: "Students will evaluate...",
+      assessment_method: "Midterm",
+      active: true,
     });
 
-    expect(document.getElementById('editOutcomeId').value).toBe('outcome-123');
-    expect(document.getElementById('editOutcomeCloNumber').value).toBe('CLO2');
-    expect(document.getElementById('editOutcomeDescription').value).toBe('Students will evaluate...');
-    expect(document.getElementById('editOutcomeAssessmentMethod').value).toBe('Midterm');
-    expect(document.getElementById('editOutcomeActive').checked).toBe(true);
+    expect(document.getElementById("editOutcomeId").value).toBe("outcome-123");
+    expect(document.getElementById("editOutcomeCloNumber").value).toBe("CLO2");
+    expect(document.getElementById("editOutcomeDescription").value).toBe(
+      "Students will evaluate...",
+    );
+    expect(document.getElementById("editOutcomeAssessmentMethod").value).toBe(
+      "Midterm",
+    );
+    expect(document.getElementById("editOutcomeActive").checked).toBe(true);
     expect(mockModal.show).toHaveBeenCalled();
   });
 
-  test('should PUT updated outcome data to /api/outcomes/<id>', async () => {
+  test("should PUT updated outcome data to /api/outcomes/<id>", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ success: true, message: 'Outcome updated' })
+      json: async () => ({ success: true, message: "Outcome updated" }),
     });
 
-    const form = document.getElementById('editOutcomeForm');
-    document.getElementById('editOutcomeId').value = 'outcome-123';
-    document.getElementById('editOutcomeCloNumber').value = 'CLO3';
-    document.getElementById('editOutcomeDescription').value = 'Updated description';
-    document.getElementById('editOutcomeAssessmentMethod').value = 'Final Project';
-    document.getElementById('editOutcomeActive').checked = false;
+    const form = document.getElementById("editOutcomeForm");
+    document.getElementById("editOutcomeId").value = "outcome-123";
+    document.getElementById("editOutcomeCloNumber").value = "CLO3";
+    document.getElementById("editOutcomeDescription").value =
+      "Updated description";
+    document.getElementById("editOutcomeAssessmentMethod").value =
+      "Final Project";
+    document.getElementById("editOutcomeActive").checked = false;
 
-    const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+    const submitEvent = new Event("submit", {
+      bubbles: true,
+      cancelable: true,
+    });
     form.dispatchEvent(submitEvent);
 
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     expect(mockFetch).toHaveBeenCalledWith(
-      '/api/outcomes/outcome-123',
+      "/api/outcomes/outcome-123",
       expect.objectContaining({
-        method: 'PUT',
+        method: "PUT",
         headers: expect.objectContaining({
-          'Content-Type': 'application/json',
-          'X-CSRFToken': 'test-csrf-token'
+          "Content-Type": "application/json",
+          "X-CSRFToken": "test-csrf-token",
         }),
-        body: expect.stringContaining('Updated description')
-      })
+        body: expect.stringContaining("Updated description"),
+      }),
     );
 
     const callArgs = mockFetch.mock.calls[0];
     const body = JSON.parse(callArgs[1].body);
     expect(body.active).toBe(false);
-    expect(body.assessment_method).toBe('Final Project');
+    expect(body.assessment_method).toBe("Final Project");
     expect(global.loadOutcomes).toHaveBeenCalled();
   });
 });
 
-describe('Outcome Management - Delete Outcome', () => {
+describe("Outcome Management - Delete Outcome", () => {
   let mockFetch;
   let confirmSpy;
   let alertSpy;
 
   beforeEach(() => {
-    document.body.innerHTML = '<meta name="csrf-token" content="test-csrf-token">';
+    document.body.innerHTML =
+      '<meta name="csrf-token" content="test-csrf-token">';
     mockFetch = jest.fn();
     global.fetch = mockFetch;
-    confirmSpy = jest.spyOn(window, 'confirm');
-    alertSpy = jest.spyOn(window, 'alert').mockImplementation();
+    confirmSpy = jest.spyOn(window, "confirm");
+    alertSpy = jest.spyOn(window, "alert").mockImplementation();
     global.loadOutcomes = jest.fn();
   });
 
@@ -466,66 +506,61 @@ describe('Outcome Management - Delete Outcome', () => {
     jest.restoreAllMocks();
   });
 
-  test('should DELETE outcome with confirmation', async () => {
+  test("should DELETE outcome with confirmation", async () => {
     confirmSpy.mockReturnValue(true);
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ success: true })
+      json: async () => ({ success: true }),
     });
 
-    await window.deleteOutcome('outcome-123', 'CS101', 'CLO1');
+    await window.deleteOutcome("outcome-123", "CS101", "CLO1");
 
-    expect(confirmSpy).toHaveBeenCalledWith(
-      expect.stringContaining('CLO1')
-    );
-    expect(confirmSpy).toHaveBeenCalledWith(
-      expect.stringContaining('CS101')
-    );
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining("CLO1"));
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining("CS101"));
     expect(mockFetch).toHaveBeenCalledWith(
-      '/api/outcomes/outcome-123',
+      "/api/outcomes/outcome-123",
       expect.objectContaining({
-        method: 'DELETE',
+        method: "DELETE",
         headers: expect.objectContaining({
-          'X-CSRFToken': 'test-csrf-token'
-        })
-      })
+          "X-CSRFToken": "test-csrf-token",
+        }),
+      }),
     );
     expect(alertSpy).toHaveBeenCalledWith(
-      expect.stringContaining('deleted successfully')
+      expect.stringContaining("deleted successfully"),
     );
     expect(global.loadOutcomes).toHaveBeenCalled();
   });
 
-  test('should not delete if user cancels confirmation', async () => {
+  test("should not delete if user cancels confirmation", async () => {
     confirmSpy.mockReturnValue(false);
 
-    await window.deleteOutcome('outcome-123', 'CS101', 'CLO1');
+    await window.deleteOutcome("outcome-123", "CS101", "CLO1");
 
     expect(mockFetch).not.toHaveBeenCalled();
     expect(alertSpy).not.toHaveBeenCalled();
   });
 
-  test('should handle API errors gracefully', async () => {
+  test("should handle API errors gracefully", async () => {
     confirmSpy.mockReturnValue(true);
     mockFetch.mockResolvedValueOnce({
       ok: false,
-      json: async () => ({ error: 'Outcome has assessment data' })
+      json: async () => ({ error: "Outcome has assessment data" }),
     });
 
-    await window.deleteOutcome('outcome-123', 'CS101', 'CLO1');
+    await window.deleteOutcome("outcome-123", "CS101", "CLO1");
 
     expect(alertSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Outcome has assessment data')
+      expect.stringContaining("Outcome has assessment data"),
     );
   });
 
-  test('should handle network errors during delete', async () => {
+  test("should handle network errors during delete", async () => {
     confirmSpy.mockReturnValue(true);
-    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+    mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
-    await window.deleteOutcome('outcome-123', 'CS101', 'CLO1');
+    await window.deleteOutcome("outcome-123", "CS101", "CLO1");
 
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('try again'));
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining("try again"));
   });
 });
-

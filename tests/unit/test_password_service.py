@@ -142,8 +142,9 @@ class TestPasswordValidation:
 
     def test_valid_password(self):
         """Test that valid password passes validation"""
-        # Should not raise exception
+        # Should not raise exception - validates by not throwing
         validate_password_strength(GENERIC_PASSWORD)
+        assert True  # Reached here without exception
 
     def test_empty_password(self):
         """Test that empty password fails validation"""

@@ -1,196 +1,243 @@
-{% extends "dashboard/base_dashboard.html" %}
-
-{% block title %}Program Administrator Dashboard - Loopcloser{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
-{% endblock %}
-
-{% block nav_items %}
-<button class="nav-link btn btn-link" type="button" id="dashboard-view-all" onclick="filterDashboard('all')"><i
-        class="fas fa-tachometer-alt me-1"></i>Dashboard</button>
-<button class="nav-link btn btn-link" type="button" id="dashboard-courses" onclick="filterDashboard('courses')"><i
-        class="fas fa-book me-1"></i>Courses</button>
-<button class="nav-link btn btn-link" type="button" id="dashboard-faculty" onclick="filterDashboard('faculty')"><i
-        class="fas fa-users me-1"></i>Faculty</button>
-<button class="nav-link btn btn-link" type="button" id="dashboard-clos" onclick="filterDashboard('clos')"><i
-        class="fas fa-bullseye me-1"></i>Outcomes</button>
-{% endblock %}
-
-{% block page_title %}📚 Program Administration{% endblock %}
-{% block page_subtitle %}Manage curriculum and assessment outcomes{% endblock %}
-
-{% block content %}
+{% extends "dashboard/base_dashboard.html" %} {% block title %}Program
+Administrator Dashboard - Loopcloser{% endblock %} {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}" />
+{% endblock %} {% block nav_items %}
+<button
+  class="nav-link btn btn-link"
+  type="button"
+  id="dashboard-view-all"
+  onclick="filterDashboard('all')"
+>
+  <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+</button>
+<button
+  class="nav-link btn btn-link"
+  type="button"
+  id="dashboard-courses"
+  onclick="filterDashboard('courses')"
+>
+  <i class="fas fa-book me-1"></i>Courses
+</button>
+<button
+  class="nav-link btn btn-link"
+  type="button"
+  id="dashboard-faculty"
+  onclick="filterDashboard('faculty')"
+>
+  <i class="fas fa-users me-1"></i>Faculty
+</button>
+<button
+  class="nav-link btn btn-link"
+  type="button"
+  id="dashboard-clos"
+  onclick="filterDashboard('clos')"
+>
+  <i class="fas fa-bullseye me-1"></i>Outcomes
+</button>
+{% endblock %} {% block page_title %}📚 Program Administration{% endblock %} {%
+block page_subtitle %}Manage curriculum and assessment outcomes{% endblock %} {%
+block content %}
 <!-- Panel 1: Course Management -->
 <div class="dashboard-panel" id="program-courses-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">📖</span>
-            Course Management
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createCourseModal">
-                <i class="fas fa-plus"></i> Add Course
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/courses'">
-                <i class="fas fa-list"></i> Manage Courses
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">📖</span>
+      Course Management
+    </h5>
+    <div class="panel-actions">
+      <button
+        class="btn btn-sm btn-primary"
+        data-bs-toggle="modal"
+        data-bs-target="#createCourseModal"
+      >
+        <i class="fas fa-plus"></i> Add Course
+      </button>
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        onclick="window.location.href='/courses'"
+      >
+        <i class="fas fa-list"></i> Manage Courses
+      </button>
     </div>
-    <div class="panel-content">
-        <div id="programCoursesContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading courses...
-            </div>
-        </div>
+    <button class="panel-toggle">▼</button>
+  </div>
+  <div class="panel-content">
+    <div id="programCoursesContainer">
+      <div class="panel-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        Loading courses...
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Panel 2: Offering Management -->
 <div class="dashboard-panel" id="program-offering-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">📋</span>
-            Course Offerings
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-primary"
-                onclick="window.createOffering ? createOffering() : openCreateOfferingModal()">
-                <i class="fas fa-plus"></i> Add Offering
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/offerings'">
-                <i class="fas fa-list"></i> Manage Offerings
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">📋</span>
+      Course Offerings
+    </h5>
+    <div class="panel-actions">
+      <button
+        class="btn btn-sm btn-primary"
+        onclick="window.createOffering ? createOffering() : openCreateOfferingModal()"
+      >
+        <i class="fas fa-plus"></i> Add Offering
+      </button>
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        onclick="window.location.href='/offerings'"
+      >
+        <i class="fas fa-list"></i> Manage Offerings
+      </button>
     </div>
-    <div class="panel-content">
-        <div id="programOfferingContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading offerings...
-            </div>
-        </div>
+    <button class="panel-toggle">▼</button>
+  </div>
+  <div class="panel-content">
+    <div id="programOfferingContainer">
+      <div class="panel-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        Loading offerings...
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Panel 3: Faculty Assignments -->
 <div class="dashboard-panel" id="program-faculty-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">👨‍🏫</span>
-            Faculty Assignments
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-primary" title="Coming soon" onclick="return false;">
-                <i class="fas fa-user-plus"></i> Assign Courses
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/faculty'">
-                <i class="fas fa-list"></i> Manage Faculty
-            </button>
-            <button class="btn btn-sm btn-outline-primary" id="bulkReminderLauncher" data-bs-toggle="modal"
-                data-bs-target="#bulkReminderModal">
-                <i class="fas fa-bell"></i> Send Reminders
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">👨‍🏫</span>
+      Faculty Assignments
+    </h5>
+    <div class="panel-actions">
+      <button
+        class="btn btn-sm btn-primary"
+        title="Coming soon"
+        onclick="return false;"
+      >
+        <i class="fas fa-user-plus"></i> Assign Courses
+      </button>
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        onclick="window.location.href='/faculty'"
+      >
+        <i class="fas fa-list"></i> Manage Faculty
+      </button>
+      <button
+        class="btn btn-sm btn-outline-primary"
+        id="bulkReminderLauncher"
+        data-bs-toggle="modal"
+        data-bs-target="#bulkReminderModal"
+      >
+        <i class="fas fa-bell"></i> Send Reminders
+      </button>
     </div>
-    <div class="panel-content">
-        <div id="programFacultyContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading faculty...
-            </div>
-        </div>
+    <button class="panel-toggle">▼</button>
+  </div>
+  <div class="panel-content">
+    <div id="programFacultyContainer">
+      <div class="panel-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        Loading faculty...
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Panel 3: CLO Management -->
 <div class="dashboard-panel" id="program-clo-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">🎯</span>
-            Course Learning Outcomes
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-primary" title="Coming soon" onclick="return false;">
-                <i class="fas fa-plus"></i> Add Outcome
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" title="Coming soon" onclick="return false;">
-                <i class="fas fa-list"></i> Manage Outcomes
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">🎯</span>
+      Course Learning Outcomes
+    </h5>
+    <div class="panel-actions">
+      <button
+        class="btn btn-sm btn-primary"
+        title="Coming soon"
+        onclick="return false;"
+      >
+        <i class="fas fa-plus"></i> Add Outcome
+      </button>
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        title="Coming soon"
+        onclick="return false;"
+      >
+        <i class="fas fa-list"></i> Manage Outcomes
+      </button>
     </div>
-    <div class="panel-content">
-        <div id="programCloContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading outcomes...
-            </div>
-        </div>
+    <button class="panel-toggle">▼</button>
+  </div>
+  <div class="panel-content">
+    <div id="programCloContainer">
+      <div class="panel-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        Loading outcomes...
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Panel 4: Assessment Results -->
 <div class="dashboard-panel" id="program-assessment-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">📊</span>
-            Assessment Results
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-outline-secondary" onclick="return false;">
-                <i class="fas fa-file-alt"></i> Detailed View
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">📊</span>
+      Assessment Results
+    </h5>
+    <div class="panel-actions">
+      <button class="btn btn-sm btn-outline-secondary" onclick="return false;">
+        <i class="fas fa-file-alt"></i> Detailed View
+      </button>
     </div>
-    <div class="panel-content">
-        <div id="programAssessmentContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading assessment results...
-            </div>
-        </div>
+    <button class="panel-toggle">▼</button>
+  </div>
+  <div class="panel-content">
+    <div id="programAssessmentContainer">
+      <div class="panel-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        Loading assessment results...
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Panel 5: CLO Audit & Approval -->
 <div class="dashboard-panel" id="program-clo-audit-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">✓</span>
-            Learning Outcome Audit & Approval
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/audit-clo'">
-                <i class="fas fa-clipboard-check"></i> Review Submissions
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">✓</span>
+      Learning Outcome Audit & Approval
+    </h5>
+    <div class="panel-actions">
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        onclick="window.location.href='/audit-clo'"
+      >
+        <i class="fas fa-clipboard-check"></i> Review Submissions
+      </button>
     </div>
-    <div class="panel-content">
-        <div id="programCloAuditContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading audit data...
-            </div>
-        </div>
+    <button class="panel-toggle">▼</button>
+  </div>
+  <div class="panel-content">
+    <div id="programCloAuditContainer">
+      <div class="panel-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        Loading audit data...
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Panel 6: Data Management (Import/Export) -->
 {% include 'components/data_management_panel.html' %}
 
 <!-- Course Modals -->
-{% include '_course_modals.html' %}
-{% include '_offering_modals.html' %}
-{% endblock %}
-
-{% block extra_js %}
+{% include '_course_modals.html' %} {% include '_offering_modals.html' %} {%
+endblock %} {% block extra_js %}
 <script src="{{ url_for('static', filename='logger.js') }}"></script>
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 <script src="{{ url_for('static', filename='panels.js') }}"></script>
@@ -200,37 +247,48 @@
 <script src="{{ url_for('static', filename='offeringManagement.js') }}"></script>
 <script src="{{ url_for('static', filename='courseManagement.js') }}"></script>
 <script>
-    // Configure dashboard navigation for Program Admin role
-    configureDashboardFilter(
-        {
-            'courses': ['program-courses-panel'],
-            'offerings': ['program-offering-panel'],
-            'faculty': ['program-faculty-panel'],
-            'clos': ['program-clo-panel'],
-            'all': ['program-courses-panel', 'program-offering-panel', 'program-faculty-panel', 'program-clo-panel', 'program-assessment-panel', 'program-clo-audit-panel']
-        },
-        [
-            'program-courses-panel',
-            'program-offering-panel',
-            'program-faculty-panel',
-            'program-clo-panel',
-            'program-assessment-panel',
-            'program-clo-audit-panel'
-        ]
-    );
+  // Configure dashboard navigation for Program Admin role
+  configureDashboardFilter(
+    {
+      courses: ["program-courses-panel"],
+      offerings: ["program-offering-panel"],
+      faculty: ["program-faculty-panel"],
+      clos: ["program-clo-panel"],
+      all: [
+        "program-courses-panel",
+        "program-offering-panel",
+        "program-faculty-panel",
+        "program-clo-panel",
+        "program-assessment-panel",
+        "program-clo-audit-panel",
+      ],
+    },
+    [
+      "program-courses-panel",
+      "program-offering-panel",
+      "program-faculty-panel",
+      "program-clo-panel",
+      "program-assessment-panel",
+      "program-clo-audit-panel",
+    ],
+  );
 
-    // Program Data Management Functions
-    // Import functions are defined in the Excel import modal (templates/components/excel_import_modal.html)
+  // Program Data Management Functions
+  // Import functions are defined in the Excel import modal (templates/components/excel_import_modal.html)
 
-    function programQuickExport() {
-        const format = document.querySelector('input[name="programExportFormat"]:checked').value;
-        alert(`Quick Export (${format}) feature coming soon!`);
-    }
+  function programQuickExport() {
+    const format = document.querySelector(
+      'input[name="programExportFormat"]:checked',
+    ).value;
+    alert(`Quick Export (${format}) feature coming soon!`);
+  }
 
-    function programExportData(type) {
-        const format = document.querySelector('input[name="programExportFormat"]:checked').value;
-        alert(`Export ${type} (${format}) feature coming soon!`);
-    }
+  function programExportData(type) {
+    const format = document.querySelector(
+      'input[name="programExportFormat"]:checked',
+    ).value;
+    alert(`Export ${type} (${format}) feature coming soon!`);
+  }
 </script>
 
 <!-- Include Bulk Reminder Modal -->

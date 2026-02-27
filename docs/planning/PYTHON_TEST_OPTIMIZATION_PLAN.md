@@ -11,6 +11,7 @@
 ## Phase 1: Quick Wins (No Code Changes Required)
 
 ### 1.1 Install pytest-testmon for Development Cycles
+
 - [ ] `pip install pytest-testmon`
 - [ ] Add to `requirements-dev.txt`
 - [ ] Test with `pytest --testmon` (first run builds cache, subsequent runs only test affected code)
@@ -19,6 +20,7 @@
 - **Effort**: 15 minutes
 
 ### 1.2 Enable Parallel Execution with File Distribution
+
 - [ ] Verify `pytest-xdist` is installed
 - [ ] Test `pytest -n auto --dist loadfile` (parallelizes by file, avoids SQLite conflicts)
 - [ ] If successful, update `scripts/quality_gate.sh` to use this by default
@@ -27,6 +29,7 @@
 - **Effort**: 30 minutes
 
 ### 1.3 Profile Test Execution
+
 - [ ] Run `pytest --durations=0 tests/ 2>&1 | head -100` to identify slowest tests
 - [ ] Document top 20 slowest tests in this file for targeted optimization
 - [ ] Identify any tests taking >1s (candidates for optimization or moving to integration)
@@ -38,8 +41,9 @@
 ## Phase 2: Fixture Optimization (High Impact, Low Risk)
 
 ### 2.1 Create Class-Scoped Auth Fixtures
+
 - [ ] Create `tests/fixtures/auth_fixtures.py` with reusable auth fixtures
-- [ ] Implement `admin_session` fixture (scope="class") 
+- [ ] Implement `admin_session` fixture (scope="class")
 - [ ] Implement `instructor_session` fixture (scope="class")
 - [ ] Implement `institution_admin_session` fixture (scope="class")
 - [ ] Each fixture returns `(client, csrf_token)` tuple
@@ -57,6 +61,7 @@ def admin_session(client):
 ```
 
 ### 2.2 Migrate Tests to Use New Fixtures
+
 - [ ] Update `tests/unit/test_crud_api_endpoints.py` (highest test count)
 - [ ] Update `test_clo_workflow_service.py`
 - [ ] Update remaining unit test files
@@ -69,6 +74,7 @@ def admin_session(client):
 ## Phase 3: Mock Modernization (Medium Impact, Medium Risk)
 
 ### 3.1 Switch from @patch Decorators to mocker Fixture
+
 - [ ] Verify `pytest-mock` is installed (provides `mocker` fixture)
 - [ ] Create migration guide/example in `tests/README.md`
 - [ ] Migrate `tests/unit/test_crud_api_endpoints.py` as pilot
@@ -96,6 +102,7 @@ def test_update_user(self, client, mocker):
 ## Phase 4: Test Consolidation (Medium Impact, Higher Risk)
 
 ### 4.1 Create Test Data Factories
+
 - [ ] Create `tests/factories.py` with factory functions
 - [ ] Implement `make_user(**overrides)` factory
 - [ ] Implement `make_course(**overrides)` factory
@@ -128,6 +135,7 @@ def make_course(**overrides):
 ```
 
 ### 4.2 Parameterize Redundant Test Patterns
+
 - [ ] Identify all "not found returns 404" tests (estimate: ~20)
 - [ ] Consolidate into single parameterized test
 - [ ] Identify all "permission denied returns 403" tests (estimate: ~15)
@@ -154,6 +162,7 @@ def test_resource_not_found_returns_404(self, endpoint, mock_target, method, cli
 ```
 
 ### 4.3 Audit and Remove Truly Redundant Tests
+
 - [ ] Generate test name list: `pytest --collect-only -q > /tmp/all_tests.txt`
 - [ ] Review for obvious duplicates (similar names, same file)
 - [ ] Flag candidates for removal (document reasoning)
@@ -166,6 +175,7 @@ def test_resource_not_found_returns_404(self, endpoint, mock_target, method, cli
 ## Phase 5: Infrastructure Improvements
 
 ### 5.1 Add pytest Markers for Test Categories
+
 - [ ] Add markers to `pytest.ini`: `unit`, `integration`, `slow`, `database`
 - [ ] Tag slow tests (>500ms) with `@pytest.mark.slow`
 - [ ] Tag database-dependent tests with `@pytest.mark.database`
@@ -183,6 +193,7 @@ markers =
 ```
 
 ### 5.2 Configure In-Memory SQLite for Parallel Tests
+
 - [ ] Create `tests/conftest.py` fixture for in-memory SQLite per worker
 - [ ] Test with `pytest -n 4` to verify no conflicts
 - [ ] Document any tests that can't use in-memory DB
@@ -193,40 +204,42 @@ markers =
 
 ## Progress Tracking
 
-| Phase | Status | Time Spent | Impact Measured |
-|-------|--------|------------|-----------------|
-| 1.1 pytest-testmon | ⬜ Not Started | - | - |
-| 1.2 Parallel execution | ⬜ Not Started | - | - |
-| 1.3 Profile tests | ⬜ Not Started | - | - |
-| 2.1 Class-scoped fixtures | ⬜ Not Started | - | - |
-| 2.2 Migrate to fixtures | ⬜ Not Started | - | - |
-| 3.1 mocker migration | ⬜ Not Started | - | - |
-| 4.1 Test factories | ⬜ Not Started | - | - |
-| 4.2 Parameterize tests | ⬜ Not Started | - | - |
-| 4.3 Remove redundant | ⬜ Not Started | - | - |
-| 5.1 Add markers | ⬜ Not Started | - | - |
-| 5.2 In-memory SQLite | ⬜ Not Started | - | - |
+| Phase                     | Status         | Time Spent | Impact Measured |
+| ------------------------- | -------------- | ---------- | --------------- |
+| 1.1 pytest-testmon        | ⬜ Not Started | -          | -               |
+| 1.2 Parallel execution    | ⬜ Not Started | -          | -               |
+| 1.3 Profile tests         | ⬜ Not Started | -          | -               |
+| 2.1 Class-scoped fixtures | ⬜ Not Started | -          | -               |
+| 2.2 Migrate to fixtures   | ⬜ Not Started | -          | -               |
+| 3.1 mocker migration      | ⬜ Not Started | -          | -               |
+| 4.1 Test factories        | ⬜ Not Started | -          | -               |
+| 4.2 Parameterize tests    | ⬜ Not Started | -          | -               |
+| 4.3 Remove redundant      | ⬜ Not Started | -          | -               |
+| 5.1 Add markers           | ⬜ Not Started | -          | -               |
+| 5.2 In-memory SQLite      | ⬜ Not Started | -          | -               |
 
 ---
 
 ## Baseline Measurements (To Be Filled)
 
 **Before Optimization:**
-- Full suite time: ___s
-- Unit tests only: ___s
+
+- Full suite time: \_\_\_s
+- Unit tests only: \_\_\_s
 - Top 5 slowest tests:
-  1. ___
-  2. ___
-  3. ___
-  4. ___
-  5. ___
+  1. ***
+  2. ***
+  3. ***
+  4. ***
+  5. ***
 
 **After Each Phase:**
-- Phase 1 complete: ___s (___% improvement)
-- Phase 2 complete: ___s (___% improvement)
-- Phase 3 complete: ___s (___% improvement)
-- Phase 4 complete: ___s (___% improvement)
-- Phase 5 complete: ___s (___% improvement)
+
+- Phase 1 complete: **_s (_**% improvement)
+- Phase 2 complete: **_s (_**% improvement)
+- Phase 3 complete: **_s (_**% improvement)
+- Phase 4 complete: **_s (_**% improvement)
+- Phase 5 complete: **_s (_**% improvement)
 
 ---
 

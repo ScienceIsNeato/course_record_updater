@@ -13,8 +13,8 @@ describe("script.js interactions", () => {
       ok: true,
       json: async () => ({ success: true, count: 0 }),
     });
-    consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => { });
-    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => { });
+    consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
     originalReload = window.location.reload;
   });
 

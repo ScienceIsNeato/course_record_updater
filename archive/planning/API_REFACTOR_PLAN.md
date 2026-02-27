@@ -99,6 +99,7 @@ Only after ALL domains are extracted and ALL tests pass:
 ## Key Principles
 
 ### DO:
+
 - ✅ Move source AND tests together
 - ✅ Commit after each domain extraction
 - ✅ Keep old code until new code is proven
@@ -107,6 +108,7 @@ Only after ALL domains are extracted and ALL tests pass:
 - ✅ Keep website routes (non-API) untouched
 
 ### DON'T:
+
 - ❌ Delete old code before new code is tested
 - ❌ Move multiple domains in one commit
 - ❌ Skip running tests

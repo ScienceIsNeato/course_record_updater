@@ -22,11 +22,11 @@
 
 ## Environment Overview
 
-| Environment | URL | Purpose | Deploy Trigger |
-|-------------|-----|---------|----------------|
-| **Production** | `loopcloser.io` | Live production system | Manual (workflow_dispatch) |
-| **Staging** | `staging.loopcloser.io` | Pre-production validation | Manual (workflow_dispatch) |
-| **Dev** | `dev.loopcloser.io` | Development testing | Auto on merge to `develop` |
+| Environment    | URL                     | Purpose                   | Deploy Trigger             |
+| -------------- | ----------------------- | ------------------------- | -------------------------- |
+| **Production** | `loopcloser.io`         | Live production system    | Manual (workflow_dispatch) |
+| **Staging**    | `staging.loopcloser.io` | Pre-production validation | Manual (workflow_dispatch) |
+| **Dev**        | `dev.loopcloser.io`     | Development testing       | Auto on merge to `develop` |
 
 ### Architecture
 
@@ -91,12 +91,12 @@ brew install docker  # macOS
 
 After Cloud Run services are deployed, add these DNS records in Cloudflare dashboard:
 
-| Type | Name | Value | Proxy |
-|------|------|-------|-------|
-| CNAME | @ | `ghs.googlehosted.com.` | DNS only |
-| CNAME | www | `ghs.googlehosted.com.` | DNS only |
+| Type  | Name    | Value                   | Proxy    |
+| ----- | ------- | ----------------------- | -------- |
+| CNAME | @       | `ghs.googlehosted.com.` | DNS only |
+| CNAME | www     | `ghs.googlehosted.com.` | DNS only |
 | CNAME | staging | `ghs.googlehosted.com.` | DNS only |
-| CNAME | dev | `ghs.googlehosted.com.` | DNS only |
+| CNAME | dev     | `ghs.googlehosted.com.` | DNS only |
 
 > **Note:** Use "DNS only" (gray cloud) initially for Cloud Run domain verification. Can enable proxy later for DDoS protection.
 
@@ -283,26 +283,26 @@ gcloud run deploy loopcloser-prod \
 
 ### Required for All Environments
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `ENV` | Environment name | `production`, `staging`, `dev` |
+| Variable       | Description              | Example                         |
+| -------------- | ------------------------ | ------------------------------- |
+| `ENV`          | Environment name         | `production`, `staging`, `dev`  |
 | `DATABASE_URL` | SQLite connection string | `sqlite:////data/loopcloser.db` |
-| `SECRET_KEY` | Flask session secret | (from Secret Manager) |
-| `BASE_URL` | Application base URL | `https://loopcloser.io` |
+| `SECRET_KEY`   | Flask session secret     | (from Secret Manager)           |
+| `BASE_URL`     | Application base URL     | `https://loopcloser.io`         |
 
 ### Email Configuration (Production)
 
-| Variable | Description |
-|----------|-------------|
-| `BREVO_API_KEY` | Brevo API key for transactional emails |
-| `BREVO_SENDER_EMAIL` | Verified sender email |
-| `BREVO_SENDER_NAME` | Sender display name |
+| Variable             | Description                            |
+| -------------------- | -------------------------------------- |
+| `BREVO_API_KEY`      | Brevo API key for transactional emails |
+| `BREVO_SENDER_EMAIL` | Verified sender email                  |
+| `BREVO_SENDER_NAME`  | Sender display name                    |
 
 ### Email Configuration (Dev/Staging)
 
-| Variable | Description |
-|----------|-------------|
-| `ETHEREAL_USER` | Ethereal test email user |
+| Variable        | Description                  |
+| --------------- | ---------------------------- |
+| `ETHEREAL_USER` | Ethereal test email user     |
 | `ETHEREAL_PASS` | Ethereal test email password |
 
 ---
@@ -551,12 +551,12 @@ curl https://loopcloser.io/health
 
 ## Cost Estimation
 
-| Resource | Dev | Staging | Production |
-|----------|-----|---------|------------|
-| Cloud Run | ~$5/mo | ~$5/mo | ~$20/mo |
-| GCS Storage | ~$1/mo | ~$1/mo | ~$5/mo |
-| Domain | - | - | ~$12/yr |
-| **Total** | ~$6/mo | ~$6/mo | ~$27/mo |
+| Resource    | Dev    | Staging | Production |
+| ----------- | ------ | ------- | ---------- |
+| Cloud Run   | ~$5/mo | ~$5/mo  | ~$20/mo    |
+| GCS Storage | ~$1/mo | ~$1/mo  | ~$5/mo     |
+| Domain      | -      | -       | ~$12/yr    |
+| **Total**   | ~$6/mo | ~$6/mo  | ~$27/mo    |
 
 > Costs assume low-to-moderate traffic. Cloud Run bills per request and CPU time.
 
@@ -567,5 +567,3 @@ curl https://loopcloser.io/health
 - [CI_SETUP_GUIDE.md](CI_SETUP_GUIDE.md) - CI pipeline documentation
 - [ENV_SETUP.md](ENV_SETUP.md) - Local environment setup
 - [docs/RUNBOOK.md](docs/RUNBOOK.md) - Operations runbook
-
-

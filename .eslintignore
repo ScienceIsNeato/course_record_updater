@@ -1,0 +1,9 @@
+node_modules/
+venv/
+build/
+htmlcov/
+coverage/
+logs/
+.slopmop/
+__pycache__/
+*.pyc

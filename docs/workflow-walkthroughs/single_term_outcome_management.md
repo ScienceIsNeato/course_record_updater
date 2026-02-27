@@ -23,8 +23,9 @@ python scripts/seed_db.py --demo --clear --env dev
 ```
 
 **Demo Account:**
+
 - URL: http://localhost:3001
-- Email: demo2025.admin@example.com  
+- Email: demo2025.admin@example.com
 - Password: Demo2024!
 
 ---
@@ -74,8 +75,9 @@ A modal opens: "Assign Instructor to CS-101"
 Choose "Create New Instructor" option.
 
 Fill in:
+
 - First Name: Demo
-- Last Name: Instructor  
+- Last Name: Instructor
 - Email: demo2025.instructor@example.com (or your real email to test)
 
 Click "Assign and Invite" button.
@@ -113,6 +115,7 @@ System auto-logs in and redirects to CS-101 assessment page.
 Assessment page title: "CS-101: Introduction to Programming - Fall 2025"
 
 **Course-Level Section (top):**
+
 - Enrollment: 25 (pre-populated, read-only)
 - Withdrawals: 2 (pre-populated, read-only)
 - Enter students passed (A/B/C): 20
@@ -121,12 +124,14 @@ Assessment page title: "CS-101: Introduction to Programming - Fall 2025"
 
 **CLO Assessment Section:**
 For each CLO (3-5 listed):
+
 - Assessment Tool: "Midterm Exam"
 - Students took: 23
-- Students passed: 20  
+- Students passed: 20
 - Auto-calculated pass rate displays: ~87%
 
 **Course Narratives:**
+
 - Celebrations: "Students showed strong understanding of fundamentals."
 - Challenges: "Debugging skills need emphasis."
 - Changes: "Add more pair programming exercises."
@@ -156,6 +161,7 @@ CS-101 status now shows "Awaiting Approval" with yellow/orange badge.
 Click "CLO Audit" in left sidebar.
 
 Audit dashboard loads with summary stats:
+
 - Awaiting Approval: 1 (or more)
 - Approved: X
 - Needs Rework: 0
@@ -173,6 +179,7 @@ Click "Review" button on CS-101 row.
 Modal opens: "CLO Audit Details"
 
 Shows complete submission:
+
 - Course: CS-101, Fall 2025
 - Instructor: Demo Instructor
 - Enrollment: 25, Withdrawals: 2, Passed: 20, DFIC: 3
@@ -181,6 +188,7 @@ Shows complete submission:
 - Submission timestamp
 
 Three action buttons at bottom:
+
 - **Approve** (green) - Accept submission
 - **Request Rework** (yellow) - Send back with feedback
 - **Mark as Never Coming In** (gray) - Close out non-responsive
@@ -206,6 +214,7 @@ Summary stats update: Approved count increases, Awaiting decreases.
 Click "Export Data" in sidebar.
 
 Export page loads with filters:
+
 - Term: Fall 2025 (selected)
 - Program: All
 - Status: Approved Only (default)
@@ -223,6 +232,7 @@ Click "Export to CSV" (or "Export to Excel") button.
 File downloads: `learning_outcomes_fall2025.csv`
 
 Open the file to verify:
+
 - Columns: Course, Instructor, CLO Number, Description, Assessment Tool, Students Took, Students Passed, Pass Rate, Narratives, etc.
 - CS-101 data is present with all details
 
@@ -239,6 +249,7 @@ Checkbox is disabled (prevents duplicate export).
 ## Demo Complete
 
 You've walked through the complete single-term outcome management workflow:
+
 1. ✅ Import course data from feed
 2. ✅ Assign instructor to course
 3. ✅ Instructor registers and completes assessment
@@ -280,11 +291,12 @@ A: Uses professional providers (Brevo, etc.) with high deliverability. Email sta
 ## Notes for Presenter
 
 - **Pacing**: Don't rush the import - explain what's happening
-- **Highlight**: Instructor flow is the "wow moment" - make it smooth  
+- **Highlight**: Instructor flow is the "wow moment" - make it smooth
 - **Show Value**: Admin audit demonstrates quality control
 - **Close Loop**: Export shows bi-directional data flow
 
 **Common Pitfalls:**
+
 - Email delays (30-60s) - have backup tab ready
 - Browser caching - refresh liberally
 - Forgot to reseed - always start fresh
@@ -293,4 +305,3 @@ A: Uses professional providers (Brevo, etc.) with high deliverability. Email sta
 
 **Demo Script Version:** 2025.1  
 **Last Updated:** November 11, 2025
-

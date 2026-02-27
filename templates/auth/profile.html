@@ -1,283 +1,381 @@
-{% extends "dashboard/base_dashboard.html" %}
-
-{% block title %}Account Settings – Loopcloser{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
-{% endblock %}
-
-{% block nav_items %}
-{# Profile page does not add extra nav links beyond the base dashboard defaults #}
-{% endblock %}
-
-{% block page_title %}Account Settings{% endblock %}
-{% block page_subtitle %}Manage your profile and security settings{% endblock %}
-
-{% block content %}
+{% extends "dashboard/base_dashboard.html" %} {% block title %}Account Settings
+– Loopcloser{% endblock %} {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}" />
+{% endblock %} {% block nav_items %} {# Profile page does not add extra nav
+links beyond the base dashboard defaults #} {% endblock %} {% block page_title
+%}Account Settings{% endblock %} {% block page_subtitle %}Manage your profile
+and security settings{% endblock %} {% block content %}
 <div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="d-flex align-items-center mb-4">
-            <div class="me-3">
-                <div class="avatar-large">
-                    <i class="fas fa-user-circle fa-3x text-muted"></i>
-                </div>
-            </div>
-            <div>
-                <h2 class="h3 mb-1">Account Settings</h2>
-                <p class="text-muted mb-0">Manage your profile and security settings</p>
-            </div>
+  <div class="col-lg-8">
+    <div class="d-flex align-items-center mb-4">
+      <div class="me-3">
+        <div class="avatar-large">
+          <i class="fas fa-user-circle fa-3x text-muted"></i>
         </div>
-
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-user me-2"></i>Profile Information
-                </h5>
-            </div>
-            <div class="card-body">
-                <form id="profileForm" class="auth-form">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="firstName" class="form-label">First Name</label>
-                            <input type="text" class="form-control" id="firstName" name="firstName"
-                                value="{{ user.first_name or '' }}" required>
-                            <div class="invalid-feedback">
-                                Please enter your first name.
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="lastName" class="form-label">Last Name</label>
-                            <input type="text" class="form-control" id="lastName" name="lastName"
-                                value="{{ user.last_name or '' }}" required>
-                            <div class="invalid-feedback">
-                                Please enter your last name.
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <label for="email" class="form-label">Email Address</label>
-                            <input type="email" class="form-control" id="email" name="email"
-                                value="{{ user.email or '' }}" readonly aria-describedby="emailReadOnlyHint changeEmailNoticeText">
-                            <div id="emailReadOnlyHint" class="form-text text-muted">
-                                Email is read-only. Contact support if you need to change it.
-                            </div>
-                            <button type="button" class="btn btn-primary standard-profile-btn mt-2" id="changeEmailBtn">
-                                <i class="fas fa-envelope me-1"></i>Change Email Address
-                            </button>
-                            <div class="alert alert-info alert-dismissible fade show mt-2 d-none" role="status"
-                                aria-live="polite" id="changeEmailNotice">
-                                <div class="d-flex align-items-center gap-2">
-                                    <i class="fas fa-info-circle"></i>
-                                    <span id="changeEmailNoticeText" class="mb-0">
-                                        This Feature Coming Soon
-                                    </span>
-                                </div>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <label for="role" class="form-label">Role</label>
-                            <input type="text" class="form-control" id="role" value="{{ user.role | title }}" readonly
-                                aria-describedby="roleReadOnlyHint">
-                            <div id="roleReadOnlyHint" class="form-text text-muted">
-                                Role is assigned by administrators and cannot be edited.
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <button type="submit" class="btn btn-primary standard-profile-btn" id="updateProfileBtn">
-                            <span class="btn-text">Update Profile</span>
-                            <span class="btn-spinner d-none">
-                                <i class="fas fa-spinner fa-spin"></i> Updating...
-                            </span>
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-lock me-2"></i>Change Password
-                </h5>
-            </div>
-            <div class="card-body">
-                <form id="changePasswordForm">
-                    <div class="mb-3">
-                        <label for="currentPassword" class="form-label">Current Password</label>
-                        <div class="input-group">
-                            <input type="password" class="form-control" id="currentPassword" name="currentPassword"
-                                required>
-                            <button class="btn btn-outline-secondary" type="button" id="toggleCurrentPassword">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                        <div class="invalid-feedback">
-                            Please enter your current password.
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="newPassword" class="form-label">New Password</label>
-                        <div class="input-group">
-                            <input type="password" class="form-control" id="newPassword" name="newPassword" required>
-                            <button class="btn btn-outline-secondary" type="button" id="toggleNewPassword">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                        <div class="invalid-feedback">
-                            Please enter a new password that meets the requirements.
-                        </div>
-                    </div>
-
-                    <div class="password-strength mb-3">
-                        <div class="password-strength-bar">
-                            <div class="password-strength-fill" id="newPasswordStrengthFill"></div>
-                        </div>
-                        <div class="password-strength-text" id="newPasswordStrengthText">
-                            Password strength: <span id="newPasswordStrengthLabel">Enter password</span>
-                        </div>
-                    </div>
-
-                        <div class="mb-3">
-                            <label for="confirmNewPassword" class="form-label">Confirm New Password</label>
-                            <div class="input-group">
-                                <!-- pragma: allowlist secret - data-primary-password is a reference to another field, not a secret -->
-                                <input type="password" class="form-control" id="confirmNewPassword"
-                                    name="confirmNewPassword" data-primary-password="newPassword" required>
-                                <button class="btn btn-outline-secondary" type="button" id="toggleConfirmNewPassword">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                            <div class="invalid-feedback">
-                                Passwords do not match.
-                            </div>
-                        </div>
-                    <div class="mt-3">
-                        <button type="submit" class="btn btn-primary standard-profile-btn" id="changePasswordBtn">
-                            <span class="btn-text">Change Password</span>
-                            <span class="btn-spinner d-none">
-                                <i class="fas fa-spinner fa-spin"></i> Changing...
-                            </span>
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        {% if current_user.role in ['institution_admin', 'site_admin'] %}
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-calendar-alt me-2"></i>Today's Date Override
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="alert alert-info mb-3">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <strong>Demo & Testing Feature:</strong> Override the system date to view the application
-                    as it would appear at a different point in time. Useful for verifying term-based features,
-                    deadline logic, and historical reporting.
-                </div>
-                <div id="activeOverrideDisplay" data-prefix="{{ date_override_banner_prefix }}"
-                    class="alert alert-warning d-flex align-items-center mb-3 {% if not current_user.system_date_override %}d-none{% endif %}">
-                    <i class="fas fa-clock fa-lg me-3"></i>
-                    <div class="override-banner-body">
-                        {% if current_user.system_date_override %}
-                        <strong>{{ date_override_banner_prefix }}:</strong>
-                        Viewing data as of
-                        {{ user.system_date_override.strftime('%B %d, %Y at %I:%M %p %Z') if
-                        current_user.system_date_override.tzinfo else current_user.system_date_override.strftime('%B %d,
-                        %Y at %I:%M %p') }}.
-                        {% else %}
-                        <strong>{{ date_override_banner_prefix }}:</strong>
-                        Using the current system time.
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="row g-3 align-items-end">
-                    <div class="col-md-6">
-                        <label for="systemDateOverride" class="form-label">Override Date</label>
-                        <input type="datetime-local" class="form-control" id="systemDateOverride"
-                            value="{{ user.system_date_override.strftime('%Y-%m-%dT%H:%M') if current_user.system_date_override else '' }}">
-                        <div class="form-text" id="dateOverrideStatus">
-                            {% if current_user.system_date_override %}
-                            <span class="override-status-text"><i class="fas fa-clock me-1"></i>Override active: {{
-                                current_user.system_date_override.strftime('%B %d, %Y at %I:%M %p') }}</span>
-                            {% else %}
-                            <span class="text-muted"><i class="fas fa-clock me-1"></i>Using live system
-                                time</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <button type="button" class="btn btn-primary standard-profile-btn me-2" id="setDateOverrideBtn">
-                            <i class="fas fa-save me-1"></i>Set Override
-                        </button>
-                        <button type="button" class="btn btn-primary standard-profile-btn" id="clearDateOverrideBtn" {% if not
-                            current_user.system_date_override %}disabled{% endif %}>
-                            <i class="fas fa-undo me-1"></i>Reset to Live
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-info-circle me-2"></i>Account Information
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <h6 class="fw-bold small text-muted mb-1">Account Status</h6>
-                        <div>
-                            <span class="badge bg-success">
-                                <i class="fas fa-check-circle"></i> Active
-                            </span>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <h6 class="fw-bold small text-muted mb-1">Email Verified</h6>
-                        <div>
-                            <span class="badge bg-success">
-                                <i class="fas fa-check-circle"></i> Verified
-                            </span>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <h6 class="fw-bold small text-muted mb-1">Institution</h6>
-                        <div class="form-control-plaintext">{{ user.institution_name or 'Not specified' }}</div>
-                    </div>
-                    <div class="col-md-6">
-                        <h6 class="fw-bold small text-muted mb-1">Member Since</h6>
-                        <div class="form-control-plaintext">{{ member_since_display or 'Not available' }}</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+      </div>
+      <div>
+        <h2 class="h3 mb-1">Account Settings</h2>
+        <p class="text-muted mb-0">Manage your profile and security settings</p>
+      </div>
     </div>
-</div>
-{% endblock %}
 
-{% block extra_js %}
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="card-title mb-0">
+          <i class="fas fa-user me-2"></i>Profile Information
+        </h5>
+      </div>
+      <div class="card-body">
+        <form id="profileForm" class="auth-form">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="firstName" class="form-label">First Name</label>
+              <input
+                type="text"
+                class="form-control"
+                id="firstName"
+                name="firstName"
+                value="{{ user.first_name or '' }}"
+                required
+              />
+              <div class="invalid-feedback">Please enter your first name.</div>
+            </div>
+            <div class="col-md-6">
+              <label for="lastName" class="form-label">Last Name</label>
+              <input
+                type="text"
+                class="form-control"
+                id="lastName"
+                name="lastName"
+                value="{{ user.last_name or '' }}"
+                required
+              />
+              <div class="invalid-feedback">Please enter your last name.</div>
+            </div>
+            <div class="col-12">
+              <label for="email" class="form-label">Email Address</label>
+              <input
+                type="email"
+                class="form-control"
+                id="email"
+                name="email"
+                value="{{ user.email or '' }}"
+                readonly
+                aria-describedby="emailReadOnlyHint changeEmailNoticeText"
+              />
+              <div id="emailReadOnlyHint" class="form-text text-muted">
+                Email is read-only. Contact support if you need to change it.
+              </div>
+              <button
+                type="button"
+                class="btn btn-primary standard-profile-btn mt-2"
+                id="changeEmailBtn"
+              >
+                <i class="fas fa-envelope me-1"></i>Change Email Address
+              </button>
+              <div
+                class="alert alert-info alert-dismissible fade show mt-2 d-none"
+                role="status"
+                aria-live="polite"
+                id="changeEmailNotice"
+              >
+                <div class="d-flex align-items-center gap-2">
+                  <i class="fas fa-info-circle"></i>
+                  <span id="changeEmailNoticeText" class="mb-0">
+                    This Feature Coming Soon
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  class="btn-close"
+                  data-bs-dismiss="alert"
+                  aria-label="Close"
+                ></button>
+              </div>
+            </div>
+            <div class="col-12">
+              <label for="role" class="form-label">Role</label>
+              <input
+                type="text"
+                class="form-control"
+                id="role"
+                value="{{ user.role | title }}"
+                readonly
+                aria-describedby="roleReadOnlyHint"
+              />
+              <div id="roleReadOnlyHint" class="form-text text-muted">
+                Role is assigned by administrators and cannot be edited.
+              </div>
+            </div>
+          </div>
+          <div class="mt-3">
+            <button
+              type="submit"
+              class="btn btn-primary standard-profile-btn"
+              id="updateProfileBtn"
+            >
+              <span class="btn-text">Update Profile</span>
+              <span class="btn-spinner d-none">
+                <i class="fas fa-spinner fa-spin"></i> Updating...
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="card-title mb-0">
+          <i class="fas fa-lock me-2"></i>Change Password
+        </h5>
+      </div>
+      <div class="card-body">
+        <form id="changePasswordForm">
+          <div class="mb-3">
+            <label for="currentPassword" class="form-label"
+              >Current Password</label
+            >
+            <div class="input-group">
+              <input
+                type="password"
+                class="form-control"
+                id="currentPassword"
+                name="currentPassword"
+                required
+              />
+              <button
+                class="btn btn-outline-secondary"
+                type="button"
+                id="toggleCurrentPassword"
+              >
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+            <div class="invalid-feedback">
+              Please enter your current password.
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="newPassword" class="form-label">New Password</label>
+            <div class="input-group">
+              <input
+                type="password"
+                class="form-control"
+                id="newPassword"
+                name="newPassword"
+                required
+              />
+              <button
+                class="btn btn-outline-secondary"
+                type="button"
+                id="toggleNewPassword"
+              >
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+            <div class="invalid-feedback">
+              Please enter a new password that meets the requirements.
+            </div>
+          </div>
+
+          <div class="password-strength mb-3">
+            <div class="password-strength-bar">
+              <div
+                class="password-strength-fill"
+                id="newPasswordStrengthFill"
+              ></div>
+            </div>
+            <div class="password-strength-text" id="newPasswordStrengthText">
+              Password strength:
+              <span id="newPasswordStrengthLabel">Enter password</span>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="confirmNewPassword" class="form-label"
+              >Confirm New Password</label
+            >
+            <div class="input-group">
+              <!-- pragma: allowlist secret - data-primary-password is a reference to another field, not a secret -->
+              <input
+                type="password"
+                class="form-control"
+                id="confirmNewPassword"
+                name="confirmNewPassword"
+                data-primary-password="newPassword"
+                required
+              />
+              <button
+                class="btn btn-outline-secondary"
+                type="button"
+                id="toggleConfirmNewPassword"
+              >
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+            <div class="invalid-feedback">Passwords do not match.</div>
+          </div>
+          <div class="mt-3">
+            <button
+              type="submit"
+              class="btn btn-primary standard-profile-btn"
+              id="changePasswordBtn"
+            >
+              <span class="btn-text">Change Password</span>
+              <span class="btn-spinner d-none">
+                <i class="fas fa-spinner fa-spin"></i> Changing...
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    {% if current_user.role in ['institution_admin', 'site_admin'] %}
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="card-title mb-0">
+          <i class="fas fa-calendar-alt me-2"></i>Today's Date Override
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-info mb-3">
+          <i class="fas fa-info-circle me-2"></i>
+          <strong>Demo & Testing Feature:</strong> Override the system date to
+          view the application as it would appear at a different point in time.
+          Useful for verifying term-based features, deadline logic, and
+          historical reporting.
+        </div>
+        <div
+          id="activeOverrideDisplay"
+          data-prefix="{{ date_override_banner_prefix }}"
+          class="alert alert-warning d-flex align-items-center mb-3 {% if not current_user.system_date_override %}d-none{% endif %}"
+        >
+          <i class="fas fa-clock fa-lg me-3"></i>
+          <div class="override-banner-body">
+            {% if current_user.system_date_override %}
+            <strong>{{ date_override_banner_prefix }}:</strong>
+            Viewing data as of {{ user.system_date_override.strftime('%B %d, %Y
+            at %I:%M %p %Z') if current_user.system_date_override.tzinfo else
+            current_user.system_date_override.strftime('%B %d, %Y at %I:%M %p')
+            }}. {% else %}
+            <strong>{{ date_override_banner_prefix }}:</strong>
+            Using the current system time. {% endif %}
+          </div>
+        </div>
+        <div class="row g-3 align-items-end">
+          <div class="col-md-6">
+            <label for="systemDateOverride" class="form-label"
+              >Override Date</label
+            >
+            <input
+              type="datetime-local"
+              class="form-control"
+              id="systemDateOverride"
+              value="{{ user.system_date_override.strftime('%Y-%m-%dT%H:%M') if current_user.system_date_override else '' }}"
+            />
+            <div class="form-text" id="dateOverrideStatus">
+              {% if current_user.system_date_override %}
+              <span class="override-status-text"
+                ><i class="fas fa-clock me-1"></i>Override active: {{
+                current_user.system_date_override.strftime('%B %d, %Y at %I:%M
+                %p') }}</span
+              >
+              {% else %}
+              <span class="text-muted"
+                ><i class="fas fa-clock me-1"></i>Using live system time</span
+              >
+              {% endif %}
+            </div>
+          </div>
+          <div class="col-md-6">
+            <button
+              type="button"
+              class="btn btn-primary standard-profile-btn me-2"
+              id="setDateOverrideBtn"
+            >
+              <i class="fas fa-save me-1"></i>Set Override
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary standard-profile-btn"
+              id="clearDateOverrideBtn"
+              {%
+              if
+              not
+              current_user.system_date_override
+              %}disabled{%
+              endif
+              %}
+            >
+              <i class="fas fa-undo me-1"></i>Reset to Live
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">
+          <i class="fas fa-info-circle me-2"></i>Account Information
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <h6 class="fw-bold small text-muted mb-1">Account Status</h6>
+            <div>
+              <span class="badge bg-success">
+                <i class="fas fa-check-circle"></i> Active
+              </span>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <h6 class="fw-bold small text-muted mb-1">Email Verified</h6>
+            <div>
+              <span class="badge bg-success">
+                <i class="fas fa-check-circle"></i> Verified
+              </span>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <h6 class="fw-bold small text-muted mb-1">Institution</h6>
+            <div class="form-control-plaintext">
+              {{ user.institution_name or 'Not specified' }}
+            </div>
+          </div>
+          <div class="col-md-6">
+            <h6 class="fw-bold small text-muted mb-1">Member Since</h6>
+            <div class="form-control-plaintext">
+              {{ member_since_display or 'Not available' }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
 <script src="{{ url_for('static', filename='auth.js') }}"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const changeEmailBtn = document.getElementById("changeEmailBtn");
-        const changeEmailNotice = document.getElementById("changeEmailNotice");
-        const changeEmailNoticeText = document.getElementById("changeEmailNoticeText");
-        if (changeEmailBtn && changeEmailNotice) {
-            changeEmailBtn.addEventListener("click", function () {
-                if (changeEmailNoticeText) {
-                    changeEmailNoticeText.textContent = "This Feature Coming Soon";
-                }
-                changeEmailNotice.classList.remove("d-none");
-                changeEmailNotice.classList.add("show");
-            });
+  document.addEventListener("DOMContentLoaded", function () {
+    const changeEmailBtn = document.getElementById("changeEmailBtn");
+    const changeEmailNotice = document.getElementById("changeEmailNotice");
+    const changeEmailNoticeText = document.getElementById(
+      "changeEmailNoticeText",
+    );
+    if (changeEmailBtn && changeEmailNotice) {
+      changeEmailBtn.addEventListener("click", function () {
+        if (changeEmailNoticeText) {
+          changeEmailNoticeText.textContent = "This Feature Coming Soon";
         }
-    });
+        changeEmailNotice.classList.remove("d-none");
+        changeEmailNotice.classList.add("show");
+      });
+    }
+  });
 </script>
 {% endblock %}

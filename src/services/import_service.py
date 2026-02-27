@@ -157,7 +157,7 @@ class ImportService:
         self,
         institution_id: str,
         verbose: bool = False,
-        progress_callback: Optional[Callable] = None,
+        progress_callback: Optional[Callable[..., Any]] = None,
     ) -> None:
         """
         Initialize the ImportService for a specific institution.
@@ -380,7 +380,7 @@ class ImportService:
 
     def _process_parsed_data(
         self,
-        parsed_data: Dict[str, List],
+        parsed_data: Dict[str, List[Any]],
         conflict_strategy: ConflictStrategy,
         dry_run: bool,
     ) -> None:
@@ -424,7 +424,7 @@ class ImportService:
     def _process_data_type_records(
         self,
         data_type: str,
-        records: List,
+        records: List[Any],
         conflict_strategy: ConflictStrategy,
         dry_run: bool,
         processed_records: int,
@@ -478,7 +478,7 @@ class ImportService:
     def _process_single_record(
         self,
         data_type: str,
-        record: Dict,
+        record: Dict[str, Any],
         conflict_strategy: ConflictStrategy,
         dry_run: bool,
     ) -> List[ConflictRecord]:
@@ -1444,7 +1444,7 @@ def import_excel(
     dry_run: bool = False,
     adapter_id: str = "cei_excel_format_v1",
     verbose: bool = False,
-    progress_callback: Optional[Callable] = None,
+    progress_callback: Optional[Callable[..., Any]] = None,
 ) -> ImportResult:
     """
     Convenience function to import Excel file

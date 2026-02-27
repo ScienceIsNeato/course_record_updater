@@ -316,7 +316,6 @@ describe("PanelManager", () => {
       ).map((cell) => cell.getAttribute("data-sort"));
       expect(sortedValues).toEqual(["2", "10", "100"]);
     });
-
   });
 });
 
@@ -910,6 +909,5 @@ describe("createAuditLogRow - ACTUAL INTEGRATION", () => {
         toggleBtn.click();
       }).not.toThrow();
     });
-
   });
 });

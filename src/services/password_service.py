@@ -17,7 +17,7 @@ import re
 import secrets
 import time
 from datetime import datetime, timedelta
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import bcrypt
 
@@ -68,8 +68,8 @@ class PasswordService:
 
     # In-memory storage for rate limiting and lockout tracking
     # In production, this should be stored in Redis or database
-    _failed_attempts: Dict[str, Dict] = {}
-    _reset_requests: Dict[str, list] = {}
+    _failed_attempts: Dict[str, Dict[str, Any]] = {}
+    _reset_requests: Dict[str, list[Any]] = {}
 
     @staticmethod
     def hash_password(password: str) -> str:
@@ -190,7 +190,7 @@ class PasswordService:
         return token
 
     @staticmethod
-    def create_reset_token_data(user_id: str, email: str) -> Dict:
+    def create_reset_token_data(user_id: str, email: str) -> Dict[str, Any]:
         """
         Create password reset token data with expiry
 
@@ -214,7 +214,7 @@ class PasswordService:
         }
 
     @staticmethod
-    def is_reset_token_valid(token_data: Dict) -> bool:
+    def is_reset_token_valid(token_data: Dict[str, Any]) -> bool:
         """
         Check if a password reset token is valid
 

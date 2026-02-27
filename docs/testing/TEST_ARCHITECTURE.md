@@ -29,12 +29,14 @@ tests/
 ## Performance Results
 
 ### Unit Tests (`tests/unit/`)
+
 - **56 tests** in **3.04 seconds**
 - **All tests <0.5s each** (performance threshold met)
 - **Pure logic, no I/O, no external dependencies**
 - **Instant feedback for developers**
 
 ### Integration Tests (`tests/integration/`)
+
 - **18 tests** in **14.09 seconds**
 - **File I/O, database operations, browser automation**
 - **Comprehensive end-to-end validation**
@@ -43,11 +45,13 @@ tests/
 ## Quality Gate Integration
 
 ### Before (Marker-Based)
+
 ```bash
 pytest -m "not integration"  # Complex filtering
 ```
 
 ### After (Directory-Based)
+
 ```bash
 pytest tests/unit/           # Simple, clear separation
 pytest tests/integration/    # Run when needed
@@ -64,12 +68,14 @@ pytest tests/integration/    # Run when needed
 ## Running Tests
 
 ### Development (Fast Feedback)
+
 ```bash
 # Run only unit tests for quick validation
 pytest tests/unit/
 ```
 
 ### Comprehensive Testing
+
 ```bash
 # Run all tests
 pytest
@@ -80,6 +86,7 @@ pytest tests/integration/
 ```
 
 ### Quality Gate
+
 ```bash
 # Quality gate runs unit tests by default for speed
 ./scripts/maintAInability-gate.sh --tests
@@ -88,6 +95,7 @@ pytest tests/integration/
 ## Test Categorization Guidelines
 
 ### Unit Tests (`tests/unit/`)
+
 - ✅ Pure business logic
 - ✅ Data model validation
 - ✅ Algorithm testing
@@ -95,6 +103,7 @@ pytest tests/integration/
 - ✅ <0.5 seconds execution time
 
 ### Integration Tests (`tests/integration/`)
+
 - ✅ Database I/O operations
 - ✅ File system interactions
 - ✅ Browser automation (Selenium)

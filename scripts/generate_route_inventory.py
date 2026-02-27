@@ -236,7 +236,7 @@ def extract_auth_requirements(file_path: Path, function_name: str) -> Dict[str, 
     return auth_info
 
 
-def map_route_to_template(route_path: str, source_file: str) -> str:
+def map_route_to_template(route_path: str, _source_file: str) -> str:
     """Map route path to template file."""
     # Map known routes to templates
     template_map = {
@@ -323,7 +323,7 @@ def _determine_page_role_access(
 
 
 def determine_role_access(
-    route_path: str, auth_info: Dict, source_file: str
+    route_path: str, auth_info: Dict, _source_file: str
 ) -> List[str]:
     """Determine which roles can access this route."""
     # API routes are typically accessible based on permissions

@@ -9,7 +9,7 @@ import threading
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from src.utils.logging_config import get_logger
 
@@ -37,7 +37,7 @@ class EmailJob:
     status: EmailStatus = EmailStatus.PENDING
     attempts: int = 0
     last_error: Optional[str] = None
-    metadata: Optional[Dict] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class EmailManager:
@@ -92,7 +92,7 @@ class EmailManager:
         subject: str,
         html_body: str,
         text_body: str,
-        metadata: Optional[Dict] = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> EmailJob:
         """
         Add an email to the queue.

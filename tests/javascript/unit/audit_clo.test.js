@@ -321,11 +321,11 @@ describe("audit_clo.js - Utility Functions", () => {
       );
     });
 
-    it('should return empty quoted string for null', () => {
+    it("should return empty quoted string for null", () => {
       expect(auditCloModule.escapeForCsv(null)).toBe('""');
     });
 
-    it('should return empty quoted string for undefined', () => {
+    it("should return empty quoted string for undefined", () => {
       expect(auditCloModule.escapeForCsv(undefined)).toBe('""');
     });
 
@@ -400,8 +400,8 @@ describe("audit_clo.js - Utility Functions", () => {
 
     it("should handle CLOs with null values gracefully", () => {
       // Mock Blob and link for download
-      jest.spyOn(document.body, "appendChild").mockImplementation(() => { });
-      jest.spyOn(document.body, "removeChild").mockImplementation(() => { });
+      jest.spyOn(document.body, "appendChild").mockImplementation(() => {});
+      jest.spyOn(document.body, "removeChild").mockImplementation(() => {});
 
       const result = auditCloModule.exportCurrentViewToCsv([
         {
@@ -499,7 +499,7 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
             "Content-Type": "application/json",
             "X-CSRF-Token": "test-csrf-token",
           }),
-        })
+        }),
       );
     });
 
@@ -522,7 +522,7 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
       await auditCloModule.approveOutcome("test-id");
 
       expect(global.alert).toHaveBeenCalledWith(
-        "Failed to approve: Not authorized"
+        "Failed to approve: Not authorized",
       );
     });
 
@@ -533,7 +533,7 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
       await auditCloModule.approveOutcome("test-id");
 
       expect(global.alert).toHaveBeenCalledWith(
-        "Error approving outcome: Network error"
+        "Error approving outcome: Network error",
       );
     });
   });
@@ -558,7 +558,7 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
         "/api/outcomes/test-id/reopen",
         expect.objectContaining({
           method: "POST",
-        })
+        }),
       );
     });
 
@@ -580,7 +580,9 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
 
       await auditCloModule.reopenOutcome("test-id");
 
-      expect(global.alert).toHaveBeenCalledWith("Failed to reopen: Server error");
+      expect(global.alert).toHaveBeenCalledWith(
+        "Failed to reopen: Server error",
+      );
     });
   });
 
@@ -589,13 +591,14 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
       // Mock fetch for instructor details
       fetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          user: {
-            first_name: "Test",
-            last_name: "Instructor",
-            email: "test@example.com"
-          }
-        })
+        json: () =>
+          Promise.resolve({
+            user: {
+              first_name: "Test",
+              last_name: "Instructor",
+              email: "test@example.com",
+            },
+          }),
       });
     });
 
@@ -614,7 +617,7 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
       await auditCloModule.remindOutcome("test-id");
 
       expect(global.alert).toHaveBeenCalledWith(
-        "Missing instructor or course information for this outcome."
+        "Missing instructor or course information for this outcome.",
       );
       expect(fetch).not.toHaveBeenCalled();
     });
@@ -645,7 +648,7 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
             course_id: "course-1",
             message: "Test Message",
           }),
-        })
+        }),
       );
     });
 
@@ -687,7 +690,7 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
       await auditCloModule.submitReminder();
 
       expect(global.alert).toHaveBeenCalledWith(
-        "Failed to send reminder: Email failed"
+        "Failed to send reminder: Email failed",
       );
     });
   });
@@ -718,7 +721,7 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
       await auditCloModule.assignOutcome("test-id");
 
       expect(global.alert).toHaveBeenCalledWith(
-        "Cannot identify section for assignment. Please contact support."
+        "Cannot identify section for assignment. Please contact support.",
       );
     });
 
@@ -762,8 +765,18 @@ describe("audit_clo.js - DOM Interaction Functions", () => {
           Promise.resolve({
             success: true,
             instructors: [
-              { id: 1, first_name: "John", last_name: "Doe", email: "john@test.com" },
-              { id: 2, first_name: "Jane", last_name: "Smith", email: "jane@test.com" },
+              {
+                id: 1,
+                first_name: "John",
+                last_name: "Doe",
+                email: "john@test.com",
+              },
+              {
+                id: 2,
+                first_name: "Jane",
+                last_name: "Smith",
+                email: "jane@test.com",
+              },
             ],
           }),
       });
@@ -953,20 +966,21 @@ describe("audit_clo.js - DOM Integration", () => {
         if (url.includes("status=all&include_stats=true")) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({
-              success: true,
-              outcomes: [],
-              count: 0,
-              stats_by_status: {
-                awaiting_approval: 12,
-                approval_pending: 7,
-                approved: 45,
-                in_progress: 23,
-                never_coming_in: 3,
-                assigned: 10,
-                unassigned: 5,
-              },
-            }),
+            json: () =>
+              Promise.resolve({
+                success: true,
+                outcomes: [],
+                count: 0,
+                stats_by_status: {
+                  awaiting_approval: 12,
+                  approval_pending: 7,
+                  approved: 45,
+                  in_progress: 23,
+                  never_coming_in: 3,
+                  assigned: 10,
+                  unassigned: 5,
+                },
+              }),
           });
         }
         // Fallback for any other calls
@@ -1012,7 +1026,7 @@ describe("audit_clo.js - DOM Integration", () => {
     it("should handle fetch failures gracefully and show 0 for all stats", async () => {
       const consoleWarnSpy = jest
         .spyOn(console, "warn")
-        .mockImplementation(() => { });
+        .mockImplementation(() => {});
 
       // Clear previous state
       fetch.mockClear();
@@ -1277,7 +1291,9 @@ describe("audit_clo.js - DOM Integration", () => {
       expect(mockModalInstance.hide).toHaveBeenCalled();
 
       // Verify success alert
-      expect(alert).toHaveBeenCalledWith("Outcome marked as Never Coming In (NCI)");
+      expect(alert).toHaveBeenCalledWith(
+        "Outcome marked as Never Coming In (NCI)",
+      );
 
       // Verify reload functions called
       expect(global.window.loadCLOs).toHaveBeenCalled();
@@ -1771,7 +1787,7 @@ describe("audit_clo.js - DOM Integration", () => {
       global.fetch = superMock;
       // Force globalThis (runtime lookup target)
       globalThis.fetch = superMock;
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         window.fetch = superMock;
       }
 
@@ -1792,7 +1808,9 @@ describe("audit_clo.js - DOM Integration", () => {
       // Verify modal
       // Check if constructor was called
       if (global.bootstrap.Modal.mock.calls.length === 0) {
-        throw new Error("Bootstrap Modal constructor NOT called. Early return in assignOutcome?");
+        throw new Error(
+          "Bootstrap Modal constructor NOT called. Early return in assignOutcome?",
+        );
       }
       expect(mockModalInstance.show).toHaveBeenCalled();
 
@@ -1836,7 +1854,10 @@ describe("audit_clo.js - DOM Integration", () => {
         if (url.includes("/instructor") && opt && opt.method === "PATCH") {
           return Promise.resolve({ ok: true });
         }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ outcomes: [] }) });
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ outcomes: [] }),
+        });
       });
 
       // Setup select
@@ -1854,10 +1875,12 @@ describe("audit_clo.js - DOM Integration", () => {
 
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining("/instructor"),
-        expect.anything()
+        expect.anything(),
       );
       expect(mockModalInstance.hide).toHaveBeenCalled();
-      expect(global.alert).toHaveBeenCalledWith("Instructor assigned successfully.");
+      expect(global.alert).toHaveBeenCalledWith(
+        "Instructor assigned successfully.",
+      );
     });
   });
 
@@ -1865,7 +1888,10 @@ describe("audit_clo.js - DOM Integration", () => {
     beforeEach(() => {
       const fs = require("fs");
       const path = require("path");
-      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      const auditCloCode = fs.readFileSync(
+        path.join(__dirname, "../../../static/audit_clo.js"),
+        "utf8",
+      );
       eval(auditCloCode);
       document.dispatchEvent(new Event("DOMContentLoaded"));
     });
@@ -1879,8 +1905,8 @@ describe("audit_clo.js - DOM Integration", () => {
       expect(fetch).toHaveBeenCalledWith(
         "/api/outcomes/out-1/reopen",
         expect.objectContaining({
-          method: "POST"
-        })
+          method: "POST",
+        }),
       );
     });
   });
@@ -1897,7 +1923,7 @@ describe("audit_clo.js - DOM Integration", () => {
           description: "Test CLO description",
           status: "awaiting_approval",
           instructor_name: "Dr. Smith",
-          submitted_at: "2026-01-10T10:00:00Z"
+          submitted_at: "2026-01-10T10:00:00Z",
         },
         {
           outcome_id: "out-2",
@@ -1908,8 +1934,8 @@ describe("audit_clo.js - DOM Integration", () => {
           description: "Another CLO",
           status: "in_progress",
           instructor_name: "Dr. Jones",
-          submitted_at: null
-        }
+          submitted_at: null,
+        },
       ];
 
       // Set up fetch mock BEFORE loading script
@@ -1917,19 +1943,25 @@ describe("audit_clo.js - DOM Integration", () => {
         if (url.includes("/api/outcomes")) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ outcomes: mockCLOs })
+            json: () => Promise.resolve({ outcomes: mockCLOs }),
           });
         }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ count: 0 }),
+        });
       });
 
       const fs = require("fs");
       const path = require("path");
-      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      const auditCloCode = fs.readFileSync(
+        path.join(__dirname, "../../../static/audit_clo.js"),
+        "utf8",
+      );
       eval(auditCloCode);
       document.dispatchEvent(new Event("DOMContentLoaded"));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const cloListContainer = document.getElementById("cloListContainer");
       expect(cloListContainer.innerHTML).toContain("CS101");
@@ -1949,27 +1981,33 @@ describe("audit_clo.js - DOM Integration", () => {
           description: "Test CLO",
           status: "awaiting_approval",
           instructor_name: "Dr. Smith",
-          submitted_at: "2026-01-10T10:00:00Z"
-        }
+          submitted_at: "2026-01-10T10:00:00Z",
+        },
       ];
 
       fetch.mockImplementation((url) => {
         if (url.includes("/api/outcomes")) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ outcomes: mockCLOs })
+            json: () => Promise.resolve({ outcomes: mockCLOs }),
           });
         }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ count: 0 }),
+        });
       });
 
       const fs = require("fs");
       const path = require("path");
-      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      const auditCloCode = fs.readFileSync(
+        path.join(__dirname, "../../../static/audit_clo.js"),
+        "utf8",
+      );
       eval(auditCloCode);
       document.dispatchEvent(new Event("DOMContentLoaded"));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const approveBtn = document.querySelector(".btn-success");
       expect(approveBtn).not.toBeNull();
@@ -1990,27 +2028,33 @@ describe("audit_clo.js - DOM Integration", () => {
           description: "Test CLO",
           status: "unassigned",
           instructor_name: null,
-          submitted_at: null
-        }
+          submitted_at: null,
+        },
       ];
 
       fetch.mockImplementation((url) => {
         if (url.includes("/api/outcomes")) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ outcomes: mockCLOs })
+            json: () => Promise.resolve({ outcomes: mockCLOs }),
           });
         }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ count: 0 }),
+        });
       });
 
       const fs = require("fs");
       const path = require("path");
-      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      const auditCloCode = fs.readFileSync(
+        path.join(__dirname, "../../../static/audit_clo.js"),
+        "utf8",
+      );
       eval(auditCloCode);
       document.dispatchEvent(new Event("DOMContentLoaded"));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const assignBtn = document.querySelector(".btn-primary");
       expect(assignBtn).not.toBeNull();
@@ -2028,27 +2072,33 @@ describe("audit_clo.js - DOM Integration", () => {
           description: "Test CLO",
           status: "approved",
           instructor_name: "Dr. Smith",
-          submitted_at: "2026-01-10T10:00:00Z"
-        }
+          submitted_at: "2026-01-10T10:00:00Z",
+        },
       ];
 
       fetch.mockImplementation((url) => {
         if (url.includes("/api/outcomes")) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ outcomes: mockCLOs })
+            json: () => Promise.resolve({ outcomes: mockCLOs }),
           });
         }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ count: 0 }),
+        });
       });
 
       const fs = require("fs");
       const path = require("path");
-      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      const auditCloCode = fs.readFileSync(
+        path.join(__dirname, "../../../static/audit_clo.js"),
+        "utf8",
+      );
       eval(auditCloCode);
       document.dispatchEvent(new Event("DOMContentLoaded"));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const reopenBtn = document.querySelector(".btn-warning");
       expect(reopenBtn).toBeNull();
@@ -2067,27 +2117,33 @@ describe("audit_clo.js - DOM Integration", () => {
           instructor_name: "Dr. Smith",
           instructor_id: "inst-1",
           course_id: "course-1",
-          submitted_at: null
-        }
+          submitted_at: null,
+        },
       ];
 
       fetch.mockImplementation((url) => {
         if (url.includes("/api/outcomes")) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ outcomes: mockCLOs })
+            json: () => Promise.resolve({ outcomes: mockCLOs }),
           });
         }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ count: 0 }),
+        });
       });
 
       const fs = require("fs");
       const path = require("path");
-      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      const auditCloCode = fs.readFileSync(
+        path.join(__dirname, "../../../static/audit_clo.js"),
+        "utf8",
+      );
       eval(auditCloCode);
       document.dispatchEvent(new Event("DOMContentLoaded"));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const reminderBtn = document.querySelector(".btn-info");
       expect(reminderBtn).not.toBeNull();
@@ -2105,27 +2161,33 @@ describe("audit_clo.js - DOM Integration", () => {
           description: "Test CLO",
           status: "awaiting_approval",
           instructor_name: "Dr. Smith",
-          submitted_at: "2026-01-10T10:00:00Z"
-        }
+          submitted_at: "2026-01-10T10:00:00Z",
+        },
       ];
 
       fetch.mockImplementation((url) => {
         if (url.includes("/api/outcomes")) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ outcomes: mockCLOs })
+            json: () => Promise.resolve({ outcomes: mockCLOs }),
           });
         }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ count: 0 }),
+        });
       });
 
       const fs = require("fs");
       const path = require("path");
-      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      const auditCloCode = fs.readFileSync(
+        path.join(__dirname, "../../../static/audit_clo.js"),
+        "utf8",
+      );
       eval(auditCloCode);
       document.dispatchEvent(new Event("DOMContentLoaded"));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const viewBtn = document.querySelector(".btn-outline-secondary");
       expect(viewBtn).not.toBeNull();
@@ -2144,27 +2206,33 @@ describe("audit_clo.js - DOM Integration", () => {
           description: "Test CLO",
           status: "in_progress",
           instructor_name: "Dr. Smith",
-          submitted_at: null
-        }
+          submitted_at: null,
+        },
       ];
 
       fetch.mockImplementation((url) => {
         if (url.includes("/api/outcomes")) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ outcomes: mockCLOs })
+            json: () => Promise.resolve({ outcomes: mockCLOs }),
           });
         }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ count: 0 }),
+        });
       });
 
       const fs = require("fs");
       const path = require("path");
-      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      const auditCloCode = fs.readFileSync(
+        path.join(__dirname, "../../../static/audit_clo.js"),
+        "utf8",
+      );
       eval(auditCloCode);
       document.dispatchEvent(new Event("DOMContentLoaded"));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const cloListContainer = document.getElementById("cloListContainer");
       expect(cloListContainer.innerHTML).toContain("Unassigned Section");
@@ -2181,27 +2249,33 @@ describe("audit_clo.js - DOM Integration", () => {
           description: "Test CLO",
           status: "never_coming_in",
           instructor_name: "Dr. Smith",
-          submitted_at: "2026-01-10T10:00:00Z"
-        }
+          submitted_at: "2026-01-10T10:00:00Z",
+        },
       ];
 
       fetch.mockImplementation((url) => {
         if (url.includes("/api/outcomes")) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ outcomes: mockCLOs })
+            json: () => Promise.resolve({ outcomes: mockCLOs }),
           });
         }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ count: 0 }),
+        });
       });
 
       const fs = require("fs");
       const path = require("path");
-      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      const auditCloCode = fs.readFileSync(
+        path.join(__dirname, "../../../static/audit_clo.js"),
+        "utf8",
+      );
       eval(auditCloCode);
       document.dispatchEvent(new Event("DOMContentLoaded"));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const reopenBtn = document.querySelector(".btn-warning");
       expect(reopenBtn).toBeNull();
@@ -2220,27 +2294,33 @@ describe("audit_clo.js - DOM Integration", () => {
           instructor_name: "Dr. Smith",
           instructor_id: "inst-1",
           course_id: "course-1",
-          submitted_at: null
-        }
+          submitted_at: null,
+        },
       ];
 
       fetch.mockImplementation((url) => {
         if (url.includes("/api/outcomes")) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ outcomes: mockCLOs })
+            json: () => Promise.resolve({ outcomes: mockCLOs }),
           });
         }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ count: 0 }),
+        });
       });
 
       const fs = require("fs");
       const path = require("path");
-      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      const auditCloCode = fs.readFileSync(
+        path.join(__dirname, "../../../static/audit_clo.js"),
+        "utf8",
+      );
       eval(auditCloCode);
       document.dispatchEvent(new Event("DOMContentLoaded"));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const reminderBtn = document.querySelector(".btn-info");
       expect(reminderBtn).not.toBeNull();
@@ -2260,27 +2340,33 @@ describe("audit_clo.js - DOM Integration", () => {
           instructor_name: "Dr. Smith",
           instructor_id: "inst-1",
           course_id: "course-1",
-          submitted_at: null
-        }
+          submitted_at: null,
+        },
       ];
 
       fetch.mockImplementation((url) => {
         if (url.includes("/api/outcomes")) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ outcomes: mockCLOs })
+            json: () => Promise.resolve({ outcomes: mockCLOs }),
           });
         }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ count: 0 }) });
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ count: 0 }),
+        });
       });
 
       const fs = require("fs");
       const path = require("path");
-      const auditCloCode = fs.readFileSync(path.join(__dirname, "../../../static/audit_clo.js"), "utf8");
+      const auditCloCode = fs.readFileSync(
+        path.join(__dirname, "../../../static/audit_clo.js"),
+        "utf8",
+      );
       eval(auditCloCode);
       document.dispatchEvent(new Event("DOMContentLoaded"));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const reminderBtn = document.querySelector(".btn-info");
       expect(reminderBtn).not.toBeNull();

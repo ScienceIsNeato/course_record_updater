@@ -9,6 +9,9 @@ from typing import Any, Dict, List, Optional, Tuple
 class DatabaseInterface(ABC):
     """Database abstraction contract."""
 
+    # Optional SQL backend; set by SQL implementations (e.g., SQLDatabase)
+    sql: Any = None
+
     # Institution operations
     @abstractmethod
     def create_institution(self, institution_data: Dict[str, Any]) -> Optional[str]:

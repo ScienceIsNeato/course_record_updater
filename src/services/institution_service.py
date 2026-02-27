@@ -59,7 +59,7 @@ class InstitutionService:
         self.upload_root = upload_root or Path("static/uploads/institutions")
         self.upload_root.mkdir(parents=True, exist_ok=True)
 
-    def get_institution(self, institution_id: str) -> Dict:
+    def get_institution(self, institution_id: str) -> Dict[str, Any]:
         institution = db.get_institution_by_id(institution_id)
         if not institution:
             raise InstitutionServiceError(INSTITUTION_NOT_FOUND_MSG)

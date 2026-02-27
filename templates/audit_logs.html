@@ -1,118 +1,125 @@
-{% extends "dashboard/base_dashboard.html" %}
-
-{% block title %}Audit Logs - LoopCloser{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
-{% endblock %}
-
-{% block nav_items %}
-<a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+{% extends "dashboard/base_dashboard.html" %} {% block title %}Audit Logs -
+LoopCloser{% endblock %} {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}" />
+{% endblock %} {% block nav_items %}
+<a class="nav-link" href="/dashboard"
+  ><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a
+>
 <a class="nav-link" href="/courses"><i class="fas fa-book me-1"></i>Courses</a>
 <a class="nav-link" href="/users"><i class="fas fa-users me-1"></i>Users</a>
 {% if user.role in ['site_admin', 'institution_admin'] %}
-<a class="nav-link active" href="/audit-logs"><i class="fas fa-history me-1"></i>Audit Logs</a>
-{% endif %}
-{% endblock %}
-
-{% block page_title %}Audit Logs{% endblock %}
-{% block page_subtitle %}Review system activity and changes{% endblock %}
-
-{% block content %}
+<a class="nav-link active" href="/audit-logs"
+  ><i class="fas fa-history me-1"></i>Audit Logs</a
+>
+{% endif %} {% endblock %} {% block page_title %}Audit Logs{% endblock %} {%
+block page_subtitle %}Review system activity and changes{% endblock %} {% block
+content %}
 <div class="card mb-4">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Filter Logs</h5>
-    </div>
-    <div class="card-body">
-        <form id="auditFilterForm" class="row g-3">
-            <div class="col-md-3">
-                <label for="startDate" class="form-label">Start Date</label>
-                <input type="date" class="form-control" id="startDate" name="start_date">
-            </div>
-            <div class="col-md-3">
-                <label for="endDate" class="form-label">End Date</label>
-                <input type="date" class="form-control" id="endDate" name="end_date">
-            </div>
-            <div class="col-md-3">
-                <label for="entityType" class="form-label">Entity Type</label>
-                <select class="form-select" id="entityType" name="entity_type">
-                    <option value="">All Entities</option>
-                    <option value="users">Users</option>
-                    <option value="courses">Courses</option>
-                    <option value="programs">Programs</option>
-                    <option value="institutions">Institutions</option>
-                    <option value="terms">Terms</option>
-                    <option value="course_offerings">Offerings</option>
-                    <option value="course_sections">Sections</option>
-                </select>
-            </div>
-            <div class="col-md-3 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary me-2">
-                    <i class="fas fa-search me-1"></i> Search
-                </button>
-                <button type="button" class="btn btn-outline-secondary" onclick="resetFilters()">
-                    Reset
-                </button>
-            </div>
-        </form>
-    </div>
+  <div class="card-header">
+    <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Filter Logs</h5>
+  </div>
+  <div class="card-body">
+    <form id="auditFilterForm" class="row g-3">
+      <div class="col-md-3">
+        <label for="startDate" class="form-label">Start Date</label>
+        <input
+          type="date"
+          class="form-control"
+          id="startDate"
+          name="start_date"
+        />
+      </div>
+      <div class="col-md-3">
+        <label for="endDate" class="form-label">End Date</label>
+        <input type="date" class="form-control" id="endDate" name="end_date" />
+      </div>
+      <div class="col-md-3">
+        <label for="entityType" class="form-label">Entity Type</label>
+        <select class="form-select" id="entityType" name="entity_type">
+          <option value="">All Entities</option>
+          <option value="users">Users</option>
+          <option value="courses">Courses</option>
+          <option value="programs">Programs</option>
+          <option value="institutions">Institutions</option>
+          <option value="terms">Terms</option>
+          <option value="course_offerings">Offerings</option>
+          <option value="course_sections">Sections</option>
+        </select>
+      </div>
+      <div class="col-md-3 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary me-2">
+          <i class="fas fa-search me-1"></i> Search
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-secondary"
+          onclick="resetFilters()"
+        >
+          Reset
+        </button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <div class="card">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="card-title mb-0">Activity Log</h5>
-            <button class="btn btn-sm btn-outline-primary" onclick="loadAuditLogs()">
-                <i class="fas fa-sync-alt"></i> Refresh
-            </button>
-        </div>
-
-        <div id="logsTableContainer">
-            <output class="d-flex justify-content-center align-items-center" style="min-height: 200px;"
-                aria-live="polite">
-                <div class="spinner-border" aria-hidden="true">
-                    <span class="visually-hidden">Loading logs...</span>
-                </div>
-            </output>
-        </div>
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="card-title mb-0">Activity Log</h5>
+      <button class="btn btn-sm btn-outline-primary" onclick="loadAuditLogs()">
+        <i class="fas fa-sync-alt"></i> Refresh
+      </button>
     </div>
+
+    <div id="logsTableContainer">
+      <output
+        class="d-flex justify-content-center align-items-center"
+        style="min-height: 200px"
+        aria-live="polite"
+      >
+        <div class="spinner-border" aria-hidden="true">
+          <span class="visually-hidden">Loading logs...</span>
+        </div>
+      </output>
+    </div>
+  </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
+{% endblock %} {% block extra_js %}
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Set default dates (last 30 days)
-        const end = new Date();
-        const start = new Date();
-        start.setDate(start.getDate() - 30);
+  document.addEventListener("DOMContentLoaded", function () {
+    // Set default dates (last 30 days)
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 30);
 
-        document.getElementById('startDate').valueAsDate = start;
-        document.getElementById('endDate').valueAsDate = end;
+    document.getElementById("startDate").valueAsDate = start;
+    document.getElementById("endDate").valueAsDate = end;
 
+    loadAuditLogs();
+
+    document
+      .getElementById("auditFilterForm")
+      .addEventListener("submit", function (e) {
+        e.preventDefault();
         loadAuditLogs();
+      });
+  });
 
-        document.getElementById('auditFilterForm').addEventListener('submit', function (e) {
-            e.preventDefault();
-            loadAuditLogs();
-        });
-    });
+  function resetFilters() {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 30);
 
-    function resetFilters() {
-        const end = new Date();
-        const start = new Date();
-        start.setDate(start.getDate() - 30);
+    document.getElementById("startDate").valueAsDate = start;
+    document.getElementById("endDate").valueAsDate = end;
+    document.getElementById("entityType").value = "";
 
-        document.getElementById('startDate').valueAsDate = start;
-        document.getElementById('endDate').valueAsDate = end;
-        document.getElementById('entityType').value = "";
+    loadAuditLogs();
+  }
 
-        loadAuditLogs();
-    }
-
-    async function loadAuditLogs() {
-        const container = document.getElementById('logsTableContainer');
-        container.innerHTML = `
+  async function loadAuditLogs() {
+    const container = document.getElementById("logsTableContainer");
+    container.innerHTML = `
             <div class="d-flex justify-content-center align-items-center" style="min-height: 200px;">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
@@ -120,54 +127,53 @@
             </div>
         `;
 
-        try {
-            const formData = new FormData(document.getElementById('auditFilterForm'));
-            const params = new URLSearchParams();
+    try {
+      const formData = new FormData(document.getElementById("auditFilterForm"));
+      const params = new URLSearchParams();
 
-            for (const [key, value] of formData.entries()) {
-                if (value) params.append(key, value);
-            }
+      for (const [key, value] of formData.entries()) {
+        if (value) params.append(key, value);
+      }
 
-            // If no search params, use 'recent' endpoint, else use 'search'
-            // Actually, let's always use search for this page to be consistent with filters
-            // But 'search' might be heavier. 
-            // Let's use search endpoint as it supports all filters including 'limit'
+      // If no search params, use 'recent' endpoint, else use 'search'
+      // Actually, let's always use search for this page to be consistent with filters
+      // But 'search' might be heavier.
+      // Let's use search endpoint as it supports all filters including 'limit'
 
-            const response = await fetch(`/api/audit/search?${params.toString()}`);
+      const response = await fetch(`/api/audit/search?${params.toString()}`);
 
-            if (!response.ok) throw new Error('Failed to load audit logs');
+      if (!response.ok) throw new Error("Failed to load audit logs");
 
-            const data = await response.json();
+      const data = await response.json();
 
-            if (!data.success) throw new Error(data.error || 'Unknown error');
+      if (!data.success) throw new Error(data.error || "Unknown error");
 
-            displayLogs(data.logs);
-
-        } catch (error) {
-            console.error('Error:', error);
-            container.innerHTML = `
+      displayLogs(data.logs);
+    } catch (error) {
+      console.error("Error:", error);
+      container.innerHTML = `
                 <div class="alert alert-danger">
                     <i class="fas fa-exclamation-triangle me-2"></i>
                     Failed to load audit logs: ${escapeHtml(error.message)}
                 </div>
             `;
-        }
     }
+  }
 
-    function displayLogs(logs) {
-        const container = document.getElementById('logsTableContainer');
+  function displayLogs(logs) {
+    const container = document.getElementById("logsTableContainer");
 
-        if (!logs || logs.length === 0) {
-            container.innerHTML = `
+    if (!logs || logs.length === 0) {
+      container.innerHTML = `
                 <div class="text-center text-muted py-5">
                     <i class="fas fa-history fa-3x mb-3"></i>
                     <p>No activity found matching your criteria.</p>
                 </div>
             `;
-            return;
-        }
+      return;
+    }
 
-        let html = `
+    let html = `
             <div class="table-responsive">
                 <table class="table table-hover table-striped">
                     <thead>
@@ -182,16 +188,16 @@
                     <tbody>
         `;
 
-        logs.forEach(log => {
-            html += `
+    logs.forEach((log) => {
+      html += `
                 <tr>
                     <td class="text-nowrap">${formatTimestamp(log.timestamp)}</td>
                     <td>
                         <div class="d-flex align-items-center">
                             <i class="fas fa-user-circle text-muted me-2"></i>
                             <div>
-                                <div>${escapeHtml(log.user_email || 'System')}</div>
-                                <small class="text-muted">${escapeHtml(log.user_id || '-')}</small>
+                                <div>${escapeHtml(log.user_email || "System")}</div>
+                                <small class="text-muted">${escapeHtml(log.user_id || "-")}</small>
                             </div>
                         </div>
                     </td>
@@ -200,9 +206,9 @@
                     <td><small class="text-muted">${getAuditDetails(log)}</small></td>
                 </tr>
             `;
-        });
+    });
 
-        html += `
+    html += `
                     </tbody>
                 </table>
             </div>
@@ -211,43 +217,43 @@
             </div>
         `;
 
-        container.innerHTML = html;
-    }
+    container.innerHTML = html;
+  }
 
-    // Helper functions (duplicated from panels.js for independence)
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+  // Helper functions (duplicated from panels.js for independence)
+  function escapeHtml(text) {
+    if (!text) return "";
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+  }
 
-    function formatTimestamp(timestamp) {
-        if (!timestamp) return '-';
-        return new Date(timestamp).toLocaleString();
-    }
+  function formatTimestamp(timestamp) {
+    if (!timestamp) return "-";
+    return new Date(timestamp).toLocaleString();
+  }
 
-    function getActionBadge(type) {
-        const badges = {
-            'CREATE': 'bg-success',
-            'UPDATE': 'bg-info',
-            'DELETE': 'bg-danger',
-            'LOGIN': 'bg-primary'
-        };
-        const color = badges[type] || 'bg-secondary';
-        return `<span class="badge ${color}">${type}</span>`;
-    }
+  function getActionBadge(type) {
+    const badges = {
+      CREATE: "bg-success",
+      UPDATE: "bg-info",
+      DELETE: "bg-danger",
+      LOGIN: "bg-primary",
+    };
+    const color = badges[type] || "bg-secondary";
+    return `<span class="badge ${color}">${type}</span>`;
+  }
 
-    function formatEntityDisplay(type, id) {
-        const icons = {
-            'users': 'fa-user',
-            'courses': 'fa-book',
-            'programs': 'fa-graduation-cap',
-            'institutions': 'fa-university',
-            'terms': 'fa-calendar'
-        };
-        const icon = icons[type] || 'fa-file';
-        return `
+  function formatEntityDisplay(type, id) {
+    const icons = {
+      users: "fa-user",
+      courses: "fa-book",
+      programs: "fa-graduation-cap",
+      institutions: "fa-university",
+      terms: "fa-calendar",
+    };
+    const icon = icons[type] || "fa-file";
+    return `
             <span title="${type}">
                 <i class="fas ${icon} me-1"></i> 
                 ${type}
@@ -255,24 +261,24 @@
                 <small class="text-muted monospace">${id.substring(0, 8)}...</small>
             </span>
         `;
-    }
+  }
 
-    function getAuditDetails(log) {
-        if (log.details) return escapeHtml(log.details);
-        if (log.changed_fields) {
-            try {
-                const fields = JSON.parse(log.changed_fields);
-                if (Array.isArray(fields) && fields.length > 0) {
-                    return `Changed: ${fields.join(', ')}`;
-                }
-            } catch (e) { }
+  function getAuditDetails(log) {
+    if (log.details) return escapeHtml(log.details);
+    if (log.changed_fields) {
+      try {
+        const fields = JSON.parse(log.changed_fields);
+        if (Array.isArray(fields) && fields.length > 0) {
+          return `Changed: ${fields.join(", ")}`;
         }
-        return '-';
+      } catch (e) {}
     }
+    return "-";
+  }
 </script>
 <style>
-    .monospace {
-        font-family: monospace;
-    }
+  .monospace {
+    font-family: monospace;
+  }
 </style>
 {% endblock %}

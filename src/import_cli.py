@@ -15,6 +15,7 @@ Usage:
 import argparse
 import os
 import sys
+from typing import Any
 
 # Unused imports removed
 
@@ -187,7 +188,7 @@ def _print_statistics(result: ImportResult):
     print()
 
 
-def _print_conflict_details(conflicts: list, verbose: bool):
+def _print_conflict_details(conflicts: list[Any], verbose: bool):
     """Print detailed conflict information."""
     if not verbose or not conflicts:
         return
@@ -218,7 +219,7 @@ def _print_conflicts_section(result: ImportResult, verbose: bool):
     print()
 
 
-def _print_list_section(items: list, title: str, emoji: str, max_items: int):
+def _print_list_section(items: list[Any], title: str, emoji: str, max_items: int):
     """Print a section with a list of items (errors, warnings)."""
     if not items:
         return

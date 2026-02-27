@@ -73,16 +73,16 @@ Add new endpoints:
 POST /api/outcomes/<outcome_id>/submit
   - Submit CLO for approval
   - Requires: instructor role, owns the course section
-  
-# Admin audit actions  
+
+# Admin audit actions
 GET /api/outcomes/audit
   - List CLOs awaiting approval (filtered by institution/program)
   - Returns: enriched data (course info, instructor info, submission date)
-  
+
 POST /api/outcomes/<outcome_id>/approve
   - Approve a CLO
   - Requires: admin or institution_admin role
-  
+
 POST /api/outcomes/<outcome_id>/request-rework
   - Request rework with feedback
   - Body: {comments: str, send_email: bool}
@@ -274,4 +274,3 @@ Full lifecycle test:
 - All 4 UAT tests pass
 - No instructor access to audit views
 - Audit trail captured in database (submitted_by, reviewed_by, timestamps)
-

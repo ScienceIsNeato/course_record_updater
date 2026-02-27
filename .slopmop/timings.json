@@ -1,0 +1,72 @@
+{
+  "deceptiveness:bogus-tests": {
+    "avg": 0.273,
+    "count": 8,
+    "last_updated": 1772094881.836643
+  },
+  "deceptiveness:js-bogus-tests": {
+    "avg": 1.167,
+    "count": 3,
+    "last_updated": 1772094881.836643
+  },
+  "deceptiveness:js-expect-assert": {
+    "avg": 4.738,
+    "count": 3,
+    "last_updated": 1772094881.836643
+  },
+  "laziness:complexity": {
+    "avg": 61.637,
+    "count": 1,
+    "last_updated": 1772094280.759845
+  },
+  "laziness:dead-code": {
+    "avg": 0.713,
+    "count": 8,
+    "last_updated": 1772134601.4786172
+  },
+  "laziness:js-lint": {
+    "avg": 23.617,
+    "count": 5,
+    "last_updated": 1772170002.615752
+  },
+  "laziness:py-lint": {
+    "avg": 3.098,
+    "count": 6,
+    "last_updated": 1772170282.4882188
+  },
+  "myopia:loc-lock": {
+    "avg": 1.156,
+    "count": 2,
+    "last_updated": 1772137259.833204
+  },
+  "myopia:security-scan": {
+    "avg": 120.012,
+    "count": 1,
+    "last_updated": 1772136878.165044
+  },
+  "myopia:source-duplication": {
+    "avg": 9.507,
+    "count": 5,
+    "last_updated": 1772094991.771921
+  },
+  "myopia:string-duplication": {
+    "avg": 0.058,
+    "count": 5,
+    "last_updated": 1772094881.836643
+  },
+  "overconfidence:js-tests": {
+    "avg": 3.036,
+    "count": 2,
+    "last_updated": 1772170002.615752
+  },
+  "overconfidence:py-static-analysis": {
+    "avg": 4.182,
+    "count": 3,
+    "last_updated": 1772169357.0135958
+  },
+  "overconfidence:py-types": {
+    "avg": 2.704,
+    "count": 1,
+    "last_updated": 1772167369.70887
+  }
+}

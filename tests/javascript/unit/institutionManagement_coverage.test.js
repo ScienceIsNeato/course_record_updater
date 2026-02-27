@@ -1,6 +1,6 @@
-const { setBody, flushPromises } = require('../helpers/dom');
+const { setBody, flushPromises } = require("../helpers/dom");
 
-describe('institutionManagement.js Coverage Boost', () => {
+describe("institutionManagement.js Coverage Boost", () => {
   let mockLoadInstitutions;
 
   beforeEach(() => {
@@ -42,22 +42,22 @@ describe('institutionManagement.js Coverage Boost', () => {
     global.bootstrap = {
       Modal: jest.fn().mockImplementation(() => ({
         show: jest.fn(),
-        hide: jest.fn()
-      }))
+        hide: jest.fn(),
+      })),
     };
     global.bootstrap.Modal.getInstance = jest.fn(() => ({ hide: jest.fn() }));
 
     mockLoadInstitutions = jest.fn();
     global.loadInstitutions = mockLoadInstitutions;
-    
-    jest.spyOn(window, 'alert').mockImplementation(() => {});
-    jest.spyOn(window, 'confirm').mockReturnValue(true);
-    jest.spyOn(window, 'prompt').mockReturnValue('i know what I\'m doing');
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    jest.spyOn(window, "alert").mockImplementation(() => {});
+    jest.spyOn(window, "confirm").mockReturnValue(true);
+    jest.spyOn(window, "prompt").mockReturnValue("i know what I'm doing");
+    jest.spyOn(console, "error").mockImplementation(() => {});
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ success: true, message: 'Success' })
+      json: async () => ({ success: true, message: "Success" }),
     });
   });
 
@@ -66,33 +66,32 @@ describe('institutionManagement.js Coverage Boost', () => {
     delete global.loadInstitutions;
   });
 
-  test('createInstitutionForm calls loadInstitutions on success', async () => {
-    require('../../../static/institutionManagement.js');
-    document.dispatchEvent(new Event('DOMContentLoaded'));
-    
-    const form = document.getElementById('createInstitutionForm');
-    form.dispatchEvent(new Event('submit'));
-    
+  test("createInstitutionForm calls loadInstitutions on success", async () => {
+    require("../../../static/institutionManagement.js");
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+
+    const form = document.getElementById("createInstitutionForm");
+    form.dispatchEvent(new Event("submit"));
+
     await flushPromises();
     expect(mockLoadInstitutions).toHaveBeenCalled();
   });
 
-  test('editInstitutionForm calls loadInstitutions on success', async () => {
-    require('../../../static/institutionManagement.js');
-    document.dispatchEvent(new Event('DOMContentLoaded'));
-    
-    const form = document.getElementById('editInstitutionForm');
-    form.dispatchEvent(new Event('submit'));
-    
+  test("editInstitutionForm calls loadInstitutions on success", async () => {
+    require("../../../static/institutionManagement.js");
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+
+    const form = document.getElementById("editInstitutionForm");
+    form.dispatchEvent(new Event("submit"));
+
     await flushPromises();
     expect(mockLoadInstitutions).toHaveBeenCalled();
   });
 
-  test('deleteInstitution calls loadInstitutions on success', async () => {
-    require('../../../static/institutionManagement.js');
-    await global.deleteInstitution('i1', 'Test U');
+  test("deleteInstitution calls loadInstitutions on success", async () => {
+    require("../../../static/institutionManagement.js");
+    await global.deleteInstitution("i1", "Test U");
     await flushPromises();
     expect(mockLoadInstitutions).toHaveBeenCalled();
   });
 });
-
