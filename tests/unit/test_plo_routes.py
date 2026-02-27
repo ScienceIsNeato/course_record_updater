@@ -937,3 +937,224 @@ class TestMatrixVersionValidation:
             query_string={"version": "999"},
         )
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Dashboard tree route (GET /api/programs/<id>/plo-dashboard)
+# ---------------------------------------------------------------------------
+
+
+def _publish_mapping(client, prog_id, entries):
+    """Open a draft, add *entries* [(plo_id, clo_id), ...], publish. Return mapping id."""
+    draft = client.post(f"/api/programs/{prog_id}/plo-mappings/draft").get_json()[
+        "mapping"
+    ]
+    mapping_id = draft["id"]
+    for plo_id, clo_id in entries:
+        client.post(
+            f"/api/programs/{prog_id}/plo-mappings/{mapping_id}/entries",
+            json={"program_outcome_id": plo_id, "course_outcome_id": clo_id},
+        )
+    client.post(
+        f"/api/programs/{prog_id}/plo-mappings/{mapping_id}/publish",
+        json={"description": "test publish"},
+    )
+    return mapping_id
+
+
+class TestPLODashboardRoute:
+    """Tests for GET /api/programs/<id>/plo-dashboard.
+
+    The route delegates aggregation to get_plo_dashboard_tree (see
+    tests/unit/test_plo_service.py for heavy aggregation coverage);
+    these tests focus on the HTTP contract: status codes, top-level
+    response keys, mapping-status resolution, term echo, and the
+    per-program assessment_display_mode lookup.
+    """
+
+    def test_empty_program_returns_none_status(self, client):
+        """No PLOs, no mappings → mapping_status='none', empty plos list."""
+        inst_id, prog_id = _setup_program("DASH1")
+        _auth(client, institution_id=inst_id)
+
+        resp = client.get(f"/api/programs/{prog_id}/plo-dashboard")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["success"] is True
+        assert data["mapping_status"] == "none"
+        assert data["mapping"] is None
+        assert data["plos"] == []
+        assert data["program_id"] == prog_id
+        # Default display mode when none configured
+        assert data["assessment_display_mode"] == "both"
+
+    def test_unmapped_plos_appear_with_empty_clos(self, client):
+        """PLOs exist but no mapping → each PLO has clos=[], clo_count=0."""
+        inst_id, prog_id = _setup_program("DASH2")
+        _auth(client, institution_id=inst_id)
+
+        for i in (1, 2):
+            database_service.create_program_outcome(
+                {
+                    "program_id": prog_id,
+                    "institution_id": inst_id,
+                    "plo_number": i,
+                    "description": f"PLO {i}",
+                }
+            )
+
+        resp = client.get(f"/api/programs/{prog_id}/plo-dashboard")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["mapping_status"] == "none"
+        assert len(data["plos"]) == 2
+        for p in data["plos"]:
+            assert p["clos"] == []
+            assert p["clo_count"] == 0
+            # Aggregate exists even with no data — all zeros / None rate
+            assert p["aggregate"]["students_took"] == 0
+            assert p["aggregate"]["pass_rate"] is None
+
+    def test_draft_mapping_shows_as_draft(self, client):
+        """Draft-only mapping → mapping_status='draft', CLOs visible."""
+        inst_id, prog_id, courses = _setup_program_with_courses(
+            "DASH3", num_courses=1, clos_per_course=1
+        )
+        _auth(client, institution_id=inst_id)
+        _, clo_ids = courses[0]
+        plo_id = database_service.create_program_outcome(
+            {
+                "program_id": prog_id,
+                "institution_id": inst_id,
+                "plo_number": 1,
+                "description": "Draft-only PLO",
+            }
+        )
+
+        # Open draft + add entry but DO NOT publish
+        draft = client.post(f"/api/programs/{prog_id}/plo-mappings/draft").get_json()[
+            "mapping"
+        ]
+        client.post(
+            f"/api/programs/{prog_id}/plo-mappings/{draft['id']}/entries",
+            json={"program_outcome_id": plo_id, "course_outcome_id": clo_ids[0]},
+        )
+
+        resp = client.get(f"/api/programs/{prog_id}/plo-dashboard")
+        data = resp.get_json()
+        assert data["mapping_status"] == "draft"
+        assert data["mapping"]["id"] == draft["id"]
+        assert len(data["plos"]) == 1
+        # Draft entries ARE visible in the tree (so admins see WIP)
+        assert data["plos"][0]["clo_count"] == 1
+        assert data["plos"][0]["clos"][0]["outcome_id"] == clo_ids[0]
+
+    def test_published_mapping_preferred_over_draft(self, client):
+        """When both a published v1 and a newer draft exist, tree uses published."""
+        inst_id, prog_id, courses = _setup_program_with_courses(
+            "DASH4", num_courses=1, clos_per_course=2
+        )
+        _auth(client, institution_id=inst_id)
+        _, clo_ids = courses[0]
+        plo_id = database_service.create_program_outcome(
+            {
+                "program_id": prog_id,
+                "institution_id": inst_id,
+                "plo_number": 1,
+                "description": "Published-preferred PLO",
+            }
+        )
+
+        # Publish v1 with CLO[0] only
+        _publish_mapping(client, prog_id, [(plo_id, clo_ids[0])])
+
+        # Open a new draft with CLO[1] — should NOT be what the tree shows
+        draft = client.post(f"/api/programs/{prog_id}/plo-mappings/draft").get_json()[
+            "mapping"
+        ]
+        client.post(
+            f"/api/programs/{prog_id}/plo-mappings/{draft['id']}/entries",
+            json={"program_outcome_id": plo_id, "course_outcome_id": clo_ids[1]},
+        )
+
+        resp = client.get(f"/api/programs/{prog_id}/plo-dashboard")
+        data = resp.get_json()
+        assert data["mapping_status"] == "published"
+        # Published mapping has CLO[0] only
+        clo_node_ids = [c["outcome_id"] for c in data["plos"][0]["clos"]]
+        assert clo_ids[0] in clo_node_ids
+        # The draft-only CLO should NOT appear
+        assert clo_ids[1] not in clo_node_ids
+
+    def test_term_id_echoed_in_response(self, client):
+        """term_id query param is echoed back for client-side filter state."""
+        inst_id, prog_id = _setup_program("DASH5")
+        _auth(client, institution_id=inst_id)
+
+        resp = client.get(
+            f"/api/programs/{prog_id}/plo-dashboard",
+            query_string={"term_id": "some-term-uuid"},
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()["term_id"] == "some-term-uuid"
+
+        # Missing term_id → echoes None
+        resp2 = client.get(f"/api/programs/{prog_id}/plo-dashboard")
+        assert resp2.get_json()["term_id"] is None
+
+    def test_per_program_display_mode_returned(self, client):
+        """assessment_display_mode comes from program extras."""
+        inst_id, prog_id = _setup_program("DASH6")
+        _auth(client, institution_id=inst_id)
+        database_service.update_program(
+            prog_id, {"assessment_display_mode": "percentage"}
+        )
+
+        resp = client.get(f"/api/programs/{prog_id}/plo-dashboard")
+        assert resp.status_code == 200
+        assert resp.get_json()["assessment_display_mode"] == "percentage"
+
+    def test_unknown_program_returns_404(self, client):
+        """Invalid program_id → 404."""
+        inst_id, _ = _setup_program("DASH7")
+        _auth(client, institution_id=inst_id)
+
+        resp = client.get("/api/programs/no-such-program/plo-dashboard")
+        assert resp.status_code == 404
+
+    def test_requires_auth(self, client):
+        """Anonymous request → redirected to login (not 200)."""
+        _, prog_id = _setup_program("DASH8")
+        # No _auth() call — client is anonymous
+        resp = client.get(f"/api/programs/{prog_id}/plo-dashboard")
+        assert resp.status_code != 200
+
+    def test_clo_metadata_populated(self, client):
+        """Each CLO node carries course_number/title/description even with no section data."""
+        inst_id, prog_id, courses = _setup_program_with_courses(
+            "DASH9", num_courses=1, clos_per_course=1
+        )
+        _auth(client, institution_id=inst_id)
+        _, clo_ids = courses[0]
+        plo_id = database_service.create_program_outcome(
+            {
+                "program_id": prog_id,
+                "institution_id": inst_id,
+                "plo_number": 1,
+                "description": "Metadata PLO",
+            }
+        )
+        _publish_mapping(client, prog_id, [(plo_id, clo_ids[0])])
+
+        resp = client.get(f"/api/programs/{prog_id}/plo-dashboard")
+        data = resp.get_json()
+        clo = data["plos"][0]["clos"][0]
+        # These come from clo_meta (course + outcome template), not section outcomes
+        assert clo["outcome_id"] == clo_ids[0]
+        assert clo["course_number"].startswith("CSDASH9")
+        # clo_number stored as string in CourseOutcome model
+        assert str(clo["clo_number"]) == "1"
+        assert "description" in clo
+        # No section outcomes exist → empty sections + zero aggregate
+        assert clo["sections"] == []
+        assert clo["aggregate"]["students_took"] == 0

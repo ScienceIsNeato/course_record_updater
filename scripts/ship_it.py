@@ -678,7 +678,9 @@ class QualityGateExecutor:
 
         added_lines = self._get_git_added_lines()
         if not added_lines:
-            report_lines.append("⚠️ No added lines detected to analyze for this commit.")
+            report_lines.append(
+                "⚠️ No added lines detected to analyze for this commit."
+            )
             return report_lines
 
         blocks = self._get_js_uncovered_new_blocks(added_lines)

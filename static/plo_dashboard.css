@@ -1,0 +1,134 @@
+/* PLO Dashboard — tree drilldown styling.
+ * Kept intentionally small; relies on Bootstrap for colour / spacing tokens.
+ */
+
+.plo-tree {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 0;
+}
+
+.plo-tree-node {
+  border-bottom: 1px solid #f1f3f5;
+}
+
+.plo-tree-node:last-child {
+  border-bottom: none;
+}
+
+.plo-tree-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.5rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+.plo-tree-header:hover {
+  background-color: #f8f9fa;
+}
+
+.plo-tree-header .plo-tree-toggle {
+  width: 1.25rem;
+  text-align: center;
+  color: #6c757d;
+  transition: transform 0.15s ease;
+}
+
+.plo-tree-node.expanded > .plo-tree-header .plo-tree-toggle {
+  transform: rotate(90deg);
+}
+
+.plo-tree-header .plo-tree-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.plo-tree-header .plo-tree-label .plo-tree-number {
+  font-weight: 600;
+  color: #212529;
+}
+
+.plo-tree-header .plo-tree-label .plo-tree-desc {
+  color: #6c757d;
+  font-size: 0.875rem;
+}
+
+.plo-tree-header .plo-tree-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.plo-tree-children {
+  display: none;
+  list-style: none;
+  padding-left: 2.25rem;
+  margin: 0;
+  background-color: #fdfdfd;
+}
+
+.plo-tree-node.expanded > .plo-tree-children {
+  display: block;
+}
+
+/* Nesting levels — CLO (level 2) and Section (level 3) */
+.plo-tree-children .plo-tree-header {
+  padding: 0.5rem;
+}
+
+.plo-tree-children .plo-tree-children {
+  background-color: #fafbfc;
+}
+
+/* Assessment badge — shows S/U/% based on display mode */
+.plo-assessment-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.plo-assessment-badge.pass {
+  background-color: #d1e7dd;
+  color: #0f5132;
+}
+
+.plo-assessment-badge.fail {
+  background-color: #f8d7da;
+  color: #842029;
+}
+
+.plo-assessment-badge.nodata {
+  background-color: #e9ecef;
+  color: #6c757d;
+}
+
+/* Inline action buttons (edit PLO) */
+.plo-tree-actions .btn {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.75rem;
+}
+
+/* Leaf section rows — no toggle, no pointer */
+.plo-tree-node.leaf > .plo-tree-header {
+  cursor: default;
+}
+
+.plo-tree-node.leaf > .plo-tree-header .plo-tree-toggle {
+  visibility: hidden;
+}
+
+/* Count pill next to PLO title */
+.plo-clo-count-pill {
+  font-size: 0.7rem;
+  background-color: #e9ecef;
+  color: #495057;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.75rem;
+}

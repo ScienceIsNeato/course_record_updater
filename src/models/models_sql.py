@@ -754,6 +754,10 @@ def _program_to_dict(model: Program) -> Dict[str, Any]:
         data["program_admins"] = (
             model.extras.get("program_admins", []) if model.extras else []
         )
+    # Expose PLO dashboard display setting (stored in extras via update_program)
+    data["assessment_display_mode"] = (
+        model.extras.get("assessment_display_mode", "both") if model.extras else "both"
+    )
     return data
 
 

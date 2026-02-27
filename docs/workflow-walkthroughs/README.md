@@ -5,11 +5,26 @@ Product demonstration materials for showcasing key workflows.
 ## Available Demos
 
 ### 1. Single Term Outcome Management (2025)
-**File:** `single_term_outcome_management.md`  
-**Duration:** 30 minutes  
+**File:** `single_term_outcome_management.md`
+**Duration:** 30 minutes
 **Workflow:** Import → Assign → Complete → Audit → Export
 
 Complete end-to-end demonstration of collecting and managing learning outcomes for a single academic term.
+
+### 2. Program Learning Outcomes Dashboard (2026)
+**File:** `plo_dashboard.md` · Automated: `demos/plo_dashboard_workflow.json`
+**Duration:** 10 minutes
+**Workflow:** Create PLO → Edit → Map CLO → Publish → Drill to Section
+
+Full PLO lifecycle on the new dashboard. Seed data ships with two
+programs (BIOL + ZOOL) across two terms with published mappings, so
+the drilldown tree has real section-assessment leaves out of the box.
+BIOL's PLO-4 is intentionally unmapped to demonstrate empty states.
+
+**Automated run (all four beats via real API + sqlite verification):**
+```bash
+python docs/workflow-walkthroughs/scripts/run_demo.py --auto
+```
 
 ---
 
@@ -18,16 +33,19 @@ Complete end-to-end demonstration of collecting and managing learning outcomes f
 ### Interactive Demo (Recommended)
 
 ```bash
-# Run interactive demo with step-by-step guidance
+# Default: PLO dashboard demo (JSON-backed, fully automated)
+python docs/workflow-walkthroughs/scripts/run_demo.py --auto
+
+# Run a specific markdown demo interactively
 python docs/workflow-walkthroughs/scripts/run_demo.py single_term_outcome_management.md
 ```
 
-The interactive runner will:
-- Parse the demo markdown
-- Run setup commands (with your confirmation)
-- Guide you through each step
-- Pause for you to complete actions
-- Track progress
+The runner dispatches based on file extension:
+- **`.json`** → delegates to `demos/run_demo.py` (API calls, CSRF
+  handling, sqlite3 verification, `--fail-fast`, `--verify-only`)
+- **`.md`** → parses the walkthrough contract below, runs the setup
+  block, then steps through each section pausing on
+  `**Press Enter to continue →**`
 
 ### Manual Demo
 
@@ -127,29 +145,43 @@ Parses markdown demo files and provides step-by-step interactive guidance.
 
 **Usage:**
 ```bash
-# Basic usage
+# Default to PLO JSON demo, run automated
+python docs/workflow-walkthroughs/scripts/run_demo.py --auto
+
+# Automated with fast iteration
+python docs/workflow-walkthroughs/scripts/run_demo.py --auto --start-step 4 --fail-fast
+
+# Markdown demo, interactive
 python docs/workflow-walkthroughs/scripts/run_demo.py single_term_outcome_management.md
 
-# Skip setup (if already done)
-python docs/workflow-walkthroughs/scripts/run_demo.py --no-setup single_term_outcome_management.md
+# Markdown demo, skip setup block
+python docs/workflow-walkthroughs/scripts/run_demo.py --no-setup plo_dashboard.md
 ```
 
 ---
 
 ## Demo Data
 
-All demos use the generic demo seeder:
+All demos use the manifest-driven demo seeder:
 
 ```bash
+# Generic demo data
 python scripts/seed_db.py --demo --clear --env dev
+
+# Full semester manifest (includes PLOs + published PLO↔CLO mappings)
+python scripts/seed_db.py --demo --manifest demos/full_semester_manifest.json --clear --env local
 ```
 
-This creates:
-- Institution: Demo University (DEMO2025)
-- Admin: demo2025.admin@example.com
-- Instructors: demo2025.instructor1@example.com, demo2025.instructor2@example.com
-- Programs: Computer Science, Business, General Education  
-- Sample courses and terms
+The full-semester manifest creates:
+- Institution: Fictional University (demo accounts)
+- **BIOL** and **ZOOL** programs, each with multi-term courses
+- **Program Outcomes** (4 in BIOL, 2 in ZOOL) with a **v1 published
+  PLO↔CLO mapping** so the PLO dashboard tree is populated on first
+  load
+- Per-program `assessment_display_mode` preference (BIOL=both,
+  ZOOL=percentage)
+- Section-level assessment overrides to give the drilldown real
+  leaf data
 
 **Why 2025 prefix?**  
 Unique prefixes prevent conflicts with E2E test users when running in parallel.

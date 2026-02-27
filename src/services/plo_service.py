@@ -253,6 +253,158 @@ def get_mapping_matrix(
     }
 
 
+def get_plo_dashboard_tree(
+    program_id: str,
+    institution_id: str,
+    term_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Build the hierarchical PLO → CLO → section-outcome tree for the dashboard.
+
+    For each active PLO in the program, gathers the CLO templates mapped to it
+    (using the latest published mapping, falling back to the draft) and then
+    attaches the section-level assessment records for those CLOs, scoped to
+    *term_id* when given.
+
+    Assessment data is aggregated per-PLO (students_took / students_passed
+    summed across all contributing section outcomes) so the UI can show a
+    single pass-rate badge at each tree level before the user drills in.
+
+    Returns::
+
+        {
+            "mapping": <mapping dict | None>,
+            "mapping_status": "published" | "draft" | "none",
+            "assessment_display_mode": "binary" | "percentage" | "both",
+            "term_id": <echo>,
+            "plos": [
+                {
+                    "id": ..., "plo_number": ..., "description": ...,
+                    "aggregate": {"students_took": int, "students_passed": int,
+                                  "pass_rate": float | None,
+                                  "section_count": int},
+                    "clos": [
+                        {
+                            "outcome_id": ..., "clo_number": ...,
+                            "description": ..., "course_number": ...,
+                            "aggregate": {...},
+                            "sections": [<section-outcome dict>, ...]
+                        }
+                    ]
+                }
+            ]
+        }
+    """
+    program = database_service.get_program_by_id(program_id)
+    display_mode = program.get("assessment_display_mode", "both") if program else "both"
+
+    # Resolve mapping: prefer latest published (it is the version of record
+    # for assessment rollups); fall back to current draft so admins see
+    # work-in-progress before their first publish.
+    mapping = database_service.get_latest_published_plo_mapping(program_id)
+    mapping_status = "published"
+    if not mapping:
+        mapping = database_service.get_plo_mapping_draft(program_id)
+        mapping_status = "draft" if mapping else "none"
+
+    plos = database_service.get_program_outcomes(program_id)
+    entries = mapping.get("entries", []) if mapping else []
+
+    # Build plo_id → [clo_id, ...] and collect the universe of mapped CLOs
+    plo_to_clos: Dict[str, List[str]] = {p["id"]: [] for p in plos}
+    all_clo_ids: set[str] = set()
+    for entry in entries:
+        plo_id = entry.get("program_outcome_id")
+        clo_id = entry.get("course_outcome_id")
+        if plo_id in plo_to_clos and clo_id:
+            plo_to_clos[plo_id].append(clo_id)
+            all_clo_ids.add(clo_id)
+
+    # Fetch all section outcomes for the mapped CLOs in one batched query.
+    section_outcomes: List[Dict[str, Any]] = []
+    if all_clo_ids:
+        section_outcomes = database_service.get_section_outcomes_by_criteria(
+            institution_id=institution_id,
+            program_id=program_id,
+            term_id=term_id,
+            outcome_ids=list(all_clo_ids),
+        )
+
+    # Index section outcomes by CLO template id → list of section records
+    sections_by_clo: Dict[str, List[Dict[str, Any]]] = {}
+    for so in section_outcomes:
+        clo_id = so.get("outcome_id")
+        if clo_id:
+            sections_by_clo.setdefault(clo_id, []).append(so)
+
+    # Gather CLO template metadata (clo_number, description, course) so the
+    # tree shows labels even when no section outcome exists yet.
+    clo_meta: Dict[str, Dict[str, Any]] = {}
+    courses = database_service.get_courses_by_program(program_id)
+    for course in courses:
+        for clo in database_service.get_course_outcomes(course["course_id"]):
+            clo_meta[clo["outcome_id"]] = {
+                "outcome_id": clo["outcome_id"],
+                "clo_number": clo.get("clo_number"),
+                "description": clo.get("description"),
+                "course_id": course.get("course_id"),
+                "course_number": course.get("course_number"),
+                "course_title": course.get("course_title"),
+            }
+
+    def _aggregate(records: List[Dict[str, Any]]) -> Dict[str, Any]:
+        took = 0
+        passed = 0
+        counted = 0
+        for r in records:
+            t = r.get("students_took")
+            p = r.get("students_passed")
+            if isinstance(t, int) and t > 0 and isinstance(p, int):
+                took += t
+                passed += p
+                counted += 1
+        rate = round(passed / took * 100, 1) if took > 0 else None
+        return {
+            "students_took": took,
+            "students_passed": passed,
+            "pass_rate": rate,
+            "section_count": len(records),
+            "sections_with_data": counted,
+        }
+
+    tree: List[Dict[str, Any]] = []
+    for plo in plos:
+        clo_nodes: List[Dict[str, Any]] = []
+        for clo_id in plo_to_clos.get(plo["id"], []):
+            secs = sections_by_clo.get(clo_id, [])
+            meta = clo_meta.get(clo_id, {"outcome_id": clo_id})
+            clo_nodes.append(
+                {
+                    **meta,
+                    "aggregate": _aggregate(secs),
+                    "sections": secs,
+                }
+            )
+        # Aggregate across all sections of all CLOs under this PLO
+        all_plo_sections = [s for clo in clo_nodes for s in clo["sections"]]
+        tree.append(
+            {
+                **plo,
+                "aggregate": _aggregate(all_plo_sections),
+                "clo_count": len(clo_nodes),
+                "clos": clo_nodes,
+            }
+        )
+
+    return {
+        "mapping": mapping,
+        "mapping_status": mapping_status,
+        "assessment_display_mode": display_mode,
+        "term_id": term_id,
+        "program_id": program_id,
+        "plos": tree,
+    }
+
+
 def get_unmapped_clos(
     program_id: str, mapping_id: Optional[str] = None
 ) -> List[Dict[str, Any]]:

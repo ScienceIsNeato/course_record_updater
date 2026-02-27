@@ -628,6 +628,21 @@ def audit_clo_page() -> str:
     return render_template("audit_clo.html", user=user)
 
 
+@app.route("/plo-dashboard")
+@login_required
+@permission_required("view_program_data")
+def plo_dashboard_page() -> str:
+    """
+    Display the Program Learning Outcomes dashboard.
+
+    Tree drilldown: Program → PLO → mapped CLOs → section assessments.
+    Available to anyone with view_program_data (program + institution admins;
+    instructors see only mappings for their own CLOs via API scoping).
+    """
+    user = get_current_user()
+    return render_template("plo_dashboard.html", user=user)
+
+
 @app.route("/audit-logs")
 @login_required
 @permission_required("manage_institution_users")

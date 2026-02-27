@@ -6,6 +6,7 @@
     coursesContainer: "programCoursesContainer",
     facultyContainer: "programFacultyContainer",
     cloContainer: "programCloContainer",
+    ploContainer: "programPloContainer",
     assessmentContainer: "programAssessmentContainer",
   };
 
@@ -99,6 +100,7 @@
           "Loading faculty assignments...",
         );
         this.setLoading(SELECTORS.cloContainer, "Loading learning outcomes...");
+        this.setLoading(SELECTORS.ploContainer, "Loading program outcomes...");
         this.setLoading(
           SELECTORS.assessmentContainer,
           "Loading assessment results...",
@@ -162,6 +164,9 @@
       this.renderFaculty(data.faculty_assignments || []);
       this.renderClos(data.courses || [], data.program_overview || []);
       this.renderAssessment(data.program_overview || []);
+      // PLO summary needs its own per-program fetch (not in /api/dashboard/data).
+      // Fire-and-forget so the rest of the dashboard isn't blocked on it.
+      this.loadPloSummary(data.program_overview || []);
       const lastUpdated =
         data.metadata && data.metadata.last_updated
           ? data.metadata.last_updated
@@ -416,6 +421,130 @@
 
       container.innerHTML = "";
       container.appendChild(table);
+    },
+
+    /**
+     * Fetch PLO tree summary per program and render a compact rollup table.
+     * Separate from the main /api/dashboard/data fetch because PLO trees are
+     * assembled on demand (they walk mappings + section outcomes) — we only
+     * pay that cost once the rest of the dashboard is already visible.
+     */
+    async loadPloSummary(programOverview) {
+      const container = document.getElementById(SELECTORS.ploContainer);
+      if (!container) return;
+
+      if (!Array.isArray(programOverview) || programOverview.length === 0) {
+        container.innerHTML = "";
+        container.appendChild(
+          this.renderEmptyState(
+            "No programs available for PLO rollup",
+            "Open PLO Dashboard",
+          ),
+        );
+        return;
+      }
+
+      // Fetch tree for each program in parallel; failures fall back to a
+      // placeholder row so one bad program doesn't blank the whole panel.
+      const fetchOne = async (prog) => {
+        const pid = prog.program_id || prog.id;
+        if (!pid) return null;
+        try {
+          const resp = await fetch(
+            `/api/programs/${encodeURIComponent(pid)}/plo-dashboard`,
+            {
+              credentials: "include",
+              headers: {
+                Accept: "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+            },
+          );
+          const body = await resp.json();
+          if (!resp.ok || body.success === false) {
+            throw new Error(body.error || `HTTP ${resp.status}`);
+          }
+          return this._summarisePloTree(prog, body);
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn(`PLO summary fetch failed for ${pid}:`, err);
+          return {
+            program: prog.program_name || pid,
+            plo_count: "—",
+            plo_count_sort: -1,
+            mapped_clos: "—",
+            mapped_clos_sort: -1,
+            status: "error",
+            pass_rate: "—",
+            pass_rate_sort: -1,
+          };
+        }
+      };
+
+      const rows = (await Promise.all(programOverview.map(fetchOne))).filter(
+        Boolean,
+      );
+
+      if (rows.every((r) => r.plo_count_sort <= 0)) {
+        container.innerHTML = "";
+        container.appendChild(
+          this.renderEmptyState(
+            "No Program Learning Outcomes defined yet",
+            "Open PLO Dashboard",
+          ),
+        );
+        const btn = container.querySelector("button");
+        if (btn) btn.onclick = () => (window.location.href = "/plo-dashboard");
+        return;
+      }
+
+      const table = globalThis.panelManager.createSortableTable({
+        id: "program-plo-table",
+        columns: [
+          { key: "program", label: "Program", sortable: true },
+          { key: "plo_count", label: "PLOs", sortable: true },
+          { key: "mapped_clos", label: "Mapped CLOs", sortable: true },
+          { key: "status", label: "Mapping", sortable: true },
+          { key: "pass_rate", label: "Pass Rate", sortable: true },
+        ],
+        data: rows,
+      });
+
+      container.innerHTML = "";
+      container.appendChild(table);
+    },
+
+    /**
+     * Collapse a full PLO tree response into a single summary row.
+     * - mapped CLO count = distinct CLOs across all PLOs
+     * - overall pass rate = students_passed / students_took across all PLO aggs
+     */
+    _summarisePloTree(prog, tree) {
+      const plos = Array.isArray(tree.plos) ? tree.plos : [];
+      const mappedCloIds = new Set();
+      let took = 0;
+      let passed = 0;
+      plos.forEach((plo) => {
+        (plo.clos || []).forEach((clo) => {
+          if (clo.outcome_id) mappedCloIds.add(clo.outcome_id);
+        });
+        const agg = plo.aggregate || {};
+        if (typeof agg.students_took === "number") took += agg.students_took;
+        if (typeof agg.students_passed === "number")
+          passed += agg.students_passed;
+      });
+      const rate = took > 0 ? Math.round((passed / took) * 100) : null;
+      const status = tree.mapping_status || "none";
+      return {
+        program: prog.program_name || prog.program_id || "—",
+        plo_count: plos.length.toString(),
+        plo_count_sort: plos.length,
+        mapped_clos: mappedCloIds.size.toString(),
+        mapped_clos_sort: mappedCloIds.size,
+        status,
+        pass_rate: rate === null ? "—" : `${rate}%`,
+        pass_rate_sort: rate === null ? -1 : rate,
+      };
     },
 
     updateLastUpdated(timestamp) {

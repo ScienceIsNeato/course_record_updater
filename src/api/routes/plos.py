@@ -27,6 +27,7 @@ from src.services.plo_service import (
     get_mapping_by_version,
     get_mapping_matrix,
     get_or_create_draft,
+    get_plo_dashboard_tree,
     get_program_outcome,
     get_published_mappings,
     get_unmapped_clos,
@@ -476,6 +477,36 @@ def mapping_matrix(program_id: str) -> ResponseReturnValue:
         return jsonify({"success": False, "error": str(exc)}), 404
     except Exception as exc:
         return handle_api_error(exc, "fetching mapping matrix")
+
+
+@plo_bp.route("/<program_id>/plo-dashboard", methods=["GET"])
+@permission_required("view_program_data")
+def plo_dashboard(program_id: str) -> ResponseReturnValue:
+    """Return the hierarchical PLO → CLO → section-outcome dashboard tree.
+
+    Query params:
+      - term_id: optional term filter for section-outcome leaf nodes.
+        When omitted, aggregates across all terms.
+
+    Response shape is documented in plo_service.get_plo_dashboard_tree.
+    """
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+
+    term_id = request.args.get("term_id") or None
+
+    try:
+        tree = get_plo_dashboard_tree(
+            program_id,
+            institution_id=program["institution_id"],
+            term_id=term_id,
+        )
+        return jsonify({"success": True, **tree}), 200
+    except Exception as exc:
+        return handle_api_error(
+            exc, "plo_dashboard", "Failed to build PLO dashboard tree"
+        )
 
 
 @plo_bp.route("/<program_id>/plo-mappings/unmapped-clos", methods=["GET"])
