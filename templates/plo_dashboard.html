@@ -1,0 +1,103 @@
+{% extends "dashboard/base_dashboard.html" %}
+
+{% block title %}PLO Dashboard - Loopcloser{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='plo_dashboard.css') }}">
+{% endblock %}
+
+{% block page_header %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Program Learning Outcomes</h1>
+            <p class="text-muted">Review PLO-to-CLO mappings and assessment data across programs.
+                Drill down from programs to individual section outcomes.</p>
+        </div>
+    </div>
+
+    <!-- Summary Stats Row -->
+    <div class="row mb-4" id="ploSummaryStats">
+        <div class="col">
+            <div class="card" style="border-color: #0d6efd; border-width: 2px;">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statPrograms" style="color: #0d6efd;">-</h4>
+                    <p class="mb-0 small" style="color: #0d6efd;">Programs</p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card" style="border-color: #6f42c1; border-width: 2px;">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statPlos" style="color: #6f42c1;">-</h4>
+                    <p class="mb-0 small" style="color: #6f42c1;">PLOs</p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card" style="border-color: #20c997; border-width: 2px;">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statMappedClos" style="color: #20c997;">-</h4>
+                    <p class="mb-0 small" style="color: #20c997;">Mapped CLOs</p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card" style="border-color: #198754; border-width: 2px;">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statWithData" style="color: #198754;">-</h4>
+                    <p class="mb-0 small" style="color: #198754;">With Data</p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card" style="border-color: #dc3545; border-width: 2px;">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statMissingData" style="color: #dc3545;">-</h4>
+                    <p class="mb-0 small" style="color: #dc3545;">Missing Data</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters: Term + Program -->
+    <div class="card mb-4">
+        <div class="card-body py-3">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="ploTermFilter" class="form-label mb-1">Term</label>
+                    <select class="form-select form-select-sm" id="ploTermFilter">
+                        <option value="">Loading terms...</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="ploProgramFilter" class="form-label mb-1">Program</label>
+                    <select class="form-select form-select-sm" id="ploProgramFilter">
+                        <option value="">All Programs</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end gap-2">
+                    <button class="btn btn-sm btn-outline-primary" id="ploRefreshBtn">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Drill-down Tree Container -->
+    <div id="ploTreeContainer">
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary"><span class="visually-hidden">Loading...</span></div>
+            <p class="text-muted mt-2">Loading PLO data...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='plo_dashboard.js') }}"></script>
+{% endblock %}

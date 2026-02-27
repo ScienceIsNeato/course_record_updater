@@ -5,11 +5,18 @@ Product demonstration materials for showcasing key workflows.
 ## Available Demos
 
 ### 1. Single Term Outcome Management (2025)
-**File:** `single_term_outcome_management.md`  
-**Duration:** 30 minutes  
+**File:** `single_term_outcome_management.md`
+**Duration:** 30 minutes
 **Workflow:** Import → Assign → Complete → Audit → Export
 
 Complete end-to-end demonstration of collecting and managing learning outcomes for a single academic term.
+
+### 2. PLO Dashboard (2025)
+**File:** `plo_dashboard.md`
+**Duration:** 15 minutes
+**Workflow:** Navigate → Filter → Drill down (Program → PLO → CLO → Section)
+
+Demonstrates the hierarchical Program Learning Outcomes dashboard with 4-level drill-down, term/program filtering, and configurable assessment display modes.
 
 ---
 

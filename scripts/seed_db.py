@@ -1274,7 +1274,27 @@ class DemoSeeder(BaselineSeeder):
             f"   ✅ Created {len(result['offering_ids'])} offerings and {result['section_count']} sections"
         )
 
-        # 8. Apply section-specific CLO overrides (post-seeding)
+        # 8. Create PLOs and mappings
+        if "program_outcomes" in manifest:
+            self.log("🔗 Creating Program Learning Outcomes...")
+            plo_count = self.create_plos_from_manifest(
+                inst_ids[0], program_map, manifest
+            )
+            self.log(f"   ✅ Created {plo_count} PLOs")
+
+        if "plo_mappings" in manifest:
+            self.log("🗺️  Creating PLO↔CLO mappings...")
+            mapping_count = self.create_plo_mappings_from_manifest(
+                program_map, course_map, manifest
+            )
+            self.log(f"   ✅ Created {mapping_count} published mapping(s)")
+
+        # 9. Apply program-level settings (e.g. assessment display mode)
+        if "program_settings" in manifest:
+            self.log("⚙️  Applying program settings...")
+            self.apply_program_settings(program_map, manifest["program_settings"])
+
+        # 10. Apply section-specific CLO overrides (post-seeding)
         if "section_outcome_overrides" in manifest:
             self.log("🔧 Applying section-specific CLO overrides...")
             override_count = self.apply_section_outcome_overrides(
@@ -1285,6 +1305,179 @@ class DemoSeeder(BaselineSeeder):
         self.log("✅ Demo seeding completed!")
         self.print_summary()
         return True
+
+    def create_plos_from_manifest(
+        self,
+        institution_id: str,
+        program_map: Dict[str, str],
+        manifest: Dict[str, Any],
+    ) -> int:
+        """Create ProgramOutcome records from manifest data.
+
+        Args:
+            institution_id: Institution ID
+            program_map: Mapping of program_code -> program_id
+            manifest: Full manifest dict containing 'program_outcomes'
+
+        Returns:
+            Number of PLOs created
+        """
+        outcomes = manifest.get("program_outcomes", [])
+        created = 0
+        for entry in outcomes:
+            program_code = entry.get("program_code")
+            program_id = program_map.get(program_code)
+            if not program_id:
+                self.log(f"   ⚠️ Program '{program_code}' not found, skipping PLO")
+                continue
+
+            plo_data = {
+                "program_id": program_id,
+                "institution_id": institution_id,
+                "plo_number": entry["plo_number"],
+                "description": entry["description"],
+            }
+            try:
+                database_service.create_program_outcome(plo_data)
+                created += 1
+            except Exception as e:
+                self.log(
+                    f"   ⚠️ Failed to create PLO {entry['plo_number']} "
+                    f"for {program_code}: {e}"
+                )
+        return created
+
+    def create_plo_mappings_from_manifest(
+        self,
+        program_map: Dict[str, str],
+        course_map: Dict[str, str],
+        manifest: Dict[str, Any],
+    ) -> int:
+        """Create published PloMapping + PloMappingEntry records from manifest.
+
+        Workflow per mapping:
+        1. Get or create a draft mapping
+        2. Add all PLO↔CLO entries
+        3. Publish the mapping
+
+        Args:
+            program_map: program_code -> program_id
+            course_map: course_code -> course_id
+            manifest: Full manifest dict containing 'plo_mappings'
+
+        Returns:
+            Number of mappings published
+        """
+        mappings = manifest.get("plo_mappings", [])
+        published_count = 0
+
+        for mapping_data in mappings:
+            program_code = mapping_data.get("program_code")
+            program_id = program_map.get(program_code)
+            if not program_id:
+                self.log(f"   ⚠️ Program '{program_code}' not found, skipping mapping")
+                continue
+
+            # Build PLO lookup for this program: plo_number -> plo_id
+            plos = database_service.get_program_outcomes(program_id)
+            plo_lookup: Dict[int, str] = {}
+            for plo in plos:
+                plo_num = plo.get("plo_number")
+                plo_id = plo.get("id")
+                if plo_num is not None and plo_id:
+                    plo_lookup[int(plo_num)] = plo_id
+
+            # Build CLO lookup for referenced courses: (course_code, clo_number) -> clo_id
+            clo_lookup: Dict[tuple, str] = {}
+            referenced_courses = {
+                e["course_code"] for e in mapping_data.get("entries", [])
+            }
+            for course_code in referenced_courses:
+                course_id = course_map.get(course_code)
+                if not course_id:
+                    continue
+                clos = database_service.get_course_outcomes(course_id)
+                for clo in clos or []:
+                    clo_num = clo.get("clo_number")
+                    clo_id = clo.get("id")
+                    if clo_num is not None and clo_id:
+                        clo_lookup[(course_code, int(clo_num))] = clo_id
+
+            # Create draft mapping
+            try:
+                draft = database_service.get_or_create_plo_mapping_draft(program_id)
+                draft_id = draft.get("id")
+                if not draft_id:
+                    self.log(f"   ⚠️ Failed to create draft for {program_code}")
+                    continue
+            except Exception as e:
+                self.log(f"   ⚠️ Failed to create draft for {program_code}: {e}")
+                continue
+
+            # Add entries
+            entry_count = 0
+            for entry in mapping_data.get("entries", []):
+                plo_num = int(entry["plo_number"])
+                course_code = entry["course_code"]
+                clo_num = int(entry["clo_number"])
+
+                plo_id = plo_lookup.get(plo_num)
+                clo_id = clo_lookup.get((course_code, clo_num))
+
+                if not plo_id:
+                    self.log(f"   ⚠️ PLO {plo_num} not found for {program_code}")
+                    continue
+                if not clo_id:
+                    self.log(f"   ⚠️ CLO {clo_num} not found for {course_code}")
+                    continue
+
+                try:
+                    database_service.add_plo_mapping_entry(draft_id, plo_id, clo_id)
+                    entry_count += 1
+                except Exception as e:
+                    self.log(
+                        f"   ⚠️ Failed to add entry PLO{plo_num}↔"
+                        f"{course_code} CLO{clo_num}: {e}"
+                    )
+
+            # Publish the mapping
+            description = mapping_data.get("description", "")
+            try:
+                database_service.publish_plo_mapping(draft_id, description)
+                published_count += 1
+                self.log(
+                    f"   ✓ Published mapping v{mapping_data.get('version', '?')} "
+                    f"for {program_code} ({entry_count} entries)"
+                )
+            except Exception as e:
+                self.log(f"   ⚠️ Failed to publish mapping for {program_code}: {e}")
+
+        return published_count
+
+    def apply_program_settings(
+        self,
+        program_map: Dict[str, str],
+        settings: Dict[str, Dict[str, Any]],
+    ) -> None:
+        """Apply per-program settings from manifest (e.g. assessment display mode).
+
+        Args:
+            program_map: program_code -> program_id
+            settings: Dict keyed by program_code with settings to merge into extras
+        """
+        for program_code, program_settings in settings.items():
+            program_id = program_map.get(program_code)
+            if not program_id:
+                self.log(f"   ⚠️ Program '{program_code}' not found, skipping settings")
+                continue
+
+            try:
+                database_service.update_program(
+                    program_id, {"extras": program_settings}
+                )
+                self.log(f"   ✓ Applied settings for {program_code}")
+            except Exception as e:
+                self.log(f"   ⚠️ Failed to apply settings for {program_code}: {e}")
 
     def apply_section_outcome_overrides(
         self, overrides: List[Dict[str, Any]], institution_id: str
