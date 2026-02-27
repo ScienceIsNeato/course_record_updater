@@ -37,8 +37,8 @@ def get_assessment_display_mode(program: Dict[str, Any]) -> str:
 
 def _build_section_node(so: Dict[str, Any]) -> Dict[str, Any]:
     """Build a section-level node from a section outcome record."""
-    section = so.get("section") or {}
-    instructor = section.get("instructor") or {}
+    section = so.get("_section") or so.get("section") or {}
+    instructor = so.get("_instructor") or section.get("instructor") or {}
     instructor_name = (
         " ".join(
             filter(
@@ -50,7 +50,7 @@ def _build_section_node(so: Dict[str, Any]) -> Dict[str, Any]:
     )
     return {
         "section_outcome_id": so.get("id"),
-        "section_id": section.get("id", ""),
+        "section_id": section.get("section_id") or section.get("id", ""),
         "section_number": section.get("section_number", ""),
         "instructor_name": instructor_name,
         "students_took": so.get("students_took"),
@@ -74,6 +74,26 @@ def _aggregate_sections(
         if sn["students_took"] is not None:
             agg_took += sn["students_took"]
             agg_passed += sn["students_passed"] or 0
+            has_data = True
+    if has_data:
+        return agg_took, agg_passed, True
+    return None, None, False
+
+
+def _aggregate_clo_nodes(
+    clo_nodes: List[Dict[str, Any]],
+) -> Tuple[Optional[int], Optional[int], bool]:
+    """Aggregate took/passed from CLO nodes for a parent level.
+
+    Returns (agg_took, agg_passed, has_data).
+    """
+    agg_took = 0
+    agg_passed = 0
+    has_data = False
+    for node in clo_nodes:
+        if node["students_took"] is not None:
+            agg_took += node["students_took"]
+            agg_passed += node["students_passed"] or 0
             has_data = True
     if has_data:
         return agg_took, agg_passed, True
@@ -169,15 +189,25 @@ def _build_program_node(
                 missing_data += 1
 
         mapped_clo_count += len(clo_nodes)
+
+        # Aggregate took/passed across all CLOs in this PLO
+        plo_took, plo_passed, _ = _aggregate_clo_nodes(clo_nodes)
+
         plo_nodes.append(
             {
                 "id": plo["id"],
                 "plo_number": plo.get("plo_number"),
                 "description": plo.get("description", ""),
                 "mapped_clo_count": len(clo_nodes),
+                "students_took": plo_took,
+                "students_passed": plo_passed,
                 "mapped_clos": clo_nodes,
             }
         )
+
+    # Aggregate took/passed across all PLOs in this program
+    all_clo_nodes = [clo for plo in plo_nodes for clo in plo["mapped_clos"]]
+    prog_took, prog_passed, _ = _aggregate_clo_nodes(all_clo_nodes)
 
     program_node = {
         "id": pid,
@@ -185,6 +215,8 @@ def _build_program_node(
         "short_name": prog.get("short_name", ""),
         "plo_count": len(plos),
         "mapped_clo_count": mapped_clo_count,
+        "students_took": prog_took,
+        "students_passed": prog_passed,
         "mapping_version": mapping.get("version") if mapping else None,
         "mapping_status": mapping.get("status") if mapping else None,
         "assessment_display_mode": display_mode,

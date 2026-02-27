@@ -12,7 +12,7 @@
 
   /* ── Configuration ──────────────────────────────────────────── */
   const TREE_API = "/api/plo-dashboard/tree";
-  const TERMS_API = "/api/terms";
+  const TERMS_API = "/api/terms?all=true";
   const PROGRAMS_API = "/api/programs";
   const BINARY_PASS_THRESHOLD = 0.7;
   const DEBOUNCE_MS = 300;
@@ -244,6 +244,20 @@
       '<div class="plo-program-card" data-program-id="' +
       escapeHtml(prog.id) +
       '">';
+    var progAssess = formatAssessment(
+      prog.students_took,
+      prog.students_passed,
+      prog.assessment_display_mode || "percentage",
+    );
+    var progAssessHtml =
+      prog.students_took != null
+        ? '<span class="plo-success-rate ' +
+          progAssess.cssClass +
+          ' ms-2">' +
+          progAssess.text +
+          "</span>"
+        : "";
+
     html +=
       '<div class="plo-program-header" data-toggle="program">' +
       "<div>" +
@@ -254,6 +268,7 @@
       escapeHtml(prog.name || "") +
       "</span>" +
       versionBadge +
+      progAssessHtml +
       "</div>" +
       "<div>" +
       '<span class="badge bg-primary rounded-pill me-1">' +
@@ -287,6 +302,20 @@
   /* ── L2: PLO row ───────────────────────────────────────────── */
 
   function renderPloItem(plo, displayMode) {
+    var ploAssess = formatAssessment(
+      plo.students_took,
+      plo.students_passed,
+      displayMode,
+    );
+    var ploAssessHtml =
+      plo.students_took != null
+        ? '<span class="plo-success-rate ' +
+          ploAssess.cssClass +
+          ' me-2">' +
+          ploAssess.text +
+          "</span>"
+        : "";
+
     let html =
       '<div class="plo-item" data-plo-id="' + escapeHtml(plo.id) + '">';
     html +=
@@ -300,6 +329,7 @@
       escapeHtml(plo.description) +
       "</span>" +
       "</div>" +
+      ploAssessHtml +
       '<span class="badge bg-secondary rounded-pill">' +
       plo.mapped_clo_count +
       " CLOs</span>" +

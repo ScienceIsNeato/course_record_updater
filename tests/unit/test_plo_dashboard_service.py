@@ -241,6 +241,22 @@ class TestGetPloDashboardTreeWithData:
         assert sec["section_number"] == "001"
         assert sec["instructor_name"] == "Jane Doe"
 
+    @patch(f"{_BASE}.get_section_outcomes_by_criteria")
+    @patch(f"{_BASE}.get_course_outcomes")
+    @patch(f"{_BASE}.get_courses_by_program")
+    @patch(f"{_BASE}.get_latest_published_plo_mapping")
+    @patch(f"{_BASE}.get_program_outcomes")
+    @patch(f"{_BASE}.get_term_by_id")
+    @patch(f"{_BASE}.get_programs_by_institution")
+    def test_aggregated_scores_at_plo_and_program_level(self, *mocks):
+        result = _setup_full_tree_mocks(*mocks)
+        plo = result["programs"][0]["plos"][0]
+        assert plo["students_took"] == 30
+        assert plo["students_passed"] == 25
+        prog = result["programs"][0]
+        assert prog["students_took"] == 30
+        assert prog["students_passed"] == 25
+
     @patch(f"{_BASE}.get_course_outcomes")
     @patch(f"{_BASE}.get_courses_by_program")
     @patch(f"{_BASE}.get_latest_published_plo_mapping")
@@ -405,6 +421,14 @@ class TestSectionAggregation:
         assert clo["students_took"] == 35  # 20 + 15
         assert clo["students_passed"] == 28  # 18 + 10
         assert len(clo["sections"]) == 2
+
+        # PLO and program levels should also aggregate
+        plo = result["programs"][0]["plos"][0]
+        assert plo["students_took"] == 35
+        assert plo["students_passed"] == 28
+        prog = result["programs"][0]
+        assert prog["students_took"] == 35
+        assert prog["students_passed"] == 28
 
     @patch(f"{_BASE}.get_section_outcomes_by_criteria")
     @patch(f"{_BASE}.get_course_outcomes")
