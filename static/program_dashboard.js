@@ -7,6 +7,7 @@
     facultyContainer: "programFacultyContainer",
     cloContainer: "programCloContainer",
     assessmentContainer: "programAssessmentContainer",
+    ploContainer: "programPloContainer",
   };
 
   const ProgramDashboard = {
@@ -150,6 +151,7 @@
           SELECTORS.assessmentContainer,
           "Unable to load assessment results",
         );
+        this.showError(SELECTORS.ploContainer, "Unable to load PLO data");
       }
     },
 
@@ -162,6 +164,7 @@
       this.renderFaculty(data.faculty_assignments || []);
       this.renderClos(data.courses || [], data.program_overview || []);
       this.renderAssessment(data.program_overview || []);
+      this.renderPlos();
       const lastUpdated =
         data.metadata && data.metadata.last_updated
           ? data.metadata.last_updated
@@ -416,6 +419,76 @@
 
       container.innerHTML = "";
       container.appendChild(table);
+    },
+
+    async renderPlos() {
+      const container = document.getElementById(SELECTORS.ploContainer);
+      if (!container) return;
+
+      try {
+        const resp = await fetch("/api/plo-dashboard/tree", {
+          credentials: "include",
+          headers: { Accept: "application/json" },
+        });
+        const json = await resp.json();
+        if (!resp.ok || !json.success) {
+          throw new Error(json.error || "Failed to load PLO data");
+        }
+
+        const programs = (json.data && json.data.programs) || [];
+        if (!programs.length) {
+          container.innerHTML = "";
+          container.appendChild(
+            this.renderEmptyState(
+              "No program learning outcomes defined yet",
+              "Open PLO Dashboard",
+            ),
+          );
+          return;
+        }
+
+        // Build a simple summary table
+        const rows = [];
+        for (const prog of programs) {
+          for (const plo of prog.plos || []) {
+            rows.push({
+              program: prog.short_name || prog.name || "—",
+              plo: "PLO " + plo.plo_number,
+              description: plo.description || "",
+              clos: (plo.mapped_clo_count || 0).toString(),
+            });
+          }
+        }
+
+        if (!rows.length) {
+          container.innerHTML = "";
+          container.appendChild(
+            this.renderEmptyState(
+              "No PLOs defined for your programs",
+              "Open PLO Dashboard",
+            ),
+          );
+          return;
+        }
+
+        const table = globalThis.panelManager.createSortableTable({
+          id: "program-plo-table",
+          columns: [
+            { key: "program", label: "Program", sortable: true },
+            { key: "plo", label: "PLO", sortable: true },
+            { key: "description", label: "Description", sortable: false },
+            { key: "clos", label: "Mapped CLOs", sortable: true },
+          ],
+          data: rows,
+        });
+
+        container.innerHTML = "";
+        container.appendChild(table);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn("PLO panel load error:", err);
+        this.showError(SELECTORS.ploContainer, "Unable to load PLO data");
+      }
     },
 
     updateLastUpdated(timestamp) {

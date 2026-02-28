@@ -920,6 +920,24 @@ def get_latest_published_plo_mapping(
     return _db_service.get_latest_published_plo_mapping(program_id)
 
 
+def get_term_plo_mapping(program_id: str, term_id: str) -> Optional[Dict[str, Any]]:
+    """Get the published mapping for a specific program + term."""
+    return _db_service.get_term_plo_mapping(program_id, term_id)
+
+
+def save_term_plo_mapping(
+    program_id: str,
+    term_id: str,
+    plo_id: str,
+    clo_ids: list[str],
+    user_id: str,
+) -> Dict[str, Any]:
+    """Save PLO-CLO mappings for a specific term (auto-published)."""
+    return _db_service.save_term_plo_mapping(
+        program_id, term_id, plo_id, clo_ids, user_id
+    )
+
+
 __all__ = [
     "COURSE_OFFERINGS_COLLECTION",
     "COURSE_OUTCOMES_COLLECTION",

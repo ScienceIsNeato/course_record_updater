@@ -1,0 +1,13 @@
+{
+  "version": "1.0",
+  "default_profile": "commit",
+  "myopia": {
+    "enabled": true,
+    "gates": {
+      "security-scan": {
+        "enabled": true,
+        "config_file_path": ".secrets.baseline"
+      }
+    }
+  }
+}

@@ -36,12 +36,19 @@ def get_program_outcome(plo_id: str) -> Optional[Dict[str, Any]]:
 def create_program_outcome(data: Dict[str, Any]) -> str:
     """Create a new PLO template.
 
-    Required keys: program_id, institution_id, plo_number, description.
+    Required keys: program_id, institution_id, description.
+    Optional keys: plo_number (auto-incremented if omitted).
     Returns the new PLO ID.
 
     Raises:
         ValueError: if required fields are missing.
     """
+    # Auto-increment plo_number if not provided
+    if "plo_number" not in data or data["plo_number"] is None:
+        existing = database_service.get_program_outcomes(data.get("program_id", ""))
+        max_num = max((p.get("plo_number", 0) for p in existing), default=0)
+        data["plo_number"] = max_num + 1
+
     required = ("program_id", "institution_id", "plo_number", "description")
     missing = [f for f in required if f not in data or data[f] is None]
     if missing:
@@ -255,10 +262,15 @@ def get_mapping_matrix(
 
 def get_unmapped_clos(
     program_id: str, mapping_id: Optional[str] = None
-) -> List[Dict[str, Any]]:
+) -> Dict[str, Any]:
     """Return CLOs in the program's courses that are NOT in the given mapping.
 
     If *mapping_id* is omitted, uses the current draft or latest published.
+
+    Returns a dict with keys:
+      - unmapped: List of unmapped CLO dicts
+      - course_count: Number of courses linked to the program
+      - total_clo_count: Total active CLOs found across all program courses
     """
     # Resolve mapping
     mapping: Optional[Dict[str, Any]] = None
@@ -281,10 +293,173 @@ def get_unmapped_clos(
     # Gather all active CLOs across the program's courses
     courses = database_service.get_courses_by_program(program_id)
     unmapped: List[Dict[str, Any]] = []
+    total_clo_count = 0
     for course in courses:
         clos = database_service.get_course_outcomes(course["course_id"])
         for clo in clos:
-            if clo.get("active", True) and clo["outcome_id"] not in mapped_clo_ids:
-                unmapped.append({**clo, "course": course})
+            if clo.get("active", True):
+                total_clo_count += 1
+                if clo["outcome_id"] not in mapped_clo_ids:
+                    unmapped.append({**clo, "course": course})
 
-    return unmapped
+    return {
+        "unmapped": unmapped,
+        "course_count": len(courses),
+        "total_clo_count": total_clo_count,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Cherry-picker helpers (Map CLO to PLO modal)
+# ---------------------------------------------------------------------------
+
+
+def _resolve_mapping(program_id: str) -> Optional[Dict[str, Any]]:
+    """Resolve the current mapping (draft first, then latest published)."""
+    mapping = database_service.get_plo_mapping_draft(program_id)
+    if not mapping:
+        mapping = database_service.get_latest_published_plo_mapping(program_id)
+    return mapping
+
+
+def get_plo_clo_picker(
+    program_id: str, plo_id: str, term_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """Return all program CLOs split by mapping status for a specific PLO.
+
+    Used by the cherry-picker UI to show two panels:
+      - mapped: CLOs currently linked to *this* PLO
+      - available: CLOs not linked to this PLO (may be linked elsewhere)
+
+    Each item in *available* includes ``mapped_to_plo_id`` when the CLO
+    is already assigned to a different PLO in the same mapping.
+
+    When *term_id* is provided the term-specific mapping is used first,
+    falling back to the global (non-term) mapping.
+    """
+    mapping: Optional[Dict[str, Any]] = None
+
+    # Prefer term-specific mapping when a term is selected
+    if term_id:
+        mapping = database_service.get_term_plo_mapping(program_id, term_id)
+
+    # Fall back to draft → latest published (non-term)
+    if not mapping:
+        mapping = _resolve_mapping(program_id)
+
+    mapped_to_this: set[str] = set()
+    mapped_to_other: Dict[str, str] = {}  # clo_id → plo_id
+
+    if mapping:
+        for entry in mapping.get("entries", []):
+            clo_id = entry.get("course_outcome_id")
+            plo_oid = entry.get("program_outcome_id")
+            if not clo_id:
+                continue
+            if str(plo_oid) == str(plo_id):
+                mapped_to_this.add(clo_id)
+            else:
+                mapped_to_other[clo_id] = plo_oid
+
+    courses = database_service.get_courses_by_program(program_id)
+    mapped: List[Dict[str, Any]] = []
+    available: List[Dict[str, Any]] = []
+    total_clo_count = 0
+
+    for course in courses:
+        clos = database_service.get_course_outcomes(course["course_id"])
+        for clo in clos:
+            if not clo.get("active", True):
+                continue
+            total_clo_count += 1
+            clo_data: Dict[str, Any] = {**clo, "course": course}
+
+            if clo["outcome_id"] in mapped_to_this:
+                mapped.append(clo_data)
+            else:
+                if clo["outcome_id"] in mapped_to_other:
+                    clo_data["mapped_to_plo_id"] = mapped_to_other[clo["outcome_id"]]
+                available.append(clo_data)
+
+    return {
+        "mapped": mapped,
+        "available": available,
+        "course_count": len(courses),
+        "total_clo_count": total_clo_count,
+    }
+
+
+def sync_plo_clo_mappings(
+    program_id: str,
+    plo_id: str,
+    clo_ids: List[str],
+    user_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Bulk-sync CLO mappings for a specific PLO in the current draft.
+
+    Creates a draft if none exists, removes all existing entries for
+    *plo_id*, then adds an entry for each CLO in *clo_ids*.  If any
+    of the requested CLOs were previously mapped to a *different* PLO
+    in this draft they are reassigned automatically.
+
+    Returns the refreshed mapping dict.
+    """
+    draft = get_or_create_draft(program_id, user_id)
+    mapping_id = draft["id"]
+
+    # Re-fetch to guarantee fresh entry list after draft creation
+    fresh = database_service.get_plo_mapping(mapping_id)
+    entries = fresh.get("entries", []) if fresh else []
+
+    clo_ids_set = {str(cid) for cid in clo_ids}
+
+    # Remove entries that conflict:
+    #   1. Current entries for this PLO (will be re-created)
+    #   2. Entries mapping any of the requested CLOs to other PLOs
+    for entry in entries:
+        eid = entry.get("id")
+        poid = str(entry.get("program_outcome_id", ""))
+        coid = str(entry.get("course_outcome_id", ""))
+        if poid == str(plo_id) or coid in clo_ids_set:
+            database_service.remove_plo_mapping_entry(eid)
+
+    # Add fresh entries
+    for clo_id in clo_ids:
+        database_service.add_plo_mapping_entry(mapping_id, plo_id, clo_id)
+
+    updated = database_service.get_plo_mapping(mapping_id)
+    logger.info(
+        "Synced %d CLOs to PLO %s in mapping %s",
+        len(clo_ids),
+        plo_id,
+        mapping_id,
+    )
+    return updated or {}
+
+
+def save_term_plo_clo_mappings(
+    program_id: str,
+    term_id: str,
+    plo_id: str,
+    clo_ids: List[str],
+    user_id: str,
+) -> Dict[str, Any]:
+    """Save PLO-CLO mappings for a specific term (auto-published).
+
+    Unlike :func:`sync_plo_clo_mappings` this bypasses the draft workflow.
+    The mapping is stored as published so the dashboard tree reflects
+    changes immediately.
+
+    Returns the refreshed term-specific mapping dict.
+    """
+    result = database_service.save_term_plo_mapping(
+        program_id, term_id, plo_id, clo_ids, user_id
+    )
+    logger.info(
+        "Saved term-specific mapping for PLO %s, term %s, program %s (%d CLOs)",
+        plo_id,
+        term_id,
+        program_id,
+        len(clo_ids),
+    )
+    return result

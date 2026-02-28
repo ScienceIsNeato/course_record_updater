@@ -60,7 +60,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         assert data["count"] == 2
 
     @patch("src.api.routes.programs.get_program_by_id")
-    @patch("src.api.routes.programs.get_course_by_number")
+    @patch("src.api.routes.programs.get_course_by_id")
     @patch("src.api.routes.programs.add_course_to_program")
     def test_add_course_to_program_integration(
         self, mock_add, mock_get_course, mock_get_program
@@ -74,7 +74,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         }
         mock_add.return_value = True
 
-        course_data = {"course_id": "CS101"}
+        course_data = {"course_id": "course1"}
 
         with patch(
             "src.api.routes.programs.permission_required", lambda perm: lambda f: f
@@ -86,7 +86,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         assert response.status_code == 200
         data = response.get_json()
         assert data["success"] is True
-        assert "CS101 added to program Computer Science" in data["message"]
+        assert "course1 added to program Computer Science" in data["message"]
         mock_add.assert_called_once_with("course1", "cs-program")
 
     @patch("src.api.routes.programs.get_program_by_id")
@@ -275,7 +275,7 @@ class TestCourseProgramWorkflow(CommonAuthMixin):
         self._login_site_admin()
 
     @patch("src.api.routes.programs.get_program_by_id")
-    @patch("src.api.routes.programs.get_course_by_number")
+    @patch("src.api.routes.programs.get_course_by_id")
     @patch("src.api.routes.programs.add_course_to_program")
     @patch("src.api.routes.programs.get_courses_by_program")
     @patch("src.api.routes.programs.remove_course_from_program")
@@ -309,7 +309,7 @@ class TestCourseProgramWorkflow(CommonAuthMixin):
             "src.api.routes.programs.permission_required", lambda perm: lambda f: f
         ):
             add_response = self.client.post(
-                "/api/programs/cs-program/courses", json={"course_id": "CS101"}
+                "/api/programs/cs-program/courses", json={"course_id": "course1"}
             )
 
         assert add_response.status_code == 200

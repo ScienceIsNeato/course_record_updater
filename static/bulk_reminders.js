@@ -50,9 +50,6 @@ class BulkReminderManager {
 
     // Set up event listeners
     this.setupEventListeners();
-
-    // eslint-disable-next-line no-console
-    console.log("[BulkReminders] Initialized");
   }
 
   /**

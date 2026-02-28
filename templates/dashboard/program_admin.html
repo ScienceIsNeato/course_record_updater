@@ -15,6 +15,8 @@
         class="fas fa-users me-1"></i>Faculty</button>
 <button class="nav-link btn btn-link" type="button" id="dashboard-clos" onclick="filterDashboard('clos')"><i
         class="fas fa-bullseye me-1"></i>Outcomes</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-plos" onclick="filterDashboard('plos')"><i
+        class="fas fa-project-diagram me-1"></i>PLOs</button>
 {% endblock %}
 
 {% block page_title %}📚 Program Administration{% endblock %}
@@ -182,7 +184,31 @@
     </div>
 </div>
 
-<!-- Panel 6: Data Management (Import/Export) -->
+<!-- Panel 6: Program Learning Outcomes -->
+<div class="dashboard-panel" id="program-plo-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">🔗</span>
+            Program Learning Outcomes
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/plo-dashboard'">
+                <i class="fas fa-project-diagram"></i> PLO Dashboard
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="programPloContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading PLO data...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 7: Data Management (Import/Export) -->
 {% include 'components/data_management_panel.html' %}
 
 <!-- Course Modals -->
@@ -207,7 +233,8 @@
             'offerings': ['program-offering-panel'],
             'faculty': ['program-faculty-panel'],
             'clos': ['program-clo-panel'],
-            'all': ['program-courses-panel', 'program-offering-panel', 'program-faculty-panel', 'program-clo-panel', 'program-assessment-panel', 'program-clo-audit-panel']
+            'plos': ['program-plo-panel'],
+            'all': ['program-courses-panel', 'program-offering-panel', 'program-faculty-panel', 'program-clo-panel', 'program-assessment-panel', 'program-clo-audit-panel', 'program-plo-panel']
         },
         [
             'program-courses-panel',
@@ -215,7 +242,8 @@
             'program-faculty-panel',
             'program-clo-panel',
             'program-assessment-panel',
-            'program-clo-audit-panel'
+            'program-clo-audit-panel',
+            'program-plo-panel'
         ]
     );
 

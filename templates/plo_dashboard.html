@@ -1,0 +1,255 @@
+{% extends "dashboard/base_dashboard.html" %}
+
+{% block title %}PLO Dashboard - Loopcloser{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='plo_dashboard.css') }}">
+{% endblock %}
+
+{% block page_header %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Program Learning Outcomes</h1>
+            <p class="text-muted">Review PLO-to-CLO mappings and assessment data across programs.
+                Drill down from programs to individual section outcomes.</p>
+        </div>
+        <div>
+            <button class="btn btn-success" id="createPloBtn">
+                <i class="fas fa-plus me-1"></i> New PLO
+            </button>
+        </div>
+    </div>
+
+    <!-- Summary Stats Row -->
+    <div class="row mb-4" id="ploSummaryStats">
+        <div class="col">
+            <div class="card" style="border-color: #0d6efd; border-width: 2px;">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statPrograms" style="color: #0d6efd;">-</h4>
+                    <p class="mb-0 small" style="color: #0d6efd;">Programs</p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card" style="border-color: #6f42c1; border-width: 2px;">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statPlos" style="color: #6f42c1;">-</h4>
+                    <p class="mb-0 small" style="color: #6f42c1;">PLOs</p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card" style="border-color: #20c997; border-width: 2px;">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statMappedClos" style="color: #20c997;">-</h4>
+                    <p class="mb-0 small" style="color: #20c997;">Mapped CLOs</p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card" style="border-color: #198754; border-width: 2px;">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statWithData" style="color: #198754;">-</h4>
+                    <p class="mb-0 small" style="color: #198754;">With Data</p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card" style="border-color: #dc3545; border-width: 2px;">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statMissingData" style="color: #dc3545;">-</h4>
+                    <p class="mb-0 small" style="color: #dc3545;">Missing Data</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters: Term + Program -->
+    <div class="card mb-4">
+        <div class="card-body py-3">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="ploTermFilter" class="form-label mb-1">Term</label>
+                    <select class="form-select form-select-sm" id="ploTermFilter">
+                        <option value="">Loading terms...</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="ploProgramFilter" class="form-label mb-1">Program</label>
+                    <select class="form-select form-select-sm" id="ploProgramFilter">
+                        <option value="">All Programs</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="ploDisplayMode" class="form-label mb-1">
+                        Assessment Display
+                        <i class="fas fa-info-circle text-muted"
+                           title="How pass/fail results appear on each node. Controls binary (S/U), percentage, or both."></i>
+                    </label>
+                    <select class="form-select form-select-sm" id="ploDisplayMode">
+                        <option value="both">Both (S (78%) / U (22%))</option>
+                        <option value="percentage">Percentage (78%)</option>
+                        <option value="binary">Binary (S / U)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Drill-down Tree Container -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span class="fw-bold">Curriculum Map</span>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary" id="expandAllBtn">
+                    <i class="fas fa-angle-double-down"></i> Expand All
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" id="collapseAllBtn">
+                    <i class="fas fa-angle-double-up"></i> Collapse All
+                </button>
+                <button class="btn btn-sm btn-outline-primary" id="mapCloBtn">
+                    <i class="fas fa-link"></i> Map CLO to PLO
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="ploTreeContainer">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary"><span class="visually-hidden">Loading...</span></div>
+                    <p class="text-muted mt-2">Loading PLO data...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit PLO Modal -->
+<div class="modal fade" id="ploModal" tabindex="-1" aria-labelledby="ploModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ploModalLabel">New Program Outcome</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="ploForm">
+                <div class="modal-body">
+                    <input type="hidden" id="ploModalId">
+                    <div class="mb-3">
+                        <label for="ploModalProgram" class="form-label">Program *</label>
+                        <select class="form-select" id="ploModalProgram" required>
+                            <option value="">Select a program…</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="ploModalDescription" class="form-label">Description *</label>
+                        <textarea class="form-control" id="ploModalDescription" rows="4" required
+                                  placeholder="Students will be able to…"></textarea>
+                    </div>
+                    <div id="ploModalAlert" class="alert d-none" role="alert"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="ploModalSaveBtn">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Map CLO to PLO Modal -->
+<div class="modal fade" id="mapCloModal" tabindex="-1" aria-labelledby="mapCloModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="mapCloModalLabel">Map CLOs to PLO</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">
+                    Select a program, term, and PLO, then assign course learning outcomes using the
+                    panels below. Click items to select them, use the arrows to move them between
+                    panels, and click Save to apply the mapping for the selected term.
+                </p>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label for="mapCloModalProgram" class="form-label">Program *</label>
+                        <select class="form-select" id="mapCloModalProgram" required>
+                            <option value="">Select a program…</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="mapCloModalTerm" class="form-label">Term *</label>
+                        <select class="form-select" id="mapCloModalTerm" required>
+                            <option value="">Select a term…</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="mapCloModalPlo" class="form-label">Program Outcome *</label>
+                        <select class="form-select" id="mapCloModalPlo" required>
+                            <option value="">Select a PLO…</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Cherry Picker Panels -->
+                <div id="mapCloPickerContainer" style="display:none;">
+                    <div class="row g-0">
+                        <div class="col-5">
+                            <div class="card h-100">
+                                <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                                    <strong class="small">Mapped to this PLO</strong>
+                                    <span class="badge bg-primary rounded-pill" id="mappedCloCount">0</span>
+                                </div>
+                                <div class="card-body p-0" style="max-height:300px; overflow-y:auto;">
+                                    <div class="list-group list-group-flush" id="mappedCloList"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-2 d-flex flex-column justify-content-center align-items-center gap-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="moveCloLeft"
+                                    title="Map selected CLOs to this PLO">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="moveCloRight"
+                                    title="Remove selected CLOs from this PLO">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                        <div class="col-5">
+                            <div class="card h-100">
+                                <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                                    <strong class="small">Available CLOs</strong>
+                                    <span class="badge bg-secondary rounded-pill" id="availableCloCount">0</span>
+                                </div>
+                                <div class="card-body p-0" style="max-height:300px; overflow-y:auto;">
+                                    <div class="list-group list-group-flush" id="availableCloList"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="mapCloModalAlert" class="alert d-none mt-3" role="alert"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-outline-success d-none" id="mapCloPublishBtn">
+                    <i class="fas fa-check-double"></i> Publish Draft
+                </button>
+                <button type="button" class="btn btn-primary" id="mapCloSaveBtn">
+                    <i class="fas fa-save"></i> Save Mappings
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='plo_dashboard.js') }}"></script>
+{% endblock %}

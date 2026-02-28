@@ -17,52 +17,33 @@ function publishProgramMutation(action, metadata = {}) {
   });
 }
 
-/* eslint-disable no-console */
 // Initialize when DOM is ready
 // Handle case where DOM is already loaded (avoid race condition)
 function initProgramManagement() {
-  console.log(
-    "[programManagement] DEBUG: initProgramManagement called, readyState =",
-    document.readyState,
-  );
   // Safety check: only initialize if form elements exist
   // (Prevents initialization from running before DOM is ready in test environments)
   if (
     !document.getElementById("createProgramForm") &&
     !document.getElementById("editProgramForm")
   ) {
-    console.log("[programManagement] DEBUG: No forms found, skipping init");
     return; // Forms not on page yet, skip initialization
   }
 
-  console.log("[programManagement] DEBUG: Forms found, initializing");
-  console.log(
-    "[programManagement] DEBUG: About to call initializeCreateProgramModal()",
-  );
   initializeCreateProgramModal();
-  console.log(
-    "[programManagement] DEBUG: About to call initializeEditProgramModal()",
-  );
   initializeEditProgramModal();
-  console.log("[programManagement] DEBUG: About to call setupModalListeners()");
   setupModalListeners();
   // Fallback: pre-populate institution dropdown on init in case modal event timing misses
   // This is idempotent due to innerHTML reset inside loader
   loadInstitutionsForDropdown();
-  console.log("[programManagement] DEBUG: Initialization complete");
 }
 
-console.log("[programManagement] DEBUG: Script loaded");
 if (document.readyState === "loading") {
   // DOM still loading, wait for it
-  console.log("[programManagement] DEBUG: Waiting for DOMContentLoaded");
   document.addEventListener("DOMContentLoaded", initProgramManagement);
 } else {
   // DOM already loaded, initialize immediately
-  console.log("[programManagement] DEBUG: DOM already loaded, init now");
   initProgramManagement();
 }
-/* eslint-enable no-console */
 
 // Export for testing (Node.js/Jest environment)
 if (typeof module !== "undefined" && module.exports) {
@@ -70,27 +51,17 @@ if (typeof module !== "undefined" && module.exports) {
 }
 
 /* eslint-disable no-console */
-console.log("[programManagement] DEBUG: About to define setupModalListeners");
 /**
  * Setup modal event listeners
  * Loads data when modals are opened
  */
 function setupModalListeners() {
   try {
-    console.log("[programManagement] DEBUG: setupModalListeners called");
     const createModal = document.getElementById("createProgramModal");
-    console.log(
-      "[programManagement] DEBUG: createModal element found?",
-      !!createModal,
-    );
 
     if (createModal) {
-      console.log(
-        "[programManagement] DEBUG: Attaching show.bs.modal listener",
-      );
       // Use 'shown.bs.modal' so DOM is fully visible and ready
       createModal.addEventListener("shown.bs.modal", async () => {
-        console.log("[programManagement] DEBUG: show.bs.modal event FIRED!");
         await loadInstitutionsForDropdown();
       });
     } else {

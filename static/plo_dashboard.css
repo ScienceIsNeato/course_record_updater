@@ -1,0 +1,208 @@
+/* PLO Dashboard — drill-down tree styles */
+
+/* ── Program cards ───────────────────────────────────────────── */
+.plo-program-card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.plo-program-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: #f8f9fa;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s;
+}
+
+.plo-program-header:hover {
+    background: #e9ecef;
+}
+
+.plo-program-header .program-name {
+    font-weight: 600;
+    font-size: 1.05rem;
+}
+
+.plo-program-header .badge {
+    font-size: 0.8rem;
+}
+
+.plo-expand-icon {
+    transition: transform 0.2s ease;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.plo-expand-icon.expanded {
+    transform: rotate(90deg);
+}
+
+.plo-program-body {
+    padding: 0.5rem 1rem 1rem;
+    border-top: 1px solid #dee2e6;
+}
+
+/* ── PLO rows ────────────────────────────────────────────────── */
+.plo-item {
+    border: 1px solid #e9ecef;
+    border-radius: 0.375rem;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+}
+
+.plo-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    background: #fff;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s;
+}
+
+.plo-item-header:hover {
+    background: #f8f9fa;
+}
+
+.plo-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: #6f42c1;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    margin-right: 0.75rem;
+}
+
+.plo-description {
+    flex: 1;
+    font-size: 0.95rem;
+}
+
+.plo-item-right {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.plo-item-body {
+    padding: 0.5rem 0.75rem 0.75rem;
+    border-top: 1px solid #e9ecef;
+    background: #fdfdfe;
+}
+
+/* ── CLO table ───────────────────────────────────────────────── */
+.plo-clo-table {
+    width: 100%;
+    font-size: 0.875rem;
+    margin-bottom: 0;
+}
+
+.plo-clo-table th {
+    background: #f1f3f5;
+    font-weight: 600;
+    padding: 0.4rem 0.5rem;
+    border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
+}
+
+.plo-clo-table td {
+    padding: 0.4rem 0.5rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.plo-clo-table tbody tr {
+    cursor: pointer;
+    transition: background-color 0.1s;
+}
+
+.plo-clo-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.plo-clo-table tbody tr.expanded {
+    background: #e8f4fd;
+}
+
+/* ── Section sub-table ───────────────────────────────────────── */
+.plo-section-row td {
+    background: #f8f9fa;
+    font-size: 0.82rem;
+    cursor: default;
+}
+
+.plo-section-row:hover td {
+    background: #eef2f5;
+}
+
+/* ── Assessment display ──────────────────────────────────────── */
+.plo-success-rate {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.plo-success-rate.rate-high {
+    color: #198754;
+}
+
+.plo-success-rate.rate-mid {
+    color: #fd7e14;
+}
+
+.plo-success-rate.rate-low {
+    color: #dc3545;
+}
+
+.plo-success-rate.rate-na {
+    color: #adb5bd;
+    font-weight: 400;
+    font-style: italic;
+}
+
+/* ── Empty states ────────────────────────────────────────────── */
+.plo-empty-state {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: #6c757d;
+}
+
+.plo-empty-state i {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    display: block;
+    opacity: 0.4;
+}
+
+.plo-empty-state .empty-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.plo-empty-state .empty-subtitle {
+    font-size: 0.9rem;
+}
+
+/* ── Mapping version badge ───────────────────────────────────── */
+.plo-mapping-badge {
+    font-size: 0.75rem;
+    padding: 0.2em 0.5em;
+}
+
+/* ── Status badges ───────────────────────────────────────────── */
+.plo-status-badge {
+    font-size: 0.75rem;
+    padding: 0.15em 0.45em;
+    border-radius: 0.25rem;
+}

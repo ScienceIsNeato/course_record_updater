@@ -27,12 +27,15 @@ from src.services.plo_service import (
     get_mapping_by_version,
     get_mapping_matrix,
     get_or_create_draft,
+    get_plo_clo_picker,
     get_program_outcome,
     get_published_mappings,
     get_unmapped_clos,
     list_program_outcomes,
     publish_mapping,
     remove_mapping_entry,
+    save_term_plo_clo_mappings,
+    sync_plo_clo_mappings,
     update_program_outcome,
 )
 from src.utils.constants import (
@@ -492,10 +495,70 @@ def unmapped_clos(program_id: str) -> ResponseReturnValue:
 
     try:
         mapping_id = request.args.get("mapping_id")
-        clos = get_unmapped_clos(program_id, mapping_id=mapping_id)
+        result = get_unmapped_clos(program_id, mapping_id=mapping_id)
+        unmapped = result["unmapped"]
         return (
-            jsonify({"success": True, "unmapped_clos": clos, "count": len(clos)}),
+            jsonify(
+                {
+                    "success": True,
+                    "unmapped_clos": unmapped,
+                    "count": len(unmapped),
+                    "course_count": result["course_count"],
+                    "total_clo_count": result["total_clo_count"],
+                }
+            ),
             200,
         )
     except Exception as exc:
         return handle_api_error(exc, "fetching unmapped CLOs")
+
+
+@plo_bp.route("/<program_id>/plos/<plo_id>/clo-picker", methods=["GET"])
+@permission_required("view_program_data")
+def clo_picker(program_id: str, plo_id: str) -> ResponseReturnValue:
+    """Return all CLOs split by mapping status for the cherry-picker UI."""
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+
+    term_id = request.args.get("term_id") or None
+    try:
+        result = get_plo_clo_picker(program_id, plo_id, term_id=term_id)
+        return jsonify({"success": True, **result}), 200
+    except Exception as exc:
+        return handle_api_error(exc, "fetching CLO picker data")
+
+
+@plo_bp.route("/<program_id>/plos/<plo_id>/clo-mappings", methods=["PUT"])
+@permission_required("manage_programs")
+def sync_clo_mappings(program_id: str, plo_id: str) -> ResponseReturnValue:
+    """Bulk-set CLO mappings for a specific PLO via the cherry-picker."""
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+
+    data = request.get_json(silent=True) or {}
+    clo_ids = data.get("clo_ids")
+    if clo_ids is None:
+        return (
+            jsonify({"success": False, "error": "clo_ids list is required"}),
+            400,
+        )
+
+    term_id = data.get("term_id")
+    user_id = get_current_user_id_safe()
+    try:
+        if term_id:
+            if not user_id:
+                return (
+                    jsonify({"success": False, "error": "Authentication required"}),
+                    401,
+                )
+            mapping = save_term_plo_clo_mappings(
+                program_id, term_id, plo_id, clo_ids, user_id
+            )
+        else:
+            mapping = sync_plo_clo_mappings(program_id, plo_id, clo_ids, user_id)
+        return jsonify({"success": True, "mapping": mapping}), 200
+    except Exception as exc:
+        return handle_api_error(exc, "syncing CLO mappings")

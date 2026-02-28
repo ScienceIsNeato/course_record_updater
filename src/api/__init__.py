@@ -34,6 +34,7 @@ def register_blueprints(app: Flask) -> None:
     from src.api.routes.management import management_bp
     from src.api.routes.offerings import offerings_bp
     from src.api.routes.outcomes import outcomes_bp
+    from src.api.routes.plo_dashboard import plo_dashboard_bp
     from src.api.routes.plos import plo_bp
     from src.api.routes.programs import programs_bp
     from src.api.routes.reminders import reminders_bp
@@ -57,6 +58,7 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(management_bp)
     app.register_blueprint(offerings_bp)
     app.register_blueprint(outcomes_bp)
+    app.register_blueprint(plo_dashboard_bp)
     app.register_blueprint(plo_bp)
     app.register_blueprint(programs_bp)
     app.register_blueprint(reminders_bp)

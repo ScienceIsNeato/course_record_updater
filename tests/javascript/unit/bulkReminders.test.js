@@ -105,7 +105,6 @@ describe('BulkReminderManager', () => {
 
             expect(global.bootstrap.Modal).toHaveBeenCalled();
             expect(manager.modal).toBeDefined();
-            expect(consoleLogSpy).toHaveBeenCalledWith('[BulkReminders] Initialized');
         });
 
         test('should handle missing modal element gracefully', () => {
