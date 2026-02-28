@@ -114,9 +114,6 @@
                 <button class="btn btn-sm btn-outline-primary" id="mapCloBtn">
                     <i class="fas fa-link"></i> Map CLO to PLO
                 </button>
-                <button class="btn btn-sm btn-outline-secondary" id="manageProgramCoursesBtn">
-                    <i class="fas fa-book"></i> Manage Courses
-                </button>
                 <button class="btn btn-sm btn-outline-primary" id="ploRefreshBtn">
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
@@ -216,58 +213,6 @@
     </div>
 </div>
 
-<!-- Manage Program Courses Modal -->
-<div class="modal fade" id="manageProgramCoursesModal" tabindex="-1"
-     aria-labelledby="manageProgramCoursesModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="manageProgramCoursesModalLabel">Manage Program Courses</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted small">
-                    Add or remove courses from a program. Courses must be linked to a program
-                    before their CLOs can be mapped to PLOs.
-                </p>
-                <div class="mb-3">
-                    <label for="mpcProgram" class="form-label">Program *</label>
-                    <select class="form-select" id="mpcProgram" required>
-                        <option value="">Select a program…</option>
-                    </select>
-                </div>
-                <div id="mpcAlert" class="alert d-none" role="alert"></div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6 class="fw-bold mb-2">
-                            <i class="fas fa-check-circle text-success me-1"></i>
-                            Current Courses
-                            <span class="badge bg-secondary ms-1" id="mpcCurrentCount">0</span>
-                        </h6>
-                        <div id="mpcCurrentCourses" class="border rounded p-2"
-                             style="min-height:150px; max-height:300px; overflow-y:auto;">
-                            <p class="text-muted small mb-0">Select a program above.</p>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <h6 class="fw-bold mb-2">
-                            <i class="fas fa-plus-circle text-primary me-1"></i>
-                            Available Courses
-                            <span class="badge bg-secondary ms-1" id="mpcAvailableCount">0</span>
-                        </h6>
-                        <div id="mpcAvailableCourses" class="border rounded p-2"
-                             style="min-height:150px; max-height:300px; overflow-y:auto;">
-                            <p class="text-muted small mb-0">Select a program above.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}

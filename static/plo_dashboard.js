@@ -21,7 +21,6 @@
   let termSelect, programSelect, displayModeSelect, refreshBtn, treeContainer;
   let statPrograms, statPlos, statMappedClos, statWithData, statMissingData;
   let createPloBtn, mapCloBtn, expandAllBtn, collapseAllBtn;
-  let manageProgramCoursesBtn;
 
   /* ── State ──────────────────────────────────────────────────── */
   let debounceTimer = null;
@@ -592,9 +591,6 @@
     mapCloBtn = document.getElementById("mapCloBtn");
     expandAllBtn = document.getElementById("expandAllBtn");
     collapseAllBtn = document.getElementById("collapseAllBtn");
-    manageProgramCoursesBtn = document.getElementById(
-      "manageProgramCoursesBtn",
-    );
 
     if (!treeContainer) return; // not on PLO dashboard page
 
@@ -793,7 +789,7 @@
             var totalCloCount = data.total_clo_count || 0;
             if (courseCount === 0) {
               showMapCloAlert(
-                "No courses are linked to this program. Use \u201cManage Courses\u201d to add courses first.",
+                "No courses are linked to this program. Link courses via the Programs admin page.",
                 "warning",
               );
             } else if (totalCloCount === 0) {
@@ -897,158 +893,6 @@
       });
     }
 
-    // ── Manage Program Courses modal ──────────────────────────
-
-    /** Refresh both course lists for the selected program. */
-    function refreshProgramCourses(programId) {
-      var currentDiv = document.getElementById("mpcCurrentCourses");
-      var availableDiv = document.getElementById("mpcAvailableCourses");
-      var currentCount = document.getElementById("mpcCurrentCount");
-      var availableCount = document.getElementById("mpcAvailableCount");
-      if (!currentDiv || !availableDiv) return;
-
-      currentDiv.innerHTML =
-        '<p class="text-muted small mb-0">Loading\u2026</p>';
-      availableDiv.innerHTML =
-        '<p class="text-muted small mb-0">Loading\u2026</p>';
-
-      Promise.all([
-        fetchJson("/api/programs/" + programId + "/courses"),
-        fetchJson("/api/courses"),
-      ]).then(function (results) {
-        var programCourses = results[0].courses || [];
-        var allCourses = results[1].courses || [];
-        var linkedIds = {};
-        programCourses.forEach(function (c) {
-          linkedIds[c.course_id] = true;
-        });
-
-        // Render current courses
-        if (programCourses.length === 0) {
-          currentDiv.innerHTML =
-            '<p class="text-muted small mb-0">No courses linked yet.</p>';
-        } else {
-          currentDiv.innerHTML = "";
-          programCourses.forEach(function (c) {
-            var item = document.createElement("div");
-            item.className =
-              "d-flex justify-content-between align-items-center mb-1 p-1 border-bottom";
-            item.innerHTML =
-              '<span class="small">' +
-              escapeHtml(c.course_number || c.course_id) +
-              " \u2014 " +
-              escapeHtml(c.course_title || "") +
-              "</span>" +
-              '<button class="btn btn-sm btn-outline-danger mpc-remove-btn py-0 px-1" ' +
-              'data-course-id="' +
-              escapeHtml(c.course_id) +
-              '" title="Remove">' +
-              '<i class="fas fa-times"></i></button>';
-            currentDiv.appendChild(item);
-          });
-        }
-        if (currentCount) currentCount.textContent = programCourses.length;
-
-        // Render available courses (not already in program)
-        var available = allCourses.filter(function (c) {
-          return !linkedIds[c.course_id];
-        });
-        if (available.length === 0) {
-          availableDiv.innerHTML =
-            '<p class="text-muted small mb-0">All courses are already linked.</p>';
-        } else {
-          availableDiv.innerHTML = "";
-          available.forEach(function (c) {
-            var item = document.createElement("div");
-            item.className =
-              "d-flex justify-content-between align-items-center mb-1 p-1 border-bottom";
-            item.innerHTML =
-              '<span class="small">' +
-              escapeHtml(c.course_number || c.course_id) +
-              " \u2014 " +
-              escapeHtml(c.course_title || "") +
-              "</span>" +
-              '<button class="btn btn-sm btn-outline-success mpc-add-btn py-0 px-1" ' +
-              'data-course-id="' +
-              escapeHtml(c.course_id) +
-              '" title="Add">' +
-              '<i class="fas fa-plus"></i></button>';
-            availableDiv.appendChild(item);
-          });
-        }
-        if (availableCount) availableCount.textContent = available.length;
-
-        // Attach add/remove click handlers
-        currentDiv.querySelectorAll(".mpc-remove-btn").forEach(function (btn) {
-          btn.addEventListener("click", function () {
-            var courseId = btn.getAttribute("data-course-id");
-            fetch("/api/programs/" + programId + "/courses/" + courseId, {
-              method: "DELETE",
-              headers: {
-                Accept: "application/json",
-                "X-CSRFToken": csrfToken(),
-              },
-            })
-              .then(function (resp) {
-                if (!resp.ok) throw new Error("HTTP " + resp.status);
-                return resp.json();
-              })
-              .then(function () {
-                refreshProgramCourses(programId);
-              });
-          });
-        });
-
-        availableDiv.querySelectorAll(".mpc-add-btn").forEach(function (btn) {
-          btn.addEventListener("click", function () {
-            var courseId = btn.getAttribute("data-course-id");
-            postJson("/api/programs/" + programId + "/courses", {
-              course_id: courseId,
-            }).then(function () {
-              refreshProgramCourses(programId);
-            });
-          });
-        });
-      });
-    }
-
-    if (manageProgramCoursesBtn) {
-      manageProgramCoursesBtn.addEventListener("click", function () {
-        var modal = document.getElementById("manageProgramCoursesModal");
-        if (modal) {
-          var mpcProgram = document.getElementById("mpcProgram");
-          if (mpcProgram && programSelect) {
-            mpcProgram.innerHTML = "";
-            Array.from(programSelect.options).forEach(function (opt) {
-              if (opt.value) {
-                var o = document.createElement("option");
-                o.value = opt.value;
-                o.textContent = opt.textContent;
-                mpcProgram.appendChild(o);
-              }
-            });
-            // Auto-load courses for first program
-            if (mpcProgram.value) {
-              refreshProgramCourses(mpcProgram.value);
-            }
-          }
-          // eslint-disable-next-line no-undef
-          var bsModal = new bootstrap.Modal(modal);
-          bsModal.show();
-        }
-      });
-    }
-
-    // Manage Courses modal — program change → reload courses
-    var mpcProgram = document.getElementById("mpcProgram");
-    if (mpcProgram) {
-      mpcProgram.addEventListener("change", function () {
-        var programId = mpcProgram.value;
-        if (!programId) return;
-        refreshProgramCourses(programId);
-      });
-    }
-
     // Initial load
     loadFilters().then(function () {
       loadTree();
@@ -1071,9 +915,6 @@
     mapCloBtn = document.getElementById("mapCloBtn");
     expandAllBtn = document.getElementById("expandAllBtn");
     collapseAllBtn = document.getElementById("collapseAllBtn");
-    manageProgramCoursesBtn = document.getElementById(
-      "manageProgramCoursesBtn",
-    );
   }
 
   document.addEventListener("DOMContentLoaded", init);
