@@ -984,6 +984,29 @@ describe("DOM-dependent functions", () => {
       expect(options[1].textContent).toBe("Zoology");
     });
 
+    it("auto-fetches PLOs when modal opens with pre-selected program", async () => {
+      setupMapCloModalDom();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, terms: [], programs: [], plos: [
+          { id: "plo-new", plo_number: 1, description: "New PLO" },
+        ], data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } } }),
+      });
+      global.bootstrap = { Modal: jest.fn(() => ({ show: jest.fn() })) };
+      init();
+
+      const mapBtn = document.getElementById("mapCloBtn");
+      mapBtn.click();
+
+      // Wait for the auto-triggered PLO fetch
+      await new Promise((r) => setTimeout(r, 50));
+
+      const ploDropdown = document.getElementById("mapCloModalPlo");
+      const realOptions = Array.from(ploDropdown.options).filter((o) => o.value !== "");
+      expect(realOptions.length).toBeGreaterThanOrEqual(1);
+      expect(realOptions[0].value).toBe("plo-new");
+    });
+
     it("loads PLOs when program is selected", async () => {
       setupMapCloModalDom();
       global.fetch = jest.fn().mockResolvedValue({
@@ -1047,8 +1070,8 @@ describe("DOM-dependent functions", () => {
         json: async () => ({
           success: true,
           unmapped_clos: [
-            { outcome_id: "clo-1", clo_number: 1, description: "CLO One", course_code: "BIO-101" },
-            { outcome_id: "clo-2", clo_number: 2, description: "CLO Two", course_code: "BIO-201" },
+            { outcome_id: "clo-1", clo_number: 1, description: "CLO One", course: { course_number: "BIO-101" } },
+            { outcome_id: "clo-2", clo_number: 2, description: "CLO Two", course: { course_number: "BIO-201" } },
           ],
         }),
       });

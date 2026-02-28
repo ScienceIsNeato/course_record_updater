@@ -690,6 +690,10 @@
             var cloDropdown = document.getElementById("mapCloModalClo");
             if (cloDropdown)
               cloDropdown.innerHTML = '<option value="">Select a CLO…</option>';
+            // Auto-trigger PLO fetch for first selected program
+            if (programDropdown.value) {
+              programDropdown.dispatchEvent(new Event("change"));
+            }
           }
           // eslint-disable-next-line no-undef
           var bsModal = new bootstrap.Modal(modal);
@@ -742,7 +746,7 @@
             var o = document.createElement("option");
             o.value = clo.outcome_id;
             o.textContent =
-              clo.course_code +
+              ((clo.course && clo.course.course_number) || "") +
               " CLO " +
               clo.clo_number +
               ": " +
