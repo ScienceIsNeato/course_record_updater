@@ -556,10 +556,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   } else {
-    // eslint-disable-next-line no-console
-    console.log(
-      "No course table found - skipping table event listeners (expected in cleaned UI)",
-    );
+    // Course table not present on this page - skip table event listeners
   }
 
   // Remove the duplicate direct event listener attachment block
@@ -639,26 +636,12 @@ async function loadDashboardData() {
 function initializeImportForm() {
   const importForm = document.getElementById("excelImportForm");
   const validateBtn = document.getElementById("validateImportBtn");
-  const executeBtn = document.getElementById("executeImportBtn");
   const importBtnText = document.getElementById("importBtnText");
   const dryRunCheckbox = document.getElementById("dry_run");
   const progressDiv = document.getElementById("importProgress");
   const resultsDiv = document.getElementById("importResults");
 
-  // eslint-disable-next-line no-console
-  console.log("Import form elements found:", {
-    importForm: !!importForm,
-    validateBtn: !!validateBtn,
-    executeBtn: !!executeBtn,
-    importBtnText: !!importBtnText,
-    dryRunCheckbox: !!dryRunCheckbox,
-  });
-
   if (!importForm) {
-    // eslint-disable-next-line no-console
-    console.log(
-      "Import form not found on this page - skipping import form initialization",
-    );
     return; // Exit if import form doesn't exist
   }
 

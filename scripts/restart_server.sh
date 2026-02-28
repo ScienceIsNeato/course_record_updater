@@ -204,7 +204,10 @@ main() {
     echo -e "${BLUE}🧹 Aggressive cleanup: Clearing Python bytecode cache...${NC}"
     find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
     find . -type f -name "*.pyc" -delete 2>/dev/null || true
-    
+
+    echo -e "${BLUE}🧹 Aggressive cleanup: Clearing Flask sessions (forces re-login)...${NC}"
+    rm -rf flask_session/* data/flask_session/* 2>/dev/null || true
+
     echo -e "${BLUE}🧹 Aggressive cleanup: Clearing SQLite locks and WAL files...${NC}"
     # Kill any processes holding the database file open
     DB_PATH="${DATABASE_URL#sqlite:///}"

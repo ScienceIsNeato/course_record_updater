@@ -8,6 +8,7 @@ from flask import Flask, flash, redirect, render_template, request, session, url
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.wrappers import Response
 
+from data.session import SessionService
 from src.database.database_service import check_db_connection, db
 from src.database.database_validator import validate_schema_or_exit
 from src.services.auth_service import (
@@ -132,6 +133,9 @@ register_blueprints(app)
 
 # Configure email service (sets BASE_URL and other email settings)
 EmailService.configure_app(app)
+
+# Configure server-side sessions (filesystem-based via Flask-Session)
+SessionService.configure_app(app)
 
 
 @app.before_request
