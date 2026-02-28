@@ -904,6 +904,268 @@ describe("DOM-dependent functions", () => {
     });
   });
 
+  // -------------------------------------------------------------------------
+  // Map CLO to PLO modal
+  // -------------------------------------------------------------------------
+
+  describe("Map CLO to PLO modal", () => {
+    /**
+     * Set up DOM with the mapping modal elements matching the template IDs
+     * (mapCloModalProgram, mapCloModalPlo, mapCloModalClo, etc.).
+     */
+    function setupMapCloModalDom() {
+      setBody(`
+        <select id="ploTermFilter"></select>
+        <select id="ploProgramFilter">
+          <option value="prog-1">Biology</option>
+          <option value="prog-2">Zoology</option>
+        </select>
+        <button id="ploRefreshBtn"></button>
+        <div id="ploTreeContainer"></div>
+        <span id="statPrograms"></span>
+        <span id="statPlos"></span>
+        <span id="statMappedClos"></span>
+        <span id="statWithData"></span>
+        <span id="statMissingData"></span>
+        <select id="ploDisplayMode"><option value="both">Both</option></select>
+        <button id="createPloBtn"></button>
+        <button id="mapCloBtn"></button>
+        <button id="expandAllBtn"></button>
+        <button id="collapseAllBtn"></button>
+
+        <!-- Map CLO to PLO Modal -->
+        <div id="mapCloModal">
+          <form id="mapCloForm">
+            <select id="mapCloModalProgram">
+              <option value="">Select a program…</option>
+            </select>
+            <select id="mapCloModalPlo">
+              <option value="">Select a PLO…</option>
+            </select>
+            <select id="mapCloModalClo">
+              <option value="">Select a CLO…</option>
+            </select>
+            <div id="mapCloModalAlert" class="alert d-none"></div>
+            <button type="submit">Add Mapping</button>
+            <button type="button" id="mapCloPublishBtn">Publish Draft</button>
+          </form>
+        </div>
+      `);
+      const existing = document.querySelector('meta[name="csrf-token"]');
+      if (existing) existing.remove();
+      const meta = document.createElement("meta");
+      meta.setAttribute("name", "csrf-token");
+      meta.setAttribute("content", "test-csrf-token");
+      document.head.appendChild(meta);
+    }
+
+    it("populates program dropdown from filter when modal opens", () => {
+      setupMapCloModalDom();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, terms: [], programs: [], data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } } }),
+      });
+      // Mock bootstrap.Modal
+      const mockShow = jest.fn();
+      global.bootstrap = { Modal: jest.fn(() => ({ show: mockShow })) };
+
+      init();
+
+      const mapBtn = document.getElementById("mapCloBtn");
+      mapBtn.click();
+
+      const programDropdown = document.getElementById("mapCloModalProgram");
+      const options = Array.from(programDropdown.options);
+      // Should have the two programs from ploProgramFilter
+      expect(options.length).toBe(2);
+      expect(options[0].value).toBe("prog-1");
+      expect(options[0].textContent).toBe("Biology");
+      expect(options[1].value).toBe("prog-2");
+      expect(options[1].textContent).toBe("Zoology");
+    });
+
+    it("loads PLOs when program is selected", async () => {
+      setupMapCloModalDom();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, terms: [], programs: [], plos: [], data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } } }),
+      });
+      global.bootstrap = { Modal: jest.fn(() => ({ show: jest.fn() })) };
+      init();
+
+      // Simulate selecting a program — add a real option and select it
+      const programDropdown = document.getElementById("mapCloModalProgram");
+      programDropdown.innerHTML =
+        '<option value="">Select…</option>' +
+        '<option value="prog-1">Biology</option>';
+      programDropdown.value = "prog-1";
+
+      // Set up fetch to return PLOs for this call
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          plos: [
+            { id: "plo-1", plo_number: 1, description: "PLO One" },
+            { id: "plo-2", plo_number: 2, description: "PLO Two" },
+          ],
+        }),
+      });
+
+      programDropdown.dispatchEvent(new Event("change"));
+
+      // Wait for async fetch
+      await new Promise((r) => setTimeout(r, 50));
+
+      // PLO dropdown should be populated
+      const ploDropdown = document.getElementById("mapCloModalPlo");
+      const ploOptions = Array.from(ploDropdown.options);
+      expect(ploOptions.length).toBeGreaterThanOrEqual(2);
+      // First option might be placeholder, real options follow
+      const realOptions = ploOptions.filter((o) => o.value !== "");
+      expect(realOptions.length).toBe(2);
+      expect(realOptions[0].value).toBe("plo-1");
+    });
+
+    it("loads unmapped CLOs when PLO is selected", async () => {
+      setupMapCloModalDom();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, terms: [], programs: [], data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } } }),
+      });
+      global.bootstrap = { Modal: jest.fn(() => ({ show: jest.fn() })) };
+      init();
+
+      // Set program value so the handler knows which program
+      const programDropdown = document.getElementById("mapCloModalProgram");
+      programDropdown.innerHTML = '<option value="prog-1">Biology</option>';
+      programDropdown.value = "prog-1";
+
+      // Set up fetch to return unmapped CLOs
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          unmapped_clos: [
+            { outcome_id: "clo-1", clo_number: 1, description: "CLO One", course_code: "BIO-101" },
+            { outcome_id: "clo-2", clo_number: 2, description: "CLO Two", course_code: "BIO-201" },
+          ],
+        }),
+      });
+
+      const ploDropdown = document.getElementById("mapCloModalPlo");
+      ploDropdown.innerHTML =
+        '<option value="">Select a PLO…</option>' +
+        '<option value="plo-1">PLO 1</option>';
+      ploDropdown.value = "plo-1";
+      ploDropdown.dispatchEvent(new Event("change"));
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      const cloDropdown = document.getElementById("mapCloModalClo");
+      const cloOptions = Array.from(cloDropdown.options);
+      const realOptions = cloOptions.filter((o) => o.value !== "");
+      expect(realOptions.length).toBe(2);
+      expect(realOptions[0].value).toBe("clo-1");
+    });
+
+    it("submits mapping and reloads tree on form submit", async () => {
+      setupMapCloModalDom();
+      const mockHide = jest.fn();
+      global.bootstrap = {
+        Modal: jest.fn(() => ({ show: jest.fn() })),
+      };
+      global.bootstrap.Modal.getInstance = jest.fn(() => ({ hide: mockHide }));
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, terms: [], programs: [], data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } } }),
+      });
+      init();
+
+      // Set up the dropdowns with values
+      const programDropdown = document.getElementById("mapCloModalProgram");
+      programDropdown.innerHTML = '<option value="prog-1">Biology</option>';
+      programDropdown.value = "prog-1";
+
+      const ploDropdown = document.getElementById("mapCloModalPlo");
+      ploDropdown.innerHTML = '<option value="plo-1">PLO 1</option>';
+      ploDropdown.value = "plo-1";
+
+      const cloDropdown = document.getElementById("mapCloModalClo");
+      cloDropdown.innerHTML = '<option value="clo-1">CLO 1</option>';
+      cloDropdown.value = "clo-1";
+
+      // Mock fetch for draft creation + entry addition + tree reload
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          mapping: { id: "draft-1", status: "draft" },
+          entry_id: "entry-1",
+          data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } },
+        }),
+      });
+
+      const form = document.getElementById("mapCloForm");
+      form.dispatchEvent(new Event("submit", { cancelable: true }));
+
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Should have made fetch calls (draft creation + entry addition)
+      const postCalls = global.fetch.mock.calls.filter(
+        (call) => call[1] && call[1].method === "POST"
+      );
+      expect(postCalls.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("publish draft button calls publish endpoint", async () => {
+      setupMapCloModalDom();
+      const mockHide = jest.fn();
+      global.bootstrap = {
+        Modal: jest.fn(() => ({ show: jest.fn() })),
+      };
+      global.bootstrap.Modal.getInstance = jest.fn(() => ({ hide: mockHide }));
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, terms: [], programs: [], data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } } }),
+      });
+      init();
+
+      // Set up program
+      const programDropdown = document.getElementById("mapCloModalProgram");
+      programDropdown.innerHTML = '<option value="prog-1">Biology</option>';
+      programDropdown.value = "prog-1";
+
+      // Mock fetch for draft retrieval + publish
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          mapping: { id: "draft-1", status: "draft" },
+          data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } },
+        }),
+      });
+
+      const publishBtn = document.getElementById("mapCloPublishBtn");
+      publishBtn.click();
+
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Should have made POST calls for publish
+      const postCalls = global.fetch.mock.calls.filter(
+        (call) => call[1] && call[1].method === "POST"
+      );
+      expect(postCalls.length).toBeGreaterThanOrEqual(1);
+      // At least one call should contain "publish" in the URL
+      const publishCalls = global.fetch.mock.calls.filter(
+        (call) => typeof call[0] === "string" && call[0].includes("publish")
+      );
+      expect(publishCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
   describe("init", () => {
     it("does not crash when treeContainer is missing", () => {
       setBody("<div></div>");

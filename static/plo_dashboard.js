@@ -672,7 +672,7 @@
       mapCloBtn.addEventListener("click", function () {
         var modal = document.getElementById("mapCloModal");
         if (modal) {
-          var programDropdown = document.getElementById("mapCloProgram");
+          var programDropdown = document.getElementById("mapCloModalProgram");
           if (programDropdown && programSelect) {
             programDropdown.innerHTML = "";
             Array.from(programSelect.options).forEach(function (opt) {
@@ -683,11 +683,158 @@
                 programDropdown.appendChild(o);
               }
             });
+            // Reset dependent dropdowns
+            var ploDropdown = document.getElementById("mapCloModalPlo");
+            if (ploDropdown)
+              ploDropdown.innerHTML = '<option value="">Select a PLO…</option>';
+            var cloDropdown = document.getElementById("mapCloModalClo");
+            if (cloDropdown)
+              cloDropdown.innerHTML = '<option value="">Select a CLO…</option>';
           }
           // eslint-disable-next-line no-undef
           var bsModal = new bootstrap.Modal(modal);
           bsModal.show();
         }
+      });
+    }
+
+    // Map CLO modal — program change → load PLOs
+    var mapCloModalProgram = document.getElementById("mapCloModalProgram");
+    if (mapCloModalProgram) {
+      mapCloModalProgram.addEventListener("change", function () {
+        var programId = mapCloModalProgram.value;
+        var ploDropdown = document.getElementById("mapCloModalPlo");
+        var cloDropdown = document.getElementById("mapCloModalClo");
+        if (ploDropdown)
+          ploDropdown.innerHTML = '<option value="">Select a PLO…</option>';
+        if (cloDropdown)
+          cloDropdown.innerHTML = '<option value="">Select a CLO…</option>';
+        if (!programId) return;
+        fetchJson("/api/programs/" + programId + "/plos").then(function (data) {
+          var plos = data.plos || [];
+          ploDropdown.innerHTML = '<option value="">Select a PLO…</option>';
+          plos.forEach(function (plo) {
+            var o = document.createElement("option");
+            o.value = plo.id;
+            o.textContent =
+              "PLO " + plo.plo_number + ": " + (plo.description || "");
+            ploDropdown.appendChild(o);
+          });
+        });
+      });
+    }
+
+    // Map CLO modal — PLO change → load unmapped CLOs
+    var mapCloModalPlo = document.getElementById("mapCloModalPlo");
+    if (mapCloModalPlo) {
+      mapCloModalPlo.addEventListener("change", function () {
+        var programId = (mapCloModalProgram || {}).value;
+        var cloDropdown = document.getElementById("mapCloModalClo");
+        if (cloDropdown)
+          cloDropdown.innerHTML = '<option value="">Select a CLO…</option>';
+        if (!programId || !mapCloModalPlo.value) return;
+        fetchJson(
+          "/api/programs/" + programId + "/plo-mappings/unmapped-clos",
+        ).then(function (data) {
+          var clos = data.unmapped_clos || [];
+          cloDropdown.innerHTML = '<option value="">Select a CLO…</option>';
+          clos.forEach(function (clo) {
+            var o = document.createElement("option");
+            o.value = clo.outcome_id;
+            o.textContent =
+              clo.course_code +
+              " CLO " +
+              clo.clo_number +
+              ": " +
+              (clo.description || "");
+            cloDropdown.appendChild(o);
+          });
+        });
+      });
+    }
+
+    // Map CLO form submit — create draft + add entry
+    var mapCloForm = document.getElementById("mapCloForm");
+    if (mapCloForm) {
+      mapCloForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var programId = (document.getElementById("mapCloModalProgram") || {})
+          .value;
+        var ploId = (document.getElementById("mapCloModalPlo") || {}).value;
+        var cloId = (document.getElementById("mapCloModalClo") || {}).value;
+        if (!programId || !ploId || !cloId) return;
+
+        // Get or create draft, then add entry
+        postJson("/api/programs/" + programId + "/plo-mappings/draft", {})
+          .then(function (draftData) {
+            var mappingId = draftData.mapping.id;
+            return postJson(
+              "/api/programs/" +
+                programId +
+                "/plo-mappings/" +
+                mappingId +
+                "/entries",
+              { program_outcome_id: ploId, course_outcome_id: cloId },
+            );
+          })
+          .then(function () {
+            // Show success, hide modal, reload tree
+            // eslint-disable-next-line no-undef
+            var modal = bootstrap.Modal.getInstance(
+              document.getElementById("mapCloModal"),
+            );
+            if (modal) modal.hide();
+            mapCloForm.reset();
+            loadTree();
+          })
+          .catch(function (err) {
+            var alertEl = document.getElementById("mapCloModalAlert");
+            if (alertEl) {
+              alertEl.textContent = "Error: " + err.message;
+              alertEl.classList.remove("d-none");
+              alertEl.classList.add("alert-danger");
+            }
+          });
+      });
+    }
+
+    // Publish draft button
+    var mapCloPublishBtn = document.getElementById("mapCloPublishBtn");
+    if (mapCloPublishBtn) {
+      mapCloPublishBtn.addEventListener("click", function () {
+        var programId = (document.getElementById("mapCloModalProgram") || {})
+          .value;
+        if (!programId) return;
+
+        // Get draft, then publish it
+        postJson("/api/programs/" + programId + "/plo-mappings/draft", {})
+          .then(function (draftData) {
+            var mappingId = draftData.mapping.id;
+            return postJson(
+              "/api/programs/" +
+                programId +
+                "/plo-mappings/" +
+                mappingId +
+                "/publish",
+              {},
+            );
+          })
+          .then(function () {
+            // eslint-disable-next-line no-undef
+            var modal = bootstrap.Modal.getInstance(
+              document.getElementById("mapCloModal"),
+            );
+            if (modal) modal.hide();
+            loadTree();
+          })
+          .catch(function (err) {
+            var alertEl = document.getElementById("mapCloModalAlert");
+            if (alertEl) {
+              alertEl.textContent = "Error: " + err.message;
+              alertEl.classList.remove("d-none");
+              alertEl.classList.add("alert-danger");
+            }
+          });
       });
     }
 
