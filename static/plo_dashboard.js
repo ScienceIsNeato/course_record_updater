@@ -257,6 +257,7 @@
 
     const programs = data.programs || [];
     if (programs.length === 0) {
+      // nosemgrep: insecure-document-method -- static strings, no user input
       treeContainer.innerHTML = renderEmptyState(
         "fa-sitemap",
         "No Programs Found",
@@ -270,6 +271,7 @@
     for (const prog of programs) {
       html += renderProgramCard(prog, mode);
     }
+    // nosemgrep: insecure-document-method -- HTML built from escapeHtml()-sanitised data
     treeContainer.innerHTML = html;
     attachTreeListeners();
   }
