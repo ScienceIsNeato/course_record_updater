@@ -450,17 +450,22 @@ class ProgramOutcome(Base, TimestampMixin):  # type: ignore[valid-type,misc]
 
 
 class PloMapping(Base, TimestampMixin):  # type: ignore[valid-type,misc]
-    """Versioned PLO↔CLO mapping for a program.
+    """Versioned PLO↔CLO mapping for a program, optionally scoped to a term.
 
     Each version captures the full state of which CLOs map to which PLOs.
     Supports a draft/publish workflow: a single draft per program is edited
     incrementally and then published with an auto-assigned version number.
+
+    When ``term_id`` is set the mapping is term-specific: saving from the
+    cherry-picker automatically publishes it so the dashboard reflects
+    changes immediately.
     """
 
     __tablename__ = "plo_mappings"
 
     id = Column(String, primary_key=True, default=generate_uuid)
     program_id = Column(String, ForeignKey(PROGRAMS_ID), nullable=False)
+    term_id = Column(String, ForeignKey("terms.id"), nullable=True)
     version = Column(Integer, nullable=True)  # NULL while draft, assigned on publish
     status = Column(String, nullable=False, default="draft")  # "draft" | "published"
     description = Column(Text, nullable=True)  # Optional changelog / label
@@ -469,6 +474,7 @@ class PloMapping(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     extras = Column(JSON, default=dict)
 
     program = relationship("Program", backref="plo_mappings")
+    term = relationship("Term")
     created_by = relationship("User")
     entries = relationship(
         "PloMappingEntry",

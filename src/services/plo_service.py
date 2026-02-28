@@ -322,7 +322,9 @@ def _resolve_mapping(program_id: str) -> Optional[Dict[str, Any]]:
     return mapping
 
 
-def get_plo_clo_picker(program_id: str, plo_id: str) -> Dict[str, Any]:
+def get_plo_clo_picker(
+    program_id: str, plo_id: str, term_id: Optional[str] = None
+) -> Dict[str, Any]:
     """Return all program CLOs split by mapping status for a specific PLO.
 
     Used by the cherry-picker UI to show two panels:
@@ -331,8 +333,19 @@ def get_plo_clo_picker(program_id: str, plo_id: str) -> Dict[str, Any]:
 
     Each item in *available* includes ``mapped_to_plo_id`` when the CLO
     is already assigned to a different PLO in the same mapping.
+
+    When *term_id* is provided the term-specific mapping is used first,
+    falling back to the global (non-term) mapping.
     """
-    mapping = _resolve_mapping(program_id)
+    mapping: Optional[Dict[str, Any]] = None
+
+    # Prefer term-specific mapping when a term is selected
+    if term_id:
+        mapping = database_service.get_term_plo_mapping(program_id, term_id)
+
+    # Fall back to draft → latest published (non-term)
+    if not mapping:
+        mapping = _resolve_mapping(program_id)
 
     mapped_to_this: set[str] = set()
     mapped_to_other: Dict[str, str] = {}  # clo_id → plo_id
@@ -422,3 +435,31 @@ def sync_plo_clo_mappings(
         mapping_id,
     )
     return updated or {}
+
+
+def save_term_plo_clo_mappings(
+    program_id: str,
+    term_id: str,
+    plo_id: str,
+    clo_ids: List[str],
+    user_id: str,
+) -> Dict[str, Any]:
+    """Save PLO-CLO mappings for a specific term (auto-published).
+
+    Unlike :func:`sync_plo_clo_mappings` this bypasses the draft workflow.
+    The mapping is stored as published so the dashboard tree reflects
+    changes immediately.
+
+    Returns the refreshed term-specific mapping dict.
+    """
+    result = database_service.save_term_plo_mapping(
+        program_id, term_id, plo_id, clo_ids, user_id
+    )
+    logger.info(
+        "Saved term-specific mapping for PLO %s, term %s, program %s (%d CLOs)",
+        plo_id,
+        term_id,
+        program_id,
+        len(clo_ids),
+    )
+    return result

@@ -709,6 +709,7 @@
         var modal = document.getElementById("mapCloModal");
         if (modal) {
           var programDropdown = document.getElementById("mapCloModalProgram");
+          var termDropdown = document.getElementById("mapCloModalTerm");
           if (programDropdown && programSelect) {
             programDropdown.innerHTML = "";
             Array.from(programSelect.options).forEach(function (opt) {
@@ -719,6 +720,19 @@
                 programDropdown.appendChild(o);
               }
             });
+            // Populate term dropdown from the page term filter
+            if (termDropdown && termSelect) {
+              termDropdown.innerHTML = "";
+              Array.from(termSelect.options).forEach(function (opt) {
+                if (opt.value) {
+                  var o = document.createElement("option");
+                  o.value = opt.value;
+                  o.textContent = opt.textContent;
+                  if (opt.value === termSelect.value) o.selected = true;
+                  termDropdown.appendChild(o);
+                }
+              });
+            }
             // Reset dependent controls
             var ploDropdown = document.getElementById("mapCloModalPlo");
             if (ploDropdown)
@@ -775,17 +789,19 @@
     if (mapCloModalPlo) {
       mapCloModalPlo.addEventListener("change", function () {
         var programId = (mapCloModalProgram || {}).value;
+        var termId = (document.getElementById("mapCloModalTerm") || {}).value;
         var picker = document.getElementById("mapCloPickerContainer");
         if (picker) picker.style.display = "none";
         hideMapCloAlert();
         if (!programId || !mapCloModalPlo.value) return;
-        fetchJson(
+        var url =
           "/api/programs/" +
-            programId +
-            "/plos/" +
-            mapCloModalPlo.value +
-            "/clo-picker",
-        ).then(function (data) {
+          programId +
+          "/plos/" +
+          mapCloModalPlo.value +
+          "/clo-picker";
+        if (termId) url += "?term_id=" + encodeURIComponent(termId);
+        fetchJson(url).then(function (data) {
           var mapped = data.mapped || [];
           var available = data.available || [];
           var courseCount = data.course_count || 0;
@@ -816,19 +832,30 @@
       });
     }
 
+    // Also re-fetch cherry-picker when term changes
+    var mapCloModalTerm = document.getElementById("mapCloModalTerm");
+    if (mapCloModalTerm) {
+      mapCloModalTerm.addEventListener("change", function () {
+        // Re-trigger PLO change handler to reload picker with new term
+        if (mapCloModalPlo && mapCloModalPlo.value) {
+          mapCloModalPlo.dispatchEvent(new Event("change"));
+        }
+      });
+    }
+
     // Cherry picker — move buttons
     var moveCloLeft = document.getElementById("moveCloLeft");
     var moveCloRight = document.getElementById("moveCloRight");
 
     if (moveCloLeft) {
       moveCloLeft.addEventListener("click", function () {
-        moveCheckedItems("availableCloList", "mappedCloList");
+        moveSelectedItems("availableCloList", "mappedCloList");
         updatePickerCounts();
       });
     }
     if (moveCloRight) {
       moveCloRight.addEventListener("click", function () {
-        moveCheckedItems("mappedCloList", "availableCloList");
+        moveSelectedItems("mappedCloList", "availableCloList");
         updatePickerCounts();
       });
     }
@@ -840,17 +867,20 @@
         var programId = (document.getElementById("mapCloModalProgram") || {})
           .value;
         var ploId = (document.getElementById("mapCloModalPlo") || {}).value;
+        var termId = (document.getElementById("mapCloModalTerm") || {}).value;
         if (!programId || !ploId) return;
 
         var mappedList = document.getElementById("mappedCloList");
         var cloIds = [];
         if (mappedList) {
-          mappedList
-            .querySelectorAll('input[type="checkbox"]')
-            .forEach(function (cb) {
-              cloIds.push(cb.value);
-            });
+          mappedList.querySelectorAll(".picker-item").forEach(function (item) {
+            var id = item.getAttribute("data-clo-id");
+            if (id) cloIds.push(id);
+          });
         }
+
+        var body = { clo_ids: cloIds };
+        if (termId) body.term_id = termId;
 
         // PUT to sync endpoint
         fetch(
@@ -862,7 +892,7 @@
               Accept: "application/json",
               "X-CSRFToken": csrfToken(),
             },
-            body: JSON.stringify({ clo_ids: cloIds }),
+            body: JSON.stringify(body),
           },
         )
           .then(function (resp) {
@@ -870,7 +900,11 @@
             return resp.json();
           })
           .then(function () {
-            showMapCloAlert("Mappings saved to draft successfully.", "success");
+            showMapCloAlert(
+              "Mappings saved" +
+                (termId ? " for the selected term." : " to draft."),
+              "success",
+            );
             loadTree();
           })
           .catch(function (err) {
@@ -879,7 +913,7 @@
       });
     }
 
-    // Publish draft button
+    // Publish draft button (hidden when term-based save is active)
     var mapCloPublishBtn = document.getElementById("mapCloPublishBtn");
     if (mapCloPublishBtn) {
       mapCloPublishBtn.addEventListener("click", function () {
@@ -926,6 +960,7 @@
 
   /**
    * Render a list of CLOs into a picker panel.
+   * Each item is a clickable row — click to toggle selection.
    * @param {string} listId  DOM id of the list-group container
    * @param {Array}  clos    Array of CLO objects
    */
@@ -941,14 +976,11 @@
     }
 
     clos.forEach(function (clo) {
-      var label = document.createElement("label");
-      label.className =
-        "list-group-item list-group-item-action d-flex align-items-start gap-2 py-2";
-
-      var cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.className = "form-check-input mt-1";
-      cb.value = clo.outcome_id;
+      var item = document.createElement("div");
+      item.className =
+        "list-group-item list-group-item-action d-flex align-items-start gap-2 py-2 picker-item";
+      item.setAttribute("data-clo-id", clo.outcome_id);
+      item.style.cursor = "pointer";
 
       var div = document.createElement("div");
       var courseCode =
@@ -968,14 +1000,19 @@
         div.appendChild(badge);
       }
 
-      label.appendChild(cb);
-      label.appendChild(div);
-      list.appendChild(label);
+      item.appendChild(div);
+      list.appendChild(item);
+
+      // Click to toggle selection
+      item.addEventListener("click", function () {
+        this.classList.toggle("selected");
+        this.classList.toggle("active");
+      });
     });
   }
 
-  /** Move checked items from one picker panel to another. */
-  function moveCheckedItems(fromId, toId) {
+  /** Move selected (clicked) items from one picker panel to another. */
+  function moveSelectedItems(fromId, toId) {
     var fromList = document.getElementById(fromId);
     var toList = document.getElementById(toId);
     if (!fromList || !toList) return;
@@ -984,20 +1021,18 @@
     var placeholder = toList.querySelector(".text-center.text-muted");
     if (placeholder) placeholder.remove();
 
-    var checked = fromList.querySelectorAll('input[type="checkbox"]:checked');
-    checked.forEach(function (cb) {
-      var item = cb.closest(".list-group-item");
-      if (item) {
-        cb.checked = false;
-        // Remove "Mapped to another PLO" badge when moving to mapped panel
-        var badge = item.querySelector(".badge.bg-warning");
-        if (badge) badge.remove();
-        toList.appendChild(item);
-      }
+    var selected = fromList.querySelectorAll(".picker-item.selected");
+    selected.forEach(function (item) {
+      item.classList.remove("selected");
+      item.classList.remove("active");
+      // Remove "Mapped to another PLO" badge when moving to mapped panel
+      var badge = item.querySelector(".badge.bg-warning");
+      if (badge) badge.remove();
+      toList.appendChild(item);
     });
 
     // Show placeholder if source is now empty
-    if (fromList.children.length === 0) {
+    if (fromList.querySelectorAll(".picker-item").length === 0) {
       fromList.innerHTML =
         '<div class="text-center text-muted py-3 small">No CLOs</div>';
     }
@@ -1011,14 +1046,12 @@
     var availableCount = document.getElementById("availableCloCount");
 
     if (mappedCount && mappedList) {
-      mappedCount.textContent = mappedList.querySelectorAll(
-        'input[type="checkbox"]',
-      ).length;
+      mappedCount.textContent =
+        mappedList.querySelectorAll(".picker-item").length;
     }
     if (availableCount && availableList) {
-      availableCount.textContent = availableList.querySelectorAll(
-        'input[type="checkbox"]',
-      ).length;
+      availableCount.textContent =
+        availableList.querySelectorAll(".picker-item").length;
     }
   }
 
@@ -1068,7 +1101,7 @@
       showMapCloAlert: showMapCloAlert,
       hideMapCloAlert: hideMapCloAlert,
       renderPickerPanel: renderPickerPanel,
-      moveCheckedItems: moveCheckedItems,
+      moveSelectedItems: moveSelectedItems,
       updatePickerCounts: updatePickerCounts,
     };
   }

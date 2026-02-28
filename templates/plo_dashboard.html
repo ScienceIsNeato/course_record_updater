@@ -170,18 +170,24 @@
             </div>
             <div class="modal-body">
                 <p class="text-muted small">
-                    Select a program and PLO, then assign course learning outcomes using the
-                    panels below. Move CLOs between panels and click Save to update the draft.
-                    Publish when you're ready to make the mapping the version of record.
+                    Select a program, term, and PLO, then assign course learning outcomes using the
+                    panels below. Click items to select them, use the arrows to move them between
+                    panels, and click Save to apply the mapping for the selected term.
                 </p>
                 <div class="row g-3 mb-3">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label for="mapCloModalProgram" class="form-label">Program *</label>
                         <select class="form-select" id="mapCloModalProgram" required>
                             <option value="">Select a program…</option>
                         </select>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
+                        <label for="mapCloModalTerm" class="form-label">Term *</label>
+                        <select class="form-select" id="mapCloModalTerm" required>
+                            <option value="">Select a term…</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
                         <label for="mapCloModalPlo" class="form-label">Program Outcome *</label>
                         <select class="form-select" id="mapCloModalPlo" required>
                             <option value="">Select a PLO…</option>
@@ -231,7 +237,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-outline-success" id="mapCloPublishBtn">
+                <button type="button" class="btn btn-outline-success d-none" id="mapCloPublishBtn">
                     <i class="fas fa-check-double"></i> Publish Draft
                 </button>
                 <button type="button" class="btn btn-primary" id="mapCloSaveBtn">

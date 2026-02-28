@@ -2611,6 +2611,133 @@ class SQLDatabase(DatabaseInterface):
             )
             return to_dict(mapping) if mapping else None
 
+    def get_term_plo_mapping(
+        self, program_id: str, term_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Get the published mapping for a specific program + term."""
+        with self.sql.session_scope() as session:
+            mapping = (
+                session.execute(
+                    select(PloMapping)
+                    .where(
+                        and_(
+                            PloMapping.program_id == program_id,
+                            PloMapping.term_id == term_id,
+                            PloMapping.status == "published",
+                        )
+                    )
+                    .options(selectinload(PloMapping.entries))
+                )
+                .scalars()
+                .first()
+            )
+            return to_dict(mapping) if mapping else None
+
+    def save_term_plo_mapping(
+        self,
+        program_id: str,
+        term_id: str,
+        plo_id: str,
+        clo_ids: list[str],
+        user_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Save PLO-CLO mappings for a specific term (auto-published).
+
+        Creates or updates a term-specific mapping. Unlike the draft/publish
+        workflow this writes directly as published so the dashboard tree
+        reflects changes immediately.
+        """
+        from datetime import datetime, timezone
+
+        with self.sql.session_scope() as session:
+            # Find existing term mapping
+            mapping = (
+                session.execute(
+                    select(PloMapping)
+                    .where(
+                        and_(
+                            PloMapping.program_id == program_id,
+                            PloMapping.term_id == term_id,
+                            PloMapping.status == "published",
+                        )
+                    )
+                    .options(selectinload(PloMapping.entries))
+                )
+                .scalars()
+                .first()
+            )
+
+            if not mapping:
+                # Seed from latest published (non-term) mapping
+                latest = (
+                    session.execute(
+                        select(PloMapping)
+                        .where(
+                            and_(
+                                PloMapping.program_id == program_id,
+                                PloMapping.term_id.is_(None),
+                                PloMapping.status == "published",
+                            )
+                        )
+                        .order_by(PloMapping.version.desc())
+                        .options(selectinload(PloMapping.entries))
+                    )
+                    .scalars()
+                    .first()
+                )
+
+                mapping = PloMapping(
+                    id=str(uuid.uuid4()),
+                    program_id=program_id,
+                    term_id=term_id,
+                    version=1,
+                    status="published",
+                    created_by_user_id=user_id,
+                    published_at=datetime.now(timezone.utc),
+                )
+                session.add(mapping)
+                session.flush()
+
+                # Copy entries from latest published version
+                if latest:
+                    for entry in latest.entries:
+                        # Skip entries for the PLO we're about to update
+                        if str(entry.program_outcome_id) == str(plo_id):
+                            continue
+                        session.add(
+                            PloMappingEntry(
+                                id=str(uuid.uuid4()),
+                                mapping_id=mapping.id,
+                                program_outcome_id=entry.program_outcome_id,
+                                course_outcome_id=entry.course_outcome_id,
+                            )
+                        )
+
+            # Remove existing entries for this PLO + any CLOs being reassigned
+            clo_ids_set = {str(c) for c in clo_ids}
+            for entry in list(mapping.entries):
+                if str(entry.program_outcome_id) == str(plo_id):
+                    session.delete(entry)
+                elif str(entry.course_outcome_id) in clo_ids_set:
+                    session.delete(entry)
+            session.flush()
+
+            # Add fresh entries
+            for clo_id in clo_ids:
+                session.add(
+                    PloMappingEntry(
+                        id=str(uuid.uuid4()),
+                        mapping_id=mapping.id,
+                        program_outcome_id=plo_id,
+                        course_outcome_id=clo_id,
+                    )
+                )
+
+            mapping.published_at = datetime.now(timezone.utc)
+            session.flush()
+            _ = mapping.entries  # eager-load
+            return to_dict(mapping)
+
     # ------------------------------------------------------------------
     # Delete operations (for testing/cleanup)
     # ------------------------------------------------------------------

@@ -44,7 +44,7 @@ const {
   showMapCloAlert,
   hideMapCloAlert,
   renderPickerPanel,
-  moveCheckedItems,
+  moveSelectedItems,
   updatePickerCounts,
 } = require("../../../static/plo_dashboard");
 
@@ -1099,14 +1099,14 @@ describe("DOM-dependent functions", () => {
       expect(picker.style.display).toBe("");
 
       // Mapped panel should have 1 CLO
-      const mappedItems = document.querySelectorAll('#mappedCloList input[type="checkbox"]');
+      const mappedItems = document.querySelectorAll('#mappedCloList .picker-item');
       expect(mappedItems.length).toBe(1);
-      expect(mappedItems[0].value).toBe("clo-1");
+      expect(mappedItems[0].getAttribute("data-clo-id")).toBe("clo-1");
 
       // Available panel should have 1 CLO
-      const availableItems = document.querySelectorAll('#availableCloList input[type="checkbox"]');
+      const availableItems = document.querySelectorAll('#availableCloList .picker-item');
       expect(availableItems.length).toBe(1);
-      expect(availableItems[0].value).toBe("clo-2");
+      expect(availableItems[0].getAttribute("data-clo-id")).toBe("clo-2");
     });
 
     it("saves mappings via PUT when save button is clicked", async () => {
@@ -1433,6 +1433,9 @@ describe("DOM-dependent functions", () => {
           <select id="mapCloModalProgram">
             <option value="">Select a program…</option>
           </select>
+          <select id="mapCloModalTerm">
+            <option value="">Select a term…</option>
+          </select>
           <select id="mapCloModalPlo">
             <option value="">Select a PLO…</option>
           </select>
@@ -1660,17 +1663,31 @@ describe("DOM-dependent functions", () => {
       setBody('<div class="list-group" id="testList"></div>');
     });
 
-    it("renders CLO items with checkboxes", () => {
+    it("renders CLO items with data-clo-id attributes", () => {
       renderPickerPanel("testList", [
         { outcome_id: "clo-1", clo_number: 1, description: "First CLO", course: { course_number: "BIO-101" } },
         { outcome_id: "clo-2", clo_number: 2, description: "Second CLO", course: { course_number: "BIO-201" } },
       ]);
 
       const list = document.getElementById("testList");
-      const checkboxes = list.querySelectorAll('input[type="checkbox"]');
-      expect(checkboxes.length).toBe(2);
-      expect(checkboxes[0].value).toBe("clo-1");
-      expect(checkboxes[1].value).toBe("clo-2");
+      const items = list.querySelectorAll(".picker-item");
+      expect(items.length).toBe(2);
+      expect(items[0].getAttribute("data-clo-id")).toBe("clo-1");
+      expect(items[1].getAttribute("data-clo-id")).toBe("clo-2");
+    });
+
+    it("toggles selected class on click", () => {
+      renderPickerPanel("testList", [
+        { outcome_id: "clo-1", clo_number: 1, description: "First CLO", course: { course_number: "BIO-101" } },
+      ]);
+
+      const item = document.querySelector(".picker-item");
+      expect(item.classList.contains("selected")).toBe(false);
+      item.click();
+      expect(item.classList.contains("selected")).toBe(true);
+      expect(item.classList.contains("active")).toBe(true);
+      item.click();
+      expect(item.classList.contains("selected")).toBe(false);
     });
 
     it("shows 'No CLOs' placeholder when list is empty", () => {
@@ -1678,7 +1695,7 @@ describe("DOM-dependent functions", () => {
 
       const list = document.getElementById("testList");
       expect(list.textContent).toContain("No CLOs");
-      expect(list.querySelectorAll('input[type="checkbox"]').length).toBe(0);
+      expect(list.querySelectorAll(".picker-item").length).toBe(0);
     });
 
     it("shows 'Mapped to another PLO' badge when mapped_to_plo_id is set", () => {
@@ -1697,52 +1714,53 @@ describe("DOM-dependent functions", () => {
     });
   });
 
-  describe("moveCheckedItems", () => {
+  describe("moveSelectedItems", () => {
     beforeEach(() => {
       setBody(`
         <div class="list-group" id="fromList">
-          <label class="list-group-item"><input type="checkbox" value="a" checked>A</label>
-          <label class="list-group-item"><input type="checkbox" value="b">B</label>
-          <label class="list-group-item"><input type="checkbox" value="c" checked>C</label>
+          <div class="list-group-item picker-item selected active" data-clo-id="a">A</div>
+          <div class="list-group-item picker-item" data-clo-id="b">B</div>
+          <div class="list-group-item picker-item selected active" data-clo-id="c">C</div>
         </div>
         <div class="list-group" id="toList"></div>
       `);
     });
 
-    it("moves only checked items to the target list", () => {
-      moveCheckedItems("fromList", "toList");
+    it("moves only selected items to the target list", () => {
+      moveSelectedItems("fromList", "toList");
 
       const fromList = document.getElementById("fromList");
       const toList = document.getElementById("toList");
 
-      // Only unchecked item 'b' remains in source
-      expect(fromList.querySelectorAll('input[type="checkbox"]').length).toBe(1);
-      expect(fromList.querySelector('input[type="checkbox"]').value).toBe("b");
+      // Only unselected item 'b' remains in source
+      expect(fromList.querySelectorAll(".picker-item").length).toBe(1);
+      expect(fromList.querySelector(".picker-item").getAttribute("data-clo-id")).toBe("b");
 
-      // Checked items 'a' and 'c' moved to target
-      const movedCbs = toList.querySelectorAll('input[type="checkbox"]');
-      expect(movedCbs.length).toBe(2);
-      const movedValues = Array.from(movedCbs).map((cb) => cb.value);
-      expect(movedValues).toContain("a");
-      expect(movedValues).toContain("c");
+      // Selected items 'a' and 'c' moved to target
+      const movedItems = toList.querySelectorAll(".picker-item");
+      expect(movedItems.length).toBe(2);
+      const movedIds = Array.from(movedItems).map((el) => el.getAttribute("data-clo-id"));
+      expect(movedIds).toContain("a");
+      expect(movedIds).toContain("c");
     });
 
-    it("unchecks items after moving them", () => {
-      moveCheckedItems("fromList", "toList");
+    it("deselects items after moving them", () => {
+      moveSelectedItems("fromList", "toList");
 
       const toList = document.getElementById("toList");
-      toList.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
-        expect(cb.checked).toBe(false);
+      toList.querySelectorAll(".picker-item").forEach((item) => {
+        expect(item.classList.contains("selected")).toBe(false);
+        expect(item.classList.contains("active")).toBe(false);
       });
     });
 
     it("shows placeholder when source becomes empty", () => {
-      // Check all items
-      document.querySelectorAll('#fromList input[type="checkbox"]').forEach((cb) => {
-        cb.checked = true;
+      // Select all items
+      document.querySelectorAll('#fromList .picker-item').forEach((item) => {
+        item.classList.add("selected");
       });
 
-      moveCheckedItems("fromList", "toList");
+      moveSelectedItems("fromList", "toList");
 
       const fromList = document.getElementById("fromList");
       expect(fromList.textContent).toContain("No CLOs");
@@ -1750,20 +1768,20 @@ describe("DOM-dependent functions", () => {
 
     it("removes 'Mapped to another PLO' badge when moving", () => {
       // Add a badge to item A
-      const itemA = document.querySelector('#fromList .list-group-item');
+      const itemA = document.querySelector('#fromList .picker-item');
       const badge = document.createElement("span");
       badge.className = "badge bg-warning text-dark";
       badge.textContent = "Mapped to another PLO";
       itemA.appendChild(badge);
 
-      moveCheckedItems("fromList", "toList");
+      moveSelectedItems("fromList", "toList");
 
       const toList = document.getElementById("toList");
       expect(toList.querySelector(".badge.bg-warning")).toBeNull();
     });
 
     it("does not crash when lists are missing", () => {
-      expect(() => moveCheckedItems("nonExistent1", "nonExistent2")).not.toThrow();
+      expect(() => moveSelectedItems("nonExistent1", "nonExistent2")).not.toThrow();
     });
   });
 
@@ -1771,11 +1789,11 @@ describe("DOM-dependent functions", () => {
     beforeEach(() => {
       setBody(`
         <div id="mappedCloList">
-          <label><input type="checkbox" value="a">A</label>
-          <label><input type="checkbox" value="b">B</label>
+          <div class="picker-item" data-clo-id="a">A</div>
+          <div class="picker-item" data-clo-id="b">B</div>
         </div>
         <div id="availableCloList">
-          <label><input type="checkbox" value="c">C</label>
+          <div class="picker-item" data-clo-id="c">C</div>
         </div>
         <span id="mappedCloCount">0</span>
         <span id="availableCloCount">0</span>

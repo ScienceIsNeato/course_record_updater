@@ -133,6 +133,7 @@ def _build_course_and_clo_lookups(
 def _build_program_node(
     prog: Dict[str, Any],
     so_by_outcome: Dict[str, List[Dict[str, Any]]],
+    term_id: Optional[str] = None,
 ) -> Tuple[Dict[str, Any], int, int, int]:
     """Build a program-level node with nested PLO/CLO data.
 
@@ -142,7 +143,14 @@ def _build_program_node(
     display_mode = get_assessment_display_mode(prog)
 
     plos = database_service.get_program_outcomes(pid)
-    mapping = database_service.get_latest_published_plo_mapping(pid)
+
+    # Prefer term-specific mapping when a term is selected
+    mapping = None
+    if term_id:
+        mapping = database_service.get_term_plo_mapping(pid, term_id)
+    if not mapping:
+        mapping = database_service.get_latest_published_plo_mapping(pid)
+
     entries = mapping.get("entries", []) if mapping else []
 
     # Index entries by PLO id
@@ -265,7 +273,7 @@ def get_plo_dashboard_tree(
 
     for prog in all_programs:
         node, plo_count, with_data, missing_data = _build_program_node(
-            prog, so_by_outcome
+            prog, so_by_outcome, term_id=term_id
         )
         program_nodes.append(node)
         total_plos += plo_count

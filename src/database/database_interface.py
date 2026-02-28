@@ -669,3 +669,22 @@ class DatabaseInterface(ABC):
     ) -> Optional[Dict[str, Any]]:
         """Get the most recent published mapping for a program."""
         raise NotImplementedError
+
+    @abstractmethod
+    def get_term_plo_mapping(
+        self, program_id: str, term_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Get the published PLO mapping for a specific program and term."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def save_term_plo_mapping(
+        self,
+        program_id: str,
+        term_id: str,
+        plo_id: str,
+        clo_ids: List[str],
+        user_id: str,
+    ) -> Dict[str, Any]:
+        """Save PLO-CLO mappings for a specific term (auto-published)."""
+        raise NotImplementedError
