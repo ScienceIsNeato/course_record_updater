@@ -8,7 +8,6 @@ session expiry checks, and other security-related session operations.
 import hashlib
 import secrets
 from datetime import datetime, timezone
-from typing import Optional
 
 from flask import request, session
 
@@ -26,7 +25,6 @@ logger = get_logger(__name__)
 class SessionSecurityError(Exception):
     """Raised when session security validation fails"""
 
-    pass
 
 
 class SessionSecurity:

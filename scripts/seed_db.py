@@ -1389,9 +1389,15 @@ class DemoSeeder(BaselineSeeder):
         """Add PLO-CLO mapping entries to a draft, returning count added."""
         entry_count = 0
         for entry in entries:
-            plo_num = int(entry["plo_number"])
+            try:
+                plo_num = int(entry["plo_number"])
+                clo_num = int(entry["clo_number"])
+            except (ValueError, TypeError) as e:
+                self.log(
+                    f"   ⚠️ Invalid number in mapping entry for " f"{program_code}: {e}"
+                )
+                continue
             course_code = entry["course_code"]
-            clo_num = int(entry["clo_number"])
 
             plo_id = plo_lookup.get(plo_num)
             clo_id = clo_lookup.get((course_code, clo_num))

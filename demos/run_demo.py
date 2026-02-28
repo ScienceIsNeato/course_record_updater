@@ -747,7 +747,6 @@ class DemoRunner:
         """Collect logs for this step (screenshots removed - not needed)."""
         # Artifacts are now just for tracking purposes in JSON
         # Actual log files are written by the application itself
-        pass
 
     def run_command(self, cmd: str, label: str = "Command") -> bool:
         """Run a shell command and return success status."""

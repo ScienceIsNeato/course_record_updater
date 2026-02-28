@@ -29,8 +29,8 @@ def get_tree() -> ResponseReturnValue:
     if not institution_id:
         return jsonify({"success": False, "error": "No institution context"}), 403
 
-    term_id = request.args.get("term_id")
-    program_id = request.args.get("program_id")
+    term_id = request.args.get("term_id") or None
+    program_id = request.args.get("program_id") or None
 
     try:
         tree = get_plo_dashboard_tree(

@@ -52,7 +52,8 @@
       return { text: "N/A", cssClass: "rate-na" };
     }
 
-    const pct = Math.round((passed / took) * 100);
+    const safePassed = passed != null ? passed : 0;
+    const pct = Math.round((safePassed / took) * 100);
     const binary = pct >= BINARY_PASS_THRESHOLD * 100 ? "S" : "U";
 
     let cssClass;
@@ -115,38 +116,37 @@
       termSelect.innerHTML = "";
       if (terms.length === 0) {
         termSelect.innerHTML = '<option value="">No terms available</option>';
-        return;
-      }
-
-      // Normalize: API may return term_id instead of id
-      for (const t of terms) {
-        if (!t.id && t.term_id) t.id = t.term_id;
-        if (!t.name && t.term_name) t.name = t.term_name;
-      }
-
-      // Find the active / current term
-      let defaultTermId = "";
-      for (const t of terms) {
-        if (t.status === "active" || t.active) {
-          defaultTermId = t.id;
-          break;
+      } else {
+        // Normalize: API may return term_id instead of id
+        for (const t of terms) {
+          if (!t.id && t.term_id) t.id = t.term_id;
+          if (!t.name && t.term_name) t.name = t.term_name;
         }
-      }
-      if (!defaultTermId && terms.length > 0) {
-        defaultTermId = terms[terms.length - 1].id; // fallback to last
-      }
 
-      // Sort descending by start_date so most recent is first
-      terms.sort(function (a, b) {
-        return (b.start_date || "").localeCompare(a.start_date || "");
-      });
+        // Sort descending by start_date so most recent is first
+        terms.sort(function (a, b) {
+          return (b.start_date || "").localeCompare(a.start_date || "");
+        });
 
-      for (const t of terms) {
-        const opt = document.createElement("option");
-        opt.value = t.id;
-        opt.textContent = t.name || t.term_code || t.id;
-        if (t.id === defaultTermId) opt.selected = true;
-        termSelect.appendChild(opt);
+        // Find the active / current term (after sort)
+        let defaultTermId = "";
+        for (const t of terms) {
+          if (t.status === "active" || t.active) {
+            defaultTermId = t.id;
+            break;
+          }
+        }
+        if (!defaultTermId && terms.length > 0) {
+          defaultTermId = terms[0].id; // fallback to most recent (first after sort)
+        }
+
+        for (const t of terms) {
+          const opt = document.createElement("option");
+          opt.value = t.id;
+          opt.textContent = t.name || t.term_code || t.id;
+          if (t.id === defaultTermId) opt.selected = true;
+          termSelect.appendChild(opt);
+        }
       }
     } catch (err) {
       console.error("[PLO Dashboard] Failed to load terms:", err);
@@ -236,7 +236,7 @@
   function renderProgramCard(prog) {
     const versionBadge = prog.mapping_version
       ? '<span class="badge bg-info plo-mapping-badge ms-2">v' +
-        prog.mapping_version +
+        escapeHtml(String(prog.mapping_version)) +
         "</span>"
       : '<span class="badge bg-warning text-dark plo-mapping-badge ms-2">No mapping</span>';
 
@@ -272,10 +272,10 @@
       "</div>" +
       "<div>" +
       '<span class="badge bg-primary rounded-pill me-1">' +
-      prog.plo_count +
+      escapeHtml(String(prog.plo_count)) +
       " PLOs</span>" +
       '<span class="badge bg-secondary rounded-pill">' +
-      prog.mapped_clo_count +
+      escapeHtml(String(prog.mapped_clo_count)) +
       " CLOs</span>" +
       "</div>" +
       "</div>";
@@ -323,7 +323,7 @@
       '<div class="d-flex align-items-center flex-grow-1">' +
       '<i class="fas fa-chevron-right plo-expand-icon me-2"></i>' +
       '<span class="plo-number">' +
-      plo.plo_number +
+      escapeHtml(String(plo.plo_number)) +
       "</span>" +
       '<span class="plo-description">' +
       escapeHtml(plo.description) +
@@ -331,7 +331,7 @@
       "</div>" +
       ploAssessHtml +
       '<span class="badge bg-secondary rounded-pill">' +
-      plo.mapped_clo_count +
+      escapeHtml(String(plo.mapped_clo_count)) +
       " CLOs</span>" +
       "</div>";
 
@@ -454,10 +454,12 @@
   /* ── Empty state helper ────────────────────────────────────── */
 
   function renderEmptyState(icon, title, subtitle) {
+    // Sanitize icon class: only allow letters, digits, hyphens
+    const safeIcon = (icon || "").replace(/[^a-zA-Z0-9-]/g, "");
     return (
       '<div class="plo-empty-state">' +
       '<i class="fas ' +
-      icon +
+      safeIcon +
       '"></i>' +
       '<div class="empty-title">' +
       escapeHtml(title) +

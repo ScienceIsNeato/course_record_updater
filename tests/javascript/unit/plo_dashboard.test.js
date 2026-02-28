@@ -4,8 +4,8 @@ const { setBody } = require("../helpers/dom");
 // before requiring so the IIFE doesn't crash.
 beforeAll(() => {
   setBody(`
-    <select id="ploTermSelect"></select>
-    <select id="ploProgramSelect"></select>
+    <select id="ploTermFilter"></select>
+    <select id="ploProgramFilter"></select>
     <button id="ploRefreshBtn"></button>
     <div id="ploTreeContainer"></div>
     <span id="statPrograms"></span>
@@ -167,6 +167,12 @@ describe("formatAssessment", () => {
 
     it("defaults to percentage for unknown mode", () => {
       expect(formatAssessment(10, 8, "unknown").text).toBe("80%");
+    });
+
+    it("treats null passed as 0 when took is valid", () => {
+      const result = formatAssessment(30, null, "percentage");
+      expect(result.text).toBe("0%");
+      expect(result.cssClass).toBe("rate-low");
     });
   });
 });
@@ -708,7 +714,7 @@ describe("DOM-dependent functions", () => {
       expect(sel.innerHTML).toContain("BIOL");
     });
 
-    it("falls back to last term if none active", async () => {
+    it("falls back to most recent term if none active", async () => {
       global.fetch = jest
         .fn()
         .mockResolvedValueOnce({
@@ -716,7 +722,7 @@ describe("DOM-dependent functions", () => {
           json: async () => ({
             terms: [
               { id: "t1", name: "Spring 2025", start_date: "2025-01-15" },
-              { id: "t2", name: "Fall 2024", start_date: "2024-08-20" },
+              { id: "t2", name: "Fall 2025", start_date: "2025-08-20" },
             ],
           }),
         })
@@ -728,7 +734,7 @@ describe("DOM-dependent functions", () => {
       await loadFilters();
 
       const sel = document.getElementById("ploTermFilter");
-      // opt.selected = true sets the property, not the HTML attribute
+      // After sorting descending by start_date, t2 (Fall 2025) is first
       const selected = Array.from(sel.options).find((o) => o.selected);
       expect(selected).toBeDefined();
       expect(selected.value).toBe("t2");

@@ -151,6 +151,7 @@
           SELECTORS.assessmentContainer,
           "Unable to load assessment results",
         );
+        this.showError(SELECTORS.ploContainer, "Unable to load PLO data");
       }
     },
 

@@ -99,30 +99,13 @@ class TestPloDashboardIntegration:
 
         # Create published PLO mapping if we have CLOs
         if self.clo1_id and self.clo2_id:
-            mapping_id = db.create_plo_mapping(
-                {
-                    "program_id": self.prog_id,
-                    "version": 1,
-                    "status": "published",
-                    "institution_id": self.inst_id,
-                }
-            )
-            if mapping_id:
-                db.add_plo_mapping_entry(
-                    {
-                        "mapping_id": mapping_id,
-                        "program_outcome_id": self.plo1_id,
-                        "course_outcome_id": self.clo1_id,
-                    }
-                )
-                db.add_plo_mapping_entry(
-                    {
-                        "mapping_id": mapping_id,
-                        "program_outcome_id": self.plo2_id,
-                        "course_outcome_id": self.clo2_id,
-                    }
-                )
-            self.mapping_id = mapping_id
+            draft = db.get_or_create_plo_mapping_draft(self.prog_id)
+            draft_id = draft.get("id") or draft.get("mapping_id")
+            if draft_id:
+                db.add_plo_mapping_entry(draft_id, self.plo1_id, self.clo1_id)
+                db.add_plo_mapping_entry(draft_id, self.plo2_id, self.clo2_id)
+                db.publish_plo_mapping(draft_id, "Initial mapping")
+            self.mapping_id = draft_id
 
     def _login_admin(self):
         """Authenticate as institution admin."""
