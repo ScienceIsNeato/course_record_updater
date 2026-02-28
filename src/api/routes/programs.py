@@ -20,6 +20,7 @@ from src.database.database_service import (
     bulk_remove_courses_from_program,
     create_program,
     delete_program,
+    get_course_by_id,
     get_course_by_number,
     get_courses_by_program,
     get_program_by_id,
@@ -321,7 +322,7 @@ def add_course_to_program_api(program_id: str) -> ResponseReturnValue:
         if not program:
             return jsonify({"success": False, "error": PROGRAM_NOT_FOUND_MSG}), 404
 
-        course = get_course_by_number(course_id)
+        course = get_course_by_id(course_id)
         if not course:
             return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
 

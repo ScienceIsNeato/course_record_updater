@@ -341,3 +341,65 @@ class TestProgramWorkflow(CommonAuthMixin):
         delete_data = delete_response.get_json()
         assert delete_data["success"] is True
         assert "deleted successfully" in delete_data["message"]
+
+
+class TestAddCourseToProgram(CommonAuthMixin):
+    """Test adding a course to a program -- the UI sends a course_id (UUID)."""
+
+    def setup_method(self):
+        self.app = app
+        self.app.config["TESTING"] = True
+        self.client = self.app.test_client()
+        self._login_site_admin()
+
+    @patch("src.api.routes.programs.get_current_institution_id_safe")
+    @patch("src.api.routes.programs.get_program_by_id")
+    @patch("src.api.routes.programs.get_course_by_id")
+    @patch("src.api.routes.programs.add_course_to_program")
+    def test_add_course_with_uuid_course_id(
+        self, mock_add, mock_get_course, mock_get_prog, mock_inst
+    ):
+        """Adding a course by its UUID course_id should succeed (not 404)."""
+        mock_inst.return_value = "inst-1"
+        mock_get_prog.return_value = {"id": "prog-1", "name": "Biology"}
+        mock_get_course.return_value = {
+            "course_id": "uuid-course-1",
+            "course_number": "BIO-101",
+            "course_title": "Intro Bio",
+        }
+        mock_add.return_value = True
+
+        with patch(
+            "src.api.routes.programs.permission_required", lambda perm: lambda f: f
+        ):
+            resp = self.client.post(
+                "/api/programs/prog-1/courses",
+                json={"course_id": "uuid-course-1"},
+            )
+
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["success"] is True
+        mock_get_course.assert_called_once_with("uuid-course-1")
+        mock_add.assert_called_once_with("uuid-course-1", "prog-1")
+
+    @patch("src.api.routes.programs.get_current_institution_id_safe")
+    @patch("src.api.routes.programs.get_program_by_id")
+    @patch("src.api.routes.programs.get_course_by_id")
+    def test_add_course_with_nonexistent_id_returns_404(
+        self, mock_get_course, mock_get_prog, mock_inst
+    ):
+        """A course_id that doesn't exist should return 404."""
+        mock_inst.return_value = "inst-1"
+        mock_get_prog.return_value = {"id": "prog-1", "name": "Biology"}
+        mock_get_course.return_value = None
+
+        with patch(
+            "src.api.routes.programs.permission_required", lambda perm: lambda f: f
+        ):
+            resp = self.client.post(
+                "/api/programs/prog-1/courses",
+                json={"course_id": "no-such-id"},
+            )
+
+        assert resp.status_code == 404
