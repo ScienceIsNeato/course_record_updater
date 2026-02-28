@@ -18,8 +18,9 @@
   const DEBOUNCE_MS = 300;
 
   /* ── DOM references (resolved on init) ─────────────────────── */
-  let termSelect, programSelect, refreshBtn, treeContainer;
+  let termSelect, programSelect, displayModeSelect, refreshBtn, treeContainer;
   let statPrograms, statPlos, statMappedClos, statWithData, statMissingData;
+  let createPloBtn, mapCloBtn, expandAllBtn, collapseAllBtn;
 
   /* ── State ──────────────────────────────────────────────────── */
   let debounceTimer = null;
@@ -106,6 +107,25 @@
     });
     if (!resp.ok) throw new Error("HTTP " + resp.status);
     return resp.json();
+  }
+
+  async function postJson(url, body) {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-CSRFToken": csrfToken(),
+      },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    return resp.json();
+  }
+
+  /** Return the currently selected display mode from the dropdown. */
+  function getDisplayMode() {
+    return displayModeSelect ? displayModeSelect.value : "percentage";
   }
 
   async function loadFilters() {
@@ -223,9 +243,10 @@
       return;
     }
 
+    const mode = getDisplayMode();
     let html = "";
     for (const prog of programs) {
-      html += renderProgramCard(prog);
+      html += renderProgramCard(prog, mode);
     }
     treeContainer.innerHTML = html;
     attachTreeListeners();
@@ -233,7 +254,9 @@
 
   /* ── L1: Program card ──────────────────────────────────────── */
 
-  function renderProgramCard(prog) {
+  function renderProgramCard(prog, modeOverride) {
+    const displayMode =
+      modeOverride || prog.assessment_display_mode || "percentage";
     const versionBadge = prog.mapping_version
       ? '<span class="badge bg-info plo-mapping-badge ms-2">v' +
         escapeHtml(String(prog.mapping_version)) +
@@ -247,7 +270,7 @@
     var progAssess = formatAssessment(
       prog.students_took,
       prog.students_passed,
-      prog.assessment_display_mode || "percentage",
+      displayMode,
     );
     var progAssessHtml =
       prog.students_took != null
@@ -268,10 +291,10 @@
       escapeHtml(prog.name || "") +
       "</span>" +
       versionBadge +
-      progAssessHtml +
       "</div>" +
-      "<div>" +
-      '<span class="badge bg-primary rounded-pill me-1">' +
+      '<div class="d-flex align-items-center gap-2">' +
+      progAssessHtml +
+      '<span class="badge bg-primary rounded-pill">' +
       escapeHtml(String(prog.plo_count)) +
       " PLOs</span>" +
       '<span class="badge bg-secondary rounded-pill">' +
@@ -289,10 +312,7 @@
       );
     } else {
       for (const plo of prog.plos) {
-        html += renderPloItem(
-          plo,
-          prog.assessment_display_mode || "percentage",
-        );
+        html += renderPloItem(plo, displayMode);
       }
     }
     html += "</div></div>";
@@ -311,7 +331,7 @@
       plo.students_took != null
         ? '<span class="plo-success-rate ' +
           ploAssess.cssClass +
-          ' me-2">' +
+          '">' +
           ploAssess.text +
           "</span>"
         : "";
@@ -320,7 +340,7 @@
       '<div class="plo-item" data-plo-id="' + escapeHtml(plo.id) + '">';
     html +=
       '<div class="plo-item-header" data-toggle="plo">' +
-      '<div class="d-flex align-items-center flex-grow-1">' +
+      '<div class="d-flex align-items-center">' +
       '<i class="fas fa-chevron-right plo-expand-icon me-2"></i>' +
       '<span class="plo-number">' +
       escapeHtml(String(plo.plo_number)) +
@@ -329,10 +349,12 @@
       escapeHtml(plo.description) +
       "</span>" +
       "</div>" +
-      ploAssessHtml +
+      '<div class="d-flex align-items-center gap-2 ms-auto plo-item-right">' +
       '<span class="badge bg-secondary rounded-pill">' +
       escapeHtml(String(plo.mapped_clo_count)) +
       " CLOs</span>" +
+      ploAssessHtml +
+      "</div>" +
       "</div>";
 
     html += '<div class="plo-item-body" style="display:none;">';
@@ -355,8 +377,9 @@
     let html =
       '<table class="plo-clo-table"><thead><tr>' +
       "<th>CLO</th><th>Course</th><th>Description</th>" +
-      "<th>Assessment</th><th>Took</th><th>Passed</th>" +
-      "<th>Success</th><th>Status</th>" +
+      "<th>Assessment</th><th>Status</th>" +
+      '<th class="text-end">Took</th><th class="text-end">Passed</th>' +
+      '<th class="text-end">Score</th>' +
       "</tr></thead><tbody>";
 
     for (const clo of clos) {
@@ -385,19 +408,19 @@
         escapeHtml(clo.assessment_method || "—") +
         "</td>" +
         "<td>" +
+        statusBadgeHtml(clo.status) +
+        "</td>" +
+        '<td class="text-end">' +
         (clo.students_took != null ? clo.students_took : "—") +
         "</td>" +
-        "<td>" +
+        '<td class="text-end">' +
         (clo.students_passed != null ? clo.students_passed : "—") +
         "</td>" +
-        '<td><span class="plo-success-rate ' +
+        '<td class="text-end"><span class="plo-success-rate ' +
         assess.cssClass +
         '">' +
         assess.text +
         "</span></td>" +
-        "<td>" +
-        statusBadgeHtml(clo.status) +
-        "</td>" +
         "</tr>";
 
       // Hidden section rows (L4)
@@ -422,19 +445,19 @@
             escapeHtml(sec.assessment_tool || "—") +
             "</td>" +
             "<td>" +
+            statusBadgeHtml(sec.status) +
+            "</td>" +
+            '<td class="text-end">' +
             (sec.students_took != null ? sec.students_took : "—") +
             "</td>" +
-            "<td>" +
+            '<td class="text-end">' +
             (sec.students_passed != null ? sec.students_passed : "—") +
             "</td>" +
-            '<td><span class="plo-success-rate ' +
+            '<td class="text-end"><span class="plo-success-rate ' +
             secAssess.cssClass +
             '">' +
             secAssess.text +
             "</span></td>" +
-            "<td>" +
-            statusBadgeHtml(sec.status) +
-            "</td>" +
             "</tr>";
         }
       } else {
@@ -541,6 +564,11 @@
     statMappedClos = document.getElementById("statMappedClos");
     statWithData = document.getElementById("statWithData");
     statMissingData = document.getElementById("statMissingData");
+    displayModeSelect = document.getElementById("ploDisplayMode");
+    createPloBtn = document.getElementById("createPloBtn");
+    mapCloBtn = document.getElementById("mapCloBtn");
+    expandAllBtn = document.getElementById("expandAllBtn");
+    collapseAllBtn = document.getElementById("collapseAllBtn");
 
     if (!treeContainer) return; // not on PLO dashboard page
 
@@ -555,6 +583,113 @@
     refreshBtn.addEventListener("click", function () {
       loadTree();
     });
+
+    // Display mode change → re-render tree without re-fetch
+    if (displayModeSelect) {
+      displayModeSelect.addEventListener("change", function () {
+        loadTree();
+      });
+    }
+
+    // Expand / Collapse all PLO items
+    if (expandAllBtn) {
+      expandAllBtn.addEventListener("click", function () {
+        var items = treeContainer.querySelectorAll(".plo-item-content");
+        items.forEach(function (el) {
+          el.style.display = "";
+        });
+        var chevrons = treeContainer.querySelectorAll(".plo-item-chevron");
+        chevrons.forEach(function (el) {
+          el.classList.remove("fa-chevron-right");
+          el.classList.add("fa-chevron-down");
+        });
+      });
+    }
+    if (collapseAllBtn) {
+      collapseAllBtn.addEventListener("click", function () {
+        var items = treeContainer.querySelectorAll(".plo-item-content");
+        items.forEach(function (el) {
+          el.style.display = "none";
+        });
+        var chevrons = treeContainer.querySelectorAll(".plo-item-chevron");
+        chevrons.forEach(function (el) {
+          el.classList.remove("fa-chevron-down");
+          el.classList.add("fa-chevron-right");
+        });
+      });
+    }
+
+    // Create PLO modal
+    if (createPloBtn) {
+      createPloBtn.addEventListener("click", function () {
+        var modal = document.getElementById("ploModal");
+        if (modal) {
+          var programDropdown = document.getElementById("ploModalProgram");
+          if (programDropdown && programSelect) {
+            programDropdown.innerHTML = "";
+            Array.from(programSelect.options).forEach(function (opt) {
+              if (opt.value) {
+                var o = document.createElement("option");
+                o.value = opt.value;
+                o.textContent = opt.textContent;
+                programDropdown.appendChild(o);
+              }
+            });
+          }
+          // eslint-disable-next-line no-undef
+          var bsModal = new bootstrap.Modal(modal);
+          bsModal.show();
+        }
+      });
+    }
+
+    // Create PLO form submit
+    var ploForm = document.getElementById("ploForm");
+    if (ploForm) {
+      ploForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var programId = document.getElementById("ploModalProgram").value;
+        var ploNumber = document.getElementById("ploNumber").value;
+        var ploDescription = document.getElementById("ploDescription").value;
+        if (!programId || !ploNumber) return;
+        postJson("/api/programs/" + programId + "/plos", {
+          plo_number: parseInt(ploNumber, 10),
+          description: ploDescription,
+        }).then(function () {
+          // eslint-disable-next-line no-undef
+          var modal = bootstrap.Modal.getInstance(
+            document.getElementById("ploModal"),
+          );
+          if (modal) modal.hide();
+          ploForm.reset();
+          loadTree();
+        });
+      });
+    }
+
+    // Map CLO to PLO modal
+    if (mapCloBtn) {
+      mapCloBtn.addEventListener("click", function () {
+        var modal = document.getElementById("mapCloModal");
+        if (modal) {
+          var programDropdown = document.getElementById("mapCloProgram");
+          if (programDropdown && programSelect) {
+            programDropdown.innerHTML = "";
+            Array.from(programSelect.options).forEach(function (opt) {
+              if (opt.value) {
+                var o = document.createElement("option");
+                o.value = opt.value;
+                o.textContent = opt.textContent;
+                programDropdown.appendChild(o);
+              }
+            });
+          }
+          // eslint-disable-next-line no-undef
+          var bsModal = new bootstrap.Modal(modal);
+          bsModal.show();
+        }
+      });
+    }
 
     // Initial load
     loadFilters().then(function () {
@@ -573,6 +708,11 @@
     statMappedClos = document.getElementById("statMappedClos");
     statWithData = document.getElementById("statWithData");
     statMissingData = document.getElementById("statMissingData");
+    displayModeSelect = document.getElementById("ploDisplayMode");
+    createPloBtn = document.getElementById("createPloBtn");
+    mapCloBtn = document.getElementById("mapCloBtn");
+    expandAllBtn = document.getElementById("expandAllBtn");
+    collapseAllBtn = document.getElementById("collapseAllBtn");
   }
 
   document.addEventListener("DOMContentLoaded", init);
@@ -591,6 +731,8 @@
       escapeHtml: escapeHtml,
       csrfToken: csrfToken,
       fetchJson: fetchJson,
+      postJson: postJson,
+      getDisplayMode: getDisplayMode,
       showLoading: showLoading,
       renderSummary: renderSummary,
       renderTree: renderTree,

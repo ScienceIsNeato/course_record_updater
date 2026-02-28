@@ -32,6 +32,8 @@ const {
   escapeHtml,
   csrfToken,
   fetchJson,
+  postJson,
+  getDisplayMode,
   showLoading,
   renderSummary,
   renderTree,
@@ -253,6 +255,40 @@ describe("renderEmptyState", () => {
 });
 
 // ---------------------------------------------------------------------------
+// postJson
+// ---------------------------------------------------------------------------
+
+describe("postJson", () => {
+  it("is exported as a function", () => {
+    expect(typeof postJson).toBe("function");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getDisplayMode
+// ---------------------------------------------------------------------------
+
+describe("getDisplayMode", () => {
+  it("returns 'percentage' as default when no select element", () => {
+    setBody(""); // clear DOM so displayModeSelect is null
+    _setDomRefs();
+    expect(getDisplayMode()).toBe("percentage");
+  });
+
+  it("returns selected value when DOM element exists", () => {
+    setBody(`
+      <select id="ploDisplayMode">
+        <option value="both">Both</option>
+        <option value="percentage" selected>Percentage</option>
+        <option value="binary">Binary</option>
+      </select>
+    `);
+    _setDomRefs();
+    expect(getDisplayMode()).toBe("percentage");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // renderProgramCard
 // ---------------------------------------------------------------------------
 
@@ -405,7 +441,7 @@ describe("renderCloTable", () => {
     expect(html).toContain("<th>CLO</th>");
     expect(html).toContain("Course");
     expect(html).toContain("Assessment");
-    expect(html).toContain("Success");
+    expect(html).toContain("Score");
     expect(html).toContain("Status");
   });
 
@@ -490,6 +526,11 @@ describe("DOM-dependent functions", () => {
       <span id="statMappedClos"></span>
       <span id="statWithData"></span>
       <span id="statMissingData"></span>
+      <select id="ploDisplayMode"><option value="both">Both</option><option value="percentage">Percentage</option><option value="binary">Binary</option></select>
+      <button id="createPloBtn"></button>
+      <button id="mapCloBtn"></button>
+      <button id="expandAllBtn"></button>
+      <button id="collapseAllBtn"></button>
     `);
     // Add meta tag for csrfToken tests
     const existing = document.querySelector('meta[name="csrf-token"]');
@@ -892,6 +933,117 @@ describe("DOM-dependent functions", () => {
 
       expect(() => init()).not.toThrow();
       expect(global.fetch).toHaveBeenCalled();
+    });
+  });
+
+  describe("postJson", () => {
+    it("sends POST request with JSON body and CSRF token", async () => {
+      setupDom();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, id: 42 }),
+      });
+
+      const result = await postJson("/api/test", { name: "hello" });
+      expect(result.success).toBe(true);
+      expect(result.id).toBe(42);
+      expect(global.fetch).toHaveBeenCalledWith("/api/test", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "X-CSRFToken": "test-csrf-token",
+        },
+        body: '{"name":"hello"}',
+      });
+    });
+
+    it("throws on HTTP error", async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+      });
+
+      await expect(postJson("/api/test", {})).rejects.toThrow("HTTP 400");
+    });
+  });
+
+  describe("expand and collapse all", () => {
+    it("expand all shows all plo-item-content and sets chevrons down", () => {
+      setupDom();
+      const container = document.getElementById("ploTreeContainer");
+      container.innerHTML =
+        '<div class="plo-item-content" style="display:none;">A</div>' +
+        '<div class="plo-item-content" style="display:none;">B</div>' +
+        '<i class="fas plo-item-chevron fa-chevron-right"></i>' +
+        '<i class="fas plo-item-chevron fa-chevron-right"></i>';
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, terms: [], programs: [], data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } } }),
+      });
+      init();
+
+      const expandBtn = document.getElementById("expandAllBtn");
+      expandBtn.click();
+
+      const items = container.querySelectorAll(".plo-item-content");
+      items.forEach((el) => {
+        expect(el.style.display).toBe("");
+      });
+      const chevrons = container.querySelectorAll(".plo-item-chevron");
+      chevrons.forEach((el) => {
+        expect(el.classList.contains("fa-chevron-down")).toBe(true);
+        expect(el.classList.contains("fa-chevron-right")).toBe(false);
+      });
+    });
+
+    it("collapse all hides all plo-item-content and sets chevrons right", () => {
+      setupDom();
+      const container = document.getElementById("ploTreeContainer");
+      container.innerHTML =
+        '<div class="plo-item-content">A</div>' +
+        '<div class="plo-item-content">B</div>' +
+        '<i class="fas plo-item-chevron fa-chevron-down"></i>' +
+        '<i class="fas plo-item-chevron fa-chevron-down"></i>';
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, terms: [], programs: [], data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } } }),
+      });
+      init();
+
+      const collapseBtn = document.getElementById("collapseAllBtn");
+      collapseBtn.click();
+
+      const items = container.querySelectorAll(".plo-item-content");
+      items.forEach((el) => {
+        expect(el.style.display).toBe("none");
+      });
+      const chevrons = container.querySelectorAll(".plo-item-chevron");
+      chevrons.forEach((el) => {
+        expect(el.classList.contains("fa-chevron-right")).toBe(true);
+        expect(el.classList.contains("fa-chevron-down")).toBe(false);
+      });
+    });
+  });
+
+  describe("display mode change", () => {
+    it("triggers loadTree when display mode changes", () => {
+      setupDom();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, terms: [], programs: [], data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } } }),
+      });
+      init();
+      const callsBefore = global.fetch.mock.calls.length;
+
+      const modeSelect = document.getElementById("ploDisplayMode");
+      modeSelect.value = "binary";
+      modeSelect.dispatchEvent(new Event("change"));
+
+      // fetch should have been called again for the tree reload
+      expect(global.fetch.mock.calls.length).toBeGreaterThan(callsBefore);
     });
   });
 });

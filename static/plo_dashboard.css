@@ -90,6 +90,11 @@
     font-size: 0.95rem;
 }
 
+.plo-item-right {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
 .plo-item-body {
     padding: 0.5rem 0.75rem 0.75rem;
     border-top: 1px solid #e9ecef;
