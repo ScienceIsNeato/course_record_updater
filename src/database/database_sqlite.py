@@ -990,6 +990,7 @@ class SQLDatabase(DatabaseInterface):
         term_id: Optional[str] = None,
         course_id: Optional[str] = None,
         section_id: Optional[str] = None,
+        outcome_ids: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Get section outcomes filtered by various criteria.
@@ -1036,6 +1037,9 @@ class SQLDatabase(DatabaseInterface):
 
             if section_id:
                 query = query.where(CourseSection.id == section_id)
+
+            if outcome_ids:
+                query = query.where(CourseSectionOutcome.outcome_id.in_(outcome_ids))
 
             if term_id:
                 query = query.where(CourseOffering.term_id == term_id)
@@ -1697,10 +1701,14 @@ class SQLDatabase(DatabaseInterface):
             program = session.get(Program, program_id)
             if not program:
                 return False
+            # extras is PickleType (not MutableDict) so in-place mutation
+            # isn't tracked — copy, mutate, reassign to mark the row dirty.
+            extras = dict(program.extras or {})
             for key, value in updates.items():
                 if hasattr(Program, key):
                     setattr(program, key, value)
-                program.extras[key] = value
+                extras[key] = value
+            program.extras = extras
             program.updated_at = datetime.now(timezone.utc)
             return True
 

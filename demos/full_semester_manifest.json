@@ -998,5 +998,68 @@
             ]
         }
     ],
+    "program_outcomes": {
+        "_comment": "Per-program PLO definitions + CLO mappings. The seeder creates PLOs, opens a draft mapping, links the CLOs listed under clo_mappings, then publishes the draft as mapping version 1. assessment_display_mode controls how the PLO dashboard badge renders (binary = S/U, percentage = 78%, both = S (78%)). plo_number is an integer (stored in program_outcomes.plo_number INTEGER) — the UI renders it as 'PLO-<n>'.",
+        "BIOL": {
+            "assessment_display_mode": "both",
+            "plos": [
+                {
+                    "plo_number": 1,
+                    "description": "Students will demonstrate mastery of the scientific method and experimental design in biological contexts.",
+                    "clo_mappings": [
+                        {"course_code": "BIOL-101", "clo_number": 1},
+                        {"course_code": "BIOL-201", "clo_number": 1},
+                        {"course_code": "BIOL-301", "clo_number": 1}
+                    ]
+                },
+                {
+                    "plo_number": 2,
+                    "description": "Students will analyze and interpret cellular, molecular, and genetic processes.",
+                    "clo_mappings": [
+                        {"course_code": "BIOL-101", "clo_number": 2},
+                        {"course_code": "BIOL-201", "clo_number": 2},
+                        {"course_code": "BIOL-301", "clo_number": 2}
+                    ]
+                },
+                {
+                    "plo_number": 3,
+                    "description": "Students will evaluate complex biological systems and communicate findings effectively.",
+                    "clo_mappings": [
+                        {"course_code": "BIOL-101", "clo_number": 3},
+                        {"course_code": "BIOL-201", "clo_number": 3}
+                    ]
+                },
+                {
+                    "plo_number": 4,
+                    "description": "Students will demonstrate ethical reasoning in biological research contexts.",
+                    "_comment": "Intentionally unmapped — demonstrates the 'no CLOs mapped yet' empty state in the PLO dashboard.",
+                    "clo_mappings": []
+                }
+            ]
+        },
+        "ZOOL": {
+            "assessment_display_mode": "percentage",
+            "plos": [
+                {
+                    "plo_number": 1,
+                    "description": "Students will identify, classify, and describe diversity across animal taxa.",
+                    "clo_mappings": [
+                        {"course_code": "ZOOL-101", "clo_number": 1},
+                        {"course_code": "ZOOL-205", "clo_number": 1}
+                    ]
+                },
+                {
+                    "plo_number": 2,
+                    "description": "Students will analyze animal behaviour, anatomy, and ecological relationships.",
+                    "clo_mappings": [
+                        {"course_code": "ZOOL-101", "clo_number": 2},
+                        {"course_code": "ZOOL-101", "clo_number": 3},
+                        {"course_code": "ZOOL-205", "clo_number": 2},
+                        {"course_code": "ZOOL-310", "clo_number": 2}
+                    ]
+                }
+            ]
+        }
+    },
     "system_settings": {}
 }

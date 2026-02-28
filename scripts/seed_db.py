@@ -1282,6 +1282,21 @@ class DemoSeeder(BaselineSeeder):
             )
             self.log(f"   ✅ Applied {override_count} section outcome overrides")
 
+        # 9. Create Program Learning Outcomes + publish PLO↔CLO mappings.
+        #    Runs last so all CLO templates already exist for the mapping
+        #    lookup. Seeding is optional — only runs if the manifest has a
+        #    program_outcomes section — so older manifests keep working.
+        if manifest.get("program_outcomes"):
+            self.log("🗺️  Creating Program Learning Outcomes + mappings...")
+            plo_stats = self._create_plos_from_manifest(
+                manifest["program_outcomes"], program_map, inst_ids[0]
+            )
+            self.log(
+                f"   ✅ Created {plo_stats['plo_count']} PLOs, "
+                f"mapped {plo_stats['entry_count']} CLOs, "
+                f"published {plo_stats['published_count']} mapping version(s)"
+            )
+
         self.log("✅ Demo seeding completed!")
         self.print_summary()
         return True
@@ -1363,6 +1378,156 @@ class DemoSeeder(BaselineSeeder):
                     )
 
         return applied_count
+
+    def _create_plos_from_manifest(
+        self,
+        plo_config: Dict[str, Any],
+        program_map: Dict[str, str],
+        institution_id: str,
+    ) -> Dict[str, int]:
+        """Create Program Learning Outcomes and publish PLO↔CLO mappings.
+
+        Manifest shape (per program code)::
+
+            "<PROG_CODE>": {
+                "assessment_display_mode": "both" | "percentage" | "binary",
+                "plos": [
+                    {
+                        "plo_number": "PLO-1",
+                        "description": "...",
+                        "clo_mappings": [
+                            {"course_code": "BIOL-101", "clo_number": 1}, ...
+                        ]
+                    }
+                ]
+            }
+
+        For each program:
+          1. Creates all PLO templates
+          2. Opens (or reuses) a draft mapping
+          3. Resolves each CLO reference (course_code + clo_number) → CLO id
+             and adds a mapping entry
+          4. Publishes the draft so the PLO dashboard shows rolled-up
+             assessment data immediately after seeding
+          5. Writes assessment_display_mode into the program's extras
+
+        Returns counts for the summary log line.
+        """
+        plo_count = 0
+        entry_count = 0
+        published_count = 0
+
+        # Cache CLO lookup by (course_code, clo_number) → outcome_id so we
+        # only hit the DB once per course.
+        clo_cache: Dict[tuple, Optional[str]] = {}
+
+        def _lookup_clo(course_code: str, clo_num: str) -> Optional[str]:
+            key = (course_code, str(clo_num))
+            if key in clo_cache:
+                return clo_cache[key]
+            course = database_service.db.get_course_by_number(
+                course_code, institution_id
+            )
+            if not course:
+                clo_cache[key] = None
+                return None
+            cid = course.get("id") or course.get("course_id")
+            if not cid:
+                clo_cache[key] = None
+                return None
+            for co in database_service.db.get_course_outcomes(cid) or []:
+                clo_cache[(course_code, str(co.get("clo_number")))] = co.get(
+                    "outcome_id"
+                ) or co.get("id")
+            return clo_cache.get(key)
+
+        for prog_code, config in plo_config.items():
+            if prog_code.startswith("_"):  # skip _comment etc.
+                continue
+            program_id = program_map.get(prog_code)
+            if not program_id:
+                self.log(
+                    f"   ⚠️  Program code '{prog_code}' not in program_map, skipping PLOs"
+                )
+                continue
+
+            # Persist per-program display preference (lands in Program.extras)
+            display_mode = config.get("assessment_display_mode")
+            if display_mode:
+                database_service.db.update_program(
+                    program_id, {"assessment_display_mode": display_mode}
+                )
+
+            plo_defs = config.get("plos") or []
+            if not plo_defs:
+                continue
+
+            # 1. Create PLO templates and remember their IDs
+            plo_ids: Dict[str, str] = {}
+            for plo_def in plo_defs:
+                plo_id = database_service.db.create_program_outcome(
+                    {
+                        "program_id": program_id,
+                        "institution_id": institution_id,
+                        "plo_number": plo_def["plo_number"],
+                        "description": plo_def.get("description", ""),
+                    }
+                )
+                plo_ids[plo_def["plo_number"]] = plo_id
+                plo_count += 1
+                self.log(f"   ✓ PLO {plo_def['plo_number']} for {prog_code}")
+
+            # 2. Build mapping entries — only open a draft if there's at
+            #    least one CLO link to add (keeps the ZOOL empty-PLO case
+            #    from creating an empty published version).
+            all_mappings = [
+                (plo_def, m)
+                for plo_def in plo_defs
+                for m in plo_def.get("clo_mappings") or []
+            ]
+            if not all_mappings:
+                continue
+
+            draft = database_service.db.get_or_create_plo_mapping_draft(program_id)
+            mapping_id_raw = draft.get("id") or draft.get("mapping_id")
+            if not mapping_id_raw:
+                self.log(f"   ⚠️  Draft mapping for {prog_code} has no id, skipping")
+                continue
+            mapping_id: str = str(mapping_id_raw)
+
+            for plo_def, mapping_ref in all_mappings:
+                target_plo = plo_ids.get(plo_def["plo_number"])
+                target_clo = _lookup_clo(
+                    mapping_ref["course_code"], mapping_ref["clo_number"]
+                )
+                if not target_plo or not target_clo:
+                    self.log(
+                        "   ⚠️  Could not resolve mapping "
+                        f"{plo_def['plo_number']} → "
+                        f"{mapping_ref['course_code']} "
+                        f"CLO{mapping_ref['clo_number']}"
+                    )
+                    continue
+                database_service.db.add_plo_mapping_entry(
+                    mapping_id, target_plo, target_clo
+                )
+                entry_count += 1
+
+            # 3. Publish the draft so the dashboard has a version of record
+            database_service.db.publish_plo_mapping(
+                mapping_id, description="Seeded initial PLO→CLO mapping"
+            )
+            published_count += 1
+            self.log(
+                f"   ✓ Published PLO mapping v1 for {prog_code} "
+                f"({entry_count} total entries so far)"
+            )
+
+        return {
+            "plo_count": plo_count,
+            "entry_count": entry_count,
+            "published_count": published_count,
+        }
 
     def _create_history_entries(
         self, section_outcome_id: str, history_data: List[Dict[str, Any]]

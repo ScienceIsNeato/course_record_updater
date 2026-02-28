@@ -742,6 +742,7 @@ def get_section_outcomes_by_criteria(
     term_id: Optional[str] = None,
     course_id: Optional[str] = None,
     section_id: Optional[str] = None,
+    outcome_ids: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Get section outcomes filtered by various criteria.
@@ -752,12 +753,22 @@ def get_section_outcomes_by_criteria(
         program_id: The program ID to filter by
         term_id: The term ID to filter by
         course_id: The course ID to filter by
+        section_id: The section ID to filter by
+        outcome_ids: Restrict to section outcomes referencing these
+            CourseOutcome template IDs (used by the PLO dashboard to fetch
+            only sections using CLOs that are mapped to a given PLO set).
 
     Returns:
         List of section outcome dictionaries
     """
     return _db_service.get_section_outcomes_by_criteria(
-        institution_id, status, program_id, term_id, course_id, section_id
+        institution_id,
+        status,
+        program_id,
+        term_id,
+        course_id,
+        section_id,
+        outcome_ids,
     )
 
 

@@ -134,6 +134,31 @@
     </div>
 </div>
 
+<!-- Panel 3b: Program Learning Outcomes -->
+<div class="dashboard-panel" id="program-plo-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">🗺️</span>
+            Program Learning Outcomes
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-secondary"
+                    onclick="window.location.href='/plo-dashboard'">
+                <i class="fas fa-sitemap"></i> Open PLO Dashboard
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="programPloContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading program outcomes...
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Panel 4: Assessment Results -->
 <div class="dashboard-panel" id="program-assessment-panel">
     <div class="panel-header">
@@ -206,14 +231,15 @@
             'courses': ['program-courses-panel'],
             'offerings': ['program-offering-panel'],
             'faculty': ['program-faculty-panel'],
-            'clos': ['program-clo-panel'],
-            'all': ['program-courses-panel', 'program-offering-panel', 'program-faculty-panel', 'program-clo-panel', 'program-assessment-panel', 'program-clo-audit-panel']
+            'clos': ['program-clo-panel', 'program-plo-panel'],
+            'all': ['program-courses-panel', 'program-offering-panel', 'program-faculty-panel', 'program-clo-panel', 'program-plo-panel', 'program-assessment-panel', 'program-clo-audit-panel']
         },
         [
             'program-courses-panel',
             'program-offering-panel',
             'program-faculty-panel',
             'program-clo-panel',
+            'program-plo-panel',
             'program-assessment-panel',
             'program-clo-audit-panel'
         ]

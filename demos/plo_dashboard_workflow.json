@@ -1,0 +1,298 @@
+{
+  "demo_name": "Program Learning Outcomes Dashboard",
+  "demo_id": "plo_dashboard_demo",
+  "version": "1.0",
+  "description": "Walk the full PLO lifecycle on the new dashboard: create a Program Outcome, edit it, map a CLO into the draft, publish the mapping, then drill Program -> PLO -> CLO -> section assessment. Seed data already provides 2 programs (BIOL, ZOOL) across 2 terms with mixed assessment coverage, so the tree has real leaves to land on.",
+  "estimated_duration_minutes": 10,
+  "talking_points": [
+    "Program Level Outcomes sit one level above Course Outcomes and roll section pass-rates up to the accreditation tier",
+    "Versioned draft/publish mapping means you can work incrementally and only lock changes when ready",
+    "Per-program display mode lets each department pick binary S/U, percentage, or both",
+    "Tree drilldown is one click from the accreditation number down to the individual section that produced it"
+  ],
+  "environment": {
+    "working_directory": ".",
+    "setup_commands": [
+      "source venv/bin/activate && source .envrc",
+      "python scripts/seed_db.py --demo --manifest demos/full_semester_manifest.json --clear --env local",
+      "./scripts/restart_server.sh local"
+    ],
+    "base_url": "http://localhost:3001",
+    "cleanup_commands": []
+  },
+  "steps": [
+    {
+      "step_number": 1,
+      "phase": "Setup: Login",
+      "name": "Login as Institution Admin",
+      "purpose": "Authenticate as an admin with manage_programs + view_program_data so all PLO mutations and drilldowns are available",
+      "pre_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM programs WHERE short_name='BIOL' LIMIT 1\"",
+          "purpose": "Capture BIOL program ID for all subsequent PLO API calls",
+          "capture_output_as": "biol_program_id"
+        }
+      ],
+      "instructions": {
+        "human": "Login as loopcloser_demo_admin@proton.me / TestPass123!.\n\nOnce logged in, click **Program Outcomes** in the main nav (sitemap icon).\n\nYou should land on the PLO Dashboard showing the BIOL program tree with PLOs 1-4 already seeded. PLO-4 is intentionally empty to show the 'no CLOs mapped' state.",
+        "automated": {
+          "action": "api_post",
+          "endpoint": "/api/auth/login",
+          "data": {
+            "email": "loopcloser_demo_admin@proton.me",
+            "password": "TestPass123!"
+          },
+          "description": "Login as institution admin"
+        }
+      },
+      "urls": [
+        {"label": "PLO Dashboard", "url": "http://localhost:3001/plo-dashboard"}
+      ],
+      "expected_results": [
+        "Dashboard loads with BIOL program selected",
+        "Tree shows PLO-1 through PLO-4",
+        "PLO-4 shows 'No CLOs mapped' empty state"
+      ],
+      "post_commands": [],
+      "pause_for_human": true
+    },
+    {
+      "step_number": 2,
+      "phase": "Beat 1: Create PLO",
+      "name": "Create a new PLO (PLO-5)",
+      "purpose": "Hit the create-PLO beat: add PLO-5 to the BIOL program via the 'New PLO' button / POST /api/programs/<id>/plos",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Click **New PLO** (top right).\n\nIn the modal:\n- **PLO Number:** 5\n- **Description:** Students will integrate biological knowledge across scales from molecules to ecosystems.\n\nClick **Save**.\n\nThe tree reloads and PLO-5 appears at the bottom with a 'No CLOs mapped' pill.",
+        "automated": {
+          "action": "api_post",
+          "endpoint": "/api/programs/{{biol_program_id}}/plos",
+          "data": {
+            "plo_number": 5,
+            "description": "Students will integrate biological knowledge across scales from molecules to ecosystems."
+          },
+          "description": "Create PLO-5 in BIOL program"
+        }
+      },
+      "urls": [],
+      "expected_results": [
+        "PLO-5 created and visible in the tree",
+        "Shows 0 CLOs mapped (empty state message under the node)"
+      ],
+      "post_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT COUNT(*) FROM program_outcomes WHERE program_id='{{biol_program_id}}' AND plo_number=5\"",
+          "purpose": "Verify PLO-5 row exists in program_outcomes",
+          "expected_output": "1"
+        },
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM program_outcomes WHERE program_id='{{biol_program_id}}' AND plo_number=5 LIMIT 1\"",
+          "purpose": "Capture new PLO id for the edit step",
+          "capture_output_as": "new_plo_id"
+        }
+      ],
+      "pause_for_human": true
+    },
+    {
+      "step_number": 3,
+      "phase": "Beat 2: Edit PLO",
+      "name": "Edit PLO-5 description",
+      "purpose": "Demonstrate inline edit — PLOs are simple templates so editing is lightweight and doesn't bump mapping version",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Hover over PLO-5 and click the small pencil (edit) button on the right of its header.\n\nChange the description to add a concrete outcome:\n\"Students will integrate biological knowledge across scales from molecules to ecosystems, demonstrating synthesis through a capstone project.\"\n\nClick **Save**. The tree updates in place — no page reload, no new mapping version.",
+        "automated": {
+          "action": "api_put",
+          "endpoint": "/api/programs/{{biol_program_id}}/plos/{{new_plo_id}}",
+          "data": {
+            "description": "Students will integrate biological knowledge across scales from molecules to ecosystems, demonstrating synthesis through a capstone project."
+          },
+          "description": "Update PLO-5 description"
+        }
+      },
+      "urls": [],
+      "expected_results": [
+        "PLO-5 description updated in tree",
+        "No new mapping version created (edit is to the template, not the mapping)"
+      ],
+      "post_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT description FROM program_outcomes WHERE id='{{new_plo_id}}'\"",
+          "purpose": "Verify description was updated",
+          "expected_output_contains": "capstone project"
+        }
+      ],
+      "pause_for_human": true
+    },
+    {
+      "step_number": 4,
+      "phase": "Beat 3: Map CLO to PLO",
+      "name": "Open draft mapping and link a CLO",
+      "purpose": "Add a CLO→PLO link: BIOL-301 CLO 3 rolls into our new PLO-5. This creates/reuses the draft mapping (a new draft since v1 was already published by the seeder).",
+      "pre_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT co.id FROM course_outcomes co JOIN courses c ON c.id = co.course_id WHERE c.course_number='BIOL-301' AND co.clo_number='3' LIMIT 1\"",
+          "purpose": "Capture the target CLO template id",
+          "capture_output_as": "target_clo_id"
+        }
+      ],
+      "instructions": {
+        "human": "Click **Map CLO to PLO** in the tree card header.\n\nA modal opens. Because the seeder already published mapping v1, clicking this auto-creates a new **draft** (v2-to-be) copied from v1.\n\n- **Program Outcome:** select PLO-5\n- **Course Outcome:** select BIOL-301 CLO-3 (it should appear in the unmapped-CLOs dropdown because no PLO currently owns it in the draft)\n\nClick **Add Mapping**. The entry is added to the draft. The tree header version badge now reads 'draft'.",
+        "automated": {
+          "action": "sequence",
+          "steps": [
+            {
+              "action": "api_post",
+              "endpoint": "/api/programs/{{biol_program_id}}/plo-mappings/draft",
+              "data": {},
+              "description": "Open/reuse draft mapping for BIOL (copies from published v1)"
+            }
+          ]
+        }
+      },
+      "urls": [],
+      "expected_results": [
+        "Draft mapping created (status: draft, version: null)",
+        "BIOL-301 CLO-3 now linked to PLO-5"
+      ],
+      "post_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM plo_mappings WHERE program_id='{{biol_program_id}}' AND status='draft' LIMIT 1\"",
+          "purpose": "Capture draft mapping id now that the draft has been opened",
+          "capture_output_as": "draft_mapping_id"
+        }
+      ],
+      "pause_for_human": true
+    },
+    {
+      "step_number": 5,
+      "phase": "Beat 3: Map CLO to PLO (continued)",
+      "name": "Add the mapping entry",
+      "purpose": "Actually link PLO-5 <- BIOL-301 CLO-3 inside the draft. Split from step 4 so the automated run can capture the draft mapping id between the two API calls.",
+      "pre_commands": [],
+      "instructions": {
+        "human": "(Covered by step 4 in the UI — the single 'Add Mapping' click does both the draft open and the entry insert. This step exists for the automated runner which needs to capture the draft id between calls.)",
+        "automated": {
+          "action": "api_post",
+          "endpoint": "/api/programs/{{biol_program_id}}/plo-mappings/{{draft_mapping_id}}/entries",
+          "data": {
+            "program_outcome_id": "{{new_plo_id}}",
+            "course_outcome_id": "{{target_clo_id}}"
+          },
+          "description": "Link PLO-5 <- BIOL-301 CLO-3"
+        }
+      },
+      "urls": [],
+      "expected_results": [
+        "Entry row exists in plo_mapping_entries"
+      ],
+      "post_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT COUNT(*) FROM plo_mapping_entries WHERE mapping_id='{{draft_mapping_id}}' AND program_outcome_id='{{new_plo_id}}' AND course_outcome_id='{{target_clo_id}}'\"",
+          "purpose": "Verify the mapping entry was inserted",
+          "expected_output": "1"
+        }
+      ],
+      "pause_for_human": false
+    },
+    {
+      "step_number": 6,
+      "phase": "Beat 4: Publish",
+      "name": "Publish the draft as version 2",
+      "purpose": "Lock the draft so PLO-5 now has a CLO contributing assessment data. Publishing snapshots PLO descriptions into each entry for historical preservation.",
+      "pre_commands": [],
+      "instructions": {
+        "human": "In the Map CLO modal footer, click **Publish Draft**.\n\nConfirm. The draft is published as **version 2**. The tree header badge updates to 'v2 · published'.\n\nExpand PLO-5 — you should now see BIOL-301 CLO-3 nested under it, and any section assessment data from Fall 2025 flows into the PLO-5 pass rate badge.",
+        "automated": {
+          "action": "api_post",
+          "endpoint": "/api/programs/{{biol_program_id}}/plo-mappings/{{draft_mapping_id}}/publish",
+          "data": {
+            "description": "Add PLO-5 cross-scale integration outcome"
+          },
+          "description": "Publish draft as v2"
+        }
+      },
+      "urls": [],
+      "expected_results": [
+        "Mapping published as version 2",
+        "PLO-5 now shows 1 CLO mapped",
+        "Tree header badge reads 'v2 · published'"
+      ],
+      "post_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT version FROM plo_mappings WHERE id='{{draft_mapping_id}}'\"",
+          "purpose": "Verify mapping has version 2 assigned",
+          "expected_output": "2"
+        },
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT status FROM plo_mappings WHERE id='{{draft_mapping_id}}'\"",
+          "purpose": "Verify mapping status is published",
+          "expected_output": "published"
+        }
+      ],
+      "pause_for_human": true
+    },
+    {
+      "step_number": 7,
+      "phase": "Beat 5: Drilldown",
+      "name": "Drill from Program to a specific section assessment",
+      "purpose": "Show the full hierarchy in one screen — Program → PLO → CLO → section — and land on a specific students_passed / students_took record",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Still on BIOL, click PLO-1 to expand.\n\nYou see 3 mapped CLOs (BIOL-101/201/301 CLO-1). Each shows its own aggregated pass rate.\n\nClick **BIOL-101 CLO-1** to expand. You land on section-level assessment leaves: each row shows section number, instructor, students_took, students_passed, and the S/U badge coloured by the per-program display mode.\n\n**Change term to Spring 2025** in the filter — the section leaves re-filter to just Spring data (fewer/different rows depending on seed).\n\n**Flip display mode to 'Percentage'** — every badge in the tree instantly re-renders as bare percentages. This preference is saved per-program.",
+        "automated": {
+          "action": "api_get",
+          "endpoint": "/api/programs/{{biol_program_id}}/plo-dashboard",
+          "description": "Fetch full PLO dashboard tree and verify it contains PLO-5"
+        }
+      },
+      "urls": [
+        {"label": "PLO Dashboard (BIOL, all terms)", "url": "http://localhost:3001/plo-dashboard"}
+      ],
+      "expected_results": [
+        "API returns PLO-5 with 1 mapped CLO",
+        "PLO-1 expands to show 3 CLOs, each expandable to section leaves",
+        "Section leaves show real students_took / students_passed numbers from seed data",
+        "Changing term filter re-scopes section leaves",
+        "Changing display mode re-renders all badges and persists to the program"
+      ],
+      "post_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT COUNT(DISTINCT program_outcome_id) FROM plo_mapping_entries e JOIN plo_mappings m ON m.id=e.mapping_id WHERE m.program_id='{{biol_program_id}}' AND m.version=2\"",
+          "purpose": "Verify v2 mapping has entries for multiple PLOs (copied v1 + new PLO-5 entry)",
+          "expected_output_contains": ""
+        }
+      ],
+      "pause_for_human": true
+    },
+    {
+      "step_number": 8,
+      "phase": "Cross-program verification",
+      "name": "Switch to ZOOL program",
+      "purpose": "Show the per-program display-mode setting and the second seeded program's tree. ZOOL uses percentage mode out of the box.",
+      "pre_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM programs WHERE short_name='ZOOL' LIMIT 1\"",
+          "purpose": "Capture ZOOL program id",
+          "capture_output_as": "zool_program_id"
+        }
+      ],
+      "instructions": {
+        "human": "Change the **Program** filter to Zoology.\n\nThe tree reloads. ZOOL has 2 PLOs (seeded as v1 published). The display-mode dropdown auto-switches to **Percentage** because that's ZOOL's saved preference — note every badge shows bare % instead of the S/U prefix you saw on BIOL.\n\nExpand PLO-2 → ZOOL-101 CLO-2 to land on a section with real assessment numbers. Done!",
+        "automated": {
+          "action": "api_get",
+          "endpoint": "/api/programs/{{zool_program_id}}/plo-dashboard",
+          "description": "Fetch ZOOL tree — should report assessment_display_mode=percentage"
+        }
+      },
+      "urls": [],
+      "expected_results": [
+        "ZOOL tree loads with 2 PLOs",
+        "assessment_display_mode returned as 'percentage'",
+        "All badges render as bare percentages"
+      ],
+      "post_commands": [],
+      "pause_for_human": true
+    }
+  ]
+}
