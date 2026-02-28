@@ -307,3 +307,118 @@ def get_unmapped_clos(
         "course_count": len(courses),
         "total_clo_count": total_clo_count,
     }
+
+
+# ---------------------------------------------------------------------------
+# Cherry-picker helpers (Map CLO to PLO modal)
+# ---------------------------------------------------------------------------
+
+
+def _resolve_mapping(program_id: str) -> Optional[Dict[str, Any]]:
+    """Resolve the current mapping (draft first, then latest published)."""
+    mapping = database_service.get_plo_mapping_draft(program_id)
+    if not mapping:
+        mapping = database_service.get_latest_published_plo_mapping(program_id)
+    return mapping
+
+
+def get_plo_clo_picker(program_id: str, plo_id: str) -> Dict[str, Any]:
+    """Return all program CLOs split by mapping status for a specific PLO.
+
+    Used by the cherry-picker UI to show two panels:
+      - mapped: CLOs currently linked to *this* PLO
+      - available: CLOs not linked to this PLO (may be linked elsewhere)
+
+    Each item in *available* includes ``mapped_to_plo_id`` when the CLO
+    is already assigned to a different PLO in the same mapping.
+    """
+    mapping = _resolve_mapping(program_id)
+
+    mapped_to_this: set[str] = set()
+    mapped_to_other: Dict[str, str] = {}  # clo_id → plo_id
+
+    if mapping:
+        for entry in mapping.get("entries", []):
+            clo_id = entry.get("course_outcome_id")
+            plo_oid = entry.get("program_outcome_id")
+            if not clo_id:
+                continue
+            if str(plo_oid) == str(plo_id):
+                mapped_to_this.add(clo_id)
+            else:
+                mapped_to_other[clo_id] = plo_oid
+
+    courses = database_service.get_courses_by_program(program_id)
+    mapped: List[Dict[str, Any]] = []
+    available: List[Dict[str, Any]] = []
+    total_clo_count = 0
+
+    for course in courses:
+        clos = database_service.get_course_outcomes(course["course_id"])
+        for clo in clos:
+            if not clo.get("active", True):
+                continue
+            total_clo_count += 1
+            clo_data: Dict[str, Any] = {**clo, "course": course}
+
+            if clo["outcome_id"] in mapped_to_this:
+                mapped.append(clo_data)
+            else:
+                if clo["outcome_id"] in mapped_to_other:
+                    clo_data["mapped_to_plo_id"] = mapped_to_other[clo["outcome_id"]]
+                available.append(clo_data)
+
+    return {
+        "mapped": mapped,
+        "available": available,
+        "course_count": len(courses),
+        "total_clo_count": total_clo_count,
+    }
+
+
+def sync_plo_clo_mappings(
+    program_id: str,
+    plo_id: str,
+    clo_ids: List[str],
+    user_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Bulk-sync CLO mappings for a specific PLO in the current draft.
+
+    Creates a draft if none exists, removes all existing entries for
+    *plo_id*, then adds an entry for each CLO in *clo_ids*.  If any
+    of the requested CLOs were previously mapped to a *different* PLO
+    in this draft they are reassigned automatically.
+
+    Returns the refreshed mapping dict.
+    """
+    draft = get_or_create_draft(program_id, user_id)
+    mapping_id = draft["id"]
+
+    # Re-fetch to guarantee fresh entry list after draft creation
+    fresh = database_service.get_plo_mapping(mapping_id)
+    entries = fresh.get("entries", []) if fresh else []
+
+    clo_ids_set = {str(cid) for cid in clo_ids}
+
+    # Remove entries that conflict:
+    #   1. Current entries for this PLO (will be re-created)
+    #   2. Entries mapping any of the requested CLOs to other PLOs
+    for entry in entries:
+        eid = entry.get("id")
+        poid = str(entry.get("program_outcome_id", ""))
+        coid = str(entry.get("course_outcome_id", ""))
+        if poid == str(plo_id) or coid in clo_ids_set:
+            database_service.remove_plo_mapping_entry(eid)
+
+    # Add fresh entries
+    for clo_id in clo_ids:
+        database_service.add_plo_mapping_entry(mapping_id, plo_id, clo_id)
+
+    updated = database_service.get_plo_mapping(mapping_id)
+    logger.info(
+        "Synced %d CLOs to PLO %s in mapping %s",
+        len(clo_ids),
+        plo_id,
+        mapping_id,
+    )
+    return updated or {}

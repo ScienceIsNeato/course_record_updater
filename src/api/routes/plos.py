@@ -27,12 +27,14 @@ from src.services.plo_service import (
     get_mapping_by_version,
     get_mapping_matrix,
     get_or_create_draft,
+    get_plo_clo_picker,
     get_program_outcome,
     get_published_mappings,
     get_unmapped_clos,
     list_program_outcomes,
     publish_mapping,
     remove_mapping_entry,
+    sync_plo_clo_mappings,
     update_program_outcome,
 )
 from src.utils.constants import (
@@ -508,3 +510,42 @@ def unmapped_clos(program_id: str) -> ResponseReturnValue:
         )
     except Exception as exc:
         return handle_api_error(exc, "fetching unmapped CLOs")
+
+
+@plo_bp.route("/<program_id>/plos/<plo_id>/clo-picker", methods=["GET"])
+@permission_required("view_program_data")
+def clo_picker(program_id: str, plo_id: str) -> ResponseReturnValue:
+    """Return all CLOs split by mapping status for the cherry-picker UI."""
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+
+    try:
+        result = get_plo_clo_picker(program_id, plo_id)
+        return jsonify({"success": True, **result}), 200
+    except Exception as exc:
+        return handle_api_error(exc, "fetching CLO picker data")
+
+
+@plo_bp.route("/<program_id>/plos/<plo_id>/clo-mappings", methods=["PUT"])
+@permission_required("manage_programs")
+def sync_clo_mappings(program_id: str, plo_id: str) -> ResponseReturnValue:
+    """Bulk-set CLO mappings for a specific PLO via the cherry-picker."""
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+
+    data = request.get_json(silent=True) or {}
+    clo_ids = data.get("clo_ids")
+    if clo_ids is None:
+        return (
+            jsonify({"success": False, "error": "clo_ids list is required"}),
+            400,
+        )
+
+    user_id = get_current_user_id_safe()
+    try:
+        mapping = sync_plo_clo_mappings(program_id, plo_id, clo_ids, user_id)
+        return jsonify({"success": True, "mapping": mapping}), 200
+    except Exception as exc:
+        return handle_api_error(exc, "syncing CLO mappings")

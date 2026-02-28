@@ -6,7 +6,6 @@ beforeAll(() => {
   setBody(`
     <select id="ploTermFilter"></select>
     <select id="ploProgramFilter"></select>
-    <button id="ploRefreshBtn"></button>
     <div id="ploTreeContainer"></div>
     <span id="statPrograms"></span>
     <span id="statPlos"></span>
@@ -44,6 +43,9 @@ const {
   _setDomRefs,
   showMapCloAlert,
   hideMapCloAlert,
+  renderPickerPanel,
+  moveCheckedItems,
+  updatePickerCounts,
 } = require("../../../static/plo_dashboard");
 
 // ---------------------------------------------------------------------------
@@ -521,7 +523,6 @@ describe("DOM-dependent functions", () => {
     setBody(`
       <select id="ploTermFilter"></select>
       <select id="ploProgramFilter"></select>
-      <button id="ploRefreshBtn"></button>
       <div id="ploTreeContainer"></div>
       <span id="statPrograms"></span>
       <span id="statPlos"></span>
@@ -907,13 +908,13 @@ describe("DOM-dependent functions", () => {
   });
 
   // -------------------------------------------------------------------------
-  // Map CLO to PLO modal
+  // Map CLO to PLO modal (cherry picker)
   // -------------------------------------------------------------------------
 
   describe("Map CLO to PLO modal", () => {
     /**
      * Set up DOM with the mapping modal elements matching the template IDs
-     * (mapCloModalProgram, mapCloModalPlo, mapCloModalClo, etc.).
+     * (mapCloModalProgram, mapCloModalPlo, cherry picker panels, etc.).
      */
     function setupMapCloModalDom() {
       setBody(`
@@ -922,7 +923,6 @@ describe("DOM-dependent functions", () => {
           <option value="prog-1">Biology</option>
           <option value="prog-2">Zoology</option>
         </select>
-        <button id="ploRefreshBtn"></button>
         <div id="ploTreeContainer"></div>
         <span id="statPrograms"></span>
         <span id="statPlos"></span>
@@ -937,20 +937,23 @@ describe("DOM-dependent functions", () => {
 
         <!-- Map CLO to PLO Modal -->
         <div id="mapCloModal">
-          <form id="mapCloForm">
-            <select id="mapCloModalProgram">
-              <option value="">Select a program…</option>
-            </select>
-            <select id="mapCloModalPlo">
-              <option value="">Select a PLO…</option>
-            </select>
-            <select id="mapCloModalClo">
-              <option value="">Select a CLO…</option>
-            </select>
-            <div id="mapCloModalAlert" class="alert d-none"></div>
-            <button type="submit">Add Mapping</button>
-            <button type="button" id="mapCloPublishBtn">Publish Draft</button>
-          </form>
+          <select id="mapCloModalProgram">
+            <option value="">Select a program…</option>
+          </select>
+          <select id="mapCloModalPlo">
+            <option value="">Select a PLO…</option>
+          </select>
+          <div id="mapCloPickerContainer" style="display:none;">
+            <div class="list-group list-group-flush" id="mappedCloList"></div>
+            <button type="button" id="moveCloLeft"></button>
+            <button type="button" id="moveCloRight"></button>
+            <div class="list-group list-group-flush" id="availableCloList"></div>
+            <span id="mappedCloCount">0</span>
+            <span id="availableCloCount">0</span>
+          </div>
+          <div id="mapCloModalAlert" class="alert d-none"></div>
+          <button type="button" id="mapCloSaveBtn">Save Mappings</button>
+          <button type="button" id="mapCloPublishBtn">Publish Draft</button>
         </div>
       `);
       const existing = document.querySelector('meta[name="csrf-token"]');
@@ -1052,7 +1055,7 @@ describe("DOM-dependent functions", () => {
       expect(realOptions[0].value).toBe("plo-1");
     });
 
-    it("loads unmapped CLOs when PLO is selected", async () => {
+    it("loads cherry picker panels when PLO is selected", async () => {
       setupMapCloModalDom();
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
@@ -1066,15 +1069,19 @@ describe("DOM-dependent functions", () => {
       programDropdown.innerHTML = '<option value="prog-1">Biology</option>';
       programDropdown.value = "prog-1";
 
-      // Set up fetch to return unmapped CLOs
+      // Set up fetch to return clo-picker data
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
           success: true,
-          unmapped_clos: [
+          mapped: [
             { outcome_id: "clo-1", clo_number: 1, description: "CLO One", course: { course_number: "BIO-101" } },
+          ],
+          available: [
             { outcome_id: "clo-2", clo_number: 2, description: "CLO Two", course: { course_number: "BIO-201" } },
           ],
+          course_count: 2,
+          total_clo_count: 2,
         }),
       });
 
@@ -1087,20 +1094,27 @@ describe("DOM-dependent functions", () => {
 
       await new Promise((r) => setTimeout(r, 50));
 
-      const cloDropdown = document.getElementById("mapCloModalClo");
-      const cloOptions = Array.from(cloDropdown.options);
-      const realOptions = cloOptions.filter((o) => o.value !== "");
-      expect(realOptions.length).toBe(2);
-      expect(realOptions[0].value).toBe("clo-1");
+      // Cherry picker should be visible
+      const picker = document.getElementById("mapCloPickerContainer");
+      expect(picker.style.display).toBe("");
+
+      // Mapped panel should have 1 CLO
+      const mappedItems = document.querySelectorAll('#mappedCloList input[type="checkbox"]');
+      expect(mappedItems.length).toBe(1);
+      expect(mappedItems[0].value).toBe("clo-1");
+
+      // Available panel should have 1 CLO
+      const availableItems = document.querySelectorAll('#availableCloList input[type="checkbox"]');
+      expect(availableItems.length).toBe(1);
+      expect(availableItems[0].value).toBe("clo-2");
     });
 
-    it("submits mapping and reloads tree on form submit", async () => {
+    it("saves mappings via PUT when save button is clicked", async () => {
       setupMapCloModalDom();
-      const mockHide = jest.fn();
       global.bootstrap = {
         Modal: jest.fn(() => ({ show: jest.fn() })),
       };
-      global.bootstrap.Modal.getInstance = jest.fn(() => ({ hide: mockHide }));
+      global.bootstrap.Modal.getInstance = jest.fn(() => ({ hide: jest.fn() }));
 
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
@@ -1117,31 +1131,38 @@ describe("DOM-dependent functions", () => {
       ploDropdown.innerHTML = '<option value="plo-1">PLO 1</option>';
       ploDropdown.value = "plo-1";
 
-      const cloDropdown = document.getElementById("mapCloModalClo");
-      cloDropdown.innerHTML = '<option value="clo-1">CLO 1</option>';
-      cloDropdown.value = "clo-1";
+      // Populate the mapped panel with CLOs
+      renderPickerPanel("mappedCloList", [
+        { outcome_id: "clo-1", clo_number: 1, description: "CLO One", course: { course_number: "BIO-101" } },
+        { outcome_id: "clo-3", clo_number: 3, description: "CLO Three", course: { course_number: "BIO-301" } },
+      ]);
 
-      // Mock fetch for draft creation + entry addition + tree reload
+      // Mock fetch for save + tree reload
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
           success: true,
           mapping: { id: "draft-1", status: "draft" },
-          entry_id: "entry-1",
           data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } },
         }),
       });
 
-      const form = document.getElementById("mapCloForm");
-      form.dispatchEvent(new Event("submit", { cancelable: true }));
+      const saveBtn = document.getElementById("mapCloSaveBtn");
+      saveBtn.click();
 
       await new Promise((r) => setTimeout(r, 100));
 
-      // Should have made fetch calls (draft creation + entry addition)
-      const postCalls = global.fetch.mock.calls.filter(
-        (call) => call[1] && call[1].method === "POST"
+      // Should have made a PUT call to clo-mappings
+      const putCalls = global.fetch.mock.calls.filter(
+        (call) => call[1] && call[1].method === "PUT"
       );
-      expect(postCalls.length).toBeGreaterThanOrEqual(1);
+      expect(putCalls.length).toBe(1);
+      expect(putCalls[0][0]).toContain("/clo-mappings");
+
+      // Body should contain both CLO IDs
+      const body = JSON.parse(putCalls[0][1].body);
+      expect(body.clo_ids).toContain("clo-1");
+      expect(body.clo_ids).toContain("clo-3");
     });
 
     it("publish draft button calls publish endpoint", async () => {
@@ -1256,14 +1277,14 @@ describe("DOM-dependent functions", () => {
   });
 
   describe("expand and collapse all", () => {
-    it("expand all shows all plo-item-content and sets chevrons down", () => {
+    it("expand all shows all collapsible bodies and adds expanded class to icons", () => {
       setupDom();
       const container = document.getElementById("ploTreeContainer");
       container.innerHTML =
-        '<div class="plo-item-content" style="display:none;">A</div>' +
-        '<div class="plo-item-content" style="display:none;">B</div>' +
-        '<i class="fas plo-item-chevron fa-chevron-right"></i>' +
-        '<i class="fas plo-item-chevron fa-chevron-right"></i>';
+        '<div class="plo-program-body" style="display:none;">A</div>' +
+        '<div class="plo-item-body" style="display:none;">B</div>' +
+        '<i class="fas plo-expand-icon"></i>' +
+        '<i class="fas plo-expand-icon"></i>';
 
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
@@ -1274,25 +1295,27 @@ describe("DOM-dependent functions", () => {
       const expandBtn = document.getElementById("expandAllBtn");
       expandBtn.click();
 
-      const items = container.querySelectorAll(".plo-item-content");
-      items.forEach((el) => {
+      container.querySelectorAll(".plo-program-body").forEach((el) => {
         expect(el.style.display).toBe("");
       });
-      const chevrons = container.querySelectorAll(".plo-item-chevron");
-      chevrons.forEach((el) => {
-        expect(el.classList.contains("fa-chevron-down")).toBe(true);
-        expect(el.classList.contains("fa-chevron-right")).toBe(false);
+      container.querySelectorAll(".plo-item-body").forEach((el) => {
+        expect(el.style.display).toBe("");
+      });
+      container.querySelectorAll(".plo-expand-icon").forEach((el) => {
+        expect(el.classList.contains("expanded")).toBe(true);
       });
     });
 
-    it("collapse all hides all plo-item-content and sets chevrons right", () => {
+    it("collapse all hides all collapsible bodies and removes expanded class", () => {
       setupDom();
       const container = document.getElementById("ploTreeContainer");
       container.innerHTML =
-        '<div class="plo-item-content">A</div>' +
-        '<div class="plo-item-content">B</div>' +
-        '<i class="fas plo-item-chevron fa-chevron-down"></i>' +
-        '<i class="fas plo-item-chevron fa-chevron-down"></i>';
+        '<div class="plo-program-body">A</div>' +
+        '<div class="plo-item-body">B</div>' +
+        '<div class="plo-section-row">S</div>' +
+        '<div data-toggle="clo" class="expanded">C</div>' +
+        '<i class="fas plo-expand-icon expanded"></i>' +
+        '<i class="fas plo-expand-icon expanded"></i>';
 
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
@@ -1303,14 +1326,20 @@ describe("DOM-dependent functions", () => {
       const collapseBtn = document.getElementById("collapseAllBtn");
       collapseBtn.click();
 
-      const items = container.querySelectorAll(".plo-item-content");
-      items.forEach((el) => {
+      container.querySelectorAll(".plo-program-body").forEach((el) => {
         expect(el.style.display).toBe("none");
       });
-      const chevrons = container.querySelectorAll(".plo-item-chevron");
-      chevrons.forEach((el) => {
-        expect(el.classList.contains("fa-chevron-right")).toBe(true);
-        expect(el.classList.contains("fa-chevron-down")).toBe(false);
+      container.querySelectorAll(".plo-item-body").forEach((el) => {
+        expect(el.style.display).toBe("none");
+      });
+      container.querySelectorAll(".plo-section-row").forEach((el) => {
+        expect(el.style.display).toBe("none");
+      });
+      container.querySelectorAll(".plo-expand-icon").forEach((el) => {
+        expect(el.classList.contains("expanded")).toBe(false);
+      });
+      container.querySelectorAll('[data-toggle="clo"]').forEach((el) => {
+        expect(el.classList.contains("expanded")).toBe(false);
       });
     });
   });
@@ -1378,7 +1407,7 @@ describe("DOM-dependent functions", () => {
   });
 
   // -------------------------------------------------------------------------
-  // Map CLO modal — empty state diagnostics
+  // Map CLO modal — empty state diagnostics (cherry picker)
   // -------------------------------------------------------------------------
 
   describe("Map CLO modal — empty state diagnostics", () => {
@@ -1388,7 +1417,6 @@ describe("DOM-dependent functions", () => {
         <select id="ploProgramFilter">
           <option value="prog-1">Biology</option>
         </select>
-        <button id="ploRefreshBtn"></button>
         <div id="ploTreeContainer"></div>
         <span id="statPrograms"></span>
         <span id="statPlos"></span>
@@ -1402,20 +1430,23 @@ describe("DOM-dependent functions", () => {
         <button id="collapseAllBtn"></button>
 
         <div id="mapCloModal">
-          <form id="mapCloForm">
-            <select id="mapCloModalProgram">
-              <option value="">Select a program…</option>
-            </select>
-            <select id="mapCloModalPlo">
-              <option value="">Select a PLO…</option>
-            </select>
-            <select id="mapCloModalClo">
-              <option value="">Select a CLO…</option>
-            </select>
-            <div id="mapCloModalAlert" class="alert d-none"></div>
-            <button type="submit">Add Mapping</button>
-            <button type="button" id="mapCloPublishBtn">Publish Draft</button>
-          </form>
+          <select id="mapCloModalProgram">
+            <option value="">Select a program…</option>
+          </select>
+          <select id="mapCloModalPlo">
+            <option value="">Select a PLO…</option>
+          </select>
+          <div id="mapCloPickerContainer" style="display:none;">
+            <div class="list-group list-group-flush" id="mappedCloList"></div>
+            <button type="button" id="moveCloLeft"></button>
+            <button type="button" id="moveCloRight"></button>
+            <div class="list-group list-group-flush" id="availableCloList"></div>
+            <span id="mappedCloCount">0</span>
+            <span id="availableCloCount">0</span>
+          </div>
+          <div id="mapCloModalAlert" class="alert d-none"></div>
+          <button type="button" id="mapCloSaveBtn">Save Mappings</button>
+          <button type="button" id="mapCloPublishBtn">Publish Draft</button>
         </div>
       `);
       const existing = document.querySelector('meta[name="csrf-token"]');
@@ -1511,13 +1542,13 @@ describe("DOM-dependent functions", () => {
         '<option value="plo-1">PLO 1</option>';
       ploDropdown.value = "plo-1";
 
-      // Return empty CLOs with course_count=0
+      // Return clo-picker data with course_count=0
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
           success: true,
-          unmapped_clos: [],
-          count: 0,
+          mapped: [],
+          available: [],
           course_count: 0,
           total_clo_count: 0,
         }),
@@ -1528,7 +1559,7 @@ describe("DOM-dependent functions", () => {
 
       const alert = document.getElementById("mapCloModalAlert");
       expect(alert.className).toContain("alert-warning");
-      expect(alert.textContent).toContain("No courses are linked");
+      expect(alert.textContent).toContain("no courses linked");
     });
 
     it("shows info when courses have no CLOs defined", async () => {
@@ -1558,8 +1589,8 @@ describe("DOM-dependent functions", () => {
         ok: true,
         json: async () => ({
           success: true,
-          unmapped_clos: [],
-          count: 0,
+          mapped: [],
+          available: [],
           course_count: 3,
           total_clo_count: 0,
         }),
@@ -1570,52 +1601,10 @@ describe("DOM-dependent functions", () => {
 
       const alert = document.getElementById("mapCloModalAlert");
       expect(alert.className).toContain("alert-info");
-      expect(alert.textContent).toContain("learning outcomes defined");
+      expect(alert.textContent).toContain("learning outcomes");
     });
 
-    it("shows success when all CLOs are already mapped", async () => {
-      setupMapCloModalDom();
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          success: true, terms: [], programs: [], plos: [],
-          data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } },
-        }),
-      });
-      global.bootstrap = { Modal: jest.fn(() => ({ show: jest.fn() })) };
-      init();
-
-      const programDropdown = document.getElementById("mapCloModalProgram");
-      programDropdown.innerHTML = '<option value="prog-1">Biology</option>';
-      programDropdown.value = "prog-1";
-
-      const ploDropdown = document.getElementById("mapCloModalPlo");
-      ploDropdown.innerHTML =
-        '<option value="">Select a PLO…</option>' +
-        '<option value="plo-1">PLO 1</option>';
-      ploDropdown.value = "plo-1";
-
-      // Courses and CLOs exist, but all mapped
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          success: true,
-          unmapped_clos: [],
-          count: 0,
-          course_count: 2,
-          total_clo_count: 5,
-        }),
-      });
-
-      ploDropdown.dispatchEvent(new Event("change"));
-      await new Promise((r) => setTimeout(r, 50));
-
-      const alert = document.getElementById("mapCloModalAlert");
-      expect(alert.className).toContain("alert-success");
-      expect(alert.textContent).toContain("already mapped");
-    });
-
-    it("hides alert when CLOs are found", async () => {
+    it("renders cherry picker when CLOs exist (no alert)", async () => {
       setupMapCloModalDom();
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
@@ -1641,10 +1630,10 @@ describe("DOM-dependent functions", () => {
         ok: true,
         json: async () => ({
           success: true,
-          unmapped_clos: [
+          mapped: [
             { outcome_id: "clo-1", clo_number: 1, description: "CLO", course: { course_number: "BIO-101" } },
           ],
-          count: 1,
+          available: [],
           course_count: 1,
           total_clo_count: 1,
         }),
@@ -1655,10 +1644,154 @@ describe("DOM-dependent functions", () => {
 
       const alert = document.getElementById("mapCloModalAlert");
       expect(alert.className).toContain("d-none");
+
+      // Cherry picker should be visible
+      const picker = document.getElementById("mapCloPickerContainer");
+      expect(picker.style.display).toBe("");
     });
   });
 
   // -------------------------------------------------------------------------
-  // Map CLO modal — empty state diagnostics
+  // Cherry picker helper functions
   // -------------------------------------------------------------------------
+
+  describe("renderPickerPanel", () => {
+    beforeEach(() => {
+      setBody('<div class="list-group" id="testList"></div>');
+    });
+
+    it("renders CLO items with checkboxes", () => {
+      renderPickerPanel("testList", [
+        { outcome_id: "clo-1", clo_number: 1, description: "First CLO", course: { course_number: "BIO-101" } },
+        { outcome_id: "clo-2", clo_number: 2, description: "Second CLO", course: { course_number: "BIO-201" } },
+      ]);
+
+      const list = document.getElementById("testList");
+      const checkboxes = list.querySelectorAll('input[type="checkbox"]');
+      expect(checkboxes.length).toBe(2);
+      expect(checkboxes[0].value).toBe("clo-1");
+      expect(checkboxes[1].value).toBe("clo-2");
+    });
+
+    it("shows 'No CLOs' placeholder when list is empty", () => {
+      renderPickerPanel("testList", []);
+
+      const list = document.getElementById("testList");
+      expect(list.textContent).toContain("No CLOs");
+      expect(list.querySelectorAll('input[type="checkbox"]').length).toBe(0);
+    });
+
+    it("shows 'Mapped to another PLO' badge when mapped_to_plo_id is set", () => {
+      renderPickerPanel("testList", [
+        { outcome_id: "clo-1", clo_number: 1, description: "CLO One", course: { course_number: "BIO-101" }, mapped_to_plo_id: "plo-99" },
+      ]);
+
+      const list = document.getElementById("testList");
+      const badge = list.querySelector(".badge.bg-warning");
+      expect(badge).not.toBeNull();
+      expect(badge.textContent).toContain("Mapped to another PLO");
+    });
+
+    it("does not crash when list element is missing", () => {
+      expect(() => renderPickerPanel("nonExistent", [])).not.toThrow();
+    });
+  });
+
+  describe("moveCheckedItems", () => {
+    beforeEach(() => {
+      setBody(`
+        <div class="list-group" id="fromList">
+          <label class="list-group-item"><input type="checkbox" value="a" checked>A</label>
+          <label class="list-group-item"><input type="checkbox" value="b">B</label>
+          <label class="list-group-item"><input type="checkbox" value="c" checked>C</label>
+        </div>
+        <div class="list-group" id="toList"></div>
+      `);
+    });
+
+    it("moves only checked items to the target list", () => {
+      moveCheckedItems("fromList", "toList");
+
+      const fromList = document.getElementById("fromList");
+      const toList = document.getElementById("toList");
+
+      // Only unchecked item 'b' remains in source
+      expect(fromList.querySelectorAll('input[type="checkbox"]').length).toBe(1);
+      expect(fromList.querySelector('input[type="checkbox"]').value).toBe("b");
+
+      // Checked items 'a' and 'c' moved to target
+      const movedCbs = toList.querySelectorAll('input[type="checkbox"]');
+      expect(movedCbs.length).toBe(2);
+      const movedValues = Array.from(movedCbs).map((cb) => cb.value);
+      expect(movedValues).toContain("a");
+      expect(movedValues).toContain("c");
+    });
+
+    it("unchecks items after moving them", () => {
+      moveCheckedItems("fromList", "toList");
+
+      const toList = document.getElementById("toList");
+      toList.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        expect(cb.checked).toBe(false);
+      });
+    });
+
+    it("shows placeholder when source becomes empty", () => {
+      // Check all items
+      document.querySelectorAll('#fromList input[type="checkbox"]').forEach((cb) => {
+        cb.checked = true;
+      });
+
+      moveCheckedItems("fromList", "toList");
+
+      const fromList = document.getElementById("fromList");
+      expect(fromList.textContent).toContain("No CLOs");
+    });
+
+    it("removes 'Mapped to another PLO' badge when moving", () => {
+      // Add a badge to item A
+      const itemA = document.querySelector('#fromList .list-group-item');
+      const badge = document.createElement("span");
+      badge.className = "badge bg-warning text-dark";
+      badge.textContent = "Mapped to another PLO";
+      itemA.appendChild(badge);
+
+      moveCheckedItems("fromList", "toList");
+
+      const toList = document.getElementById("toList");
+      expect(toList.querySelector(".badge.bg-warning")).toBeNull();
+    });
+
+    it("does not crash when lists are missing", () => {
+      expect(() => moveCheckedItems("nonExistent1", "nonExistent2")).not.toThrow();
+    });
+  });
+
+  describe("updatePickerCounts", () => {
+    beforeEach(() => {
+      setBody(`
+        <div id="mappedCloList">
+          <label><input type="checkbox" value="a">A</label>
+          <label><input type="checkbox" value="b">B</label>
+        </div>
+        <div id="availableCloList">
+          <label><input type="checkbox" value="c">C</label>
+        </div>
+        <span id="mappedCloCount">0</span>
+        <span id="availableCloCount">0</span>
+      `);
+    });
+
+    it("updates mapped and available count badges", () => {
+      updatePickerCounts();
+
+      expect(document.getElementById("mappedCloCount").textContent).toBe("2");
+      expect(document.getElementById("availableCloCount").textContent).toBe("1");
+    });
+
+    it("does not crash when elements are missing", () => {
+      setBody("<div></div>");
+      expect(() => updatePickerCounts()).not.toThrow();
+    });
+  });
 });
