@@ -649,11 +649,11 @@
       ploForm.addEventListener("submit", function (e) {
         e.preventDefault();
         var programId = document.getElementById("ploModalProgram").value;
-        var ploNumber = document.getElementById("ploNumber").value;
-        var ploDescription = document.getElementById("ploDescription").value;
-        if (!programId || !ploNumber) return;
+        var ploDescription = document.getElementById(
+          "ploModalDescription",
+        ).value;
+        if (!programId || !ploDescription) return;
         postJson("/api/programs/" + programId + "/plos", {
-          plo_number: parseInt(ploNumber, 10),
           description: ploDescription,
         }).then(function () {
           // eslint-disable-next-line no-undef

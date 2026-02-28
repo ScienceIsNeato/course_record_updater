@@ -36,12 +36,19 @@ def get_program_outcome(plo_id: str) -> Optional[Dict[str, Any]]:
 def create_program_outcome(data: Dict[str, Any]) -> str:
     """Create a new PLO template.
 
-    Required keys: program_id, institution_id, plo_number, description.
+    Required keys: program_id, institution_id, description.
+    Optional keys: plo_number (auto-incremented if omitted).
     Returns the new PLO ID.
 
     Raises:
         ValueError: if required fields are missing.
     """
+    # Auto-increment plo_number if not provided
+    if "plo_number" not in data or data["plo_number"] is None:
+        existing = database_service.get_program_outcomes(data.get("program_id", ""))
+        max_num = max((p.get("plo_number", 0) for p in existing), default=0)
+        data["plo_number"] = max_num + 1
+
     required = ("program_id", "institution_id", "plo_number", "description")
     missing = [f for f in required if f not in data or data[f] is None]
     if missing:

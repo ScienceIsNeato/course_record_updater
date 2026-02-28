@@ -417,6 +417,13 @@
                     "enrollment": 28,
                     "status": "assigned",
                     "instructor_idx": 4
+                },
+                {
+                    "_comment": "Section 002 - mixed: some CLOs missing data, some with failing numbers",
+                    "section_number": "002",
+                    "enrollment": 24,
+                    "status": "assigned",
+                    "instructor_idx": 2
                 }
             ]
         },
@@ -662,10 +669,13 @@
             ]
         },
         {
+            "_comment": "Section 004 - submitted with FAILING numbers (pass rates below 70% threshold)",
             "course_code": "BIOL-101",
             "section_number": "004",
             "clo_number": 1,
             "status": "awaiting_approval",
+            "students_took": 22,
+            "students_passed": 8,
             "history": [
                 {
                     "event": "Assigned",
@@ -682,6 +692,8 @@
             "section_number": "004",
             "clo_number": 2,
             "status": "awaiting_approval",
+            "students_took": 22,
+            "students_passed": 12,
             "history": [
                 {
                     "event": "Assigned",
@@ -698,6 +710,8 @@
             "section_number": "004",
             "clo_number": 3,
             "status": "awaiting_approval",
+            "students_took": 22,
+            "students_passed": 10,
             "history": [
                 {
                     "event": "Assigned",
@@ -874,6 +888,69 @@
                 {
                     "event": "Approved",
                     "relative_days": -14
+                }
+            ]
+        },
+        {
+            "_comment": "ZOOL-101 Section 002 - CLO 1: approved but FAILING numbers (pass rate 54%)",
+            "course_code": "ZOOL-101",
+            "section_number": "002",
+            "clo_number": 1,
+            "status": "approved",
+            "students_took": 24,
+            "students_passed": 13,
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -12
+                },
+                {
+                    "event": "Approved",
+                    "relative_days": -10
+                }
+            ]
+        },
+        {
+            "_comment": "ZOOL-101 Section 002 - CLO 2: still assigned, MISSING data",
+            "course_code": "ZOOL-101",
+            "section_number": "002",
+            "clo_number": 2,
+            "status": "assigned",
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Reminder Sent",
+                    "relative_days": -14
+                }
+            ]
+        },
+        {
+            "_comment": "ZOOL-101 Section 002 - CLO 3: approved with passing numbers (83%)",
+            "course_code": "ZOOL-101",
+            "section_number": "002",
+            "clo_number": 3,
+            "status": "approved",
+            "students_took": 24,
+            "students_passed": 20,
+            "history": [
+                {
+                    "event": "Assigned",
+                    "relative_days": -45
+                },
+                {
+                    "event": "Submitted",
+                    "relative_days": -12
+                },
+                {
+                    "event": "Approved",
+                    "relative_days": -10
                 }
             ]
         },
