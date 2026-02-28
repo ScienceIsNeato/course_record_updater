@@ -483,8 +483,13 @@ class PloMapping(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     )
 
     __table_args__ = (
-        # Version numbers are unique within a program (for published mappings)
-        UniqueConstraint("program_id", "version", name="uq_program_mapping_version"),
+        # Version numbers are unique within a program+term combination
+        UniqueConstraint(
+            "program_id",
+            "term_id",
+            "version",
+            name="uq_program_term_mapping_version",
+        ),
         # Only one draft per program — enforced via partial unique index
         Index(
             "uq_program_draft",
