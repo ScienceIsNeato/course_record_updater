@@ -492,9 +492,18 @@ def unmapped_clos(program_id: str) -> ResponseReturnValue:
 
     try:
         mapping_id = request.args.get("mapping_id")
-        clos = get_unmapped_clos(program_id, mapping_id=mapping_id)
+        result = get_unmapped_clos(program_id, mapping_id=mapping_id)
+        unmapped = result["unmapped"]
         return (
-            jsonify({"success": True, "unmapped_clos": clos, "count": len(clos)}),
+            jsonify(
+                {
+                    "success": True,
+                    "unmapped_clos": unmapped,
+                    "count": len(unmapped),
+                    "course_count": result["course_count"],
+                    "total_clo_count": result["total_clo_count"],
+                }
+            ),
             200,
         )
     except Exception as exc:

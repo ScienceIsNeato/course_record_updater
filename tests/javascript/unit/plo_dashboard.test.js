@@ -42,6 +42,8 @@ const {
   loadTree,
   init,
   _setDomRefs,
+  showMapCloAlert,
+  hideMapCloAlert,
 } = require("../../../static/plo_dashboard");
 
 // ---------------------------------------------------------------------------
@@ -1329,6 +1331,620 @@ describe("DOM-dependent functions", () => {
 
       // fetch should have been called again for the tree reload
       expect(global.fetch.mock.calls.length).toBeGreaterThan(callsBefore);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // showMapCloAlert / hideMapCloAlert
+  // -------------------------------------------------------------------------
+
+  describe("showMapCloAlert / hideMapCloAlert", () => {
+    beforeEach(() => {
+      setBody('<div id="mapCloModalAlert" class="alert d-none"></div>');
+    });
+
+    it("shows an info alert with the given message", () => {
+      showMapCloAlert("Hello world", "info");
+      const el = document.getElementById("mapCloModalAlert");
+      expect(el.textContent).toBe("Hello world");
+      expect(el.className).toBe("alert alert-info");
+    });
+
+    it("shows a warning alert", () => {
+      showMapCloAlert("Warning!", "warning");
+      const el = document.getElementById("mapCloModalAlert");
+      expect(el.className).toBe("alert alert-warning");
+    });
+
+    it("defaults to info when type is omitted", () => {
+      showMapCloAlert("Default type");
+      const el = document.getElementById("mapCloModalAlert");
+      expect(el.className).toBe("alert alert-info");
+    });
+
+    it("hideMapCloAlert resets the alert to hidden", () => {
+      showMapCloAlert("Visible", "danger");
+      hideMapCloAlert();
+      const el = document.getElementById("mapCloModalAlert");
+      expect(el.className).toBe("alert d-none");
+      expect(el.textContent).toBe("");
+    });
+
+    it("does not throw when alert element is missing", () => {
+      setBody("<div></div>");
+      expect(() => showMapCloAlert("test", "info")).not.toThrow();
+      expect(() => hideMapCloAlert()).not.toThrow();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Map CLO modal — empty state diagnostics
+  // -------------------------------------------------------------------------
+
+  describe("Map CLO modal — empty state diagnostics", () => {
+    function setupMapCloModalDom() {
+      setBody(`
+        <select id="ploTermFilter"></select>
+        <select id="ploProgramFilter">
+          <option value="prog-1">Biology</option>
+        </select>
+        <button id="ploRefreshBtn"></button>
+        <div id="ploTreeContainer"></div>
+        <span id="statPrograms"></span>
+        <span id="statPlos"></span>
+        <span id="statMappedClos"></span>
+        <span id="statWithData"></span>
+        <span id="statMissingData"></span>
+        <select id="ploDisplayMode"><option value="both">Both</option></select>
+        <button id="createPloBtn"></button>
+        <button id="mapCloBtn"></button>
+        <button id="expandAllBtn"></button>
+        <button id="collapseAllBtn"></button>
+        <button id="manageProgramCoursesBtn"></button>
+
+        <div id="mapCloModal">
+          <form id="mapCloForm">
+            <select id="mapCloModalProgram">
+              <option value="">Select a program…</option>
+            </select>
+            <select id="mapCloModalPlo">
+              <option value="">Select a PLO…</option>
+            </select>
+            <select id="mapCloModalClo">
+              <option value="">Select a CLO…</option>
+            </select>
+            <div id="mapCloModalAlert" class="alert d-none"></div>
+            <button type="submit">Add Mapping</button>
+            <button type="button" id="mapCloPublishBtn">Publish Draft</button>
+          </form>
+        </div>
+      `);
+      const existing = document.querySelector('meta[name="csrf-token"]');
+      if (existing) existing.remove();
+      const meta = document.createElement("meta");
+      meta.setAttribute("name", "csrf-token");
+      meta.setAttribute("content", "test-csrf-token");
+      document.head.appendChild(meta);
+    }
+
+    it("shows info alert when program has no PLOs", async () => {
+      setupMapCloModalDom();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true, terms: [], programs: [],
+          plos: [],
+          data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } },
+        }),
+      });
+      global.bootstrap = { Modal: jest.fn(() => ({ show: jest.fn() })) };
+      init();
+
+      // Set program and trigger change
+      const programDropdown = document.getElementById("mapCloModalProgram");
+      programDropdown.innerHTML = '<option value="prog-1">Biology</option>';
+      programDropdown.value = "prog-1";
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, plos: [] }),
+      });
+
+      programDropdown.dispatchEvent(new Event("change"));
+      await new Promise((r) => setTimeout(r, 50));
+
+      const alert = document.getElementById("mapCloModalAlert");
+      expect(alert.className).toContain("alert-info");
+      expect(alert.textContent).toContain("No PLOs defined");
+    });
+
+    it("hides alert when program has PLOs", async () => {
+      setupMapCloModalDom();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true, terms: [], programs: [],
+          plos: [],
+          data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } },
+        }),
+      });
+      global.bootstrap = { Modal: jest.fn(() => ({ show: jest.fn() })) };
+      init();
+
+      const programDropdown = document.getElementById("mapCloModalProgram");
+      programDropdown.innerHTML = '<option value="prog-1">Biology</option>';
+      programDropdown.value = "prog-1";
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          plos: [{ id: "plo-1", plo_number: 1, description: "PLO One" }],
+        }),
+      });
+
+      programDropdown.dispatchEvent(new Event("change"));
+      await new Promise((r) => setTimeout(r, 50));
+
+      const alert = document.getElementById("mapCloModalAlert");
+      expect(alert.className).toContain("d-none");
+    });
+
+    it("shows warning when no courses linked to program", async () => {
+      setupMapCloModalDom();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true, terms: [], programs: [], plos: [],
+          data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } },
+        }),
+      });
+      global.bootstrap = { Modal: jest.fn(() => ({ show: jest.fn() })) };
+      init();
+
+      const programDropdown = document.getElementById("mapCloModalProgram");
+      programDropdown.innerHTML = '<option value="prog-1">Biology</option>';
+      programDropdown.value = "prog-1";
+
+      const ploDropdown = document.getElementById("mapCloModalPlo");
+      ploDropdown.innerHTML =
+        '<option value="">Select a PLO…</option>' +
+        '<option value="plo-1">PLO 1</option>';
+      ploDropdown.value = "plo-1";
+
+      // Return empty CLOs with course_count=0
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          unmapped_clos: [],
+          count: 0,
+          course_count: 0,
+          total_clo_count: 0,
+        }),
+      });
+
+      ploDropdown.dispatchEvent(new Event("change"));
+      await new Promise((r) => setTimeout(r, 50));
+
+      const alert = document.getElementById("mapCloModalAlert");
+      expect(alert.className).toContain("alert-warning");
+      expect(alert.textContent).toContain("No courses are linked");
+    });
+
+    it("shows info when courses have no CLOs defined", async () => {
+      setupMapCloModalDom();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true, terms: [], programs: [], plos: [],
+          data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } },
+        }),
+      });
+      global.bootstrap = { Modal: jest.fn(() => ({ show: jest.fn() })) };
+      init();
+
+      const programDropdown = document.getElementById("mapCloModalProgram");
+      programDropdown.innerHTML = '<option value="prog-1">Biology</option>';
+      programDropdown.value = "prog-1";
+
+      const ploDropdown = document.getElementById("mapCloModalPlo");
+      ploDropdown.innerHTML =
+        '<option value="">Select a PLO…</option>' +
+        '<option value="plo-1">PLO 1</option>';
+      ploDropdown.value = "plo-1";
+
+      // Courses exist but no CLOs
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          unmapped_clos: [],
+          count: 0,
+          course_count: 3,
+          total_clo_count: 0,
+        }),
+      });
+
+      ploDropdown.dispatchEvent(new Event("change"));
+      await new Promise((r) => setTimeout(r, 50));
+
+      const alert = document.getElementById("mapCloModalAlert");
+      expect(alert.className).toContain("alert-info");
+      expect(alert.textContent).toContain("learning outcomes defined");
+    });
+
+    it("shows success when all CLOs are already mapped", async () => {
+      setupMapCloModalDom();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true, terms: [], programs: [], plos: [],
+          data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } },
+        }),
+      });
+      global.bootstrap = { Modal: jest.fn(() => ({ show: jest.fn() })) };
+      init();
+
+      const programDropdown = document.getElementById("mapCloModalProgram");
+      programDropdown.innerHTML = '<option value="prog-1">Biology</option>';
+      programDropdown.value = "prog-1";
+
+      const ploDropdown = document.getElementById("mapCloModalPlo");
+      ploDropdown.innerHTML =
+        '<option value="">Select a PLO…</option>' +
+        '<option value="plo-1">PLO 1</option>';
+      ploDropdown.value = "plo-1";
+
+      // Courses and CLOs exist, but all mapped
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          unmapped_clos: [],
+          count: 0,
+          course_count: 2,
+          total_clo_count: 5,
+        }),
+      });
+
+      ploDropdown.dispatchEvent(new Event("change"));
+      await new Promise((r) => setTimeout(r, 50));
+
+      const alert = document.getElementById("mapCloModalAlert");
+      expect(alert.className).toContain("alert-success");
+      expect(alert.textContent).toContain("already mapped");
+    });
+
+    it("hides alert when CLOs are found", async () => {
+      setupMapCloModalDom();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true, terms: [], programs: [], plos: [],
+          data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } },
+        }),
+      });
+      global.bootstrap = { Modal: jest.fn(() => ({ show: jest.fn() })) };
+      init();
+
+      const programDropdown = document.getElementById("mapCloModalProgram");
+      programDropdown.innerHTML = '<option value="prog-1">Biology</option>';
+      programDropdown.value = "prog-1";
+
+      const ploDropdown = document.getElementById("mapCloModalPlo");
+      ploDropdown.innerHTML =
+        '<option value="">Select a PLO…</option>' +
+        '<option value="plo-1">PLO 1</option>';
+      ploDropdown.value = "plo-1";
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          unmapped_clos: [
+            { outcome_id: "clo-1", clo_number: 1, description: "CLO", course: { course_number: "BIO-101" } },
+          ],
+          count: 1,
+          course_count: 1,
+          total_clo_count: 1,
+        }),
+      });
+
+      ploDropdown.dispatchEvent(new Event("change"));
+      await new Promise((r) => setTimeout(r, 50));
+
+      const alert = document.getElementById("mapCloModalAlert");
+      expect(alert.className).toContain("d-none");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Manage Program Courses modal
+  // -------------------------------------------------------------------------
+
+  describe("Manage Program Courses modal", () => {
+    function setupMpcDom() {
+      setBody(`
+        <select id="ploTermFilter"></select>
+        <select id="ploProgramFilter">
+          <option value="prog-1">Biology</option>
+          <option value="prog-2">Zoology</option>
+        </select>
+        <button id="ploRefreshBtn"></button>
+        <div id="ploTreeContainer"></div>
+        <span id="statPrograms"></span>
+        <span id="statPlos"></span>
+        <span id="statMappedClos"></span>
+        <span id="statWithData"></span>
+        <span id="statMissingData"></span>
+        <select id="ploDisplayMode"><option value="both">Both</option></select>
+        <button id="createPloBtn"></button>
+        <button id="mapCloBtn"></button>
+        <button id="expandAllBtn"></button>
+        <button id="collapseAllBtn"></button>
+        <button id="manageProgramCoursesBtn"></button>
+
+        <div id="manageProgramCoursesModal">
+          <select id="mpcProgram">
+            <option value="">Select a program…</option>
+          </select>
+          <div id="mpcAlert" class="alert d-none"></div>
+          <span id="mpcCurrentCount">0</span>
+          <div id="mpcCurrentCourses"></div>
+          <span id="mpcAvailableCount">0</span>
+          <div id="mpcAvailableCourses"></div>
+        </div>
+      `);
+      const existing = document.querySelector('meta[name="csrf-token"]');
+      if (existing) existing.remove();
+      const meta = document.createElement("meta");
+      meta.setAttribute("name", "csrf-token");
+      meta.setAttribute("content", "test-csrf-token");
+      document.head.appendChild(meta);
+    }
+
+    it("populates program dropdown when modal opens", () => {
+      setupMpcDom();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true, terms: [], programs: [], courses: [],
+          data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } },
+        }),
+      });
+      const mockShow = jest.fn();
+      global.bootstrap = { Modal: jest.fn(() => ({ show: mockShow })) };
+      init();
+
+      const manageBtn = document.getElementById("manageProgramCoursesBtn");
+      manageBtn.click();
+
+      const mpcProgram = document.getElementById("mpcProgram");
+      const options = Array.from(mpcProgram.options);
+      expect(options.length).toBe(2);
+      expect(options[0].value).toBe("prog-1");
+      expect(options[1].value).toBe("prog-2");
+      expect(mockShow).toHaveBeenCalled();
+    });
+
+    it("loads current and available courses on program select", async () => {
+      setupMpcDom();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true, terms: [], programs: [], courses: [],
+          data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } },
+        }),
+      });
+      global.bootstrap = { Modal: jest.fn(() => ({ show: jest.fn() })) };
+      init();
+
+      const mpcProgram = document.getElementById("mpcProgram");
+      mpcProgram.innerHTML = '<option value="prog-1">Biology</option>';
+      mpcProgram.value = "prog-1";
+
+      // Mock: program has 1 course; institution has 3 total
+      global.fetch = jest.fn().mockImplementation((url) => {
+        if (url.includes("/programs/prog-1/courses")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              success: true,
+              courses: [
+                { course_id: "c1", course_number: "BIO-101", course_title: "Intro Bio" },
+              ],
+            }),
+          });
+        }
+        // /api/courses
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            success: true,
+            courses: [
+              { course_id: "c1", course_number: "BIO-101", course_title: "Intro Bio" },
+              { course_id: "c2", course_number: "BIO-201", course_title: "Adv Bio" },
+              { course_id: "c3", course_number: "CHM-101", course_title: "Intro Chem" },
+            ],
+          }),
+        });
+      });
+
+      mpcProgram.dispatchEvent(new Event("change"));
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Current courses should show 1 course with remove button
+      const currentDiv = document.getElementById("mpcCurrentCourses");
+      expect(currentDiv.querySelectorAll(".mpc-remove-btn").length).toBe(1);
+      expect(currentDiv.textContent).toContain("BIO-101");
+
+      // Available courses should show 2 (excluding the one already linked)
+      const availableDiv = document.getElementById("mpcAvailableCourses");
+      expect(availableDiv.querySelectorAll(".mpc-add-btn").length).toBe(2);
+      expect(availableDiv.textContent).toContain("BIO-201");
+      expect(availableDiv.textContent).toContain("CHM-101");
+
+      // Counts
+      expect(document.getElementById("mpcCurrentCount").textContent).toBe("1");
+      expect(document.getElementById("mpcAvailableCount").textContent).toBe("2");
+    });
+
+    it("shows empty message when no courses linked", async () => {
+      setupMpcDom();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true, terms: [], programs: [], courses: [],
+          data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } },
+        }),
+      });
+      global.bootstrap = { Modal: jest.fn(() => ({ show: jest.fn() })) };
+      init();
+
+      const mpcProgram = document.getElementById("mpcProgram");
+      mpcProgram.innerHTML = '<option value="prog-1">Biology</option>';
+      mpcProgram.value = "prog-1";
+
+      global.fetch = jest.fn().mockImplementation((url) => {
+        if (url.includes("/programs/prog-1/courses")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ success: true, courses: [] }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            success: true,
+            courses: [
+              { course_id: "c1", course_number: "BIO-101", course_title: "Intro Bio" },
+            ],
+          }),
+        });
+      });
+
+      mpcProgram.dispatchEvent(new Event("change"));
+      await new Promise((r) => setTimeout(r, 100));
+
+      const currentDiv = document.getElementById("mpcCurrentCourses");
+      expect(currentDiv.textContent).toContain("No courses linked");
+    });
+
+    it("add button sends POST and refreshes", async () => {
+      setupMpcDom();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true, terms: [], programs: [], courses: [],
+          data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } },
+        }),
+      });
+      global.bootstrap = { Modal: jest.fn(() => ({ show: jest.fn() })) };
+      init();
+
+      const mpcProgram = document.getElementById("mpcProgram");
+      mpcProgram.innerHTML = '<option value="prog-1">Biology</option>';
+      mpcProgram.value = "prog-1";
+
+      // Initial load: no courses in program, 1 available
+      global.fetch = jest.fn().mockImplementation((url) => {
+        if (url.includes("/programs/prog-1/courses")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ success: true, courses: [] }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            success: true,
+            courses: [
+              { course_id: "c1", course_number: "BIO-101", course_title: "Intro Bio" },
+            ],
+          }),
+        });
+      });
+
+      mpcProgram.dispatchEvent(new Event("change"));
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Click the add button
+      const addBtn = document.querySelector(".mpc-add-btn");
+      expect(addBtn).not.toBeNull();
+
+      // Mock fetch for POST + subsequent refresh
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, courses: [] }),
+      });
+
+      addBtn.click();
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Should have made a POST call to add the course
+      const postCalls = global.fetch.mock.calls.filter(
+        (call) => call[1] && call[1].method === "POST"
+      );
+      expect(postCalls.length).toBeGreaterThanOrEqual(1);
+      expect(postCalls[0][0]).toContain("/programs/prog-1/courses");
+    });
+
+    it("remove button sends DELETE and refreshes", async () => {
+      setupMpcDom();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true, terms: [], programs: [], courses: [],
+          data: { programs: [], summary: { total_programs: 0, total_plos: 0, total_mapped_clos: 0, clos_with_data: 0, clos_missing_data: 0 } },
+        }),
+      });
+      global.bootstrap = { Modal: jest.fn(() => ({ show: jest.fn() })) };
+      init();
+
+      const mpcProgram = document.getElementById("mpcProgram");
+      mpcProgram.innerHTML = '<option value="prog-1">Biology</option>';
+      mpcProgram.value = "prog-1";
+
+      // 1 course in program
+      global.fetch = jest.fn().mockImplementation((url) => {
+        if (url.includes("/programs/prog-1/courses")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              success: true,
+              courses: [
+                { course_id: "c1", course_number: "BIO-101", course_title: "Intro Bio" },
+              ],
+            }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ success: true, courses: [] }),
+        });
+      });
+
+      mpcProgram.dispatchEvent(new Event("change"));
+      await new Promise((r) => setTimeout(r, 100));
+
+      const removeBtn = document.querySelector(".mpc-remove-btn");
+      expect(removeBtn).not.toBeNull();
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, courses: [] }),
+      });
+
+      removeBtn.click();
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Should have made a DELETE call
+      const deleteCalls = global.fetch.mock.calls.filter(
+        (call) => call[1] && call[1].method === "DELETE"
+      );
+      expect(deleteCalls.length).toBeGreaterThanOrEqual(1);
+      expect(deleteCalls[0][0]).toContain("/programs/prog-1/courses/c1");
     });
   });
 });

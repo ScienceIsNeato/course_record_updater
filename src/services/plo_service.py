@@ -262,10 +262,15 @@ def get_mapping_matrix(
 
 def get_unmapped_clos(
     program_id: str, mapping_id: Optional[str] = None
-) -> List[Dict[str, Any]]:
+) -> Dict[str, Any]:
     """Return CLOs in the program's courses that are NOT in the given mapping.
 
     If *mapping_id* is omitted, uses the current draft or latest published.
+
+    Returns a dict with keys:
+      - unmapped: List of unmapped CLO dicts
+      - course_count: Number of courses linked to the program
+      - total_clo_count: Total active CLOs found across all program courses
     """
     # Resolve mapping
     mapping: Optional[Dict[str, Any]] = None
@@ -288,10 +293,17 @@ def get_unmapped_clos(
     # Gather all active CLOs across the program's courses
     courses = database_service.get_courses_by_program(program_id)
     unmapped: List[Dict[str, Any]] = []
+    total_clo_count = 0
     for course in courses:
         clos = database_service.get_course_outcomes(course["course_id"])
         for clo in clos:
-            if clo.get("active", True) and clo["outcome_id"] not in mapped_clo_ids:
-                unmapped.append({**clo, "course": course})
+            if clo.get("active", True):
+                total_clo_count += 1
+                if clo["outcome_id"] not in mapped_clo_ids:
+                    unmapped.append({**clo, "course": course})
 
-    return unmapped
+    return {
+        "unmapped": unmapped,
+        "course_count": len(courses),
+        "total_clo_count": total_clo_count,
+    }
