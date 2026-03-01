@@ -1278,7 +1278,7 @@ class DemoSeeder(BaselineSeeder):
         if "section_outcome_overrides" in manifest:
             self.log("🔧 Applying section-specific CLO overrides...")
             override_count = self.apply_section_outcome_overrides(
-                manifest["section_outcome_overrides"], inst_ids[0]
+                manifest["section_outcome_overrides"], inst_ids[0], term_map
             )
             self.log(f"   ✅ Applied {override_count} section outcome overrides")
 
@@ -1302,7 +1302,10 @@ class DemoSeeder(BaselineSeeder):
         return True
 
     def apply_section_outcome_overrides(
-        self, overrides: List[Dict[str, Any]], institution_id: str
+        self,
+        overrides: List[Dict[str, Any]],
+        institution_id: str,
+        term_map: Optional[Dict[str, str]] = None,
     ) -> int:
         """
         Apply section-specific CLO status overrides after seeding.
@@ -1312,8 +1315,12 @@ class DemoSeeder(BaselineSeeder):
 
         Args:
             overrides: List of override dicts with course_code, section_number,
-                      clo_number, and the updates to apply
+                      clo_number, and the updates to apply.  Optional term_code
+                      disambiguates when the same course/section exists in
+                      multiple terms.
             institution_id: Institution ID to look up course/section
+            term_map: Optional mapping of term_code → term_id for
+                      term-specific override resolution
 
         Returns:
             Number of overrides successfully applied
@@ -1329,13 +1336,19 @@ class DemoSeeder(BaselineSeeder):
             clo_number = str(override.get("clo_number"))
             new_status = override.get("status", "assigned")
 
+            # Resolve optional term_code → term_id for disambiguation
+            term_id = None
+            term_code = override.get("term_code")
+            if term_code and term_map:
+                term_id = term_map.get(term_code)
+
             # Skip if required fields are missing
             if not course_code or not section_number:
                 continue
 
             # Look up the section outcome to update
             section_outcome = self._find_section_outcome(
-                course_code, section_number, clo_number, institution_id
+                course_code, section_number, clo_number, institution_id, term_id
             )
             if not section_outcome:
                 self.log(
@@ -1560,8 +1573,20 @@ class DemoSeeder(BaselineSeeder):
         section_number: str,
         clo_number: str,
         institution_id: str,
+        term_id: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
-        """Find a specific section outcome by course/section/CLO number."""
+        """Find a specific section outcome by course/section/CLO number.
+
+        Args:
+            course_code: e.g. "BIOL-101"
+            section_number: e.g. "001"
+            clo_number: e.g. "1"
+            institution_id: Institution scope
+            term_id: Optional term filter — when provided, only sections
+                     belonging to offerings in that term are considered.
+                     Required when the same course+section exists in
+                     multiple terms (historical data).
+        """
         # Step 1: Find the course by course_code
         course = database_service.db.get_course_by_number(course_code, institution_id)
         if not course:
@@ -1583,13 +1608,22 @@ class DemoSeeder(BaselineSeeder):
         if not outcome_id:
             return None
 
-        # Step 3: Find the section by section_number
+        # Step 3: Find the section by section_number (optionally filtered by term)
         sections = database_service.db.get_sections_by_course(course_id)
         target_section = None
         for sec in sections or []:
-            if sec.get("section_number") == section_number:
-                target_section = sec
-                break
+            if sec.get("section_number") != section_number:
+                continue
+            # When term_id is given, only match sections whose offering
+            # belongs to that term.
+            if term_id:
+                offering_id = sec.get("offering_id")
+                if offering_id:
+                    offering = database_service.db.get_course_offering(offering_id)
+                    if offering and offering.get("term_id") != term_id:
+                        continue
+            target_section = sec
+            break
         if not target_section:
             return None
         section_id = target_section.get("id") or target_section.get("section_id")

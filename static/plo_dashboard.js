@@ -288,8 +288,23 @@
         this.draftMappingId = null; // reset; re-fetched when modal opens
         this._renderTree();
         this._updateStats(data);
+        this._loadTrendData();
       } catch (err) {
         setErrorState("ploTreeContainer", `Error: ${err.message}`);
+      }
+    },
+
+    /**
+     * Load trend sparklines after the tree has been rendered.
+     * Delegates to PloTrend (plo_trend.js) if available.
+     */
+    _loadTrendData() {
+      if (
+        typeof globalThis !== "undefined" &&
+        globalThis.PloTrend &&
+        this.currentProgramId
+      ) {
+        globalThis.PloTrend.loadTrend(this.currentProgramId);
       }
     },
 

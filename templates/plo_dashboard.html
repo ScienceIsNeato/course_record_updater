@@ -206,6 +206,8 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script src="{{ url_for('static', filename='dashboard_utils.js') }}"></script>
+<script src="{{ url_for('static', filename='plo_trend.js') }}"></script>
 <script src="{{ url_for('static', filename='plo_dashboard.js') }}"></script>
 {% endblock %}

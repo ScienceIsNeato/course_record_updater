@@ -132,3 +132,62 @@
   padding: 0.1rem 0.4rem;
   border-radius: 0.75rem;
 }
+
+/* ------------------------------------------------------------------ */
+/* Trend sparklines + drill-down panels                                */
+/* ------------------------------------------------------------------ */
+
+/* Inline sparkline wrapper (sits next to the assessment badge) */
+.plo-sparkline-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+}
+
+.plo-sparkline {
+  vertical-align: middle;
+  border-radius: 3px;
+  transition: box-shadow 0.15s ease;
+}
+
+.plo-sparkline:hover {
+  box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+}
+
+/* Trend direction arrows */
+.plo-trend-arrow {
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.plo-trend-arrow.trend-up {
+  color: #198754;
+}
+
+.plo-trend-arrow.trend-down {
+  color: #dc3545;
+}
+
+.plo-trend-arrow.trend-flat {
+  color: #6c757d;
+}
+
+.plo-trend-arrow.trend-none {
+  display: none;
+}
+
+/* Expanded trend chart panel (click sparkline to open) */
+.plo-trend-panel {
+  padding: 0.75rem 1rem;
+  margin: 0 0.5rem 0.5rem 2.5rem;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 0.5rem;
+  min-height: 200px;
+}
+
+.plo-trend-panel canvas {
+  max-height: 200px;
+}
