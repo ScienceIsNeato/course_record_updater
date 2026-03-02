@@ -1807,6 +1807,35 @@ def _confirm_deployed_environment(args: argparse.Namespace, database_url: str) -
     print("\n✅ Confirmation received. Proceeding with remote seeding...\n")
 
 
+def _clear_flask_sessions() -> None:
+    """Clear Flask server-side session files to force re-login after DB reset.
+
+    Flask-Session stores sessions as files in ``flask_session/`` (the default
+    ``SESSION_FILE_DIR``).  When the database is wiped the user rows disappear
+    but stale session files keep browsers "logged in", which is confusing.
+    Removing these files ensures every user must authenticate again.
+    """
+    import glob
+
+    session_dirs = [
+        os.path.join(project_root, "flask_session"),
+        os.path.join(project_root, "data", "flask_session"),
+    ]
+
+    cleared = 0
+    for session_dir in session_dirs:
+        if os.path.isdir(session_dir):
+            files = glob.glob(os.path.join(session_dir, "*"))
+            cleared += len(files)
+            for f in files:
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
+    if cleared:
+        print(f"  🗑️  Cleared {cleared} session file(s)")
+
+
 def _execute_seeding(args: argparse.Namespace) -> bool:
     """Execute the seeding operation."""
     if args.demo:
@@ -1816,6 +1845,7 @@ def _execute_seeding(args: argparse.Namespace) -> bool:
             from src.database.database_service import reset_database
 
             reset_database()
+            _clear_flask_sessions()
         return demo_seeder.seed_demo()
     else:
         baseline_seeder = BaselineTestSeeder()
@@ -1824,6 +1854,7 @@ def _execute_seeding(args: argparse.Namespace) -> bool:
             from src.database.database_service import reset_database
 
             reset_database()
+            _clear_flask_sessions()
 
         # Load manifest if provided
         manifest_data = None
