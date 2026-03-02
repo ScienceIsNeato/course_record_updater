@@ -122,6 +122,7 @@
       if (el.programFilter) {
         el.programFilter.addEventListener("change", () => {
           this.currentProgramId = el.programFilter.value;
+          this._updateProgramActions();
           try {
             localStorage.setItem(STORAGE_KEY_PROGRAM, this.currentProgramId);
           } catch (_) {
@@ -253,11 +254,27 @@
       this.currentTermId = defaultTerm;
     },
 
+    /**
+     * Show / hide program-specific action buttons ("New PLO", "Map CLO to PLO")
+     * based on whether a specific program is selected vs "All Programs".
+     */
+    _updateProgramActions() {
+      const el = this._el;
+      const hasProgram = !!this.currentProgramId;
+      if (el.createPloBtn) {
+        el.createPloBtn.style.display = hasProgram ? "" : "none";
+      }
+      if (el.mapCloBtn) {
+        el.mapCloBtn.style.display = hasProgram ? "" : "none";
+      }
+    },
+
     // ===================================================================
     // Tree fetch + render
     // ===================================================================
     async loadTree() {
       const pid = this.currentProgramId;
+      this._updateProgramActions();
 
       // "All Programs" mode — load each program's tree
       if (!pid) {
@@ -701,6 +718,14 @@
       e.preventDefault();
       const el = this._el;
       const pid = this.currentProgramId;
+      if (!pid) {
+        this._modalAlert(
+          el.ploModalAlert,
+          "Please select a specific program first.",
+          "danger",
+        );
+        return;
+      }
       const ploId = el.ploModalId.value;
       const body = {
         description: el.ploModalDescription.value.trim(),
