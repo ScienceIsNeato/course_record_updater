@@ -89,6 +89,13 @@
     const pointColors = data.map((d) =>
       !isNaN(d) && d < threshold ? TREND_LINE_COLOR_FAIL : TREND_LINE_COLOR,
     );
+    // Larger radius for fail points so they stand out
+    const failRadii = data.map((d, i) =>
+      !isNaN(d) && d < threshold ? Math.max(pointRadii[i], 4) : pointRadii[i],
+    );
+    const pointBorders = data.map((d) =>
+      !isNaN(d) && d < threshold ? TREND_LINE_COLOR_FAIL : TREND_LINE_COLOR,
+    );
 
     // Determine line colour based on latest valid point
     const lastValid = data.filter((d) => !isNaN(d));
@@ -112,9 +119,11 @@
               backgroundColor: TREND_FILL_COLOR,
               fill: true,
               tension: 0.3,
-              pointRadius: pointRadii,
+              pointRadius: failRadii,
               pointStyle: pointStyles,
               pointBackgroundColor: pointColors,
+              pointBorderColor: pointBorders,
+              pointBorderWidth: 1,
               borderWidth: 1.5,
               spanGaps: true,
               segment: {
@@ -233,6 +242,11 @@
     const pointColors = data.map((d) =>
       !isNaN(d) && d < threshold ? TREND_LINE_COLOR_FAIL : TREND_LINE_COLOR,
     );
+    // Larger radius for fail points
+    const failRadii = data.map((d) => (!isNaN(d) && d < threshold ? 6 : 4));
+    const pointBorders = data.map((d) =>
+      !isNaN(d) && d < threshold ? TREND_LINE_COLOR_FAIL : TREND_LINE_COLOR,
+    );
 
     // Determine line colour based on latest valid point
     const lastValid = data.filter((d) => !isNaN(d));
@@ -256,9 +270,11 @@
               backgroundColor: TREND_FILL_COLOR,
               fill: true,
               tension: 0.3,
-              pointRadius: 4,
+              pointRadius: failRadii,
               pointHoverRadius: 6,
               pointBackgroundColor: pointColors,
+              pointBorderColor: pointBorders,
+              pointBorderWidth: 1.5,
               borderWidth: 2,
               spanGaps: true,
               segment: {

@@ -139,8 +139,7 @@
         el.displayMode.addEventListener("change", () => {
           this.displayMode = el.displayMode.value;
           this._persistDisplayMode();
-          this._renderTree();
-          this._loadTrendData();
+          this._refreshBadges();
         });
       }
       if (el.expandAllBtn) {
@@ -390,6 +389,22 @@
       }
     },
 
+    /**
+     * Update all assessment badges in-place for the current displayMode
+     * without rebuilding the DOM tree (preserves expanded/collapsed state).
+     */
+    _refreshBadges() {
+      const container = this._el.treeContainer;
+      if (!container) return;
+      container.querySelectorAll(".plo-assessment-badge").forEach((badge) => {
+        const raw = badge.dataset.passRate;
+        const passRate = raw === "" || raw == null ? null : Number(raw);
+        const { text, cssClass } = formatAssessment(passRate, this.displayMode);
+        badge.className = "plo-assessment-badge " + cssClass;
+        badge.textContent = text;
+      });
+    },
+
     _renderTree() {
       const container = this._el.treeContainer;
       if (!container) return;
@@ -570,6 +585,7 @@
       badge.className = "plo-assessment-badge";
       const passRate =
         aggregate && aggregate.pass_rate != null ? aggregate.pass_rate : null;
+      badge.dataset.passRate = passRate === null ? "" : String(passRate);
       const { text, cssClass } = formatAssessment(passRate, this.displayMode);
       badge.classList.add(cssClass);
       badge.textContent = text;
