@@ -252,11 +252,6 @@ const SKELETON = `
     <option value="binary">Binary</option>
   </select>
 
-  <span id="statPloCount">-</span>
-  <span id="statMappedCloCount">-</span>
-  <span id="statOverallPassRate">-</span>
-  <span id="statMappingStatus">-</span>
-
   <button id="createPloBtn"></button>
   <button id="mapCloBtn"></button>
   <button id="expandAllBtn"></button>
@@ -420,11 +415,12 @@ describe('PloDashboard — filter loading', () => {
     await PloDashboard._loadPrograms();
 
     const sel = document.getElementById('ploProgramFilter');
-    expect(sel.options.length).toBe(2);
-    expect(sel.options[0].textContent).toBe('Biology BS');
-    // No localStorage entry → first program is default
-    expect(PloDashboard.currentProgramId).toBe('prog-1');
-    expect(sel.value).toBe('prog-1');
+    expect(sel.options.length).toBe(3); // All Programs + 2 programs
+    expect(sel.options[0].textContent).toBe('All Programs');
+    expect(sel.options[1].textContent).toBe('Biology BS');
+    // No localStorage entry → defaults to All Programs
+    expect(PloDashboard.currentProgramId).toBe('');
+    expect(sel.value).toBe('');
   });
 
   test('_loadPrograms honours localStorage when the stored id is still valid', async () => {
@@ -449,8 +445,8 @@ describe('PloDashboard — filter loading', () => {
       json: async () => ({ programs: [{ id: 'prog-1', name: 'Only One' }] }),
     });
     await PloDashboard._loadPrograms();
-    // Falls back to first valid id (using the `id` alias, not `program_id`)
-    expect(PloDashboard.currentProgramId).toBe('prog-1');
+    // Falls back to All Programs (empty string)
+    expect(PloDashboard.currentProgramId).toBe('');
   });
 
   test('_loadPrograms handles empty list gracefully', async () => {
@@ -519,14 +515,15 @@ describe('PloDashboard — loadTree + render', () => {
     delete global.fetch;
   });
 
-  test('no program selected → empty-state message, no fetch', async () => {
+  test('no program selected with no programs → empty-state message, no fetch', async () => {
     PloDashboard.currentProgramId = null;
+    PloDashboard.programs = [];
     global.fetch = jest.fn();
     await PloDashboard.loadTree();
     expect(global.fetch).not.toHaveBeenCalled();
     expect(
       document.getElementById('ploTreeContainer').textContent,
-    ).toMatch(/select a program/i);
+    ).toMatch(/no programs available/i);
   });
 
   test('successful load renders tree + populates stats', async () => {
@@ -563,16 +560,6 @@ describe('PloDashboard — loadTree + render', () => {
     // First section shows instructor name + pass count detail
     expect(sectionLeaves[0].textContent).toContain('Ada Lovelace');
     expect(sectionLeaves[0].textContent).toContain('27/30 passed');
-
-    // Stats populated
-    expect(document.getElementById('statPloCount').textContent).toBe('2');
-    expect(document.getElementById('statMappedCloCount').textContent).toBe('1');
-    expect(document.getElementById('statOverallPassRate').textContent).toBe(
-      '80%',
-    );
-    expect(document.getElementById('statMappingStatus').textContent).toBe(
-      'Published',
-    );
 
     // Version badge shows v2
     expect(
@@ -672,31 +659,97 @@ describe('PloDashboard — loadTree + render', () => {
     ).toMatch(/network down/);
   });
 
-  test('_updateStats(null) resets all stat cards to "-"', () => {
-    document.getElementById('statPloCount').textContent = 'old';
-    PloDashboard._updateStats(null);
-    expect(document.getElementById('statPloCount').textContent).toBe('-');
-    expect(document.getElementById('statOverallPassRate').textContent).toBe(
-      '-',
-    );
+  test('All Programs mode loads each program tree', async () => {
+    PloDashboard.currentProgramId = '';
+    PloDashboard.programs = [
+      { program_id: 'prog-1', name: 'Biology BS' },
+      { program_id: 'prog-2', name: 'Chemistry BS' },
+    ];
+    // Mock PloTrend to avoid unrelated errors
+    global.PloTrend = { loadTrend: jest.fn() };
+
+    global.fetch = jest.fn().mockImplementation((url) => {
+      if (url.includes('prog-1')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            ...SAMPLE_TREE,
+            program_id: 'prog-1',
+          }),
+        });
+      }
+      if (url.includes('prog-2')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            ...SAMPLE_TREE,
+            program_id: 'prog-2',
+            mapping: { id: 'm-2', version: 1, status: 'published' },
+            plos: [],
+          }),
+        });
+      }
+      return Promise.reject(new Error('unexpected URL'));
+    });
+
+    await PloDashboard.loadTree();
+
+    // Both program headings rendered
+    const headings = document.querySelectorAll('.plo-all-programs-heading');
+    expect(headings.length).toBe(2);
+    expect(headings[0].textContent).toContain('Biology BS');
+    expect(headings[1].textContent).toContain('Chemistry BS');
+
+    // First program has PLO tree, second shows "No PLOs defined."
+    const trees = document.querySelectorAll('ul.plo-tree');
+    expect(trees.length).toBe(1);
+    const emptyMsg = document.querySelector('p.text-muted');
+    expect(emptyMsg.textContent).toContain('No PLOs defined.');
+
+    // Program name label shows "All Programs"
+    expect(
+      document.getElementById('ploTreeProgramName').textContent,
+    ).toBe('All Programs');
+
+    // Version badge hidden in All Programs mode
+    expect(
+      document.getElementById('ploTreeVersionBadge').style.display,
+    ).toBe('none');
+
+    delete global.PloTrend;
   });
 
-  test('_updateStats shows em dash when no students_took anywhere', () => {
-    // Both PLOs have zero aggregate data → no pass rate to compute
-    PloDashboard._updateStats({
-      plos: [
-        { aggregate: { students_took: 0, students_passed: 0 } },
-        { aggregate: {} },
-      ],
-      mapping_status: 'draft',
+  test('All Programs mode skips programs that fail to load', async () => {
+    PloDashboard.currentProgramId = '';
+    PloDashboard.programs = [
+      { program_id: 'prog-bad', name: 'Failing Program' },
+      { program_id: 'prog-ok', name: 'Good Program' },
+    ];
+    global.PloTrend = { loadTrend: jest.fn() };
+
+    global.fetch = jest.fn().mockImplementation((url) => {
+      if (url.includes('prog-bad')) {
+        return Promise.resolve({ ok: false, status: 500 });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          ...SAMPLE_TREE,
+          program_id: 'prog-ok',
+        }),
+      });
     });
-    expect(document.getElementById('statOverallPassRate').textContent).toBe(
-      '—',
-    );
-    expect(document.getElementById('statMappingStatus').textContent).toBe(
-      'Draft',
-    );
+
+    await PloDashboard.loadTree();
+
+    // Only the successful program renders a heading
+    const headings = document.querySelectorAll('.plo-all-programs-heading');
+    expect(headings.length).toBe(1);
+    expect(headings[0].textContent).toContain('Good Program');
+
+    delete global.PloTrend;
   });
+
 });
 
 describe('PloDashboard — expand/collapse + event wiring', () => {

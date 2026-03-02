@@ -85,6 +85,11 @@
 
     const threshold = (opts && opts.threshold) || 70;
 
+    // Per-point colour: red for below threshold, blue for at/above
+    const pointColors = data.map((d) =>
+      !isNaN(d) && d < threshold ? TREND_LINE_COLOR_FAIL : TREND_LINE_COLOR,
+    );
+
     // Determine line colour based on latest valid point
     const lastValid = data.filter((d) => !isNaN(d));
     const lineColor =
@@ -109,7 +114,7 @@
               tension: 0.3,
               pointRadius: pointRadii,
               pointStyle: pointStyles,
-              pointBackgroundColor: lineColor,
+              pointBackgroundColor: pointColors,
               borderWidth: 1.5,
               spanGaps: true,
               segment: {
@@ -187,6 +192,18 @@
     const panel = document.createElement("div");
     panel.className = "plo-trend-panel";
 
+    // Close button
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "plo-trend-panel-close";
+    closeBtn.innerHTML = "&times;";
+    closeBtn.title = "Close trend chart";
+    closeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      panel.remove();
+    });
+    panel.appendChild(closeBtn);
+
     const canvas = document.createElement("canvas");
     canvas.style.width = "100%";
     canvas.style.height = "200px";
@@ -212,7 +229,12 @@
       terms.map((t, i) => (t.is_current ? i : -1)).filter((i) => i >= 0),
     );
 
-    // Determine line colour
+    // Per-point colour: red for below threshold, blue for at/above
+    const pointColors = data.map((d) =>
+      !isNaN(d) && d < threshold ? TREND_LINE_COLOR_FAIL : TREND_LINE_COLOR,
+    );
+
+    // Determine line colour based on latest valid point
     const lastValid = data.filter((d) => !isNaN(d));
     const lineColor =
       lastValid.length > 0 && lastValid[lastValid.length - 1] < threshold
@@ -236,7 +258,7 @@
               tension: 0.3,
               pointRadius: 4,
               pointHoverRadius: 6,
-              pointBackgroundColor: lineColor,
+              pointBackgroundColor: pointColors,
               borderWidth: 2,
               spanGaps: true,
               segment: {

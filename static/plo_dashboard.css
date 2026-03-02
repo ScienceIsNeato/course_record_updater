@@ -180,6 +180,7 @@
 
 /* Expanded trend chart panel (click sparkline to open) */
 .plo-trend-panel {
+  position: relative;
   padding: 0.75rem 1rem;
   margin: 0 0.5rem 0.5rem 2.5rem;
   background-color: #f8f9fa;
@@ -188,6 +189,32 @@
   min-height: 200px;
 }
 
+.plo-trend-panel-close {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.5rem;
+  border: none;
+  background: none;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  z-index: 1;
+}
+
+.plo-trend-panel-close:hover {
+  color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.08);
+}
+
 .plo-trend-panel canvas {
   max-height: 200px;
+}
+
+/* All-programs heading separator */
+.plo-all-programs-heading {
+  border-bottom: 1px solid #dee2e6;
+  padding-bottom: 0.5rem;
 }
