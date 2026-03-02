@@ -264,7 +264,9 @@ const SKELETON = `
   <div id="ploModal">
     <form id="ploForm">
       <input id="ploModalId" type="hidden">
-      <input id="ploModalNumber">
+      <div id="ploModalNumberGroup">
+        <input id="ploModalNumber">
+      </div>
       <textarea id="ploModalDescription"></textarea>
       <span id="ploModalLabel"></span>
       <div id="ploModalAlert"></div>
@@ -887,6 +889,10 @@ describe('PloDashboard — PLO create/edit modal', () => {
       /new/i,
     );
     expect(document.getElementById('ploModalId').value).toBe('');
+    // PLO number group hidden in create mode (auto-assigned by server)
+    expect(
+      document.getElementById('ploModalNumberGroup').classList.contains('d-none'),
+    ).toBe(true);
     // No bootstrap present → fallback adds .show
     expect(
       document.getElementById('ploModal').classList.contains('show'),
@@ -907,11 +913,15 @@ describe('PloDashboard — PLO create/edit modal', () => {
     expect(document.getElementById('ploModalDescription').value).toBe(
       'Capstone assessment.',
     );
+    // PLO number group visible in edit mode
+    expect(
+      document.getElementById('ploModalNumberGroup').classList.contains('d-none'),
+    ).toBe(false);
   });
 
-  test('_submitPloForm POSTs, coerces plo_number to int, hides modal on success', async () => {
+  test('_submitPloForm POSTs without plo_number (auto-assigned), hides modal on success', async () => {
     document.getElementById('ploModalId').value = ''; // create mode
-    document.getElementById('ploModalNumber').value = '7';
+    document.getElementById('ploModalNumber').value = '';
     document.getElementById('ploModalDescription').value = 'New outcome';
 
     // Two fetches: POST for save, then GET from loadTree()
@@ -927,9 +937,8 @@ describe('PloDashboard — PLO create/edit modal', () => {
     const [url, opts] = global.fetch.mock.calls[0];
     expect(url).toMatch(/\/api\/programs\/prog-1\/plos$/);
     expect(opts.method).toBe('POST');
-    // String "7" should have been parsed to integer 7 for the unique constraint
+    // Create mode: plo_number omitted — server auto-assigns
     expect(JSON.parse(opts.body)).toEqual({
-      plo_number: 7,
       description: 'New outcome',
     });
     expect(opts.headers['X-CSRFToken']).toBe('test-csrf-token');

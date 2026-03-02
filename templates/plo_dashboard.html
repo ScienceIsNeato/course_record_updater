@@ -100,12 +100,12 @@
             <form id="ploForm">
                 <div class="modal-body">
                     <input type="hidden" id="ploModalId">
-                    <div class="mb-3">
-                        <label for="ploModalNumber" class="form-label">PLO Number *</label>
+                    <div class="mb-3 d-none" id="ploModalNumberGroup">
+                        <label for="ploModalNumber" class="form-label">PLO Number</label>
                         <input type="number" min="1" class="form-control" id="ploModalNumber"
-                               required placeholder="e.g. 5">
+                               readonly>
                         <small class="text-muted">
-                            Displayed as PLO-&lt;n&gt;. Must be unique within this program.
+                            Automatically assigned. Displayed as PLO-&lt;n&gt;.
                         </small>
                     </div>
                     <div class="mb-3">

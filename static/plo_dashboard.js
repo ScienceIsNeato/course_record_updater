@@ -104,6 +104,7 @@
         ploForm: document.getElementById("ploForm"),
         ploModalId: document.getElementById("ploModalId"),
         ploModalNumber: document.getElementById("ploModalNumber"),
+        ploModalNumberGroup: document.getElementById("ploModalNumberGroup"),
         ploModalDescription: document.getElementById("ploModalDescription"),
         ploModalLabel: document.getElementById("ploModalLabel"),
         ploModalAlert: document.getElementById("ploModalAlert"),
@@ -679,11 +680,19 @@
         el.ploModalId.value = plo.id;
         el.ploModalNumber.value = plo.plo_number || "";
         el.ploModalDescription.value = plo.description || "";
+        // Show PLO number (read-only) when editing
+        if (el.ploModalNumberGroup) {
+          el.ploModalNumberGroup.classList.remove("d-none");
+        }
       } else {
         el.ploModalLabel.textContent = "New Program Outcome";
         el.ploModalId.value = "";
         el.ploModalNumber.value = "";
         el.ploModalDescription.value = "";
+        // Hide PLO number on create — auto-assigned by server
+        if (el.ploModalNumberGroup) {
+          el.ploModalNumberGroup.classList.add("d-none");
+        }
       }
       this._showModal(el.ploModal);
     },
@@ -693,15 +702,16 @@
       const el = this._el;
       const pid = this.currentProgramId;
       const ploId = el.ploModalId.value;
-      // plo_number is stored as an INTEGER — coerce textual input so the
-      // unique constraint (program_id, plo_number) behaves consistently and
-      // ordering in get_program_outcomes() is numeric.
-      const rawNum = el.ploModalNumber.value.trim();
-      const parsed = parseInt(rawNum, 10);
       const body = {
-        plo_number: Number.isFinite(parsed) ? parsed : rawNum,
         description: el.ploModalDescription.value.trim(),
       };
+      // On edit, include the (read-only) plo_number; on create, omit it
+      // so the server auto-assigns the next available number.
+      if (ploId) {
+        const rawNum = el.ploModalNumber.value.trim();
+        const parsed = parseInt(rawNum, 10);
+        body.plo_number = Number.isFinite(parsed) ? parsed : rawNum;
+      }
 
       const method = ploId ? "PUT" : "POST";
       const url = ploId
