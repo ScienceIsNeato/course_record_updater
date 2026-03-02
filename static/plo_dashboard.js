@@ -224,6 +224,7 @@
       }
       sel.value = initial;
       this.currentProgramId = initial;
+      this._updateProgramActions();
     },
 
     async _loadTerms() {
