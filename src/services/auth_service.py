@@ -166,14 +166,45 @@ class AuthService:
             return self._get_mock_user()
 
     def _get_session_user(self) -> Optional[Dict[str, Any]]:
-        """Session-based authentication"""
+        """Session-based authentication with stale-session detection.
+
+        When the database is re-seeded with ``--clear``, a generation token is
+        written to ``data/.db_generation``.  At login the current token is
+        stored in the session.  On every subsequent request we compare the two:
+        if they diverge the DB has been re-seeded and this session is stale.
+        Destroying it forces a clean redirect to the login page instead of
+        letting the browser sit "logged in" with no visible data.
+
+        The check is a cheap file read — no DB round-trip — and is skipped
+        entirely when the file doesn't exist (e.g. in unit tests that don't
+        seed the database).
+        """
         from data.session import SessionService
 
         if not SessionService.is_user_logged_in():
             return None
 
         user = SessionService.get_current_user()
-        if user and not user.get("institution_id"):
+        if not user:
+            return None
+
+        # --- stale-session guard -------------------------------------------
+        session_gen = session.get("_db_generation")
+        if session_gen is not None:
+            current_gen = _read_db_generation()
+            if current_gen is not None and session_gen != current_gen:
+                logger.warning(
+                    "[Auth] Stale session detected for user_id=%s — "
+                    "database was re-seeded (session gen=%s, current gen=%s). "
+                    "Destroying session.",
+                    user.get("user_id"),
+                    session_gen,
+                    current_gen,
+                )
+                SessionService.destroy_session()
+                return None
+
+        if not user.get("institution_id"):
             resolved_id, _ = _resolve_institution_id_from_user(user)
             if resolved_id:
                 # Copy to avoid mutating the underlying session dict reference
@@ -664,6 +695,53 @@ def admin_required(f: Callable[..., Any]) -> Callable[..., Any]:
         return role_required(UserRole.SITE_ADMIN.value)(f)(*args, **kwargs)
 
     return decorated_function
+
+
+# ---------------------------------------------------------------------------
+#  Database generation token — stale-session detection
+# ---------------------------------------------------------------------------
+#  When seed_db.py runs with --clear it writes a UUID to this file.
+#  At login the token is copied into the session.  On every request
+#  _get_session_user() compares the two; a mismatch means the DB was
+#  re-seeded and the session is stale.
+# ---------------------------------------------------------------------------
+import os as _os
+import pathlib as _pathlib
+
+DB_GENERATION_FILE = (
+    _pathlib.Path(_os.environ.get("AGENT_HOME", _os.getcwd()))
+    / "data"
+    / ".db_generation"
+)
+
+
+def _read_db_generation() -> Optional[str]:
+    """Read the current database generation token from disk.
+
+    Returns ``None`` when the marker file does not exist (e.g. in test
+    environments that never run the seeder).
+    """
+    try:
+        return DB_GENERATION_FILE.read_text().strip()
+    except FileNotFoundError:
+        return None
+    except Exception:
+        logger.debug("[Auth] Could not read %s", DB_GENERATION_FILE)
+        return None
+
+
+def write_db_generation() -> str:
+    """Write a **new** database generation token and return it.
+
+    Called by the seed script after clearing the database.
+    """
+    import uuid
+
+    token = str(uuid.uuid4())
+    DB_GENERATION_FILE.parent.mkdir(parents=True, exist_ok=True)
+    DB_GENERATION_FILE.write_text(token)
+    logger.info("[Auth] Wrote new database generation token: %s", token)
+    return token
 
 
 # Utility functions (working stubs)

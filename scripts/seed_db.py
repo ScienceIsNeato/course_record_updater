@@ -1836,6 +1836,19 @@ def _clear_flask_sessions() -> None:
         print(f"  🗑️  Cleared {cleared} session file(s)")
 
 
+def _rotate_db_generation() -> None:
+    """Write a new database generation token to invalidate stale sessions.
+
+    Any browser session whose stored ``_db_generation`` doesn't match the new
+    token will be destroyed on the next request, forcing a clean re-login.
+    See ``auth_service._get_session_user()`` for the check.
+    """
+    from src.services.auth_service import write_db_generation
+
+    token = write_db_generation()
+    print(f"  🔑 Rotated database generation token: {token[:8]}…")
+
+
 def _execute_seeding(args: argparse.Namespace) -> bool:
     """Execute the seeding operation."""
     if args.demo:
@@ -1846,6 +1859,7 @@ def _execute_seeding(args: argparse.Namespace) -> bool:
 
             reset_database()
             _clear_flask_sessions()
+            _rotate_db_generation()
         return demo_seeder.seed_demo()
     else:
         baseline_seeder = BaselineTestSeeder()
@@ -1855,6 +1869,7 @@ def _execute_seeding(args: argparse.Namespace) -> bool:
 
             reset_database()
             _clear_flask_sessions()
+            _rotate_db_generation()
 
         # Load manifest if provided
         manifest_data = None
