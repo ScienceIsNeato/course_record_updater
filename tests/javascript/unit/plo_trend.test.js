@@ -859,12 +859,12 @@ describe("PloTrend controller", () => {
     test("removes existing sparklines before re-injecting", () => {
       document.body.innerHTML = `
         <div id="ploTreeContainer">
-          <span class="plo-sparkline-wrap">old</span>
-          <div class="plo-trend-panel">old panel</div>
           <div data-plo-id="plo-1">
             <div class="plo-tree-header">
+              <span class="plo-sparkline-wrap">old</span>
               <div class="plo-tree-meta"></div>
             </div>
+            <div class="plo-trend-panel">old panel</div>
           </div>
         </div>
       `;
@@ -887,10 +887,15 @@ describe("PloTrend controller", () => {
 
       PloTrend.injectSparklines();
 
-      // Old sparkline-wrap with "old" text should be gone
+      // Old sparkline-wrap with "old" text should be replaced per-node
       const wraps = document.querySelectorAll(".plo-sparkline-wrap");
       wraps.forEach((w) => {
         expect(w.textContent).not.toBe("old");
+      });
+      // Old trend panel should also be removed
+      const panels = document.querySelectorAll(".plo-trend-panel");
+      panels.forEach((p) => {
+        expect(p.textContent).not.toBe("old panel");
       });
     });
 

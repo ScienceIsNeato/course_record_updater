@@ -904,7 +904,7 @@ class TestStaleSessionDetection:
         with self.app.test_request_context():
             from flask import session
 
-            from src.services.auth_service import AuthService, _read_db_generation
+            from src.services.auth_service import AuthService
 
             svc = AuthService()
 
@@ -979,7 +979,6 @@ class TestStaleSessionDetection:
     def test_write_and_read_db_generation(self, tmp_path):
         """write_db_generation creates a file that _read_db_generation can read."""
         from src.services.auth_service import (
-            DB_GENERATION_FILE,
             _read_db_generation,
             write_db_generation,
         )

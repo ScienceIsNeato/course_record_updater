@@ -440,7 +440,6 @@
           pointBackgroundColor: color,
           pointBorderColor: color,
           borderWidth: 1.5,
-          borderDash: [4, 3],
           spanGaps: true,
           order: 1, // behind PLO line
         });
@@ -697,15 +696,17 @@
       const container = document.getElementById("ploTreeContainer");
       if (!container) return;
 
-      // Remove any previously injected sparklines
-      container
-        .querySelectorAll(".plo-sparkline-wrap, .plo-trend-panel")
-        .forEach((el) => el.remove());
-
       (plos || []).forEach((plo) => {
         // Find the PLO node in the DOM
         const ploNode = container.querySelector(`[data-plo-id="${plo.id}"]`);
         if (ploNode) {
+          // Remove existing sparklines/panels for THIS node only (avoids
+          // wiping sparklines from other programs in the All-Programs view)
+          ploNode
+            .querySelectorAll(
+              ":scope > .plo-tree-header .plo-sparkline-wrap, :scope > .plo-trend-panel",
+            )
+            .forEach((el) => el.remove());
           this._injectIntoNode(ploNode, plo.trend, terms, {
             title: `PLO-${plo.plo_number}: ${plo.description}`,
             clos: plo.clos || [],
@@ -719,6 +720,11 @@
             `[data-clo-id="${clo.outcome_id}"]`,
           );
           if (cloNode) {
+            cloNode
+              .querySelectorAll(
+                ":scope > .plo-tree-header .plo-sparkline-wrap, :scope > .plo-trend-panel",
+              )
+              .forEach((el) => el.remove());
             this._injectIntoNode(cloNode, clo.trend, terms, {
               title: `${clo.course_number || ""} CLO ${clo.clo_number || "?"}: ${clo.description || ""}`,
             });

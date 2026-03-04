@@ -484,6 +484,19 @@
             ]
         },
         {
+            "course_code": "BIOL-201",
+            "term_code": "FA2023",
+            "_comment": "Stable course — offered every term",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 16,
+                    "status": "completed",
+                    "instructor_idx": 2
+                }
+            ]
+        },
+        {
             "course_code": "ZOOL-101",
             "term_code": "FA2023",
             "sections": [
@@ -492,6 +505,19 @@
                     "enrollment": 22,
                     "status": "completed",
                     "instructor_idx": 4
+                }
+            ]
+        },
+        {
+            "course_code": "ZOOL-205",
+            "term_code": "FA2023",
+            "_comment": "ZOOL stable offering — offered every term from inception",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 18,
+                    "status": "completed",
+                    "instructor_idx": 2
                 }
             ]
         },
@@ -560,6 +586,32 @@
                     "enrollment": 20,
                     "status": "completed",
                     "instructor_idx": 4
+                }
+            ]
+        },
+        {
+            "course_code": "ZOOL-205",
+            "term_code": "SP2024",
+            "_comment": "ZOOL stable offering — offered every term",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 18,
+                    "status": "completed",
+                    "instructor_idx": 2
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-301",
+            "term_code": "SP2024",
+            "_comment": "Stable course — offered every term",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 15,
+                    "status": "completed",
+                    "instructor_idx": 3
                 }
             ]
         },
@@ -692,6 +744,71 @@
                     "enrollment": 18,
                     "status": "completed",
                     "instructor_idx": 3
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-101",
+            "term_code": "SP2025",
+            "_comment": "Stable course continues through restructuring",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 22,
+                    "status": "completed",
+                    "instructor_idx": 2
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-201",
+            "term_code": "SP2025",
+            "_comment": "Stable course continues through restructuring",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 18,
+                    "status": "completed",
+                    "instructor_idx": 2
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-301",
+            "term_code": "SP2025",
+            "_comment": "Stable course continues through restructuring",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 14,
+                    "status": "completed",
+                    "instructor_idx": 3
+                }
+            ]
+        },
+        {
+            "course_code": "ZOOL-101",
+            "term_code": "SP2025",
+            "_comment": "ZOOL stable offering — consistent presence across terms",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 22,
+                    "status": "completed",
+                    "instructor_idx": 4
+                }
+            ]
+        },
+        {
+            "course_code": "ZOOL-205",
+            "term_code": "SP2025",
+            "_comment": "ZOOL stable offering — consistent presence across terms",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 18,
+                    "status": "completed",
+                    "instructor_idx": 2
                 }
             ]
         },
@@ -1457,6 +1574,14 @@
         {"term_code": "FA2023", "course_code": "ZOOL-101", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 22, "students_passed": 14},
         {"term_code": "FA2023", "course_code": "ZOOL-101", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 22, "students_passed": 16},
 
+        {"_comment": "BIOL-201 FA2023 — moderate performance, early in improvement arc"},
+        {"term_code": "FA2023", "course_code": "BIOL-201", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 16, "students_passed": 11},
+        {"term_code": "FA2023", "course_code": "BIOL-201", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 16, "students_passed": 10},
+        {"term_code": "FA2023", "course_code": "BIOL-201", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 16, "students_passed": 12},
+        {"term_code": "FA2023", "course_code": "ZOOL-205", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 18, "students_passed": 13},
+        {"term_code": "FA2023", "course_code": "ZOOL-205", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 18, "students_passed": 12},
+        {"term_code": "FA2023", "course_code": "ZOOL-205", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 18, "students_passed": 14},
+
         {"_comment": "BIOL-250 FA2023 — overloaded course, 5 CLOs, mediocre pass rates (first signs of trouble)"},
         {"term_code": "FA2023", "course_code": "BIOL-250", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 28, "students_passed": 18},
         {"term_code": "FA2023", "course_code": "BIOL-250", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 28, "students_passed": 17},
@@ -1481,6 +1606,12 @@
         {"term_code": "SP2024", "course_code": "ZOOL-101", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 20, "students_passed": 15},
         {"term_code": "SP2024", "course_code": "ZOOL-101", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 20, "students_passed": 14},
         {"term_code": "SP2024", "course_code": "ZOOL-101", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 20, "students_passed": 16},
+        {"term_code": "SP2024", "course_code": "BIOL-301", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 15, "students_passed": 11},
+        {"term_code": "SP2024", "course_code": "BIOL-301", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 15, "students_passed": 10},
+        {"term_code": "SP2024", "course_code": "BIOL-301", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 15, "students_passed": 12},
+        {"term_code": "SP2024", "course_code": "ZOOL-205", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 18, "students_passed": 14},
+        {"term_code": "SP2024", "course_code": "ZOOL-205", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 18, "students_passed": 13},
+        {"term_code": "SP2024", "course_code": "ZOOL-205", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 18, "students_passed": 14},
 
         {"_comment": "BIOL-250 SP2024 — worsening (department starts discussing intervention)"},
         {"term_code": "SP2024", "course_code": "BIOL-250", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 30, "students_passed": 17},
@@ -1515,14 +1646,30 @@
         {"term_code": "FA2024", "course_code": "BIOL-250", "section_number": "001", "clo_number": 4, "status": "approved", "students_took": 26, "students_passed": 10},
         {"term_code": "FA2024", "course_code": "BIOL-250", "section_number": "001", "clo_number": 5, "status": "approved", "students_took": 26, "students_passed": 9},
 
-        {"_comment": "=== SP2025 — First semester post-split (BIOL-251 + BIOL-252 debut) ==="},
-        {"term_code": "SP2025", "course_code": "BIOL-251", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 22, "students_passed": 15},
-        {"term_code": "SP2025", "course_code": "BIOL-251", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 22, "students_passed": 16},
-        {"term_code": "SP2025", "course_code": "BIOL-251", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 22, "students_passed": 14},
-        {"term_code": "SP2025", "course_code": "BIOL-252", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 18, "students_passed": 12},
-        {"term_code": "SP2025", "course_code": "BIOL-252", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 18, "students_passed": 11},
-        {"term_code": "SP2025", "course_code": "BIOL-252", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 18, "students_passed": 10},
-        {"term_code": "SP2025", "course_code": "BIOL-252", "section_number": "001", "clo_number": 4, "status": "approved", "students_took": 18, "students_passed": 11}
+        {"_comment": "=== SP2025 — Post-restructure: stable courses continue improving + split courses debut with strong results ==="},
+        {"term_code": "SP2025", "course_code": "BIOL-101", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 22, "students_passed": 19},
+        {"term_code": "SP2025", "course_code": "BIOL-101", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 22, "students_passed": 18},
+        {"term_code": "SP2025", "course_code": "BIOL-101", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 22, "students_passed": 20},
+        {"term_code": "SP2025", "course_code": "BIOL-201", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 18, "students_passed": 16},
+        {"term_code": "SP2025", "course_code": "BIOL-201", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 18, "students_passed": 15},
+        {"term_code": "SP2025", "course_code": "BIOL-201", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 18, "students_passed": 16},
+        {"term_code": "SP2025", "course_code": "BIOL-301", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 14, "students_passed": 12},
+        {"term_code": "SP2025", "course_code": "BIOL-301", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 14, "students_passed": 11},
+        {"term_code": "SP2025", "course_code": "BIOL-301", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 14, "students_passed": 13},
+        {"_comment": "BIOL-251/252 debut — focused curriculum yields much better results than overloaded BIOL-250"},
+        {"term_code": "SP2025", "course_code": "BIOL-251", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 22, "students_passed": 19},
+        {"term_code": "SP2025", "course_code": "BIOL-251", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 22, "students_passed": 18},
+        {"term_code": "SP2025", "course_code": "BIOL-251", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 22, "students_passed": 17},
+        {"term_code": "SP2025", "course_code": "BIOL-252", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 18, "students_passed": 15},
+        {"term_code": "SP2025", "course_code": "BIOL-252", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 18, "students_passed": 14},
+        {"term_code": "SP2025", "course_code": "BIOL-252", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 18, "students_passed": 15},
+        {"term_code": "SP2025", "course_code": "BIOL-252", "section_number": "001", "clo_number": 4, "status": "approved", "students_took": 18, "students_passed": 14},
+        {"term_code": "SP2025", "course_code": "ZOOL-101", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 22, "students_passed": 19},
+        {"term_code": "SP2025", "course_code": "ZOOL-101", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 22, "students_passed": 17},
+        {"term_code": "SP2025", "course_code": "ZOOL-101", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 22, "students_passed": 19},
+        {"term_code": "SP2025", "course_code": "ZOOL-205", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 18, "students_passed": 16},
+        {"term_code": "SP2025", "course_code": "ZOOL-205", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 18, "students_passed": 14},
+        {"term_code": "SP2025", "course_code": "ZOOL-205", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 18, "students_passed": 15}
     ],
     "program_outcomes": {
         "_comment": "Per-program PLO definitions + CLO mappings. The seeder creates PLOs, opens a draft mapping, links the CLOs listed under clo_mappings, then publishes the draft as mapping version 1. assessment_display_mode controls how the PLO dashboard badge renders (binary = S/U, percentage = 78%, both = S (78%)). plo_number is an integer (stored in program_outcomes.plo_number INTEGER) — the UI renders it as 'PLO-<n>'.",
