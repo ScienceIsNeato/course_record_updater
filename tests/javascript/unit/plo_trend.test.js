@@ -40,6 +40,7 @@ const {
   getTrendArrow,
   createSparkline,
   createTrendPanel,
+  createCompositionBar,
   PloTrend,
 } = require("../../../static/plo_trend");
 
@@ -222,6 +223,277 @@ describe("createTrendPanel", () => {
   test("shows no-data message when points are null", () => {
     const panel = createTrendPanel(null, terms);
     expect(panel.textContent).toContain("No trend data available");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createCompositionBar
+// ---------------------------------------------------------------------------
+describe("createCompositionBar", () => {
+  const terms = [
+    { term_name: "Fall 2024", is_current: false },
+    { term_name: "Spring 2025", is_current: false },
+  ];
+
+  test("returns a div with plo-composition-bar class", () => {
+    const bar = createCompositionBar([], terms);
+    expect(bar.tagName).toBe("DIV");
+    expect(bar.className).toBe("plo-composition-bar");
+  });
+
+  test("creates one cell per term", () => {
+    const clos = [
+      {
+        course_number: "CS101",
+        trend: [{ pass_rate: 80 }, { pass_rate: 90 }],
+      },
+    ];
+    const bar = createCompositionBar(clos, terms);
+    const cells = bar.querySelectorAll(".plo-comp-cell");
+    expect(cells.length).toBe(2);
+  });
+
+  test("shows empty dots for terms with no data", () => {
+    const clos = [
+      {
+        course_number: "CS101",
+        trend: [null, { pass_rate: 90 }],
+      },
+    ];
+    const bar = createCompositionBar(clos, terms);
+    const emptyDots = bar.querySelectorAll(".plo-comp-empty");
+    expect(emptyDots.length).toBe(1);
+  });
+
+  test("shows colored dots for terms with data", () => {
+    const clos = [
+      {
+        course_number: "CS101",
+        trend: [{ pass_rate: 80 }, { pass_rate: 90 }],
+      },
+    ];
+    const bar = createCompositionBar(clos, terms);
+    const dots = bar.querySelectorAll(".plo-comp-dot:not(.plo-comp-empty)");
+    expect(dots.length).toBe(2);
+  });
+
+  test("includes legend with course names", () => {
+    const clos = [
+      {
+        course_number: "CS101",
+        trend: [{ pass_rate: 80 }, { pass_rate: 90 }],
+      },
+      {
+        course_number: "CS201",
+        trend: [{ pass_rate: 70 }, null],
+      },
+    ];
+    const bar = createCompositionBar(clos, terms);
+    const legend = bar.querySelector(".plo-comp-legend");
+    expect(legend).not.toBeNull();
+    expect(legend.textContent).toContain("CS101");
+    expect(legend.textContent).toContain("CS201");
+  });
+
+  test("handles CLOs with null pass_rate as no data", () => {
+    const clos = [
+      {
+        course_number: "CS101",
+        trend: [{ pass_rate: null }, { pass_rate: 80 }],
+      },
+    ];
+    const bar = createCompositionBar(clos, terms);
+    const emptyDots = bar.querySelectorAll(".plo-comp-empty");
+    expect(emptyDots.length).toBe(1);
+  });
+
+  test("handles missing course_number gracefully", () => {
+    const clos = [
+      {
+        trend: [{ pass_rate: 80 }, { pass_rate: 90 }],
+      },
+    ];
+    const bar = createCompositionBar(clos, terms);
+    const legend = bar.querySelector(".plo-comp-legend");
+    expect(legend.textContent).toContain("?");
+  });
+
+  test("no legend when no CLOs provided", () => {
+    const bar = createCompositionBar([], terms);
+    const legend = bar.querySelector(".plo-comp-legend");
+    expect(legend).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createTrendPanel — CLO overlays, discontinuities, composition bar
+// ---------------------------------------------------------------------------
+describe("createTrendPanel with CLO overlays", () => {
+  const terms = [
+    { term_name: "Fall 2024", term_id: "t1", is_current: false },
+    { term_name: "Spring 2025", term_id: "t2", is_current: false },
+  ];
+  const points = [{ pass_rate: 80 }, { pass_rate: 90 }];
+  const clos = [
+    {
+      outcome_id: "clo-1",
+      clo_number: 1,
+      course_number: "CS101",
+      description: "Test CLO",
+      trend: [{ pass_rate: 75 }, { pass_rate: 85 }],
+    },
+    {
+      outcome_id: "clo-2",
+      clo_number: 2,
+      course_number: "CS201",
+      description: "Another CLO",
+      trend: [{ pass_rate: 70 }, { pass_rate: 95 }],
+    },
+  ];
+
+  test("renders CLO composition bar when CLOs provided", () => {
+    const panel = createTrendPanel(points, terms, { clos });
+    const compBar = panel.querySelector(".plo-composition-bar");
+    expect(compBar).not.toBeNull();
+  });
+
+  test("does not render composition bar when no CLOs", () => {
+    const panel = createTrendPanel(points, terms, { clos: [] });
+    const compBar = panel.querySelector(".plo-composition-bar");
+    expect(compBar).toBeNull();
+  });
+
+  test("Chart constructor receives multiple datasets for CLO overlays", () => {
+    Chart.mockClear();
+    createTrendPanel(points, terms, { clos });
+    // Chart should have been called with PLO + 2 CLO datasets = 3
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const datasets = chartCall[1].data.datasets;
+    expect(datasets.length).toBe(3); // 1 PLO + 2 CLO
+    expect(datasets[0].label).toBe("PLO Pass Rate %");
+    expect(datasets[1].label).toBe("CS101 CLO 1");
+    expect(datasets[2].label).toBe("CS201 CLO 2");
+  });
+
+  test("Chart legend is displayed when CLOs present", () => {
+    Chart.mockClear();
+    createTrendPanel(points, terms, { clos });
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const legend = chartCall[1].options.plugins.legend;
+    expect(legend.display).toBe(true);
+  });
+
+  test("Chart legend is hidden when no CLOs", () => {
+    Chart.mockClear();
+    createTrendPanel(points, terms, { clos: [] });
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const legend = chartCall[1].options.plugins.legend;
+    expect(legend.display).toBe(false);
+  });
+
+  test("discontinuityLines plugin is passed to Chart", () => {
+    Chart.mockClear();
+    const discs = [
+      {
+        term_index: 1,
+        term_id: "t2",
+        type: "clo_change",
+        added: [{ clo_id: "c1", label: "CS201/2" }],
+        removed: [],
+      },
+    ];
+    createTrendPanel(points, terms, { discontinuities: discs });
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const pluginIds = chartCall[1].plugins.map((p) => p.id);
+    expect(pluginIds).toContain("discontinuityLines");
+    expect(pluginIds).toContain("thresholdLine");
+  });
+
+  test("onClick handler sets term filter when data point clicked", () => {
+    document.body.innerHTML = `
+      <select id="ploTermFilter">
+        <option value="">All</option>
+        <option value="t1">Fall 2024</option>
+        <option value="t2">Spring 2025</option>
+      </select>
+    `;
+
+    Chart.mockClear();
+    createTrendPanel(points, terms, {});
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const onClick = chartCall[1].options.onClick;
+
+    // Simulate click on second data point
+    const changeSpy = jest.fn();
+    const termFilter = document.getElementById("ploTermFilter");
+    termFilter.addEventListener("change", changeSpy);
+
+    onClick({}, [{ index: 1 }]);
+    expect(termFilter.value).toBe("t2");
+    expect(changeSpy).toHaveBeenCalled();
+  });
+
+  test("onClick handler does nothing when no elements clicked", () => {
+    Chart.mockClear();
+    createTrendPanel(points, terms, {});
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const onClick = chartCall[1].options.onClick;
+    // Should not throw
+    onClick({}, []);
+    onClick({}, null);
+  });
+
+  test("tooltip label callback shows PLO data with student counts", () => {
+    Chart.mockClear();
+    createTrendPanel(points, terms, { clos });
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const labelCb = chartCall[1].options.plugins.tooltip.callbacks.label;
+
+    // PLO dataset (index 0)
+    const ploItem = {
+      raw: 80,
+      dataIndex: 0,
+      datasetIndex: 0,
+      dataset: { label: "PLO Pass Rate %" },
+    };
+    // Points have no students_took, so just percentage
+    expect(labelCb(ploItem)).toBe("PLO: 80%");
+  });
+
+  test("tooltip label callback shows CLO data", () => {
+    Chart.mockClear();
+    createTrendPanel(points, terms, { clos });
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const labelCb = chartCall[1].options.plugins.tooltip.callbacks.label;
+
+    // CLO dataset (index 1 = first CLO)
+    const cloItem = {
+      raw: 75,
+      dataIndex: 0,
+      datasetIndex: 1,
+      dataset: { label: "CS101 CLO 1" },
+    };
+    expect(labelCb(cloItem)).toBe("CS101 CLO 1: 75%");
+  });
+
+  test("tooltip filter removes null/NaN entries", () => {
+    Chart.mockClear();
+    createTrendPanel(points, terms, {});
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const filterCb = chartCall[1].options.plugins.tooltip.callbacks.filter;
+
+    expect(filterCb({ raw: 80 })).toBe(true);
+    expect(filterCb({ raw: NaN })).toBe(false);
+    expect(filterCb({ raw: null })).toBe(false);
+  });
+
+  test("tooltip label returns null for NaN values", () => {
+    Chart.mockClear();
+    createTrendPanel(points, terms, { clos });
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const labelCb = chartCall[1].options.plugins.tooltip.callbacks.label;
+
+    expect(labelCb({ raw: NaN, datasetIndex: 0, dataIndex: 0 })).toBeNull();
   });
 });
 

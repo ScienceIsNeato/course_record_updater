@@ -575,6 +575,67 @@ def _build_trend_point(
     return point
 
 
+def _detect_discontinuities(
+    clo_ids: List[str],
+    clo_meta: Dict[str, Dict[str, Any]],
+    by_clo_term: Dict[str, Dict[str, List[Dict[str, Any]]]],
+    term_meta: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Detect CLO composition changes between consecutive terms.
+
+    Compares the set of CLOs that have assessment data in each term.
+    When the set changes between term N and N+1, emits a discontinuity
+    marker recording which CLOs were added/removed.
+
+    Returns a list of discontinuity dicts, each with::
+
+        {
+            "term_index": int,       # index of the LATER term
+            "term_id": str,
+            "type": "clo_change",
+            "added": [{"clo_id", "label"}],  # CLOs new in this term
+            "removed": [{"clo_id", "label"}] # CLOs gone from prev term
+        }
+    """
+    discontinuities: List[Dict[str, Any]] = []
+
+    def _clo_label(clo_id: str) -> str:
+        meta = clo_meta.get(clo_id, {})
+        course = meta.get("course_number", "?")
+        num = meta.get("clo_number", "?")
+        return f"{course}/{num}"
+
+    prev_active: Optional[set] = None
+    for idx, tm in enumerate(term_meta):
+        tid = tm["term_id"]
+        active = {cid for cid in clo_ids if by_clo_term.get(cid, {}).get(tid)}
+
+        if prev_active is not None and active != prev_active:
+            added = active - prev_active
+            removed = prev_active - active
+            if added or removed:
+                discontinuities.append(
+                    {
+                        "term_index": idx,
+                        "term_id": tid,
+                        "type": "clo_change",
+                        "added": [
+                            {"clo_id": c, "label": _clo_label(c)} for c in sorted(added)
+                        ],
+                        "removed": [
+                            {"clo_id": c, "label": _clo_label(c)}
+                            for c in sorted(removed)
+                        ],
+                    }
+                )
+
+        # Only start tracking after the first term with any data
+        if active or prev_active is not None:
+            prev_active = active
+
+    return discontinuities
+
+
 def _assemble_plo_trends(
     plos: List[Dict[str, Any]],
     plo_to_clos: Dict[str, List[str]],
@@ -600,6 +661,11 @@ def _assemble_plo_trends(
                 all_records.extend(by_clo_term.get(clo_id, {}).get(tid, []))
             plo_trend_points.append(_build_trend_point(all_records, tid))
 
+        # Detect curriculum changes (CLO composition shifts between terms)
+        discontinuities = _detect_discontinuities(
+            clo_ids, clo_meta, by_clo_term, term_meta
+        )
+
         plo_results.append(
             {
                 "id": plo["id"],
@@ -607,6 +673,7 @@ def _assemble_plo_trends(
                 "description": plo_snapshots.get(plo["id"], plo.get("description")),
                 "trend": plo_trend_points,
                 "clos": clo_trends,
+                "discontinuities": discontinuities,
             }
         )
     return plo_results

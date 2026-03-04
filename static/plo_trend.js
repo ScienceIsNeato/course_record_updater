@@ -193,9 +193,106 @@
     return canvas;
   }
 
+  // Palette for CLO overlay lines (visually distinct, semi-transparent)
+  const CLO_COLORS = [
+    "rgba(255, 99, 132, 0.55)",
+    "rgba(54, 162, 235, 0.55)",
+    "rgba(255, 206, 86, 0.65)",
+    "rgba(75, 192, 192, 0.55)",
+    "rgba(153, 102, 255, 0.55)",
+    "rgba(255, 159, 64, 0.55)",
+    "rgba(199, 199, 199, 0.6)",
+    "rgba(83, 102, 55, 0.55)",
+    "rgba(201, 76, 76, 0.55)",
+    "rgba(107, 91, 149, 0.55)",
+  ];
+
+  /**
+   * Build a short label for a CLO suitable for chart legends.
+   */
+  function cloLabel(clo) {
+    const course = clo.course_number || "";
+    const num = clo.clo_number || "?";
+    return `${course} CLO ${num}`;
+  }
+
+  /**
+   * Create a CLO composition bar element showing which courses
+   * contributed data in each term.
+   * Returns a div containing colored pills per term.
+   */
+  function createCompositionBar(clos, terms) {
+    const bar = document.createElement("div");
+    bar.className = "plo-composition-bar";
+
+    // Collect unique courses and assign colours
+    const courseSet = new Map();
+    (clos || []).forEach((clo) => {
+      const cn = clo.course_number || "?";
+      if (!courseSet.has(cn)) {
+        courseSet.set(cn, CLO_COLORS[courseSet.size % CLO_COLORS.length]);
+      }
+    });
+
+    // One cell per term
+    terms.forEach((tm, ti) => {
+      const cell = document.createElement("div");
+      cell.className = "plo-comp-cell";
+
+      // Which courses have data in this term?
+      const activeCourses = new Set();
+      (clos || []).forEach((clo) => {
+        const pt = (clo.trend || [])[ti];
+        if (pt && pt.pass_rate !== null) {
+          activeCourses.add(clo.course_number || "?");
+        }
+      });
+
+      if (activeCourses.size === 0) {
+        const dot = document.createElement("span");
+        dot.className = "plo-comp-dot plo-comp-empty";
+        dot.title = `${tm.term_name}: no data`;
+        cell.appendChild(dot);
+      } else {
+        activeCourses.forEach((cn) => {
+          const dot = document.createElement("span");
+          dot.className = "plo-comp-dot";
+          dot.style.backgroundColor = courseSet.get(cn) || "#ccc";
+          dot.title = `${tm.term_name}: ${cn}`;
+          cell.appendChild(dot);
+        });
+      }
+      bar.appendChild(cell);
+    });
+
+    // Legend
+    if (courseSet.size > 0) {
+      const legend = document.createElement("div");
+      legend.className = "plo-comp-legend";
+      courseSet.forEach((color, cn) => {
+        const item = document.createElement("span");
+        item.className = "plo-comp-legend-item";
+        const swatch = document.createElement("span");
+        swatch.className = "plo-comp-swatch";
+        swatch.style.backgroundColor = color;
+        item.appendChild(swatch);
+        item.appendChild(document.createTextNode(cn));
+        legend.appendChild(item);
+      });
+      bar.appendChild(legend);
+    }
+
+    return bar;
+  }
+
   /**
    * Create a full-size trend chart panel for drill-down.
    * Returns a container div with a Chart.js line chart.
+   *
+   * When opts.clos is provided (PLO-level chart), renders:
+   * - Semi-transparent CLO overlay lines
+   * - Enriched tooltip showing per-CLO breakdown
+   * When opts.discontinuities is provided, renders vertical annotations.
    */
   function createTrendPanel(trendPoints, terms, opts) {
     const panel = document.createElement("div");
@@ -233,6 +330,8 @@
 
     const threshold = (opts && opts.threshold) || 70;
     const title = (opts && opts.title) || "Pass Rate Trend";
+    const clos = (opts && opts.clos) || [];
+    const discontinuities = (opts && opts.discontinuities) || [];
 
     const currentTermIndices = new Set(
       terms.map((t, i) => (t.is_current ? i : -1)).filter((i) => i >= 0),
@@ -255,43 +354,80 @@
         ? TREND_LINE_COLOR_FAIL
         : TREND_LINE_COLOR;
 
+    // --- Build datasets array ---
+    const datasets = [
+      {
+        label: "PLO Pass Rate %",
+        data,
+        borderColor: lineColor,
+        backgroundColor: TREND_FILL_COLOR,
+        fill: true,
+        tension: 0.3,
+        pointRadius: failRadii,
+        pointHoverRadius: 6,
+        pointBackgroundColor: pointColors,
+        pointBorderColor: pointBorders,
+        pointBorderWidth: 1.5,
+        borderWidth: 2.5,
+        spanGaps: true,
+        order: 0, // draw on top
+        segment: {
+          borderDash: (ctx) =>
+            currentTermIndices.has(ctx.p1DataIndex)
+              ? TREND_NULL_DASH
+              : undefined,
+        },
+      },
+    ];
+
+    // --- CLO overlay lines (Feature #1) ---
+    if (clos.length > 0) {
+      clos.forEach((clo, ci) => {
+        const color = CLO_COLORS[ci % CLO_COLORS.length];
+        const cloData = (clo.trend || []).map((p) =>
+          p !== null && p.pass_rate !== null ? p.pass_rate : NaN,
+        );
+        datasets.push({
+          label: cloLabel(clo),
+          data: cloData,
+          borderColor: color,
+          backgroundColor: "transparent",
+          fill: false,
+          tension: 0.3,
+          pointRadius: 2,
+          pointHoverRadius: 4,
+          pointBackgroundColor: color,
+          pointBorderColor: color,
+          borderWidth: 1.5,
+          borderDash: [4, 3],
+          spanGaps: true,
+          order: 1, // behind PLO line
+        });
+      });
+    }
+
     requestAnimationFrame(() => {
       if (typeof Chart === "undefined") return;
 
       new Chart(canvas, {
         type: "line",
-        data: {
-          labels,
-          datasets: [
-            {
-              label: "Pass Rate %",
-              data,
-              borderColor: lineColor,
-              backgroundColor: TREND_FILL_COLOR,
-              fill: true,
-              tension: 0.3,
-              pointRadius: failRadii,
-              pointHoverRadius: 6,
-              pointBackgroundColor: pointColors,
-              pointBorderColor: pointBorders,
-              pointBorderWidth: 1.5,
-              borderWidth: 2,
-              spanGaps: true,
-              segment: {
-                borderDash: (ctx) =>
-                  currentTermIndices.has(ctx.p1DataIndex)
-                    ? TREND_NULL_DASH
-                    : undefined,
-              },
-            },
-          ],
-        },
+        data: { labels, datasets },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           animation: { duration: 300 },
           plugins: {
-            legend: { display: false },
+            legend: {
+              display: clos.length > 0,
+              position: "bottom",
+              labels: {
+                usePointStyle: true,
+                pointStyle: "line",
+                font: { size: 10 },
+                boxWidth: 20,
+                padding: 8,
+              },
+            },
             title: {
               display: true,
               text: title,
@@ -299,17 +435,33 @@
               color: "#6c757d",
             },
             tooltip: {
+              mode: "index",
+              intersect: false,
               callbacks: {
                 title: (items) => items[0]?.label || "",
                 label: (item) => {
-                  if (item.raw === null || isNaN(item.raw)) return "No data";
-                  const point = trendPoints[item.dataIndex];
+                  if (item.raw === null || isNaN(item.raw)) return null;
+                  const dsIndex = item.datasetIndex;
                   const pct = `${Math.round(item.raw)}%`;
-                  if (point && point.students_took) {
-                    return `${pct} (${point.students_passed}/${point.students_took})`;
+                  if (dsIndex === 0) {
+                    // PLO aggregate line
+                    const point = trendPoints[item.dataIndex];
+                    if (point && point.students_took) {
+                      return `PLO: ${pct} (${point.students_passed}/${point.students_took})`;
+                    }
+                    return `PLO: ${pct}`;
                   }
-                  return pct;
+                  // CLO overlay line
+                  const cloIdx = dsIndex - 1;
+                  const clo = clos[cloIdx];
+                  const cloPoint = clo && (clo.trend || [])[item.dataIndex];
+                  if (cloPoint && cloPoint.students_took) {
+                    return `${item.dataset.label}: ${pct} (${cloPoint.students_passed}/${cloPoint.students_took})`;
+                  }
+                  return `${item.dataset.label}: ${pct}`;
                 },
+                // Filter out null entries from tooltip
+                filter: (item) => item.raw !== null && !isNaN(item.raw),
               },
             },
           },
@@ -327,6 +479,19 @@
               },
               grid: { color: "rgba(0,0,0,0.05)" },
             },
+          },
+          // Click-to-drill: clicking a data point sets the term filter
+          onClick(_event, elements) {
+            if (!elements || elements.length === 0) return;
+            const idx = elements[0].index;
+            const term = terms[idx];
+            if (!term) return;
+
+            const termFilter = document.getElementById("ploTermFilter");
+            if (termFilter) {
+              termFilter.value = term.term_id;
+              termFilter.dispatchEvent(new Event("change"));
+            }
           },
         },
         plugins: [
@@ -356,9 +521,62 @@
               ctx.restore();
             },
           },
+          {
+            id: "discontinuityLines",
+            afterDraw(chart) {
+              if (!discontinuities || discontinuities.length === 0) return;
+              const xScale = chart.scales.x;
+              const yScale = chart.scales.y;
+              if (!xScale || !yScale) return;
+              const ctx = chart.ctx;
+
+              discontinuities.forEach((d) => {
+                const ti = d.term_index;
+                if (ti < 0 || ti >= labels.length) return;
+
+                // Draw between previous and current term
+                const xCurr = xScale.getPixelForValue(ti);
+                const xPrev = ti > 0 ? xScale.getPixelForValue(ti - 1) : xCurr;
+                const x = (xPrev + xCurr) / 2;
+
+                ctx.save();
+                ctx.strokeStyle = "rgba(255, 152, 0, 0.6)";
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 3]);
+                ctx.beginPath();
+                ctx.moveTo(x, chart.chartArea.top);
+                ctx.lineTo(x, chart.chartArea.bottom);
+                ctx.stroke();
+
+                // Label
+                ctx.fillStyle = "rgba(255, 152, 0, 0.85)";
+                ctx.font = "9px sans-serif";
+                ctx.textAlign = "center";
+
+                // Build summary text
+                const parts = [];
+                if (d.added && d.added.length > 0) {
+                  parts.push("+" + d.added.map((a) => a.label).join(", +"));
+                }
+                if (d.removed && d.removed.length > 0) {
+                  parts.push("−" + d.removed.map((r) => r.label).join(", −"));
+                }
+                const summary = parts.join("  ") || "CLO change";
+                ctx.fillText(summary, x, chart.chartArea.top - 4);
+
+                ctx.restore();
+              });
+            },
+          },
         ],
       });
     });
+
+    // --- CLO Composition bar (Feature #4) ---
+    if (clos.length > 0) {
+      const compBar = createCompositionBar(clos, terms);
+      panel.appendChild(compBar);
+    }
 
     return panel;
   }
@@ -414,6 +632,8 @@
         if (ploNode) {
           this._injectIntoNode(ploNode, plo.trend, terms, {
             title: `PLO-${plo.plo_number}: ${plo.description}`,
+            clos: plo.clos || [],
+            discontinuities: plo.discontinuities || [],
           });
         }
 
@@ -504,6 +724,7 @@
       PloTrend,
       createSparkline,
       createTrendPanel,
+      createCompositionBar,
       getTrendDirection,
       getTrendArrow,
     };
