@@ -123,6 +123,27 @@
             "credits": 3
         },
         {
+            "program_code": "BIOL",
+            "code": "BIOL-250",
+            "name": "Molecular Biology & Genetics",
+            "credits": 4,
+            "_comment": "Overloaded 4cr course covering 5 PLOs — retired after FA2024, split into BIOL-251 + BIOL-252"
+        },
+        {
+            "program_code": "BIOL",
+            "code": "BIOL-251",
+            "name": "Cell & Molecular Biology",
+            "credits": 2,
+            "_comment": "Post-split from BIOL-250, covers PLOs 2 and 5 — first offered SP2025"
+        },
+        {
+            "program_code": "BIOL",
+            "code": "BIOL-252",
+            "name": "Genetics & Inheritance",
+            "credits": 2,
+            "_comment": "Post-split from BIOL-250, covers PLOs 1, 6, 7 — first offered SP2025"
+        },
+        {
             "program_code": "ZOOL",
             "code": "ZOOL-101",
             "name": "Animal Diversity",
@@ -282,6 +303,92 @@
             "students_passed": 15,
             "assessment_tool": "Research Grant"
         },
+
+        {"_comment": "=== BIOL-250 specific CLOs 4-5 (template gives 1-3, these are additional for the overloaded course) ==="},
+        {
+            "course_code": "BIOL-250",
+            "clo_number": 4,
+            "description": "Interpret patterns of genetic inheritance and gene expression",
+            "assessment_method": "Written Exam",
+            "status": "assigned"
+        },
+        {
+            "course_code": "BIOL-250",
+            "clo_number": 5,
+            "description": "Demonstrate proficiency in molecular laboratory techniques",
+            "assessment_method": "Lab Report",
+            "status": "assigned"
+        },
+
+        {"_comment": "=== BIOL-251 CLOs 1-3 (FA2025, approved — Dr. Morgan, post-split success story) ==="},
+        {
+            "course_code": "BIOL-251",
+            "clo_number": 1,
+            "status": "approved",
+            "submitted_at": "2025-12-10T14:00:00",
+            "students_took": 20,
+            "students_passed": 17,
+            "assessment_tool": "Molecular Methods Lab"
+        },
+        {
+            "course_code": "BIOL-251",
+            "clo_number": 2,
+            "status": "approved",
+            "submitted_at": "2025-12-10T14:00:00",
+            "students_took": 20,
+            "students_passed": 18,
+            "assessment_tool": "Cell Biology Analysis"
+        },
+        {
+            "course_code": "BIOL-251",
+            "clo_number": 3,
+            "status": "approved",
+            "submitted_at": "2025-12-10T14:00:00",
+            "students_took": 20,
+            "students_passed": 16,
+            "assessment_tool": "Systems Integration Project"
+        },
+
+        {"_comment": "=== BIOL-252 CLOs 1-4 (FA2025, approved — Prof. Chen, genetics focus after split) ==="},
+        {
+            "course_code": "BIOL-252",
+            "clo_number": 1,
+            "status": "approved",
+            "submitted_at": "2025-12-15T10:00:00",
+            "students_took": 16,
+            "students_passed": 13,
+            "assessment_tool": "Genetics Lab Design"
+        },
+        {
+            "course_code": "BIOL-252",
+            "clo_number": 2,
+            "status": "approved",
+            "submitted_at": "2025-12-15T10:00:00",
+            "students_took": 16,
+            "students_passed": 12,
+            "assessment_tool": "Inheritance Pattern Analysis"
+        },
+        {
+            "course_code": "BIOL-252",
+            "clo_number": 3,
+            "status": "approved",
+            "submitted_at": "2025-12-15T10:00:00",
+            "students_took": 16,
+            "students_passed": 11,
+            "assessment_tool": "Ecosystem Genetics Report"
+        },
+        {
+            "course_code": "BIOL-252",
+            "clo_number": 4,
+            "description": "Perform quantitative laboratory analyses in genetics",
+            "assessment_method": "Lab Report",
+            "status": "approved",
+            "submitted_at": "2025-12-15T10:00:00",
+            "students_took": 16,
+            "students_passed": 13,
+            "assessment_tool": "Genetics Lab Practical"
+        },
+
         {
             "_comment": "ZOOL-101 CLOs 1-3 - All approved (Dr. Patel completed this one early Dec 8)",
             "course_code": "ZOOL-101",
@@ -389,6 +496,32 @@
             ]
         },
         {
+            "course_code": "BIOL-250",
+            "term_code": "FA2023",
+            "_comment": "Overloaded 4cr course — first term of decline",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 28,
+                    "status": "completed",
+                    "instructor_idx": 3
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-301",
+            "term_code": "FA2023",
+            "_comment": "301 also struggling with genetic analysis burden",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 14,
+                    "status": "completed",
+                    "instructor_idx": 3
+                }
+            ]
+        },
+        {
             "course_code": "BIOL-101",
             "term_code": "SP2024",
             "sections": [
@@ -427,6 +560,19 @@
                     "enrollment": 20,
                     "status": "completed",
                     "instructor_idx": 4
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-250",
+            "term_code": "SP2024",
+            "_comment": "Continued decline — department noticing the trend",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 30,
+                    "status": "completed",
+                    "instructor_idx": 3
                 }
             ]
         },
@@ -485,6 +631,19 @@
             ]
         },
         {
+            "course_code": "BIOL-250",
+            "term_code": "FA2024",
+            "_comment": "Final semester before split — worst performance yet, triggers curriculum redesign",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 26,
+                    "status": "completed",
+                    "instructor_idx": 3
+                }
+            ]
+        },
+        {
             "course_code": "ZOOL-205",
             "term_code": "FA2024",
             "sections": [
@@ -507,6 +666,32 @@
                     "section_number": "001",
                     "enrollment": 42,
                     "status": "completed"
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-251",
+            "term_code": "SP2025",
+            "_comment": "First semester post-split — initial improvement visible",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 22,
+                    "status": "completed",
+                    "instructor_idx": 2
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-252",
+            "term_code": "SP2025",
+            "_comment": "First semester post-split — initial improvement visible",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 18,
+                    "status": "completed",
+                    "instructor_idx": 3
                 }
             ]
         },
@@ -561,6 +746,32 @@
                 {
                     "section_number": "001",
                     "enrollment": 18,
+                    "status": "assigned",
+                    "instructor_idx": 3
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-251",
+            "term_code": "FA2025",
+            "_comment": "Second semester post-split — continued improvement",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 20,
+                    "status": "assigned",
+                    "instructor_idx": 2
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-252",
+            "term_code": "FA2025",
+            "_comment": "Second semester post-split — strong improvement",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 16,
                     "status": "assigned",
                     "instructor_idx": 3
                 }
@@ -1156,6 +1367,87 @@
             ]
         },
 
+        {"_comment": "=== BIOL-251 FA2025 section outcome overrides (current term, post-split improvement) ==="},
+        {
+            "course_code": "BIOL-251",
+            "section_number": "001",
+            "clo_number": 1,
+            "status": "approved",
+            "history": [
+                {"event": "Assigned", "relative_days": -45},
+                {"event": "Submitted", "relative_days": -12},
+                {"event": "Approved", "relative_days": -10}
+            ]
+        },
+        {
+            "course_code": "BIOL-251",
+            "section_number": "001",
+            "clo_number": 2,
+            "status": "approved",
+            "history": [
+                {"event": "Assigned", "relative_days": -45},
+                {"event": "Submitted", "relative_days": -12},
+                {"event": "Approved", "relative_days": -10}
+            ]
+        },
+        {
+            "course_code": "BIOL-251",
+            "section_number": "001",
+            "clo_number": 3,
+            "status": "approved",
+            "history": [
+                {"event": "Assigned", "relative_days": -45},
+                {"event": "Submitted", "relative_days": -12},
+                {"event": "Approved", "relative_days": -10}
+            ]
+        },
+
+        {"_comment": "=== BIOL-252 FA2025 section outcome overrides (current term, genetics focus) ==="},
+        {
+            "course_code": "BIOL-252",
+            "section_number": "001",
+            "clo_number": 1,
+            "status": "approved",
+            "history": [
+                {"event": "Assigned", "relative_days": -45},
+                {"event": "Submitted", "relative_days": -8},
+                {"event": "Approved", "relative_days": -5}
+            ]
+        },
+        {
+            "course_code": "BIOL-252",
+            "section_number": "001",
+            "clo_number": 2,
+            "status": "approved",
+            "history": [
+                {"event": "Assigned", "relative_days": -45},
+                {"event": "Submitted", "relative_days": -8},
+                {"event": "Approved", "relative_days": -5}
+            ]
+        },
+        {
+            "course_code": "BIOL-252",
+            "section_number": "001",
+            "clo_number": 3,
+            "status": "approved",
+            "history": [
+                {"event": "Assigned", "relative_days": -45},
+                {"event": "Submitted", "relative_days": -8},
+                {"event": "Approved", "relative_days": -5}
+            ]
+        },
+        {
+            "course_code": "BIOL-252",
+            "section_number": "001",
+            "clo_number": 4,
+            "status": "approved",
+            "history": [
+                {"event": "Assigned", "relative_days": -45},
+                {"event": "Submitted", "relative_days": -8},
+                {"event": "Approved", "relative_days": -5}
+            ]
+        },
+
         {"_comment": "=== HISTORICAL TERM OVERRIDES (for trend data, improving pass rates FA2023→FA2024) ==="},
 
         {"term_code": "FA2023", "course_code": "BIOL-101", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 20, "students_passed": 14},
@@ -1164,6 +1456,18 @@
         {"term_code": "FA2023", "course_code": "ZOOL-101", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 22, "students_passed": 15},
         {"term_code": "FA2023", "course_code": "ZOOL-101", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 22, "students_passed": 14},
         {"term_code": "FA2023", "course_code": "ZOOL-101", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 22, "students_passed": 16},
+
+        {"_comment": "BIOL-250 FA2023 — overloaded course, 5 CLOs, mediocre pass rates (first signs of trouble)"},
+        {"term_code": "FA2023", "course_code": "BIOL-250", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 28, "students_passed": 18},
+        {"term_code": "FA2023", "course_code": "BIOL-250", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 28, "students_passed": 17},
+        {"term_code": "FA2023", "course_code": "BIOL-250", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 28, "students_passed": 16},
+        {"term_code": "FA2023", "course_code": "BIOL-250", "section_number": "001", "clo_number": 4, "status": "approved", "students_took": 28, "students_passed": 15},
+        {"term_code": "FA2023", "course_code": "BIOL-250", "section_number": "001", "clo_number": 5, "status": "approved", "students_took": 28, "students_passed": 14},
+
+        {"_comment": "BIOL-301 FA2023 — also struggling, especially CLO 2 (genetic analysis = PLO 6)"},
+        {"term_code": "FA2023", "course_code": "BIOL-301", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 14, "students_passed": 11},
+        {"term_code": "FA2023", "course_code": "BIOL-301", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 14, "students_passed": 9},
+        {"term_code": "FA2023", "course_code": "BIOL-301", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 14, "students_passed": 12},
 
         {"term_code": "SP2024", "course_code": "BIOL-101", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 24, "students_passed": 18},
         {"term_code": "SP2024", "course_code": "BIOL-101", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 24, "students_passed": 17},
@@ -1177,6 +1481,13 @@
         {"term_code": "SP2024", "course_code": "ZOOL-101", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 20, "students_passed": 15},
         {"term_code": "SP2024", "course_code": "ZOOL-101", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 20, "students_passed": 14},
         {"term_code": "SP2024", "course_code": "ZOOL-101", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 20, "students_passed": 16},
+
+        {"_comment": "BIOL-250 SP2024 — worsening (department starts discussing intervention)"},
+        {"term_code": "SP2024", "course_code": "BIOL-250", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 30, "students_passed": 17},
+        {"term_code": "SP2024", "course_code": "BIOL-250", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 30, "students_passed": 16},
+        {"term_code": "SP2024", "course_code": "BIOL-250", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 30, "students_passed": 14},
+        {"term_code": "SP2024", "course_code": "BIOL-250", "section_number": "001", "clo_number": 4, "status": "approved", "students_took": 30, "students_passed": 13},
+        {"term_code": "SP2024", "course_code": "BIOL-250", "section_number": "001", "clo_number": 5, "status": "approved", "students_took": 30, "students_passed": 12},
 
         {"term_code": "FA2024", "course_code": "BIOL-101", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 25, "students_passed": 21},
         {"term_code": "FA2024", "course_code": "BIOL-101", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 25, "students_passed": 20},
@@ -1195,7 +1506,23 @@
         {"term_code": "FA2024", "course_code": "ZOOL-101", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 24, "students_passed": 21},
         {"term_code": "FA2024", "course_code": "ZOOL-205", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 19, "students_passed": 16},
         {"term_code": "FA2024", "course_code": "ZOOL-205", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 19, "students_passed": 14},
-        {"term_code": "FA2024", "course_code": "ZOOL-205", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 19, "students_passed": 15}
+        {"term_code": "FA2024", "course_code": "ZOOL-205", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 19, "students_passed": 15},
+
+        {"_comment": "BIOL-250 FA2024 — worst semester, triggers curriculum redesign (35-54% pass rates)"},
+        {"term_code": "FA2024", "course_code": "BIOL-250", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 26, "students_passed": 14},
+        {"term_code": "FA2024", "course_code": "BIOL-250", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 26, "students_passed": 12},
+        {"term_code": "FA2024", "course_code": "BIOL-250", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 26, "students_passed": 11},
+        {"term_code": "FA2024", "course_code": "BIOL-250", "section_number": "001", "clo_number": 4, "status": "approved", "students_took": 26, "students_passed": 10},
+        {"term_code": "FA2024", "course_code": "BIOL-250", "section_number": "001", "clo_number": 5, "status": "approved", "students_took": 26, "students_passed": 9},
+
+        {"_comment": "=== SP2025 — First semester post-split (BIOL-251 + BIOL-252 debut) ==="},
+        {"term_code": "SP2025", "course_code": "BIOL-251", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 22, "students_passed": 15},
+        {"term_code": "SP2025", "course_code": "BIOL-251", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 22, "students_passed": 16},
+        {"term_code": "SP2025", "course_code": "BIOL-251", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 22, "students_passed": 14},
+        {"term_code": "SP2025", "course_code": "BIOL-252", "section_number": "001", "clo_number": 1, "status": "approved", "students_took": 18, "students_passed": 12},
+        {"term_code": "SP2025", "course_code": "BIOL-252", "section_number": "001", "clo_number": 2, "status": "approved", "students_took": 18, "students_passed": 11},
+        {"term_code": "SP2025", "course_code": "BIOL-252", "section_number": "001", "clo_number": 3, "status": "approved", "students_took": 18, "students_passed": 10},
+        {"term_code": "SP2025", "course_code": "BIOL-252", "section_number": "001", "clo_number": 4, "status": "approved", "students_took": 18, "students_passed": 11}
     ],
     "program_outcomes": {
         "_comment": "Per-program PLO definitions + CLO mappings. The seeder creates PLOs, opens a draft mapping, links the CLOs listed under clo_mappings, then publishes the draft as mapping version 1. assessment_display_mode controls how the PLO dashboard badge renders (binary = S/U, percentage = 78%, both = S (78%)). plo_number is an integer (stored in program_outcomes.plo_number INTEGER) — the UI renders it as 'PLO-<n>'.",
@@ -1208,7 +1535,9 @@
                     "clo_mappings": [
                         {"course_code": "BIOL-101", "clo_number": 1},
                         {"course_code": "BIOL-201", "clo_number": 1},
-                        {"course_code": "BIOL-301", "clo_number": 1}
+                        {"course_code": "BIOL-301", "clo_number": 1},
+                        {"course_code": "BIOL-250", "clo_number": 1},
+                        {"course_code": "BIOL-252", "clo_number": 1}
                     ]
                 },
                 {
@@ -1217,7 +1546,9 @@
                     "clo_mappings": [
                         {"course_code": "BIOL-101", "clo_number": 2},
                         {"course_code": "BIOL-201", "clo_number": 2},
-                        {"course_code": "BIOL-301", "clo_number": 2}
+                        {"course_code": "BIOL-301", "clo_number": 2},
+                        {"course_code": "BIOL-250", "clo_number": 2},
+                        {"course_code": "BIOL-251", "clo_number": 2}
                     ]
                 },
                 {
@@ -1233,6 +1564,33 @@
                     "description": "Students will demonstrate ethical reasoning in biological research contexts.",
                     "_comment": "Intentionally unmapped — demonstrates the 'no CLOs mapped yet' empty state in the PLO dashboard.",
                     "clo_mappings": []
+                },
+                {
+                    "plo_number": 5,
+                    "description": "Students will analyze molecular structure-function relationships in biological systems.",
+                    "_comment": "Covered by retired BIOL-250 CLO 3 (historical) and BIOL-251 CLO 3 (post-split). Shows decline→improvement arc.",
+                    "clo_mappings": [
+                        {"course_code": "BIOL-250", "clo_number": 3},
+                        {"course_code": "BIOL-251", "clo_number": 3}
+                    ]
+                },
+                {
+                    "plo_number": 6,
+                    "description": "Students will apply genetic analysis techniques to interpret inheritance patterns.",
+                    "_comment": "Previously covered by overloaded BIOL-250 CLO 4. Post-split: BIOL-252 CLO 2 takes primary responsibility.",
+                    "clo_mappings": [
+                        {"course_code": "BIOL-250", "clo_number": 4},
+                        {"course_code": "BIOL-252", "clo_number": 2}
+                    ]
+                },
+                {
+                    "plo_number": 7,
+                    "description": "Students will demonstrate proficiency in biological laboratory techniques and quantitative data analysis.",
+                    "_comment": "Covered by retired BIOL-250 CLO 5 (historical) and BIOL-252 CLO 4 (post-split).",
+                    "clo_mappings": [
+                        {"course_code": "BIOL-250", "clo_number": 5},
+                        {"course_code": "BIOL-252", "clo_number": 4}
+                    ]
                 }
             ]
         },
