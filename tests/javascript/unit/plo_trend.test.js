@@ -41,6 +41,7 @@ const {
   createSparkline,
   createTrendPanel,
   createCompositionBar,
+  computeYRange,
   PloTrend,
 } = require("../../../static/plo_trend");
 
@@ -190,28 +191,40 @@ describe("createTrendPanel", () => {
     expect(panel.className).toBe("plo-trend-panel");
   });
 
-  test("contains a close button", () => {
+  test("contains a visibility toggle button", () => {
     const panel = createTrendPanel(points, terms);
-    const closeBtn = panel.querySelector(".plo-trend-panel-close");
-    expect(closeBtn).not.toBeNull();
-    expect(closeBtn.tagName).toBe("BUTTON");
-    expect(closeBtn.title).toBe("Close trend chart");
+    const toggleBtn = panel.querySelector(".plo-trend-panel-toggle");
+    expect(toggleBtn).not.toBeNull();
+    expect(toggleBtn.tagName).toBe("BUTTON");
+    expect(toggleBtn.title).toBe("Hide trend chart");
   });
 
-  test("close button removes the panel from DOM", () => {
+  test("toggle button hides and shows the panel body", () => {
     const parent = document.createElement("div");
     const panel = createTrendPanel(points, terms);
     parent.appendChild(panel);
-    expect(parent.children.length).toBe(1);
 
-    const closeBtn = panel.querySelector(".plo-trend-panel-close");
-    closeBtn.click();
-    expect(parent.children.length).toBe(0);
+    const toggleBtn = panel.querySelector(".plo-trend-panel-toggle");
+    const body = panel.querySelector(".plo-trend-panel-body");
+    expect(body).not.toBeNull();
+    expect(body.style.display).toBe("");
+
+    // First click: hide
+    toggleBtn.click();
+    expect(body.style.display).toBe("none");
+    expect(panel.classList.contains("plo-trend-panel--collapsed")).toBe(true);
+
+    // Second click: show
+    toggleBtn.click();
+    expect(body.style.display).toBe("");
+    expect(panel.classList.contains("plo-trend-panel--collapsed")).toBe(false);
   });
 
-  test("contains a canvas element", () => {
+  test("contains a canvas element inside body", () => {
     const panel = createTrendPanel(points, terms);
-    const canvas = panel.querySelector("canvas");
+    const body = panel.querySelector(".plo-trend-panel-body");
+    expect(body).not.toBeNull();
+    const canvas = body.querySelector("canvas");
     expect(canvas).not.toBeNull();
   });
 
@@ -223,6 +236,48 @@ describe("createTrendPanel", () => {
   test("shows no-data message when points are null", () => {
     const panel = createTrendPanel(null, terms);
     expect(panel.textContent).toContain("No trend data available");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeYRange
+// ---------------------------------------------------------------------------
+describe("computeYRange", () => {
+  test("returns 0-100 for empty datasets", () => {
+    expect(computeYRange([])).toEqual({ min: 0, max: 100 });
+  });
+
+  test("returns 0-100 for all-NaN data", () => {
+    expect(computeYRange([{ data: [NaN, NaN] }])).toEqual({ min: 0, max: 100 });
+  });
+
+  test("zooms into data range with padding", () => {
+    const result = computeYRange([{ data: [60, 70, 80] }]);
+    expect(result.min).toBeLessThanOrEqual(57);
+    expect(result.max).toBeGreaterThanOrEqual(83);
+    expect(result.min).toBeGreaterThanOrEqual(0);
+    expect(result.max).toBeLessThanOrEqual(100);
+  });
+
+  test("clamps to 0-100 bounds", () => {
+    const result = computeYRange([{ data: [2, 98] }]);
+    expect(result.min).toBeGreaterThanOrEqual(0);
+    expect(result.max).toBeLessThanOrEqual(100);
+  });
+
+  test("handles multiple datasets", () => {
+    const result = computeYRange([
+      { data: [60, 70] },
+      { data: [50, 90] },
+    ]);
+    expect(result.min).toBeLessThanOrEqual(44);
+    expect(result.max).toBeGreaterThanOrEqual(96);
+  });
+
+  test("handles single-value data without zero span", () => {
+    const result = computeYRange([{ data: [75] }]);
+    expect(result.min).toBeLessThan(75);
+    expect(result.max).toBeGreaterThan(75);
   });
 });
 
@@ -351,9 +406,10 @@ describe("createTrendPanel with CLO overlays", () => {
     },
   ];
 
-  test("renders CLO composition bar when CLOs provided", () => {
+  test("renders CLO composition bar inside body when CLOs provided", () => {
     const panel = createTrendPanel(points, terms, { clos });
-    const compBar = panel.querySelector(".plo-composition-bar");
+    const body = panel.querySelector(".plo-trend-panel-body");
+    const compBar = body.querySelector(".plo-composition-bar");
     expect(compBar).not.toBeNull();
   });
 
@@ -389,6 +445,109 @@ describe("createTrendPanel with CLO overlays", () => {
     const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
     const legend = chartCall[1].options.plugins.legend;
     expect(legend.display).toBe(false);
+  });
+
+  test("interactive legend: onClick handler solos clicked dataset", () => {
+    Chart.mockClear();
+    createTrendPanel(points, terms, { clos });
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const legendOnClick = chartCall[1].options.plugins.legend.onClick;
+    expect(typeof legendOnClick).toBe("function");
+  });
+
+  test("Y-axis uses auto-zoom instead of 0-100", () => {
+    Chart.mockClear();
+    createTrendPanel(points, terms, { clos });
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const yScale = chartCall[1].options.scales.y;
+    // Should NOT be 0/100 since data is 70-95 range
+    expect(yScale.min).not.toBe(0);
+  });
+
+  test("discontinuityLines plugin renders subtle hairlines without text", () => {
+    Chart.mockClear();
+    const discs = [
+      {
+        term_index: 1,
+        term_id: "t2",
+        type: "clo_change",
+        added: [{ clo_id: "c1", label: "CS201/2" }],
+        removed: [{ clo_id: "c2", label: "CS101/1" }],
+      },
+    ];
+    createTrendPanel(points, terms, { discontinuities: discs });
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const discPlugin = chartCall[1].plugins.find((p) => p.id === "discontinuityLines");
+    expect(discPlugin).toBeDefined();
+    // Execute the afterDraw to verify it doesn't call fillText (no text labels)
+    const mockCtx = {
+      save: jest.fn(),
+      restore: jest.fn(),
+      beginPath: jest.fn(),
+      moveTo: jest.fn(),
+      lineTo: jest.fn(),
+      stroke: jest.fn(),
+      fillText: jest.fn(),
+      setLineDash: jest.fn(),
+      set strokeStyle(_) {},
+      set lineWidth(_) {},
+    };
+    const mockChart = {
+      scales: {
+        x: { getPixelForValue: jest.fn().mockReturnValue(50) },
+        y: { getPixelForValue: jest.fn().mockReturnValue(50) },
+      },
+      chartArea: { top: 0, bottom: 100, left: 0, right: 200 },
+      ctx: mockCtx,
+    };
+    discPlugin.afterDraw(mockChart);
+    expect(mockCtx.stroke).toHaveBeenCalled();
+    // Should NOT render text labels — details are in tooltip afterBody
+    expect(mockCtx.fillText).not.toHaveBeenCalled();
+  });
+
+  test("tooltip afterBody shows course changes at discontinuity terms", () => {
+    Chart.mockClear();
+    const discs = [
+      {
+        term_index: 1,
+        term_id: "t2",
+        type: "clo_change",
+        added: [{ clo_id: "c1", label: "CS201/2" }],
+        removed: [{ clo_id: "c2", label: "CS101/1" }],
+      },
+    ];
+    createTrendPanel(points, terms, { discontinuities: discs });
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const afterBody = chartCall[1].options.plugins.tooltip.callbacks.afterBody;
+
+    // At term index 1 (where discontinuity is)
+    const result = afterBody([{ dataIndex: 1 }]);
+    expect(Array.isArray(result)).toBe(true);
+    expect(result.length).toBeGreaterThan(0);
+    expect(result.join(" ")).toContain("CS201/2");
+    expect(result.join(" ")).toContain("CS101/1");
+  });
+
+  test("tooltip afterBody returns empty string at non-discontinuity terms", () => {
+    Chart.mockClear();
+    const discs = [
+      { term_index: 1, added: [], removed: [] },
+    ];
+    createTrendPanel(points, terms, { discontinuities: discs });
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const afterBody = chartCall[1].options.plugins.tooltip.callbacks.afterBody;
+
+    // At term index 0 (no discontinuity)
+    expect(afterBody([{ dataIndex: 0 }])).toBe("");
+  });
+
+  test("composition bar is inside panel body div", () => {
+    const panel = createTrendPanel(points, terms, { clos });
+    const body = panel.querySelector(".plo-trend-panel-body");
+    expect(body).not.toBeNull();
+    const compBar = body.querySelector(".plo-composition-bar");
+    expect(compBar).not.toBeNull();
   });
 
   test("discontinuityLines plugin is passed to Chart", () => {

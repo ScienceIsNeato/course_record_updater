@@ -539,6 +539,9 @@ class BaselineSeeder(ABC):
         term_map = term_id_or_map if isinstance(term_id_or_map, dict) else {}
 
         for offering_data in offerings_data:
+            # Skip JSON comment-only entries
+            if "_comment" in offering_data and len(offering_data) == 1:
+                continue
             course_id = self._resolve_course_id_from_manifest(offering_data, course_map)
             if not course_id:
                 continue
@@ -745,6 +748,9 @@ class BaselineSeeder(ABC):
         clo_count = 0
         status_lookup = self._status_lookup()
         for clo_data in specific_clos:
+            # Skip JSON comment-only entries (e.g. {"_comment": "..."})
+            if "_comment" in clo_data and len(clo_data) == 1:
+                continue
             target_course = self._resolve_target_course(
                 clo_data, course_ids, course_map
             )
@@ -1331,6 +1337,9 @@ class DemoSeeder(BaselineSeeder):
         status_lookup = self._status_lookup()
 
         for override in overrides:
+            # Skip JSON comment-only entries
+            if "_comment" in override and len(override) == 1:
+                continue
             course_code = override.get("course_code")
             section_number = override.get("section_number")
             clo_number = str(override.get("clo_number"))

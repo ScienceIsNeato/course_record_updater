@@ -207,6 +207,35 @@
     "rgba(107, 91, 149, 0.55)",
   ];
 
+  // Stable palette for composition-bar course swatches.
+  // Each course gets the same colour as its CLO overlay line on the chart.
+  const COMP_COLORS = CLO_COLORS;
+
+  /**
+   * Compute a nice Y-axis range that zooms into the data.
+   * Returns { min, max } with ~10% padding above and below,
+   * clamped to [0, 100].
+   */
+  function computeYRange(datasets) {
+    let lo = Infinity;
+    let hi = -Infinity;
+    datasets.forEach((ds) => {
+      (ds.data || []).forEach((v) => {
+        if (v !== null && !isNaN(v)) {
+          if (v < lo) lo = v;
+          if (v > hi) hi = v;
+        }
+      });
+    });
+    if (!isFinite(lo) || !isFinite(hi)) return { min: 0, max: 100 };
+    const span = hi - lo || 10; // avoid zero span
+    const pad = span * 0.15;
+    return {
+      min: Math.max(0, Math.floor((lo - pad) / 5) * 5),
+      max: Math.min(100, Math.ceil((hi + pad) / 5) * 5),
+    };
+  }
+
   /**
    * Build a short label for a CLO suitable for chart legends.
    */
@@ -225,12 +254,12 @@
     const bar = document.createElement("div");
     bar.className = "plo-composition-bar";
 
-    // Collect unique courses and assign colours
+    // Collect unique courses and assign colours (same palette as chart lines)
     const courseSet = new Map();
-    (clos || []).forEach((clo) => {
+    (clos || []).forEach((clo, ci) => {
       const cn = clo.course_number || "?";
       if (!courseSet.has(cn)) {
-        courseSet.set(cn, CLO_COLORS[courseSet.size % CLO_COLORS.length]);
+        courseSet.set(cn, COMP_COLORS[ci % COMP_COLORS.length]);
       }
     });
 
@@ -298,28 +327,40 @@
     const panel = document.createElement("div");
     panel.className = "plo-trend-panel";
 
-    // Close button
-    const closeBtn = document.createElement("button");
-    closeBtn.type = "button";
-    closeBtn.className = "plo-trend-panel-close";
-    closeBtn.innerHTML = "&times;";
-    closeBtn.title = "Close trend chart";
-    closeBtn.addEventListener("click", (e) => {
+    // Visibility toggle button (eyeball icon)
+    const toggleBtn = document.createElement("button");
+    toggleBtn.type = "button";
+    toggleBtn.className = "plo-trend-panel-toggle";
+    toggleBtn.innerHTML = "&#128065;"; // 👁 open eye
+    toggleBtn.title = "Hide trend chart";
+    toggleBtn.setAttribute("aria-label", "Toggle trend chart visibility");
+    toggleBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      panel.remove();
+      const body = panel.querySelector(".plo-trend-panel-body");
+      if (!body) return;
+      const hidden = body.style.display === "none";
+      body.style.display = hidden ? "" : "none";
+      toggleBtn.innerHTML = hidden ? "&#128065;" : "&#128064;"; // 👁 vs 👀
+      toggleBtn.title = hidden ? "Hide trend chart" : "Show trend chart";
+      panel.classList.toggle("plo-trend-panel--collapsed", !hidden);
     });
-    panel.appendChild(closeBtn);
+    panel.appendChild(toggleBtn);
+
+    // Wrap canvas + composition bar in a body div for show/hide
+    const body = document.createElement("div");
+    body.className = "plo-trend-panel-body";
 
     const canvas = document.createElement("canvas");
     canvas.style.width = "100%";
-    canvas.style.height = "200px";
-    panel.appendChild(canvas);
+    canvas.style.height = "300px";
+    body.appendChild(canvas);
+    panel.appendChild(body);
 
     if (!trendPoints || trendPoints.length === 0) {
       const msg = document.createElement("p");
       msg.className = "text-muted text-center py-3";
       msg.textContent = "No trend data available.";
-      panel.appendChild(msg);
+      body.appendChild(msg);
       return panel;
     }
 
@@ -427,6 +468,25 @@
                 boxWidth: 20,
                 padding: 8,
               },
+              onClick(_e, legendItem, legend) {
+                const chart = legend.chart;
+                const ci = legendItem.datasetIndex;
+                const allHidden = chart.data.datasets.every(
+                  (ds, i) => i === ci || !chart.isDatasetVisible(i),
+                );
+                if (allHidden) {
+                  // Un-solo: show all
+                  chart.data.datasets.forEach((_ds, i) => {
+                    chart.setDatasetVisibility(i, true);
+                  });
+                } else {
+                  // Solo: show only clicked
+                  chart.data.datasets.forEach((_ds, i) => {
+                    chart.setDatasetVisibility(i, i === ci);
+                  });
+                }
+                chart.update();
+              },
             },
             title: {
               display: true,
@@ -462,6 +522,39 @@
                 },
                 // Filter out null entries from tooltip
                 filter: (item) => item.raw !== null && !isNaN(item.raw),
+                afterBody: (items) => {
+                  if (!discontinuities || discontinuities.length === 0)
+                    return "";
+                  const idx = items[0] && items[0].dataIndex;
+                  if (idx == null) return "";
+                  // Find any discontinuity AT this term index
+                  const disc = discontinuities.find(
+                    (d) => d.term_index === idx,
+                  );
+                  if (!disc) return "";
+                  const lines = ["\n─── Course changes ───"];
+                  const prev = [];
+                  const curr = [];
+                  if (disc.removed && disc.removed.length > 0) {
+                    disc.removed.forEach((r) => prev.push(r.label));
+                  }
+                  if (disc.added && disc.added.length > 0) {
+                    disc.added.forEach((a) => curr.push(a.label));
+                  }
+                  if (prev.length > 0 || curr.length > 0) {
+                    const maxLen = Math.max(prev.length, curr.length);
+                    for (let i = 0; i < maxLen; i++) {
+                      const left = prev[i] ? "− " + prev[i] : "";
+                      const right = curr[i] ? "+ " + curr[i] : "";
+                      if (left && right) {
+                        lines.push(left + "  │  " + right);
+                      } else {
+                        lines.push(left || "          │  " + right);
+                      }
+                    }
+                  }
+                  return lines;
+                },
               },
             },
           },
@@ -471,8 +564,7 @@
               ticks: { font: { size: 11 } },
             },
             y: {
-              min: 0,
-              max: 100,
+              ...computeYRange(datasets),
               ticks: {
                 callback: (v) => v + "%",
                 font: { size: 11 },
@@ -534,37 +626,21 @@
                 const ti = d.term_index;
                 if (ti < 0 || ti >= labels.length) return;
 
-                // Draw between previous and current term
+                // Subtle hairline between previous and current term
                 const xCurr = xScale.getPixelForValue(ti);
                 const xPrev = ti > 0 ? xScale.getPixelForValue(ti - 1) : xCurr;
                 const x = (xPrev + xCurr) / 2;
 
                 ctx.save();
-                ctx.strokeStyle = "rgba(255, 152, 0, 0.6)";
-                ctx.lineWidth = 1.5;
-                ctx.setLineDash([4, 3]);
+                ctx.strokeStyle = "rgba(255, 152, 0, 0.2)";
+                ctx.lineWidth = 1;
+                ctx.setLineDash([]);
                 ctx.beginPath();
                 ctx.moveTo(x, chart.chartArea.top);
                 ctx.lineTo(x, chart.chartArea.bottom);
                 ctx.stroke();
-
-                // Label
-                ctx.fillStyle = "rgba(255, 152, 0, 0.85)";
-                ctx.font = "9px sans-serif";
-                ctx.textAlign = "center";
-
-                // Build summary text
-                const parts = [];
-                if (d.added && d.added.length > 0) {
-                  parts.push("+" + d.added.map((a) => a.label).join(", +"));
-                }
-                if (d.removed && d.removed.length > 0) {
-                  parts.push("−" + d.removed.map((r) => r.label).join(", −"));
-                }
-                const summary = parts.join("  ") || "CLO change";
-                ctx.fillText(summary, x, chart.chartArea.top - 4);
-
                 ctx.restore();
+                // Text labels removed — details shown in tooltip afterBody
               });
             },
           },
@@ -575,7 +651,7 @@
     // --- CLO Composition bar (Feature #4) ---
     if (clos.length > 0) {
       const compBar = createCompositionBar(clos, terms);
-      panel.appendChild(compBar);
+      body.appendChild(compBar);
     }
 
     return panel;
@@ -725,6 +801,7 @@
       createSparkline,
       createTrendPanel,
       createCompositionBar,
+      computeYRange,
       getTrendDirection,
       getTrendArrow,
     };
