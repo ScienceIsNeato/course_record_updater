@@ -17,6 +17,7 @@
   const SPARK_HEIGHT = 32;
   const TREND_LINE_COLOR = "#0d6efd";
   const TREND_LINE_COLOR_FAIL = "#dc3545";
+  const TREND_LINE_COLOR_FUTURE = "rgba(160, 170, 180, 0.45)";
   const TREND_FILL_ALPHA_TOP = 0.18;
   const TREND_FILL_ALPHA_BOTTOM = 0.02;
   const TREND_FILL_COLOR = "rgba(13, 110, 253, 0.08)";
@@ -107,6 +108,13 @@
     );
 
     const threshold = (opts && opts.threshold) || 70;
+    const selectedTermIndex =
+      opts && opts.selectedTermIndex != null && opts.selectedTermIndex >= 0
+        ? opts.selectedTermIndex
+        : -1;
+    // Is there a "future" region after the selected term?
+    const hasFuture =
+      selectedTermIndex >= 0 && selectedTermIndex < data.length - 1;
 
     // Determine line colour based on latest valid point
     const lastValid = data.filter((d) => !isNaN(d));
@@ -115,10 +123,16 @@
         ? TREND_LINE_COLOR_FAIL
         : TREND_LINE_COLOR;
 
-    // Only show endpoint dot (last valid point)
+    // Dot position: selected term if valid, else last valid point
     const lastValidIdx = data.reduce((acc, d, i) => (!isNaN(d) ? i : acc), -1);
-    const pointRadii = data.map((_, i) => (i === lastValidIdx ? 3 : 0));
-    const pointColors = data.map(() => lineColor);
+    const dotIdx =
+      selectedTermIndex >= 0 && !isNaN(data[selectedTermIndex])
+        ? selectedTermIndex
+        : lastValidIdx;
+    const pointRadii = data.map((_, i) => (i === dotIdx ? 3 : 0));
+    const pointColors = data.map((_, i) =>
+      hasFuture && i > selectedTermIndex ? TREND_LINE_COLOR_FUTURE : lineColor,
+    );
     const pointBorders = pointColors;
 
     // Defer rendering until canvas is in the DOM
@@ -167,6 +181,9 @@
                     ? TREND_NULL_DASH
                     : undefined,
                 borderColor: (ctx) => {
+                  // Grey for segments beyond the selected term
+                  if (hasFuture && ctx.p0DataIndex >= selectedTermIndex)
+                    return TREND_LINE_COLOR_FUTURE;
                   // Red segment when both endpoints are below threshold
                   const p0 = ctx.p0.parsed.y;
                   const p1 = ctx.p1.parsed.y;
@@ -290,6 +307,21 @@
                 ctx.stroke();
                 ctx.restore();
               });
+            },
+          },
+          {
+            id: "futureWash",
+            afterDraw(chart) {
+              if (!hasFuture) return;
+              const xScale = chart.scales.x;
+              if (!xScale) return;
+              const xPos = xScale.getPixelForValue(selectedTermIndex);
+              const { top, bottom, right } = chart.chartArea;
+              const ctx = chart.ctx;
+              ctx.save();
+              ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+              ctx.fillRect(xPos, top, right - xPos, bottom - top);
+              ctx.restore();
             },
           },
         ],
@@ -783,13 +815,17 @@
   // -----------------------------------------------------------------------
   const PloTrend = {
     trendData: null,
+    selectedTermId: null,
 
     /**
      * Fetch trend data for the given program and inject sparklines
      * into the already-rendered PLO tree.
+     * @param {string} programId
+     * @param {string} [selectedTermId] - The currently selected term from the filter
      */
-    async loadTrend(programId) {
+    async loadTrend(programId, selectedTermId) {
       if (!programId) return;
+      if (selectedTermId !== undefined) this.selectedTermId = selectedTermId;
 
       const url = `/api/programs/${encodeURIComponent(programId)}/plo-dashboard/trend`;
       try {
@@ -815,6 +851,13 @@
       const { terms, plos } = this.trendData;
       if (!terms || terms.length < 2) return; // need ≥2 terms for a trend
 
+      // Find which term index the user has selected
+      const selectedTermIndex = this.selectedTermId
+        ? terms.findIndex(
+            (t) => String(t.term_id) === String(this.selectedTermId),
+          )
+        : -1;
+
       const container = document.getElementById("ploTreeContainer");
       if (!container) return;
 
@@ -833,6 +876,7 @@
             title: `PLO-${plo.plo_number}: ${plo.description}`,
             clos: plo.clos || [],
             discontinuities: plo.discontinuities || [],
+            selectedTermIndex,
           });
         }
 
@@ -850,13 +894,14 @@
             this._injectIntoNode(cloNode, clo.trend, terms, {
               title: `${clo.course_number || ""} CLO ${clo.clo_number || "?"}: ${clo.description || ""}`,
               discontinuities: plo.discontinuities || [],
+              selectedTermIndex,
             });
           }
         });
       });
 
       // Populate summary bar sparklines
-      this._injectSummarySparklines(container, plos, terms);
+      this._injectSummarySparklines(container, plos, terms, selectedTermIndex);
     },
 
     /**
@@ -864,7 +909,7 @@
      * Each slot is tagged with data-plo-id matching a PLO in the trend data.
      * Clicking a sparkline toggles a full trend panel below the category row.
      */
-    _injectSummarySparklines(container, plos, terms) {
+    _injectSummarySparklines(container, plos, terms, selectedTermIndex) {
       const slots = container.querySelectorAll(".plo-summary-sparkline-slot");
       slots.forEach((slot) => {
         const ploId = slot.dataset.ploId;
@@ -880,6 +925,7 @@
         const canvas = createSparkline(plo.trend, terms, {
           threshold: 70,
           discontinuities: plo.discontinuities || [],
+          selectedTermIndex: selectedTermIndex != null ? selectedTermIndex : -1,
         });
         slot.insertBefore(canvas, slot.firstChild);
 

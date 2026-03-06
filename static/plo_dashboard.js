@@ -413,7 +413,7 @@
       if (typeof globalThis === "undefined" || !globalThis.PloTrend) return;
       for (const prog of this.programs) {
         const progId = prog.program_id || prog.id;
-        globalThis.PloTrend.loadTrend(progId);
+        globalThis.PloTrend.loadTrend(progId, this.currentTermId);
       }
     },
 
@@ -427,7 +427,10 @@
         globalThis.PloTrend &&
         this.currentProgramId
       ) {
-        globalThis.PloTrend.loadTrend(this.currentProgramId);
+        globalThis.PloTrend.loadTrend(
+          this.currentProgramId,
+          this.currentTermId,
+        );
       }
     },
 

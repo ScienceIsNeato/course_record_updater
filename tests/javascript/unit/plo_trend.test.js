@@ -232,6 +232,36 @@ describe("createSparkline", () => {
     const canvas2 = createSparkline([], terms);
     expect(canvas2.tagName).toBe("CANVAS");
   });
+
+  test("accepts selectedTermIndex option without error", () => {
+    const multiTerms = [
+      { term_name: "Fall 2023", is_current: false },
+      { term_name: "Spring 2024", is_current: false },
+      { term_name: "Fall 2024", is_current: false },
+      { term_name: "Spring 2025", is_current: true },
+    ];
+    const multiPoints = [
+      { pass_rate: 75 },
+      { pass_rate: 80 },
+      { pass_rate: 72 },
+      { pass_rate: 85 },
+    ];
+    // Select an older term (Fall 2024, index 2)
+    const canvas = createSparkline(multiPoints, multiTerms, {
+      threshold: 70,
+      selectedTermIndex: 2,
+    });
+    expect(canvas.tagName).toBe("CANVAS");
+    expect(canvas.className).toBe("plo-sparkline");
+  });
+
+  test("selectedTermIndex -1 uses default behavior", () => {
+    const canvas = createSparkline(points, terms, {
+      threshold: 70,
+      selectedTermIndex: -1,
+    });
+    expect(canvas.tagName).toBe("CANVAS");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -721,6 +751,7 @@ describe("createTrendPanel with CLO overlays", () => {
 describe("PloTrend controller", () => {
   beforeEach(() => {
     PloTrend.trendData = null;
+    PloTrend.selectedTermId = null;
     global.fetch = jest.fn();
     document.body.innerHTML = "";
   });
@@ -801,6 +832,29 @@ describe("PloTrend controller", () => {
 
       await PloTrend.loadTrend("prog-123");
       expect(PloTrend.trendData).toBeNull();
+    });
+
+    test("stores selectedTermId when provided", async () => {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ success: true, terms: [], plos: [] }),
+      });
+
+      await PloTrend.loadTrend("prog-123", "term-42");
+      expect(PloTrend.selectedTermId).toBe("term-42");
+    });
+
+    test("preserves previous selectedTermId when not provided", async () => {
+      PloTrend.selectedTermId = "term-old";
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ success: true, terms: [], plos: [] }),
+      });
+
+      await PloTrend.loadTrend("prog-123");
+      expect(PloTrend.selectedTermId).toBe("term-old");
     });
   });
 
@@ -1099,6 +1153,58 @@ describe("PloTrend controller", () => {
 
       const slot = document.querySelector(".plo-summary-sparkline-slot");
       expect(slot.querySelector(".plo-sparkline")).toBeNull();
+    });
+
+    test("passes selectedTermIndex based on selectedTermId", () => {
+      document.body.innerHTML = `
+        <div id="ploTreeContainer">
+          <div class="plo-summary-bar">
+            <div class="plo-summary-row stat-pass">
+              <div class="plo-summary-sparkline-group">
+                <span class="plo-summary-sparkline-slot" data-plo-id="plo-1">
+                  <span class="plo-summary-sparkline-label">(1)</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div data-plo-id="plo-1">
+            <div class="plo-tree-header">
+              <div class="plo-tree-meta"></div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      PloTrend.selectedTermId = "term-2";
+      PloTrend.trendData = {
+        terms: [
+          { term_id: "term-1", term_name: "Fall 2024", is_current: false },
+          { term_id: "term-2", term_name: "Spring 2025", is_current: false },
+          { term_id: "term-3", term_name: "Fall 2025", is_current: true },
+        ],
+        plos: [
+          {
+            id: "plo-1",
+            plo_number: 1,
+            description: "PLO One",
+            trend: [
+              { pass_rate: 70 },
+              { pass_rate: 80 },
+              { pass_rate: 85 },
+            ],
+            clos: [],
+          },
+        ],
+      };
+
+      PloTrend.injectSparklines();
+
+      // Sparkline should still be injected
+      const slot = document.querySelector(".plo-summary-sparkline-slot");
+      expect(slot.querySelector(".plo-sparkline")).not.toBeNull();
+      // Tree node indicator also injected
+      const indicator = document.querySelector(".plo-trend-indicator");
+      expect(indicator).not.toBeNull();
     });
   });
 
