@@ -696,7 +696,9 @@ describe('PloDashboard — loadTree + render', () => {
 
     await PloDashboard.loadTree();
 
-    // Both program headings rendered
+    // Both program headings rendered (now inside collapsible sections)
+    const sections = document.querySelectorAll('.plo-program-section');
+    expect(sections.length).toBe(2);
     const headings = document.querySelectorAll('.plo-all-programs-heading');
     expect(headings.length).toBe(2);
     expect(headings[0].textContent).toContain('Biology BS');
@@ -707,6 +709,17 @@ describe('PloDashboard — loadTree + render', () => {
     expect(trees.length).toBe(1);
     const emptyMsg = document.querySelector('p.text-muted');
     expect(emptyMsg.textContent).toContain('No PLOs defined.');
+
+    // Programs are collapsible
+    const firstSection = sections[0];
+    expect(firstSection.querySelector('.plo-program-content')).not.toBeNull();
+    expect(firstSection.querySelector('.plo-program-toggle')).not.toBeNull();
+
+    // Clicking heading toggles collapsed state
+    headings[0].click();
+    expect(firstSection.classList.contains('collapsed')).toBe(true);
+    headings[0].click();
+    expect(firstSection.classList.contains('collapsed')).toBe(false);
 
     // Program name label shows "All Programs"
     expect(
@@ -1177,18 +1190,22 @@ describe('PloDashboard — small helpers', () => {
 // Summary bar
 // ---------------------------------------------------------------------------
 describe('PloDashboard — _buildSummaryBar', () => {
-  test('renders stats and progress bar for mixed PLO statuses', () => {
+  test('renders rows with sparkline slots for mixed PLO statuses', () => {
     const plos = [
-      { aggregate: { pass_rate: 90 } },
-      { aggregate: { pass_rate: 85 } },
-      { aggregate: { pass_rate: 60 } },
-      { aggregate: { pass_rate: null } },
+      { id: 'p1', plo_number: 1, aggregate: { pass_rate: 90 } },
+      { id: 'p2', plo_number: 2, aggregate: { pass_rate: 85 } },
+      { id: 'p3', plo_number: 3, aggregate: { pass_rate: 60 } },
+      { id: 'p4', plo_number: 4, aggregate: { pass_rate: null } },
     ];
 
     const bar = PloDashboard._buildSummaryBar(plos);
     expect(bar.className).toBe('plo-summary-bar');
 
-    // Stats: 2 satisfactory, 1 needs attention, 1 no data
+    // 3 rows: satisfactory, needs attention, no data
+    const rows = bar.querySelectorAll('.plo-summary-row');
+    expect(rows.length).toBe(3);
+
+    // Stats text in each row
     const stats = bar.querySelectorAll('.plo-summary-stat');
     expect(stats.length).toBe(3);
     expect(stats[0].textContent).toContain('2');
@@ -1197,6 +1214,16 @@ describe('PloDashboard — _buildSummaryBar', () => {
     expect(stats[1].textContent).toContain('needs attention');
     expect(stats[2].textContent).toContain('1');
     expect(stats[2].textContent).toContain('no data');
+
+    // Sparkline slots with PLO IDs
+    const slots = bar.querySelectorAll('.plo-summary-sparkline-slot');
+    expect(slots.length).toBe(4);
+    expect(slots[0].dataset.ploId).toBe('p1');
+    expect(slots[1].dataset.ploId).toBe('p2');
+
+    // Labels show PLO numbers
+    const labels = bar.querySelectorAll('.plo-summary-sparkline-label');
+    expect(labels[0].textContent).toBe('(1)');
 
     // Progress bar has 3 segments
     const segments = bar.querySelectorAll('.plo-summary-segment');
@@ -1208,11 +1235,13 @@ describe('PloDashboard — _buildSummaryBar', () => {
 
   test('omits zero-count categories', () => {
     const plos = [
-      { aggregate: { pass_rate: 90 } },
-      { aggregate: { pass_rate: 80 } },
+      { id: 'p1', plo_number: 1, aggregate: { pass_rate: 90 } },
+      { id: 'p2', plo_number: 2, aggregate: { pass_rate: 80 } },
     ];
 
     const bar = PloDashboard._buildSummaryBar(plos);
+    const rows = bar.querySelectorAll('.plo-summary-row');
+    expect(rows.length).toBe(1);
     const stats = bar.querySelectorAll('.plo-summary-stat');
     expect(stats.length).toBe(1);
     expect(stats[0].textContent).toContain('satisfactory');

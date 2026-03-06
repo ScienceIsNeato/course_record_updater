@@ -350,24 +350,46 @@
             badge.textContent = `v${data.mapping.version}`;
             heading.appendChild(badge);
           }
-          container.appendChild(heading);
+          // Collapsible program section
+          const section = document.createElement("div");
+          section.className = "plo-program-section";
+
+          // Add toggle chevron to heading
+          const toggle = document.createElement("span");
+          toggle.className = "plo-program-toggle";
+          toggle.innerHTML = '<i class="fas fa-chevron-down"></i>';
+          heading.insertBefore(toggle, heading.firstChild);
+          heading.style.cursor = "pointer";
+          section.appendChild(heading);
+
+          // Content container (collapsible)
+          const content = document.createElement("div");
+          content.className = "plo-program-content";
 
           // Render tree for this program
           if (data.plos && data.plos.length > 0) {
-            container.appendChild(this._buildSummaryBar(data.plos));
+            content.appendChild(this._buildSummaryBar(data.plos));
             const ul = document.createElement("ul");
             ul.className = "plo-tree";
             const savedTree = this.tree;
             this.tree = data;
             data.plos.forEach((plo) => ul.appendChild(this._buildPloNode(plo)));
             this.tree = savedTree;
-            container.appendChild(ul);
+            content.appendChild(ul);
           } else {
             const empty = document.createElement("p");
             empty.className = "text-muted small fst-italic ms-3 mb-3";
             empty.textContent = "No PLOs defined.";
-            container.appendChild(empty);
+            content.appendChild(empty);
           }
+
+          section.appendChild(content);
+          container.appendChild(section);
+
+          // Wire toggle
+          heading.addEventListener("click", () => {
+            section.classList.toggle("collapsed");
+          });
         } catch (_) {
           // skip programs that fail to load
         }
@@ -475,32 +497,51 @@
       if (!plos || plos.length === 0) return bar;
 
       const threshold = 70;
-      let satisfactory = 0;
-      let unsatisfactory = 0;
-      let nodata = 0;
+      const groups = { pass: [], fail: [], nodata: [] };
       plos.forEach((plo) => {
         const rate = plo.aggregate && plo.aggregate.pass_rate;
-        if (rate === null || rate === undefined) nodata++;
-        else if (rate >= threshold) satisfactory++;
-        else unsatisfactory++;
+        if (rate === null || rate === undefined) groups.nodata.push(plo);
+        else if (rate >= threshold) groups.pass.push(plo);
+        else groups.fail.push(plo);
       });
       const total = plos.length;
 
-      // Stats text
-      const stats = document.createElement("div");
-      stats.className = "plo-summary-stats";
-      const addStat = (count, label, cls) => {
-        if (count === 0) return;
-        const span = document.createElement("span");
-        span.className = "plo-summary-stat " + cls;
-        span.innerHTML =
-          '<span class="plo-summary-dot"></span>' + count + " " + label;
-        stats.appendChild(span);
+      // Category rows with sparkline slots
+      const addRow = (label, cls, ploList) => {
+        if (ploList.length === 0) return;
+        const row = document.createElement("div");
+        row.className = "plo-summary-row " + cls;
+
+        const stat = document.createElement("span");
+        stat.className = "plo-summary-stat";
+        stat.innerHTML =
+          '<span class="plo-summary-dot"></span>' +
+          ploList.length +
+          " " +
+          label;
+        row.appendChild(stat);
+
+        // Sparkline slots (populated after trend data loads)
+        const sparkGroup = document.createElement("div");
+        sparkGroup.className = "plo-summary-sparkline-group";
+        ploList.forEach((plo) => {
+          const slot = document.createElement("span");
+          slot.className = "plo-summary-sparkline-slot";
+          slot.dataset.ploId = plo.id;
+          const slotLabel = document.createElement("span");
+          slotLabel.className = "plo-summary-sparkline-label";
+          slotLabel.textContent =
+            plo.plo_number != null ? "(" + plo.plo_number + ")" : "";
+          slot.appendChild(slotLabel);
+          sparkGroup.appendChild(slot);
+        });
+        row.appendChild(sparkGroup);
+
+        bar.appendChild(row);
       };
-      addStat(satisfactory, "satisfactory", "stat-pass");
-      addStat(unsatisfactory, "needs attention", "stat-fail");
-      addStat(nodata, "no data", "stat-nodata");
-      bar.appendChild(stats);
+      addRow("satisfactory", "stat-pass", groups.pass);
+      addRow("needs attention", "stat-fail", groups.fail);
+      addRow("no data", "stat-nodata", groups.nodata);
 
       // Progress bar
       const progress = document.createElement("div");
@@ -512,9 +553,9 @@
         seg.style.width = (count / total) * 100 + "%";
         progress.appendChild(seg);
       };
-      addSegment(satisfactory, "seg-pass");
-      addSegment(unsatisfactory, "seg-fail");
-      addSegment(nodata, "seg-nodata");
+      addSegment(groups.pass.length, "seg-pass");
+      addSegment(groups.fail.length, "seg-fail");
+      addSegment(groups.nodata.length, "seg-nodata");
       bar.appendChild(progress);
 
       return bar;

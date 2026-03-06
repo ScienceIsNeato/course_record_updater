@@ -206,6 +206,15 @@
   border-bottom: 1px solid #e9ecef;
 }
 
+.plo-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  color: #495057;
+  flex-wrap: wrap;
+}
+
 .plo-summary-stats {
   display: flex;
   align-items: center;
@@ -401,4 +410,59 @@
 .plo-all-programs-heading {
   border-bottom: 1px solid #dee2e6;
   padding-bottom: 0.5rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Collapsible program sections (All Programs view)                    */
+/* ------------------------------------------------------------------ */
+
+.plo-program-section.collapsed .plo-program-content {
+  display: none;
+}
+
+.plo-program-toggle {
+  display: inline-block;
+  width: 1.25rem;
+  text-align: center;
+  color: #6c757d;
+  transition: transform 0.15s ease;
+  margin-right: 0.25rem;
+}
+
+.plo-program-section.collapsed .plo-program-toggle {
+  transform: rotate(-90deg);
+}
+
+.plo-all-programs-heading:hover {
+  color: #0d6efd;
+}
+
+/* ------------------------------------------------------------------ */
+/* Summary bar sparkline slots                                         */
+/* ------------------------------------------------------------------ */
+
+.plo-summary-sparkline-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.plo-summary-sparkline-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  cursor: pointer;
+}
+
+.plo-summary-sparkline-label {
+  font-size: 0.7rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+/* Trend panels inside summary bar need tighter margins */
+.plo-summary-bar .plo-trend-panel {
+  margin-left: 0;
+  margin-right: 0;
 }

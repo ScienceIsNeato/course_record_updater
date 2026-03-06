@@ -969,6 +969,108 @@ describe("PloTrend controller", () => {
       const wrap = document.querySelector(".plo-trend-indicator");
       expect(wrap).toBeNull();
     });
+
+    test("injects sparklines into summary bar slots", () => {
+      document.body.innerHTML = `
+        <div id="ploTreeContainer">
+          <div class="plo-summary-bar">
+            <div class="plo-summary-row stat-pass">
+              <span class="plo-summary-stat">2 satisfactory</span>
+              <div class="plo-summary-sparkline-group">
+                <span class="plo-summary-sparkline-slot" data-plo-id="plo-1">
+                  <span class="plo-summary-sparkline-label">(1)</span>
+                </span>
+                <span class="plo-summary-sparkline-slot" data-plo-id="plo-2">
+                  <span class="plo-summary-sparkline-label">(2)</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div data-plo-id="plo-1">
+            <div class="plo-tree-header">
+              <div class="plo-tree-meta"></div>
+            </div>
+          </div>
+          <div data-plo-id="plo-2">
+            <div class="plo-tree-header">
+              <div class="plo-tree-meta"></div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      PloTrend.trendData = {
+        terms: [
+          { term_name: "Fall 2024", is_current: false },
+          { term_name: "Spring 2025", is_current: false },
+        ],
+        plos: [
+          {
+            id: "plo-1",
+            plo_number: 1,
+            description: "PLO One",
+            trend: [{ pass_rate: 70 }, { pass_rate: 85 }],
+            clos: [],
+          },
+          {
+            id: "plo-2",
+            plo_number: 2,
+            description: "PLO Two",
+            trend: [{ pass_rate: 60 }, { pass_rate: 75 }],
+            clos: [],
+          },
+        ],
+      };
+
+      PloTrend.injectSparklines();
+
+      // Sparkline canvases should be inserted in the summary bar slots
+      const slots = document.querySelectorAll(".plo-summary-sparkline-slot");
+      expect(slots.length).toBe(2);
+      expect(slots[0].querySelector(".plo-sparkline")).not.toBeNull();
+      expect(slots[1].querySelector(".plo-sparkline")).not.toBeNull();
+      // Labels preserved
+      expect(
+        slots[0].querySelector(".plo-summary-sparkline-label").textContent,
+      ).toBe("(1)");
+    });
+
+    test("skips summary bar slots with insufficient trend data", () => {
+      document.body.innerHTML = `
+        <div id="ploTreeContainer">
+          <div class="plo-summary-bar">
+            <div class="plo-summary-row stat-nodata">
+              <div class="plo-summary-sparkline-group">
+                <span class="plo-summary-sparkline-slot" data-plo-id="plo-3">
+                  <span class="plo-summary-sparkline-label">(3)</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      PloTrend.trendData = {
+        terms: [
+          { term_name: "Fall 2024", is_current: false },
+          { term_name: "Spring 2025", is_current: false },
+        ],
+        plos: [
+          {
+            id: "plo-3",
+            plo_number: 3,
+            description: "No data PLO",
+            trend: [{ pass_rate: null }],
+            clos: [],
+          },
+        ],
+      };
+
+      PloTrend.injectSparklines();
+
+      const slot = document.querySelector(".plo-summary-sparkline-slot");
+      expect(slot.querySelector(".plo-sparkline")).toBeNull();
+    });
   });
 
   describe("_toggleTrendPanel", () => {

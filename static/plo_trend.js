@@ -786,6 +786,69 @@
           }
         });
       });
+
+      // Populate summary bar sparklines
+      this._injectSummarySparklines(container, plos, terms);
+    },
+
+    /**
+     * Inject sparkline canvases into summary bar sparkline slots.
+     * Each slot is tagged with data-plo-id matching a PLO in the trend data.
+     * Clicking a sparkline toggles a full trend panel below the category row.
+     */
+    _injectSummarySparklines(container, plos, terms) {
+      const slots = container.querySelectorAll(".plo-summary-sparkline-slot");
+      slots.forEach((slot) => {
+        const ploId = slot.dataset.ploId;
+        const plo = (plos || []).find((p) => String(p.id) === String(ploId));
+        if (!plo || !plo.trend || plo.trend.length < 2) return;
+
+        // Remove existing sparkline if re-injecting
+        const existing = slot.querySelector(".plo-sparkline");
+        if (existing) existing.remove();
+
+        const canvas = createSparkline(plo.trend, terms, { threshold: 70 });
+        slot.insertBefore(canvas, slot.firstChild);
+
+        // Click opens trend panel below the row
+        canvas.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this._toggleSummaryTrendPanel(slot, plo, terms);
+        });
+      });
+    },
+
+    /**
+     * Toggle a trend chart panel below the summary row containing the clicked sparkline.
+     */
+    _toggleSummaryTrendPanel(slot, plo, terms) {
+      const row = slot.closest(".plo-summary-row");
+      if (!row) return;
+
+      // Check if this PLO's panel is already open
+      const next = row.nextElementSibling;
+      if (
+        next &&
+        next.classList.contains("plo-trend-panel") &&
+        next.dataset.ploId === String(plo.id)
+      ) {
+        next.remove();
+        return;
+      }
+
+      // Remove any other open panel in this summary bar
+      const bar = slot.closest(".plo-summary-bar");
+      if (bar) {
+        bar.querySelectorAll(".plo-trend-panel").forEach((p) => p.remove());
+      }
+
+      const panel = createTrendPanel(plo.trend, terms, {
+        title: "PLO-" + plo.plo_number + ": " + plo.description,
+        clos: plo.clos || [],
+        discontinuities: plo.discontinuities || [],
+      });
+      panel.dataset.ploId = String(plo.id);
+      row.after(panel);
     },
 
     /**
