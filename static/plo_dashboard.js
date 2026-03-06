@@ -354,6 +354,7 @@
 
           // Render tree for this program
           if (data.plos && data.plos.length > 0) {
+            container.appendChild(this._buildSummaryBar(data.plos));
             const ul = document.createElement("ul");
             ul.className = "plo-tree";
             const savedTree = this.tree;
@@ -459,7 +460,64 @@
       data.plos.forEach((plo) => ul.appendChild(this._buildPloNode(plo)));
 
       container.innerHTML = "";
+      container.appendChild(this._buildSummaryBar(data.plos));
       container.appendChild(ul);
+    },
+
+    /**
+     * Build a compact summary bar showing PLO status distribution.
+     * Displays counts of satisfactory / needs-attention / no-data PLOs
+     * with a proportional progress bar.
+     */
+    _buildSummaryBar(plos) {
+      const bar = document.createElement("div");
+      bar.className = "plo-summary-bar";
+      if (!plos || plos.length === 0) return bar;
+
+      const threshold = 70;
+      let satisfactory = 0;
+      let unsatisfactory = 0;
+      let nodata = 0;
+      plos.forEach((plo) => {
+        const rate = plo.aggregate && plo.aggregate.pass_rate;
+        if (rate === null || rate === undefined) nodata++;
+        else if (rate >= threshold) satisfactory++;
+        else unsatisfactory++;
+      });
+      const total = plos.length;
+
+      // Stats text
+      const stats = document.createElement("div");
+      stats.className = "plo-summary-stats";
+      const addStat = (count, label, cls) => {
+        if (count === 0) return;
+        const span = document.createElement("span");
+        span.className = "plo-summary-stat " + cls;
+        span.innerHTML =
+          '<span class="plo-summary-dot"></span>' + count + " " + label;
+        stats.appendChild(span);
+      };
+      addStat(satisfactory, "satisfactory", "stat-pass");
+      addStat(unsatisfactory, "needs attention", "stat-fail");
+      addStat(nodata, "no data", "stat-nodata");
+      bar.appendChild(stats);
+
+      // Progress bar
+      const progress = document.createElement("div");
+      progress.className = "plo-summary-progress";
+      const addSegment = (count, cls) => {
+        if (count === 0) return;
+        const seg = document.createElement("div");
+        seg.className = "plo-summary-segment " + cls;
+        seg.style.width = (count / total) * 100 + "%";
+        progress.appendChild(seg);
+      };
+      addSegment(satisfactory, "seg-pass");
+      addSegment(unsatisfactory, "seg-fail");
+      addSegment(nodata, "seg-nodata");
+      bar.appendChild(progress);
+
+      return bar;
     },
 
     // ===================================================================

@@ -1172,3 +1172,90 @@ describe('PloDashboard — small helpers', () => {
     expect(m.style.display).toBe('none');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Summary bar
+// ---------------------------------------------------------------------------
+describe('PloDashboard — _buildSummaryBar', () => {
+  test('renders stats and progress bar for mixed PLO statuses', () => {
+    const plos = [
+      { aggregate: { pass_rate: 90 } },
+      { aggregate: { pass_rate: 85 } },
+      { aggregate: { pass_rate: 60 } },
+      { aggregate: { pass_rate: null } },
+    ];
+
+    const bar = PloDashboard._buildSummaryBar(plos);
+    expect(bar.className).toBe('plo-summary-bar');
+
+    // Stats: 2 satisfactory, 1 needs attention, 1 no data
+    const stats = bar.querySelectorAll('.plo-summary-stat');
+    expect(stats.length).toBe(3);
+    expect(stats[0].textContent).toContain('2');
+    expect(stats[0].textContent).toContain('satisfactory');
+    expect(stats[1].textContent).toContain('1');
+    expect(stats[1].textContent).toContain('needs attention');
+    expect(stats[2].textContent).toContain('1');
+    expect(stats[2].textContent).toContain('no data');
+
+    // Progress bar has 3 segments
+    const segments = bar.querySelectorAll('.plo-summary-segment');
+    expect(segments.length).toBe(3);
+    expect(segments[0].className).toContain('seg-pass');
+    expect(segments[1].className).toContain('seg-fail');
+    expect(segments[2].className).toContain('seg-nodata');
+  });
+
+  test('omits zero-count categories', () => {
+    const plos = [
+      { aggregate: { pass_rate: 90 } },
+      { aggregate: { pass_rate: 80 } },
+    ];
+
+    const bar = PloDashboard._buildSummaryBar(plos);
+    const stats = bar.querySelectorAll('.plo-summary-stat');
+    expect(stats.length).toBe(1);
+    expect(stats[0].textContent).toContain('satisfactory');
+    const segments = bar.querySelectorAll('.plo-summary-segment');
+    expect(segments.length).toBe(1);
+  });
+
+  test('returns empty bar for null/empty plos', () => {
+    const bar = PloDashboard._buildSummaryBar([]);
+    expect(bar.querySelector('.plo-summary-stat')).toBeNull();
+
+    const bar2 = PloDashboard._buildSummaryBar(null);
+    expect(bar2.querySelector('.plo-summary-stat')).toBeNull();
+  });
+
+  test('summary bar is inserted above tree in renderTree', async () => {
+    setBody(SKELETON);
+    resetDashboardState();
+    PloDashboard._cacheSelectors();
+    PloDashboard.programs = [{ program_id: 'prog-1', name: 'Biology BS' }];
+    PloDashboard.currentProgramId = 'prog-1';
+    PloDashboard.currentTermId = 't-active';
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => SAMPLE_TREE,
+    });
+    await PloDashboard.loadTree();
+    delete global.fetch;
+
+    const container = document.getElementById('ploTreeContainer');
+    const summaryBar = container.querySelector('.plo-summary-bar');
+    expect(summaryBar).not.toBeNull();
+
+    // SAMPLE_TREE has 2 PLOs: 1 satisfactory (80%) + 1 no data (null)
+    const stats = summaryBar.querySelectorAll('.plo-summary-stat');
+    expect(stats.length).toBe(2);
+    expect(stats[0].textContent).toContain('satisfactory');
+    expect(stats[1].textContent).toContain('no data');
+
+    // Summary bar appears before the tree
+    const tree = container.querySelector('ul.plo-tree');
+    expect(container.children[0]).toBe(summaryBar);
+    expect(container.children[1]).toBe(tree);
+  });
+});

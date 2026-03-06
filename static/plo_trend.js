@@ -55,6 +55,18 @@
   }
 
   /**
+   * Compute percentage-point change between first and last valid data points.
+   * Returns an integer delta, or null if insufficient data.
+   */
+  function getTrendDelta(trendPoints) {
+    const valid = (trendPoints || []).filter(
+      (p) => p !== null && p.pass_rate !== null,
+    );
+    if (valid.length < 2) return null;
+    return Math.round(valid[valid.length - 1].pass_rate - valid[0].pass_rate);
+  }
+
+  /**
    * Create a tiny sparkline canvas element from trend data points.
    * Returns an HTMLCanvasElement ready to insert into the DOM.
    */
@@ -742,11 +754,11 @@
         // Find the PLO node in the DOM
         const ploNode = container.querySelector(`[data-plo-id="${plo.id}"]`);
         if (ploNode) {
-          // Remove existing sparklines/panels for THIS node only (avoids
-          // wiping sparklines from other programs in the All-Programs view)
+          // Remove existing trend indicators/panels for THIS node only (avoids
+          // wiping indicators from other programs in the All-Programs view)
           ploNode
             .querySelectorAll(
-              ":scope > .plo-tree-header .plo-sparkline-wrap, :scope > .plo-trend-panel",
+              ":scope > .plo-tree-header .plo-trend-indicator, :scope > .plo-trend-panel",
             )
             .forEach((el) => el.remove());
           this._injectIntoNode(ploNode, plo.trend, terms, {
@@ -764,7 +776,7 @@
           if (cloNode) {
             cloNode
               .querySelectorAll(
-                ":scope > .plo-tree-header .plo-sparkline-wrap, :scope > .plo-trend-panel",
+                ":scope > .plo-tree-header .plo-trend-indicator, :scope > .plo-trend-panel",
               )
               .forEach((el) => el.remove());
             this._injectIntoNode(cloNode, clo.trend, terms, {
@@ -777,8 +789,11 @@
     },
 
     /**
-     * Inject a sparkline + trend arrow into a tree node's meta area,
+     * Inject a compact trend indicator into a tree node's meta area,
      * and wire a click handler to toggle a full trend chart panel.
+     *
+     * The indicator replaces the previous sparkline with an immediately
+     * readable badge: arrow + percentage-point change (e.g. "↑ +8%").
      */
     _injectIntoNode(nodeEl, trendPoints, terms, opts) {
       if (!trendPoints || trendPoints.length < 2) return;
@@ -788,23 +803,30 @@
       const meta = header.querySelector(".plo-tree-meta");
       if (!meta) return;
 
-      // Trend direction arrow
+      // Trend direction + delta
       const direction = getTrendDirection(trendPoints);
       const { arrow, cssClass } = getTrendArrow(direction);
+      const delta = getTrendDelta(trendPoints);
 
-      // Wrap sparkline + arrow
+      // Build compact trend indicator
       const wrap = document.createElement("span");
-      wrap.className = "plo-sparkline-wrap";
+      wrap.className = "plo-trend-indicator";
+      if (cssClass) wrap.classList.add(cssClass);
+      wrap.title = "Click to view trend chart";
 
       if (arrow) {
         const arrowEl = document.createElement("span");
-        arrowEl.className = `plo-trend-arrow ${cssClass}`;
+        arrowEl.className = "plo-trend-arrow " + cssClass;
         arrowEl.textContent = arrow;
         wrap.appendChild(arrowEl);
       }
 
-      const sparkCanvas = createSparkline(trendPoints, terms, opts);
-      wrap.appendChild(sparkCanvas);
+      if (delta !== null) {
+        const deltaEl = document.createElement("span");
+        deltaEl.className = "plo-trend-delta";
+        deltaEl.textContent = (delta >= 0 ? "+" : "") + delta + "%";
+        wrap.appendChild(deltaEl);
+      }
 
       // Insert before the assessment badge
       const badge = meta.querySelector(".plo-assessment-badge");
@@ -815,7 +837,7 @@
       }
 
       // Click handler for drill-down panel
-      sparkCanvas.addEventListener("click", (e) => {
+      wrap.addEventListener("click", (e) => {
         e.stopPropagation();
         this._toggleTrendPanel(nodeEl, trendPoints, terms, opts);
       });
@@ -853,6 +875,7 @@
       computeYRange,
       getTrendDirection,
       getTrendArrow,
+      getTrendDelta,
     };
   }
 })();

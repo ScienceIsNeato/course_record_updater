@@ -134,15 +134,135 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Trend sparklines + drill-down panels                                */
+/* Trend indicators + drill-down panels                                */
 /* ------------------------------------------------------------------ */
 
-/* Inline sparkline wrapper (sits next to the assessment badge) */
+/* Compact trend indicator (replaces sparkline in collapsed row) */
+.plo-trend-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.plo-trend-indicator.trend-up {
+  background-color: rgba(25, 135, 84, 0.1);
+}
+
+.plo-trend-indicator.trend-down {
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+.plo-trend-indicator.trend-flat {
+  background-color: rgba(108, 117, 125, 0.08);
+}
+
+.plo-trend-indicator:hover {
+  filter: brightness(0.95);
+}
+
+.plo-trend-delta {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.trend-up .plo-trend-delta {
+  color: #198754;
+}
+
+.trend-down .plo-trend-delta {
+  color: #dc3545;
+}
+
+.trend-flat .plo-trend-delta {
+  color: #6c757d;
+}
+
+/* Legacy sparkline wrapper (kept for createSparkline function) */
 .plo-sparkline-wrap {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   cursor: pointer;
+}
+
+/* ------------------------------------------------------------------ */
+/* Program summary bar                                                 */
+/* ------------------------------------------------------------------ */
+
+.plo-summary-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.625rem 0;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.plo-summary-stats {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: #495057;
+}
+
+.plo-summary-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 500;
+}
+
+.plo-summary-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.stat-pass .plo-summary-dot {
+  background-color: #198754;
+}
+
+.stat-fail .plo-summary-dot {
+  background-color: #dc3545;
+}
+
+.stat-nodata .plo-summary-dot {
+  background-color: #adb5bd;
+}
+
+.plo-summary-progress {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background-color: #e9ecef;
+}
+
+.plo-summary-segment {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.seg-pass {
+  background-color: #198754;
+}
+
+.seg-fail {
+  background-color: #dc3545;
+}
+
+.seg-nodata {
+  background-color: #adb5bd;
 }
 
 .plo-sparkline {

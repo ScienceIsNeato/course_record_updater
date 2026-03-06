@@ -38,6 +38,7 @@ global.requestAnimationFrame = (cb) => cb();
 const {
   getTrendDirection,
   getTrendArrow,
+  getTrendDelta,
   createSparkline,
   createTrendPanel,
   createCompositionBar,
@@ -136,6 +137,40 @@ describe("getTrendArrow", () => {
       arrow: "",
       cssClass: "trend-none",
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getTrendDelta
+// ---------------------------------------------------------------------------
+describe("getTrendDelta", () => {
+  test("returns rounded delta between first and last valid points", () => {
+    const pts = [{ pass_rate: 70 }, { pass_rate: 75 }, { pass_rate: 82.6 }];
+    expect(getTrendDelta(pts)).toBe(13);
+  });
+
+  test("returns negative delta when trending down", () => {
+    const pts = [{ pass_rate: 90 }, { pass_rate: 80 }];
+    expect(getTrendDelta(pts)).toBe(-10);
+  });
+
+  test("returns 0 for flat trend", () => {
+    const pts = [{ pass_rate: 70 }, { pass_rate: 70 }];
+    expect(getTrendDelta(pts)).toBe(0);
+  });
+
+  test("returns null for single data point", () => {
+    expect(getTrendDelta([{ pass_rate: 80 }])).toBeNull();
+  });
+
+  test("returns null for empty or null input", () => {
+    expect(getTrendDelta([])).toBeNull();
+    expect(getTrendDelta(null)).toBeNull();
+  });
+
+  test("skips null points", () => {
+    const pts = [{ pass_rate: 60 }, null, { pass_rate: null }, { pass_rate: 80 }];
+    expect(getTrendDelta(pts)).toBe(20);
   });
 });
 
@@ -771,7 +806,7 @@ describe("PloTrend controller", () => {
       PloTrend.injectSparklines(); // should not throw
     });
 
-    test("injects sparkline into PLO node", () => {
+    test("injects trend indicator into PLO node", () => {
       document.body.innerHTML = `
         <div id="ploTreeContainer">
           <div data-plo-id="plo-1">
@@ -802,12 +837,14 @@ describe("PloTrend controller", () => {
 
       PloTrend.injectSparklines();
 
-      const wrap = document.querySelector(".plo-sparkline-wrap");
+      const wrap = document.querySelector(".plo-trend-indicator");
       expect(wrap).not.toBeNull();
-      expect(wrap.querySelector(".plo-sparkline")).not.toBeNull();
+      expect(wrap.querySelector(".plo-trend-arrow")).not.toBeNull();
+      expect(wrap.querySelector(".plo-trend-delta")).not.toBeNull();
+      expect(wrap.querySelector(".plo-trend-delta").textContent).toBe("+10%");
     });
 
-    test("injects sparkline into CLO node", () => {
+    test("injects trend indicator into CLO node", () => {
       document.body.innerHTML = `
         <div id="ploTreeContainer">
           <div data-plo-id="plo-1">
@@ -852,16 +889,17 @@ describe("PloTrend controller", () => {
       PloTrend.injectSparklines();
 
       const cloNode = document.querySelector('[data-clo-id="clo-1"]');
-      const wrap = cloNode.querySelector(".plo-sparkline-wrap");
+      const wrap = cloNode.querySelector(".plo-trend-indicator");
       expect(wrap).not.toBeNull();
+      expect(wrap.querySelector(".plo-trend-delta").textContent).toBe("+15%");
     });
 
-    test("removes existing sparklines before re-injecting", () => {
+    test("removes existing trend indicators before re-injecting", () => {
       document.body.innerHTML = `
         <div id="ploTreeContainer">
           <div data-plo-id="plo-1">
             <div class="plo-tree-header">
-              <span class="plo-sparkline-wrap">old</span>
+              <span class="plo-trend-indicator">old</span>
               <div class="plo-tree-meta"></div>
             </div>
             <div class="plo-trend-panel">old panel</div>
@@ -887,8 +925,8 @@ describe("PloTrend controller", () => {
 
       PloTrend.injectSparklines();
 
-      // Old sparkline-wrap with "old" text should be replaced per-node
-      const wraps = document.querySelectorAll(".plo-sparkline-wrap");
+      // Old trend-indicator with "old" text should be replaced per-node
+      const wraps = document.querySelectorAll(".plo-trend-indicator");
       wraps.forEach((w) => {
         expect(w.textContent).not.toBe("old");
       });
@@ -928,7 +966,7 @@ describe("PloTrend controller", () => {
 
       PloTrend.injectSparklines();
 
-      const wrap = document.querySelector(".plo-sparkline-wrap");
+      const wrap = document.querySelector(".plo-trend-indicator");
       expect(wrap).toBeNull();
     });
   });
