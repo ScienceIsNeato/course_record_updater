@@ -25,7 +25,12 @@
 
   /**
    * Determine trend direction from an array of data points.
-   * Returns: "up" | "down" | "flat" | "none"
+   * Returns: "strong-up" | "up" | "flat" | "down" | "strong-down" | "none"
+   *
+   * Thresholds (percentage-point change):
+   *   |diff| < 2  → flat
+   *   2 ≤ diff < 10 → up / down
+   *   diff ≥ 10     → strong-up / strong-down
    */
   function getTrendDirection(trendPoints) {
     // Filter to only non-null points
@@ -37,7 +42,10 @@
     const diff = last - first;
 
     if (Math.abs(diff) < 2) return "flat";
-    return diff > 0 ? "up" : "down";
+    if (diff >= 10) return "strong-up";
+    if (diff > 0) return "up";
+    if (diff <= -10) return "strong-down";
+    return "down";
   }
 
   /**
@@ -45,10 +53,14 @@
    */
   function getTrendArrow(direction) {
     switch (direction) {
+      case "strong-up":
+        return { arrow: "⬆", cssClass: "trend-strong-up" };
       case "up":
         return { arrow: "↑", cssClass: "trend-up" };
       case "down":
         return { arrow: "↓", cssClass: "trend-down" };
+      case "strong-down":
+        return { arrow: "⬇", cssClass: "trend-strong-down" };
       case "flat":
         return { arrow: "→", cssClass: "trend-flat" };
       default:
@@ -113,16 +125,21 @@
     requestAnimationFrame(() => {
       if (typeof Chart === "undefined") return;
 
-      // Build gradient fill from lineColor
+      // Build gradient fills (blue above threshold, red below)
       const ctx2d = canvas.getContext("2d");
-      let gradientFill = lineColor;
+      const blueRgb = "13, 110, 253";
+      const redRgb = "220, 53, 69";
+      let gradientFillBlue = `rgba(${blueRgb}, ${TREND_FILL_ALPHA_TOP})`;
+      let gradientFillRed = `rgba(${redRgb}, ${TREND_FILL_ALPHA_TOP})`;
       if (ctx2d) {
-        const grd = ctx2d.createLinearGradient(0, 0, 0, SPARK_HEIGHT);
-        const baseRgb =
-          lineColor === TREND_LINE_COLOR_FAIL ? "220, 53, 69" : "13, 110, 253";
-        grd.addColorStop(0, `rgba(${baseRgb}, ${TREND_FILL_ALPHA_TOP})`);
-        grd.addColorStop(1, `rgba(${baseRgb}, ${TREND_FILL_ALPHA_BOTTOM})`);
-        gradientFill = grd;
+        const grdB = ctx2d.createLinearGradient(0, 0, 0, SPARK_HEIGHT);
+        grdB.addColorStop(0, `rgba(${blueRgb}, ${TREND_FILL_ALPHA_TOP})`);
+        grdB.addColorStop(1, `rgba(${blueRgb}, ${TREND_FILL_ALPHA_BOTTOM})`);
+        gradientFillBlue = grdB;
+        const grdR = ctx2d.createLinearGradient(0, 0, 0, SPARK_HEIGHT);
+        grdR.addColorStop(0, `rgba(${redRgb}, ${TREND_FILL_ALPHA_TOP})`);
+        grdR.addColorStop(1, `rgba(${redRgb}, ${TREND_FILL_ALPHA_BOTTOM})`);
+        gradientFillRed = grdR;
       }
 
       new Chart(canvas, {
@@ -133,7 +150,7 @@
             {
               data,
               borderColor: lineColor,
-              backgroundColor: gradientFill,
+              backgroundColor: gradientFillBlue,
               fill: true,
               tension: 0.4,
               pointRadius: pointRadii,
@@ -149,6 +166,19 @@
                   currentTermIndices.has(ctx.p1DataIndex)
                     ? TREND_NULL_DASH
                     : undefined,
+                borderColor: (ctx) => {
+                  // Red segment when both endpoints are below threshold
+                  const p0 = ctx.p0.parsed.y;
+                  const p1 = ctx.p1.parsed.y;
+                  if (
+                    !isNaN(p0) &&
+                    !isNaN(p1) &&
+                    p0 < threshold &&
+                    p1 < threshold
+                  )
+                    return TREND_LINE_COLOR_FAIL;
+                  return undefined;
+                },
               },
             },
           ],
@@ -173,6 +203,51 @@
           },
         },
         plugins: [
+          {
+            id: "belowThresholdFill",
+            afterDatasetsDraw(chart) {
+              const ds = chart.data.datasets[0];
+              if (!ds) return;
+              const meta = chart.getDatasetMeta(0);
+              const yScale = chart.scales.y;
+              if (!yScale || meta.data.length < 2) return;
+
+              const threshY = yScale.getPixelForValue(threshold);
+              const { left, right, bottom } = chart.chartArea;
+              const ctx = chart.ctx;
+              ctx.save();
+              ctx.beginPath();
+              let started = false;
+              for (let i = 0; i < meta.data.length; i++) {
+                const pt = meta.data[i];
+                const val = ds.data[i];
+                if (val === null || val === undefined || isNaN(val)) continue;
+                const px = pt.x;
+                const py = Math.max(pt.y, threshY);
+                if (!started) {
+                  ctx.moveTo(px, py);
+                  started = true;
+                } else {
+                  ctx.lineTo(px, py);
+                }
+              }
+              if (!started) {
+                ctx.restore();
+                return;
+              }
+              ctx.lineTo(right, bottom);
+              ctx.lineTo(left, bottom);
+              ctx.closePath();
+              ctx.clip();
+              if (typeof gradientFillRed === "object") {
+                ctx.fillStyle = gradientFillRed;
+              } else {
+                ctx.fillStyle = `rgba(220, 53, 69, ${TREND_FILL_ALPHA_TOP})`;
+              }
+              ctx.fillRect(left, threshY, right - left, bottom - threshY);
+              ctx.restore();
+            },
+          },
           {
             id: "thresholdLine",
             afterDraw(chart) {
@@ -796,12 +871,44 @@
         const plo = (plos || []).find((p) => String(p.id) === String(ploId));
         if (!plo || !plo.trend || plo.trend.length < 2) return;
 
-        // Remove existing sparkline if re-injecting
+        // Remove existing sparkline / badge if re-injecting
         const existing = slot.querySelector(".plo-sparkline");
         if (existing) existing.remove();
+        const existingBadge = slot.querySelector(".plo-trend-indicator");
+        if (existingBadge) existingBadge.remove();
 
-        const canvas = createSparkline(plo.trend, terms, { threshold: 70 });
+        const canvas = createSparkline(plo.trend, terms, {
+          threshold: 70,
+          discontinuities: plo.discontinuities || [],
+        });
         slot.insertBefore(canvas, slot.firstChild);
+
+        // Add compact trend badge (arrow + delta) after the sparkline
+        const direction = getTrendDirection(plo.trend);
+        const { arrow, cssClass } = getTrendArrow(direction);
+        const delta = getTrendDelta(plo.trend);
+        if (arrow) {
+          const badge = document.createElement("span");
+          badge.className = "plo-trend-indicator plo-trend-indicator--mini";
+          if (cssClass) badge.classList.add(cssClass);
+          const arrowEl = document.createElement("span");
+          arrowEl.className = "plo-trend-arrow " + cssClass;
+          arrowEl.textContent = arrow;
+          badge.appendChild(arrowEl);
+          if (delta !== null) {
+            const deltaEl = document.createElement("span");
+            deltaEl.className = "plo-trend-delta";
+            deltaEl.textContent = (delta >= 0 ? "+" : "") + delta + "%";
+            badge.appendChild(deltaEl);
+          }
+          // Insert badge after sparkline, before the label
+          const label = slot.querySelector(".plo-summary-sparkline-label");
+          if (label) {
+            slot.insertBefore(badge, label);
+          } else {
+            slot.appendChild(badge);
+          }
+        }
 
         // Click opens trend panel below the row
         canvas.addEventListener("click", (e) => {

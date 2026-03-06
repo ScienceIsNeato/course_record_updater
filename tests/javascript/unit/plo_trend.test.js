@@ -68,14 +68,24 @@ describe("getTrendDirection", () => {
     ).toBe("none");
   });
 
-  test("returns 'up' when last > first by >= 2", () => {
-    const points = [{ pass_rate: 60 }, { pass_rate: 70 }, { pass_rate: 80 }];
+  test("returns 'up' when last > first by 2–9 pp", () => {
+    const points = [{ pass_rate: 70 }, { pass_rate: 75 }];
     expect(getTrendDirection(points)).toBe("up");
   });
 
-  test("returns 'down' when last < first by >= 2", () => {
-    const points = [{ pass_rate: 90 }, { pass_rate: 70 }, { pass_rate: 60 }];
+  test("returns 'strong-up' when last > first by >= 10 pp", () => {
+    const points = [{ pass_rate: 60 }, { pass_rate: 70 }, { pass_rate: 80 }];
+    expect(getTrendDirection(points)).toBe("strong-up");
+  });
+
+  test("returns 'down' when last < first by 2–9 pp", () => {
+    const points = [{ pass_rate: 80 }, { pass_rate: 75 }];
     expect(getTrendDirection(points)).toBe("down");
+  });
+
+  test("returns 'strong-down' when last < first by >= 10 pp", () => {
+    const points = [{ pass_rate: 90 }, { pass_rate: 70 }, { pass_rate: 60 }];
+    expect(getTrendDirection(points)).toBe("strong-down");
   });
 
   test("returns 'flat' when difference < 2", () => {
@@ -89,15 +99,15 @@ describe("getTrendDirection", () => {
   });
 
   test("skips null entries when computing direction", () => {
-    const points = [{ pass_rate: 50 }, null, { pass_rate: 80 }];
+    const points = [{ pass_rate: 70 }, null, { pass_rate: 78 }];
     expect(getTrendDirection(points)).toBe("up");
   });
 
   test("skips entries with null pass_rate", () => {
     const points = [
-      { pass_rate: 90 },
+      { pass_rate: 80 },
       { pass_rate: null },
-      { pass_rate: 70 },
+      { pass_rate: 75 },
     ];
     expect(getTrendDirection(points)).toBe("down");
   });
@@ -111,10 +121,24 @@ describe("getTrendArrow", () => {
     expect(getTrendArrow("up")).toEqual({ arrow: "↑", cssClass: "trend-up" });
   });
 
+  test("strong-up → ⬆ with trend-strong-up class", () => {
+    expect(getTrendArrow("strong-up")).toEqual({
+      arrow: "⬆",
+      cssClass: "trend-strong-up",
+    });
+  });
+
   test("down → ↓ with trend-down class", () => {
     expect(getTrendArrow("down")).toEqual({
       arrow: "↓",
       cssClass: "trend-down",
+    });
+  });
+
+  test("strong-down → ⬇ with trend-strong-down class", () => {
+    expect(getTrendArrow("strong-down")).toEqual({
+      arrow: "⬇",
+      cssClass: "trend-strong-down",
     });
   });
 
@@ -1029,6 +1053,11 @@ describe("PloTrend controller", () => {
       expect(slots.length).toBe(2);
       expect(slots[0].querySelector(".plo-sparkline")).not.toBeNull();
       expect(slots[1].querySelector(".plo-sparkline")).not.toBeNull();
+      // Trend badges should be inserted
+      const badge0 = slots[0].querySelector(".plo-trend-indicator");
+      expect(badge0).not.toBeNull();
+      expect(badge0.querySelector(".plo-trend-arrow")).not.toBeNull();
+      expect(badge0.querySelector(".plo-trend-delta")).not.toBeNull();
       // Labels preserved
       expect(
         slots[0].querySelector(".plo-summary-sparkline-label").textContent,

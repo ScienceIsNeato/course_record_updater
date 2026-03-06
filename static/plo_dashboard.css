@@ -155,8 +155,16 @@
   background-color: rgba(25, 135, 84, 0.1);
 }
 
+.plo-trend-indicator.trend-strong-up {
+  background-color: rgba(25, 135, 84, 0.18);
+}
+
 .plo-trend-indicator.trend-down {
   background-color: rgba(220, 53, 69, 0.1);
+}
+
+.plo-trend-indicator.trend-strong-down {
+  background-color: rgba(220, 53, 69, 0.18);
 }
 
 .plo-trend-indicator.trend-flat {
@@ -177,7 +185,15 @@
   color: #198754;
 }
 
+.trend-strong-up .plo-trend-delta {
+  color: #198754;
+}
+
 .trend-down .plo-trend-delta {
+  color: #dc3545;
+}
+
+.trend-strong-down .plo-trend-delta {
   color: #dc3545;
 }
 
@@ -297,7 +313,15 @@
   color: #198754;
 }
 
+.plo-trend-arrow.trend-strong-up {
+  color: #198754;
+}
+
 .plo-trend-arrow.trend-down {
+  color: #dc3545;
+}
+
+.plo-trend-arrow.trend-strong-down {
   color: #dc3545;
 }
 
@@ -468,6 +492,13 @@
   font-size: 0.7rem;
   color: #6c757d;
   font-weight: 500;
+}
+
+/* Mini trend indicator inside sparkline slots */
+.plo-trend-indicator--mini {
+  font-size: 0.65rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.5rem;
 }
 
 /* Trend panels inside summary bar need tighter margins */
