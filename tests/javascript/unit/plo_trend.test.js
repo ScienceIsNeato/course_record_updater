@@ -191,8 +191,8 @@ describe("createSparkline", () => {
 
   test("canvas has correct dimensions and class", () => {
     const canvas = createSparkline(points, terms);
-    expect(canvas.width).toBe(90);
-    expect(canvas.height).toBe(28);
+    expect(canvas.width).toBe(100);
+    expect(canvas.height).toBe(32);
     expect(canvas.className).toBe("plo-sparkline");
   });
 

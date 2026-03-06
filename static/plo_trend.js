@@ -13,10 +13,12 @@
   "use strict";
 
   // Chart.js defaults for sparklines
-  const SPARK_WIDTH = 90;
-  const SPARK_HEIGHT = 28;
+  const SPARK_WIDTH = 100;
+  const SPARK_HEIGHT = 32;
   const TREND_LINE_COLOR = "#0d6efd";
   const TREND_LINE_COLOR_FAIL = "#dc3545";
+  const TREND_FILL_ALPHA_TOP = 0.18;
+  const TREND_FILL_ALPHA_BOTTOM = 0.02;
   const TREND_FILL_COLOR = "rgba(13, 110, 253, 0.08)";
   const TREND_NULL_DASH = [4, 4];
   const THRESHOLD_LINE_COLOR = "rgba(108, 117, 125, 0.3)";
@@ -87,27 +89,12 @@
       p !== null && p.pass_rate !== null ? p.pass_rate : NaN,
     );
 
-    // Detect which points are from "current" (in-progress) terms
-    const pointStyles = terms.map((t) => (t.is_current ? "rectRot" : "circle"));
-    const pointRadii = terms.map((t) => (t.is_current ? 3 : 2));
     // Use a segment-based approach for dashed lines at in-progress terms
     const currentTermIndices = new Set(
       terms.map((t, i) => (t.is_current ? i : -1)).filter((i) => i >= 0),
     );
 
     const threshold = (opts && opts.threshold) || 70;
-
-    // Per-point colour: red for below threshold, blue for at/above
-    const pointColors = data.map((d) =>
-      !isNaN(d) && d < threshold ? TREND_LINE_COLOR_FAIL : TREND_LINE_COLOR,
-    );
-    // Larger radius for fail points so they stand out
-    const failRadii = data.map((d, i) =>
-      !isNaN(d) && d < threshold ? Math.max(pointRadii[i], 4) : pointRadii[i],
-    );
-    const pointBorders = data.map((d) =>
-      !isNaN(d) && d < threshold ? TREND_LINE_COLOR_FAIL : TREND_LINE_COLOR,
-    );
 
     // Determine line colour based on latest valid point
     const lastValid = data.filter((d) => !isNaN(d));
@@ -116,9 +103,27 @@
         ? TREND_LINE_COLOR_FAIL
         : TREND_LINE_COLOR;
 
+    // Only show endpoint dot (last valid point)
+    const lastValidIdx = data.reduce((acc, d, i) => (!isNaN(d) ? i : acc), -1);
+    const pointRadii = data.map((_, i) => (i === lastValidIdx ? 3 : 0));
+    const pointColors = data.map(() => lineColor);
+    const pointBorders = pointColors;
+
     // Defer rendering until canvas is in the DOM
     requestAnimationFrame(() => {
       if (typeof Chart === "undefined") return;
+
+      // Build gradient fill from lineColor
+      const ctx2d = canvas.getContext("2d");
+      let gradientFill = lineColor;
+      if (ctx2d) {
+        const grd = ctx2d.createLinearGradient(0, 0, 0, SPARK_HEIGHT);
+        const baseRgb =
+          lineColor === TREND_LINE_COLOR_FAIL ? "220, 53, 69" : "13, 110, 253";
+        grd.addColorStop(0, `rgba(${baseRgb}, ${TREND_FILL_ALPHA_TOP})`);
+        grd.addColorStop(1, `rgba(${baseRgb}, ${TREND_FILL_ALPHA_BOTTOM})`);
+        gradientFill = grd;
+      }
 
       new Chart(canvas, {
         type: "line",
@@ -128,15 +133,16 @@
             {
               data,
               borderColor: lineColor,
-              backgroundColor: TREND_FILL_COLOR,
+              backgroundColor: gradientFill,
               fill: true,
-              tension: 0.3,
-              pointRadius: failRadii,
-              pointStyle: pointStyles,
+              tension: 0.4,
+              pointRadius: pointRadii,
               pointBackgroundColor: pointColors,
               pointBorderColor: pointBorders,
-              pointBorderWidth: 1,
-              borderWidth: 1.5,
+              pointBorderWidth: 1.5,
+              borderWidth: 2,
+              borderCapStyle: "round",
+              borderJoinStyle: "round",
               spanGaps: true,
               segment: {
                 borderDash: (ctx) =>
@@ -151,18 +157,10 @@
           responsive: false,
           maintainAspectRatio: false,
           animation: false,
+          events: [], // Disable all hover/tooltip — click handled via DOM
           plugins: {
             legend: { display: false },
-            tooltip: {
-              enabled: true,
-              callbacks: {
-                title: (items) => items[0]?.label || "",
-                label: (item) =>
-                  item.raw !== null && !isNaN(item.raw)
-                    ? `${Math.round(item.raw)}%`
-                    : "No data",
-              },
-            },
+            tooltip: { enabled: false },
             annotation: undefined,
           },
           scales: {
@@ -171,12 +169,7 @@
               display: false,
               min: 0,
               max: 100,
-              // Threshold reference line via afterDraw plugin
             },
-          },
-          interaction: {
-            mode: "index",
-            intersect: false,
           },
         },
         plugins: [
