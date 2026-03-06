@@ -179,6 +179,11 @@
 }
 
 /* Expanded trend chart panel (click sparkline to open) */
+/* Hide trend panel when node is collapsed */
+.plo-tree-node:not(.expanded) > .plo-trend-panel {
+  display: none;
+}
+
 .plo-trend-panel {
   position: relative;
   padding: 0.75rem 1rem;

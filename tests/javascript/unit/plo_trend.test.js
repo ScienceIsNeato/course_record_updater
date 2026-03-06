@@ -616,7 +616,7 @@ describe("createTrendPanel with CLO overlays", () => {
       dataset: { label: "PLO Pass Rate %" },
     };
     // Points have no students_took, so just percentage
-    expect(labelCb(ploItem)).toBe("PLO: 80%");
+    expect(labelCb(ploItem)).toBe("PLO Pass Rate %: 80%");
   });
 
   test("tooltip label callback shows CLO data", () => {

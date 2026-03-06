@@ -186,6 +186,32 @@
               ctx.restore();
             },
           },
+          {
+            id: "sparkDiscontinuity",
+            afterDraw(chart) {
+              const discs = (opts && opts.discontinuities) || [];
+              if (discs.length === 0) return;
+              const xScale = chart.scales.x;
+              if (!xScale) return;
+              const ctx = chart.ctx;
+              discs.forEach((d) => {
+                const ti = d.term_index;
+                if (ti < 0 || ti >= labels.length) return;
+                const xCurr = xScale.getPixelForValue(ti);
+                const xPrev = ti > 0 ? xScale.getPixelForValue(ti - 1) : xCurr;
+                const x = (xPrev + xCurr) / 2;
+                ctx.save();
+                ctx.strokeStyle = "rgba(255, 152, 0, 0.35)";
+                ctx.lineWidth = 1;
+                ctx.setLineDash([]);
+                ctx.beginPath();
+                ctx.moveTo(x, chart.chartArea.top);
+                ctx.lineTo(x, chart.chartArea.bottom);
+                ctx.stroke();
+                ctx.restore();
+              });
+            },
+          },
         ],
       });
     });
@@ -396,9 +422,13 @@
         : TREND_LINE_COLOR;
 
     // --- Build datasets array ---
+    // For CLO-level charts (no CLO overlays), use a context-aware label
+    const mainLabel =
+      (opts && opts.mainLabel) || (clos.length > 0 ? "PLO Pass Rate %" : title);
+
     const datasets = [
       {
-        label: "PLO Pass Rate %",
+        label: mainLabel,
         data,
         borderColor: lineColor,
         backgroundColor: TREND_FILL_COLOR,
@@ -503,12 +533,12 @@
                   const dsIndex = item.datasetIndex;
                   const pct = `${Math.round(item.raw)}%`;
                   if (dsIndex === 0) {
-                    // PLO aggregate line
+                    // Main line (PLO aggregate or CLO individual)
                     const point = trendPoints[item.dataIndex];
                     if (point && point.students_took) {
-                      return `PLO: ${pct} (${point.students_passed}/${point.students_took})`;
+                      return `${item.dataset.label}: ${pct} (${point.students_passed}/${point.students_took})`;
                     }
-                    return `PLO: ${pct}`;
+                    return `${item.dataset.label}: ${pct}`;
                   }
                   // CLO overlay line
                   const cloIdx = dsIndex - 1;
@@ -739,6 +769,7 @@
               .forEach((el) => el.remove());
             this._injectIntoNode(cloNode, clo.trend, terms, {
               title: `${clo.course_number || ""} CLO ${clo.clo_number || "?"}: ${clo.description || ""}`,
+              discontinuities: plo.discontinuities || [],
             });
           }
         });
