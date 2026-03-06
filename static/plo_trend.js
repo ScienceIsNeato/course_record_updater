@@ -929,10 +929,17 @@
         });
         slot.insertBefore(canvas, slot.firstChild);
 
+        // When a historical term is selected, compute badge from data up to
+        // that term only so the arrow + delta match the visible sparkline.
+        const badgeTrend =
+          selectedTermIndex != null && selectedTermIndex >= 0
+            ? plo.trend.slice(0, selectedTermIndex + 1)
+            : plo.trend;
+
         // Add compact trend badge (arrow + delta) after the sparkline
-        const direction = getTrendDirection(plo.trend);
+        const direction = getTrendDirection(badgeTrend);
         const { arrow, cssClass } = getTrendArrow(direction);
-        const delta = getTrendDelta(plo.trend);
+        const delta = getTrendDelta(badgeTrend);
         if (arrow) {
           const badge = document.createElement("span");
           badge.className = "plo-trend-indicator plo-trend-indicator--mini";
@@ -1012,10 +1019,13 @@
       const meta = header.querySelector(".plo-tree-meta");
       if (!meta) return;
 
-      // Trend direction + delta
-      const direction = getTrendDirection(trendPoints);
+      // Trend direction + delta – scope to selected term when applicable
+      const idx = opts && opts.selectedTermIndex;
+      const badgeTrend =
+        idx != null && idx >= 0 ? trendPoints.slice(0, idx + 1) : trendPoints;
+      const direction = getTrendDirection(badgeTrend);
       const { arrow, cssClass } = getTrendArrow(direction);
-      const delta = getTrendDelta(trendPoints);
+      const delta = getTrendDelta(badgeTrend);
 
       // Build compact trend indicator
       const wrap = document.createElement("span");

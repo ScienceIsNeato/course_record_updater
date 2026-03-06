@@ -1206,6 +1206,176 @@ describe("PloTrend controller", () => {
       const indicator = document.querySelector(".plo-trend-indicator");
       expect(indicator).not.toBeNull();
     });
+
+    test("trend badge in tree node reflects data up to selectedTermId only", () => {
+      // Trend: 70 → 65 → 80.  Full data = +10% (up).
+      // Selected term index 1 (term-2) ⇒ 70 → 65 = -5% (down).
+      document.body.innerHTML = `
+        <div id="ploTreeContainer">
+          <div data-plo-id="plo-1">
+            <div class="plo-tree-header">
+              <div class="plo-tree-meta">
+                <span class="plo-assessment-badge">65%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      PloTrend.selectedTermId = "term-2";
+      PloTrend.trendData = {
+        terms: [
+          { term_id: "term-1", term_name: "Fall 2024", is_current: false },
+          { term_id: "term-2", term_name: "Spring 2025", is_current: false },
+          { term_id: "term-3", term_name: "Fall 2025", is_current: true },
+        ],
+        plos: [
+          {
+            id: "plo-1",
+            plo_number: 1,
+            description: "PLO One",
+            trend: [
+              { pass_rate: 70 },
+              { pass_rate: 65 },
+              { pass_rate: 80 },
+            ],
+            clos: [],
+          },
+        ],
+      };
+
+      PloTrend.injectSparklines();
+
+      const delta = document.querySelector(".plo-trend-delta");
+      expect(delta).not.toBeNull();
+      // Should show -5% (70→65), NOT +10% (70→80)
+      expect(delta.textContent).toBe("-5%");
+      // Arrow should indicate "down"
+      const arrow = document.querySelector(".plo-trend-arrow");
+      expect(arrow).not.toBeNull();
+      expect(arrow.textContent).toBe("↓");
+    });
+
+    test("summary bar badge reflects data up to selectedTermId only", () => {
+      // Trend: 70 → 65 → 80.  Full data = +10% (up).
+      // Selected term index 1 (term-2) ⇒ 70 → 65 = -5% (down).
+      document.body.innerHTML = `
+        <div id="ploTreeContainer">
+          <div class="plo-summary-bar">
+            <div class="plo-summary-row stat-pass">
+              <div class="plo-summary-sparkline-group">
+                <span class="plo-summary-sparkline-slot" data-plo-id="plo-1">
+                  <span class="plo-summary-sparkline-label">(1)</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div data-plo-id="plo-1">
+            <div class="plo-tree-header">
+              <div class="plo-tree-meta">
+                <span class="plo-assessment-badge">65%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      PloTrend.selectedTermId = "term-2";
+      PloTrend.trendData = {
+        terms: [
+          { term_id: "term-1", term_name: "Fall 2024", is_current: false },
+          { term_id: "term-2", term_name: "Spring 2025", is_current: false },
+          { term_id: "term-3", term_name: "Fall 2025", is_current: true },
+        ],
+        plos: [
+          {
+            id: "plo-1",
+            plo_number: 1,
+            description: "PLO One",
+            trend: [
+              { pass_rate: 70 },
+              { pass_rate: 65 },
+              { pass_rate: 80 },
+            ],
+            clos: [],
+          },
+        ],
+      };
+
+      PloTrend.injectSparklines();
+
+      // Check the summary bar badge (not the tree node badge)
+      const slot = document.querySelector(".plo-summary-sparkline-slot");
+      const badge = slot.querySelector(".plo-trend-indicator");
+      expect(badge).not.toBeNull();
+      const delta = badge.querySelector(".plo-trend-delta");
+      expect(delta).not.toBeNull();
+      // Should show -5% (70→65), NOT +10% (70→80)
+      expect(delta.textContent).toBe("-5%");
+      const arrow = badge.querySelector(".plo-trend-arrow");
+      expect(arrow.textContent).toBe("↓");
+    });
+
+    test("CLO trend badge reflects data up to selectedTermId only", () => {
+      document.body.innerHTML = `
+        <div id="ploTreeContainer">
+          <div data-plo-id="plo-1">
+            <div class="plo-tree-header">
+              <div class="plo-tree-meta"></div>
+            </div>
+            <div data-clo-id="clo-1">
+              <div class="plo-tree-header">
+                <div class="plo-tree-meta">
+                  <span class="plo-assessment-badge">60%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      PloTrend.selectedTermId = "term-2";
+      PloTrend.trendData = {
+        terms: [
+          { term_id: "term-1", term_name: "Fall 2024", is_current: false },
+          { term_id: "term-2", term_name: "Spring 2025", is_current: false },
+          { term_id: "term-3", term_name: "Fall 2025", is_current: true },
+        ],
+        plos: [
+          {
+            id: "plo-1",
+            plo_number: 1,
+            description: "PLO One",
+            trend: [
+              { pass_rate: 80 },
+              { pass_rate: 75 },
+              { pass_rate: 90 },
+            ],
+            clos: [
+              {
+                outcome_id: "clo-1",
+                clo_number: 1,
+                course_number: "CS101",
+                description: "Test CLO",
+                trend: [
+                  { pass_rate: 60 },
+                  { pass_rate: 50 },
+                  { pass_rate: 70 },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      PloTrend.injectSparklines();
+
+      const cloNode = document.querySelector('[data-clo-id="clo-1"]');
+      const delta = cloNode.querySelector(".plo-trend-delta");
+      expect(delta).not.toBeNull();
+      // Should show -10% (60→50), NOT +10% (60→70)
+      expect(delta.textContent).toBe("-10%");
+    });
   });
 
   describe("_toggleTrendPanel", () => {
