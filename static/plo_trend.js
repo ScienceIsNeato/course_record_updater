@@ -519,6 +519,18 @@
                   }
                   return `${item.dataset.label}: ${pct}`;
                 },
+                afterLabel: (item) => {
+                  if (item.raw === null || isNaN(item.raw)) return "";
+                  const dsIndex = item.datasetIndex;
+                  if (dsIndex === 0) return ""; // PLO line — no description
+                  const clo = clos[dsIndex - 1];
+                  if (clo && clo.description) {
+                    const desc = clo.description;
+                    // Truncate long descriptions for tooltip readability
+                    return `  "${desc.length > 60 ? desc.slice(0, 57) + "…" : desc}"`;
+                  }
+                  return "";
+                },
                 // Filter out null entries from tooltip
                 filter: (item) => item.raw !== null && !isNaN(item.raw),
                 afterBody: (items) => {
