@@ -31,6 +31,16 @@ global.Chart = jest.fn().mockImplementation(() => ({
   chartArea: { left: 0, right: 100 },
 }));
 
+// Chart.getChart returns the instance attached to a canvas (used by _destroyCharts)
+const _chartInstances = new Map();
+const _origImpl = global.Chart.getMockImplementation();
+global.Chart.mockImplementation(function (canvas, ...args) {
+  const inst = _origImpl(canvas, ...args);
+  _chartInstances.set(canvas, inst);
+  return inst;
+});
+global.Chart.getChart = jest.fn((canvas) => _chartInstances.get(canvas) || null);
+
 // Execute requestAnimationFrame callbacks synchronously so Chart.js
 // rendering code is exercised for coverage.
 global.requestAnimationFrame = (cb) => cb();
@@ -1399,6 +1409,190 @@ describe("PloTrend controller", () => {
       // Second call: removes panel
       PloTrend._toggleTrendPanel(nodeEl, points, terms, {});
       expect(nodeEl.querySelector(".plo-trend-panel")).toBeNull();
+    });
+
+    test("destroys Chart.js instances before removing panel", () => {
+      document.body.innerHTML = `
+        <div id="testNode">
+          <div class="plo-tree-header"></div>
+        </div>
+      `;
+      const nodeEl = document.getElementById("testNode");
+      const terms = [
+        { term_name: "Fall 2024", is_current: false },
+        { term_name: "Spring 2025", is_current: false },
+      ];
+      const points = [{ pass_rate: 80 }, { pass_rate: 90 }];
+
+      // Create panel (which creates a Chart.js instance via requestAnimationFrame)
+      PloTrend._toggleTrendPanel(nodeEl, points, terms, {});
+      const panel = nodeEl.querySelector(".plo-trend-panel");
+      expect(panel).not.toBeNull();
+
+      // Get the canvas and its chart instance
+      const canvas = panel.querySelector("canvas");
+      expect(canvas).not.toBeNull();
+      const chartInst = Chart.getChart(canvas);
+
+      // Toggle off — should destroy chart before removing
+      PloTrend._toggleTrendPanel(nodeEl, points, terms, {});
+      expect(nodeEl.querySelector(".plo-trend-panel")).toBeNull();
+      if (chartInst) {
+        expect(chartInst.destroy).toHaveBeenCalled();
+      }
+    });
+  });
+
+  describe("keyboard accessibility", () => {
+    test("trend indicator responds to Enter key", () => {
+      document.body.innerHTML = `
+        <div id="ploTreeContainer">
+          <div data-plo-id="p1">
+            <div class="plo-tree-header">
+              <span class="plo-tree-meta">
+                <span class="plo-assessment-badge">badge</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      `;
+      PloTrend.trendData = {
+        terms: [
+          { term_name: "F24", term_id: "t1", is_current: false },
+          { term_name: "S25", term_id: "t2", is_current: false },
+        ],
+        plos: [
+          {
+            id: "p1",
+            plo_number: 1,
+            description: "Test PLO",
+            trend: [{ pass_rate: 70 }, { pass_rate: 80 }],
+            clos: [],
+          },
+        ],
+      };
+      PloTrend.selectedTermId = null;
+      PloTrend.injectSparklines();
+
+      const indicator = document.querySelector(".plo-trend-indicator");
+      expect(indicator).not.toBeNull();
+      expect(indicator.getAttribute("tabindex")).toBe("0");
+      expect(indicator.getAttribute("role")).toBe("button");
+
+      // Simulate Enter keydown — should toggle panel
+      const event = new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+      });
+      indicator.dispatchEvent(event);
+
+      const panel = document.querySelector(".plo-trend-panel");
+      expect(panel).not.toBeNull();
+    });
+
+    test("summary sparkline responds to Space key", () => {
+      document.body.innerHTML = `
+        <div id="ploTreeContainer">
+          <div class="plo-summary-bar">
+            <div class="plo-summary-row">
+              <div class="plo-summary-sparkline-slot" data-plo-id="p1">
+                <span class="plo-summary-sparkline-label">PLO 1</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      PloTrend.trendData = {
+        terms: [
+          { term_name: "F24", term_id: "t1", is_current: false },
+          { term_name: "S25", term_id: "t2", is_current: false },
+        ],
+        plos: [
+          {
+            id: "p1",
+            plo_number: 1,
+            description: "Test PLO",
+            trend: [{ pass_rate: 70 }, { pass_rate: 80 }],
+            clos: [],
+          },
+        ],
+      };
+      PloTrend.selectedTermId = null;
+      PloTrend.injectSparklines();
+
+      const canvas = document.querySelector(".plo-sparkline");
+      expect(canvas).not.toBeNull();
+      expect(canvas.getAttribute("tabindex")).toBe("0");
+      expect(canvas.getAttribute("role")).toBe("button");
+      expect(canvas.getAttribute("aria-label")).toContain("PLO-1");
+
+      // Simulate Space keydown — should toggle summary panel
+      const event = new KeyboardEvent("keydown", {
+        key: " ",
+        bubbles: true,
+      });
+      canvas.dispatchEvent(event);
+
+      const panel = document.querySelector(".plo-trend-panel");
+      expect(panel).not.toBeNull();
+    });
+  });
+
+  describe("loadTrend race guard", () => {
+    test("ignores stale response when a newer loadTrend is called", async () => {
+      let resolveFirst;
+      const firstFetch = new Promise((r) => {
+        resolveFirst = r;
+      });
+      let resolveSecond;
+      const secondFetch = new Promise((r) => {
+        resolveSecond = r;
+      });
+
+      let callCount = 0;
+      global.fetch = jest.fn(() => {
+        callCount++;
+        return callCount === 1 ? firstFetch : secondFetch;
+      });
+
+      document.body.innerHTML = '<div id="ploTreeContainer"></div>';
+      PloTrend.trendData = null;
+
+      // Start first load
+      const p1 = PloTrend.loadTrend("prog-1");
+      // Start second load before first completes (user switched programs)
+      const p2 = PloTrend.loadTrend("prog-2");
+
+      // Resolve second first (faster response)
+      resolveSecond({
+        ok: true,
+        json: async () => ({
+          success: true,
+          terms: [{ term_name: "T1" }, { term_name: "T2" }],
+          plos: [],
+        }),
+      });
+      await p2;
+
+      expect(PloTrend.trendData).not.toBeNull();
+      expect(PloTrend.trendData.success).toBe(true);
+
+      // Now resolve first (stale response) — should be ignored
+      const staleTrendData = PloTrend.trendData;
+      resolveFirst({
+        ok: true,
+        json: async () => ({
+          success: true,
+          terms: [{ term_name: "OLD" }],
+          plos: [{ id: "stale" }],
+        }),
+      });
+      await p1;
+
+      // trendData should still be from the second call, not overwritten
+      expect(PloTrend.trendData).toBe(staleTrendData);
+
+      delete global.fetch;
     });
   });
 });

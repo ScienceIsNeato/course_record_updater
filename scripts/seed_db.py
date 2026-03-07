@@ -1348,8 +1348,20 @@ class DemoSeeder(BaselineSeeder):
             # Resolve optional term_code → term_id for disambiguation
             term_id = None
             term_code = override.get("term_code")
-            if term_code and term_map:
+            if term_code:
+                if not term_map:
+                    self.log(
+                        f"   ⚠️ term_code '{term_code}' provided but no term_map available; "
+                        f"skipping override for {course_code} Sec {section_number} CLO {clo_number}"
+                    )
+                    continue
                 term_id = term_map.get(term_code)
+                if term_id is None:
+                    self.log(
+                        f"   ⚠️ Unknown term_code '{term_code}'; "
+                        f"skipping override for {course_code} Sec {section_number} CLO {clo_number}"
+                    )
+                    continue
 
             # Skip if required fields are missing
             if not course_code or not section_number:
@@ -1584,18 +1596,7 @@ class DemoSeeder(BaselineSeeder):
         institution_id: str,
         term_id: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
-        """Find a specific section outcome by course/section/CLO number.
-
-        Args:
-            course_code: e.g. "BIOL-101"
-            section_number: e.g. "001"
-            clo_number: e.g. "1"
-            institution_id: Institution scope
-            term_id: Optional term filter — when provided, only sections
-                     belonging to offerings in that term are considered.
-                     Required when the same course+section exists in
-                     multiple terms (historical data).
-        """
+        """Find a specific section outcome by course/section/CLO number."""
         # Step 1: Find the course by course_code
         course = database_service.db.get_course_by_number(course_code, institution_id)
         if not course:
@@ -1605,37 +1606,12 @@ class DemoSeeder(BaselineSeeder):
             return None
 
         # Step 2: Find the course outcome (template) by clo_number
-        course_outcomes = database_service.db.get_course_outcomes(course_id)
-        outcome_template = None
-        for co in course_outcomes or []:
-            if str(co.get("clo_number")) == clo_number:
-                outcome_template = co
-                break
-        if not outcome_template:
-            return None
-        outcome_id = outcome_template.get("id") or outcome_template.get("outcome_id")
+        outcome_id = self._find_outcome_id(course_id, clo_number)
         if not outcome_id:
             return None
 
         # Step 3: Find the section by section_number (optionally filtered by term)
-        sections = database_service.db.get_sections_by_course(course_id)
-        target_section = None
-        for sec in sections or []:
-            if sec.get("section_number") != section_number:
-                continue
-            # When term_id is given, only match sections whose offering
-            # belongs to that term.
-            if term_id:
-                offering_id = sec.get("offering_id")
-                if offering_id:
-                    offering = database_service.db.get_course_offering(offering_id)
-                    if offering and offering.get("term_id") != term_id:
-                        continue
-            target_section = sec
-            break
-        if not target_section:
-            return None
-        section_id = target_section.get("id") or target_section.get("section_id")
+        section_id = self._find_section_id(course_id, section_number, term_id)
         if not section_id:
             return None
 
@@ -1646,6 +1622,51 @@ class DemoSeeder(BaselineSeeder):
             )
         )
         return section_outcome
+
+    def _find_outcome_id(self, course_id: str, clo_number: str) -> Optional[str]:
+        """Find the outcome template id by CLO number."""
+        course_outcomes = database_service.db.get_course_outcomes(course_id)
+        for co in course_outcomes or []:
+            if str(co.get("clo_number")) == clo_number:
+                return co.get("id") or co.get("outcome_id")
+        return None
+
+    def _find_section_id(
+        self,
+        course_id: str,
+        section_number: str,
+        term_id: Optional[str] = None,
+    ) -> Optional[str]:
+        """Find section id by section number, optionally filtering by term.
+
+        Caches offering lookups to avoid N+1 queries.
+        """
+        sections = database_service.db.get_sections_by_course(course_id)
+        offering_term_cache: dict = {}
+        for sec in sections or []:
+            if sec.get("section_number") != section_number:
+                continue
+            if term_id and not self._section_matches_term(
+                sec, term_id, offering_term_cache
+            ):
+                continue
+            return sec.get("id") or sec.get("section_id")
+        return None
+
+    @staticmethod
+    def _section_matches_term(
+        sec: Dict[str, Any],
+        term_id: str,
+        offering_cache: dict,
+    ) -> bool:
+        """Check if a section belongs to the given term (with caching)."""
+        offering_id = sec.get("offering_id")
+        if not offering_id:
+            return False
+        if offering_id not in offering_cache:
+            offering = database_service.db.get_course_offering(offering_id)
+            offering_cache[offering_id] = offering.get("term_id") if offering else None
+        return offering_cache[offering_id] == term_id
 
     def print_summary(self) -> None:
         """Print demo seeding summary"""

@@ -362,26 +362,6 @@ def get_plo_dashboard_tree(
                 "course_title": course.get("course_title"),
             }
 
-    def _aggregate(records: List[Dict[str, Any]]) -> Dict[str, Any]:
-        took = 0
-        passed = 0
-        counted = 0
-        for r in records:
-            t = r.get("students_took")
-            p = r.get("students_passed")
-            if isinstance(t, int) and t > 0 and isinstance(p, int):
-                took += t
-                passed += p
-                counted += 1
-        rate = round(passed / took * 100, 1) if took > 0 else None
-        return {
-            "students_took": took,
-            "students_passed": passed,
-            "pass_rate": rate,
-            "section_count": len(records),
-            "sections_with_data": counted,
-        }
-
     tree: List[Dict[str, Any]] = []
     for plo in plos:
         clo_nodes: List[Dict[str, Any]] = []
@@ -391,7 +371,7 @@ def get_plo_dashboard_tree(
             clo_nodes.append(
                 {
                     **meta,
-                    "aggregate": _aggregate(secs),
+                    "aggregate": _aggregate_section_outcomes(secs),
                     "sections": secs,
                 }
             )
@@ -400,7 +380,7 @@ def get_plo_dashboard_tree(
         tree.append(
             {
                 **plo,
-                "aggregate": _aggregate(all_plo_sections),
+                "aggregate": _aggregate_section_outcomes(all_plo_sections),
                 "clo_count": len(clo_nodes),
                 "clos": clo_nodes,
             }

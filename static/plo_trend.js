@@ -25,6 +25,21 @@
   const THRESHOLD_LINE_COLOR = "rgba(108, 117, 125, 0.3)";
 
   /**
+   * Destroy any Chart.js instances attached to canvas elements within an element.
+   * Must be called before removing DOM elements to avoid memory leaks.
+   */
+  function _destroyCharts(el) {
+    if (typeof Chart === "undefined" || typeof Chart.getChart !== "function")
+      return;
+    el.querySelectorAll("canvas").forEach(function (canvas) {
+      var chart = Chart.getChart(canvas);
+      if (chart && typeof chart.destroy === "function") {
+        chart.destroy();
+      }
+    });
+  }
+
+  /**
    * Determine trend direction from an array of data points.
    * Returns: "strong-up" | "up" | "flat" | "down" | "strong-down" | "none"
    *
@@ -827,18 +842,24 @@
       if (!programId) return;
       if (selectedTermId !== undefined) this.selectedTermId = selectedTermId;
 
+      // Track the latest request to ignore stale responses
+      const gen = (this._loadTrendGen = (this._loadTrendGen || 0) + 1);
+
       const url = `/api/programs/${encodeURIComponent(programId)}/plo-dashboard/trend`;
       try {
         const resp = await fetch(url, {
           credentials: "include",
           headers: { Accept: "application/json" },
         });
+        if (gen !== this._loadTrendGen) return; // stale response
         if (!resp.ok) return;
         const data = await resp.json();
+        if (gen !== this._loadTrendGen) return; // stale response
         if (!data.success) return;
         this.trendData = data;
         this.injectSparklines();
       } catch (err) {
+        if (gen !== this._loadTrendGen) return;
         console.warn("PloTrend: failed to load trend data", err);
       }
     },
@@ -871,7 +892,10 @@
             .querySelectorAll(
               ":scope > .plo-tree-header .plo-trend-indicator, :scope > .plo-trend-panel",
             )
-            .forEach((el) => el.remove());
+            .forEach((el) => {
+              _destroyCharts(el);
+              el.remove();
+            });
           this._injectIntoNode(ploNode, plo.trend, terms, {
             title: `PLO-${plo.plo_number}: ${plo.description}`,
             clos: plo.clos || [],
@@ -890,7 +914,10 @@
               .querySelectorAll(
                 ":scope > .plo-tree-header .plo-trend-indicator, :scope > .plo-trend-panel",
               )
-              .forEach((el) => el.remove());
+              .forEach((el) => {
+                _destroyCharts(el);
+                el.remove();
+              });
             this._injectIntoNode(cloNode, clo.trend, terms, {
               title: `${clo.course_number || ""} CLO ${clo.clo_number || "?"}: ${clo.description || ""}`,
               discontinuities: plo.discontinuities || [],
@@ -918,7 +945,10 @@
 
         // Remove existing sparkline / badge if re-injecting
         const existing = slot.querySelector(".plo-sparkline");
-        if (existing) existing.remove();
+        if (existing) {
+          _destroyCharts(existing.parentElement || existing);
+          existing.remove();
+        }
         const existingBadge = slot.querySelector(".plo-trend-indicator");
         if (existingBadge) existingBadge.remove();
 
@@ -963,10 +993,23 @@
           }
         }
 
-        // Click opens trend panel below the row
+        // Click / keyboard opens trend panel below the row
+        canvas.setAttribute("tabindex", "0");
+        canvas.setAttribute("role", "button");
+        canvas.setAttribute(
+          "aria-label",
+          "View trend chart for PLO-" + plo.plo_number,
+        );
         canvas.addEventListener("click", (e) => {
           e.stopPropagation();
           this._toggleSummaryTrendPanel(slot, plo, terms);
+        });
+        canvas.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            e.stopPropagation();
+            this._toggleSummaryTrendPanel(slot, plo, terms);
+          }
         });
       });
     },
@@ -985,6 +1028,7 @@
         next.classList.contains("plo-trend-panel") &&
         next.dataset.ploId === String(plo.id)
       ) {
+        _destroyCharts(next);
         next.remove();
         return;
       }
@@ -992,7 +1036,10 @@
       // Remove any other open panel in this summary bar
       const bar = slot.closest(".plo-summary-bar");
       if (bar) {
-        bar.querySelectorAll(".plo-trend-panel").forEach((p) => p.remove());
+        bar.querySelectorAll(".plo-trend-panel").forEach((p) => {
+          _destroyCharts(p);
+          p.remove();
+        });
       }
 
       const panel = createTrendPanel(plo.trend, terms, {
@@ -1055,10 +1102,19 @@
         meta.insertBefore(wrap, meta.firstChild);
       }
 
-      // Click handler for drill-down panel
+      // Click / keyboard handler for drill-down panel
+      wrap.setAttribute("tabindex", "0");
+      wrap.setAttribute("role", "button");
       wrap.addEventListener("click", (e) => {
         e.stopPropagation();
         this._toggleTrendPanel(nodeEl, trendPoints, terms, opts);
+      });
+      wrap.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          e.stopPropagation();
+          this._toggleTrendPanel(nodeEl, trendPoints, terms, opts);
+        }
       });
     },
 
@@ -1066,6 +1122,7 @@
       // Check if panel already exists
       const existing = nodeEl.querySelector(".plo-trend-panel");
       if (existing) {
+        _destroyCharts(existing);
         existing.remove();
         return;
       }

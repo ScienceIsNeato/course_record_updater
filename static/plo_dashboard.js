@@ -320,79 +320,96 @@
 
     /**
      * Load and render PLO trees for every program (bird's-eye view).
+     * Uses parallel fetches with a generation counter to prevent stale results.
      */
     async _loadAllPrograms() {
       const container = this._el.treeContainer;
       if (!container) return;
       container.innerHTML = "";
 
+      // Generation counter prevents stale results from overwriting a newer load
+      this._allProgramsGen = (this._allProgramsGen || 0) + 1;
+      const gen = this._allProgramsGen;
+
       const qs = new URLSearchParams();
       if (this.currentTermId) qs.set("term_id", this.currentTermId);
 
-      for (const prog of this.programs) {
+      // Fetch all programs in parallel
+      const fetches = this.programs.map((prog) => {
         const progId = prog.program_id || prog.id;
         const url = `/api/programs/${encodeURIComponent(progId)}/plo-dashboard?${qs}`;
-        try {
-          const resp = await fetch(url, {
-            credentials: "include",
-            headers: { Accept: "application/json" },
-          });
-          if (!resp.ok) continue;
-          const data = await resp.json();
+        return fetch(url, {
+          credentials: "include",
+          headers: { Accept: "application/json" },
+        })
+          .then((resp) => (resp.ok ? resp.json() : null))
+          .then((data) => ({ prog, data }))
+          .catch(() => ({ prog, data: null }));
+      });
 
-          // Program section heading
-          const heading = document.createElement("h5");
-          heading.className = "mt-3 mb-2 plo-all-programs-heading";
-          heading.textContent = prog.name;
-          if (data.mapping && data.mapping.version) {
-            const badge = document.createElement("span");
-            badge.className = "badge bg-secondary ms-2";
-            badge.textContent = `v${data.mapping.version}`;
-            heading.appendChild(badge);
-          }
-          // Collapsible program section
-          const section = document.createElement("div");
-          section.className = "plo-program-section";
+      const results = await Promise.allSettled(fetches);
 
-          // Add toggle chevron to heading
-          const toggle = document.createElement("span");
-          toggle.className = "plo-program-toggle";
-          toggle.innerHTML = '<i class="fas fa-chevron-down"></i>';
-          heading.insertBefore(toggle, heading.firstChild);
-          heading.style.cursor = "pointer";
-          section.appendChild(heading);
+      // Abort if a newer load has started
+      if (gen !== this._allProgramsGen) return;
 
-          // Content container (collapsible)
-          const content = document.createElement("div");
-          content.className = "plo-program-content";
+      for (const result of results) {
+        const { prog, data } =
+          result.status === "fulfilled" ? result.value : {};
+        if (!data) continue;
 
-          // Render tree for this program
-          if (data.plos && data.plos.length > 0) {
-            content.appendChild(this._buildSummaryBar(data.plos));
-            const ul = document.createElement("ul");
-            ul.className = "plo-tree";
-            const savedTree = this.tree;
-            this.tree = data;
-            data.plos.forEach((plo) => ul.appendChild(this._buildPloNode(plo)));
-            this.tree = savedTree;
-            content.appendChild(ul);
-          } else {
-            const empty = document.createElement("p");
-            empty.className = "text-muted small fst-italic ms-3 mb-3";
-            empty.textContent = "No PLOs defined.";
-            content.appendChild(empty);
-          }
-
-          section.appendChild(content);
-          container.appendChild(section);
-
-          // Wire toggle
-          heading.addEventListener("click", () => {
-            section.classList.toggle("collapsed");
-          });
-        } catch (_) {
-          // skip programs that fail to load
+        // Program section heading
+        const heading = document.createElement("h5");
+        heading.className = "mt-3 mb-2 plo-all-programs-heading";
+        heading.textContent = prog.name;
+        if (data.mapping && data.mapping.version) {
+          const badge = document.createElement("span");
+          badge.className = "badge bg-secondary ms-2";
+          badge.textContent = `v${data.mapping.version}`;
+          heading.appendChild(badge);
         }
+        // Collapsible program section
+        const section = document.createElement("div");
+        section.className = "plo-program-section";
+
+        // Add toggle chevron to heading
+        const toggle = document.createElement("span");
+        toggle.className = "plo-program-toggle";
+        toggle.innerHTML = '<i class="fas fa-chevron-down"></i>';
+        heading.insertBefore(toggle, heading.firstChild);
+        heading.style.cursor = "pointer";
+        section.appendChild(heading);
+
+        // Content container (collapsible)
+        const content = document.createElement("div");
+        content.className = "plo-program-content";
+
+        // Render tree for this program
+        if (data.plos && data.plos.length > 0) {
+          content.appendChild(this._buildSummaryBar(data.plos));
+          const ul = document.createElement("ul");
+          ul.className = "plo-tree";
+          const savedTree = this.tree;
+          const savedDisplayMode = this.displayMode;
+          this.tree = data;
+          this.displayMode = data.assessment_display_mode || "both";
+          data.plos.forEach((plo) => ul.appendChild(this._buildPloNode(plo)));
+          this.tree = savedTree;
+          this.displayMode = savedDisplayMode;
+          content.appendChild(ul);
+        } else {
+          const empty = document.createElement("p");
+          empty.className = "text-muted small fst-italic ms-3 mb-3";
+          empty.textContent = "No PLOs defined.";
+          content.appendChild(empty);
+        }
+
+        section.appendChild(content);
+        container.appendChild(section);
+
+        // Wire toggle
+        heading.addEventListener("click", () => {
+          section.classList.toggle("collapsed");
+        });
       }
 
       // Load trend sparklines for each program
@@ -520,9 +537,7 @@
         const dot = document.createElement("span");
         dot.className = "plo-summary-dot";
         stat.appendChild(dot);
-        stat.appendChild(
-          document.createTextNode(ploList.length + " " + label),
-        );
+        stat.appendChild(document.createTextNode(ploList.length + " " + label));
         row.appendChild(stat);
 
         // Sparkline slots (populated after trend data loads)

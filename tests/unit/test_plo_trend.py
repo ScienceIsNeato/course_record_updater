@@ -65,7 +65,7 @@ class TestBuildTermMetadata:
                 "end_date": "2023-05-15",
             },
         ]
-        with patch.object(plo_service, "get_term_status", return_value="COMPLETED"):
+        with patch.object(plo_service, "get_term_status", return_value="PASSED"):
             result = _build_term_metadata(terms)
         assert result[0]["is_current"] is False
 
@@ -74,7 +74,7 @@ class TestBuildTermMetadata:
         terms = [
             {"term_id": "tx", "term_name": "Test", "start_date": "", "end_date": ""}
         ]
-        with patch.object(plo_service, "get_term_status", return_value="COMPLETED"):
+        with patch.object(plo_service, "get_term_status", return_value="PASSED"):
             result = _build_term_metadata(terms)
         assert result[0]["term_id"] == "tx"
         assert result[0]["term_name"] == "Test"
