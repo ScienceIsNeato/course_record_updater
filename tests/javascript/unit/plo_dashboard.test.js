@@ -1463,3 +1463,145 @@ describe('PloDashboard — _loadAllPrograms', () => {
     expect(PloDashboard.displayMode).toBe('percentage');
   });
 });
+
+describe('PloDashboard — _loadAllTrendData', () => {
+  beforeEach(() => {
+    setBody(SKELETON);
+    resetDashboardState();
+    PloDashboard._cacheSelectors();
+    delete global.PloTrend;
+  });
+
+  afterEach(() => {
+    delete global.fetch;
+    delete global.PloTrend;
+  });
+
+  test('injects sparklines for ALL programs, not just the last', async () => {
+    PloDashboard.programs = [
+      { program_id: 'prog-1', name: 'Biology BS' },
+      { program_id: 'prog-2', name: 'Chemistry BS' },
+    ];
+    PloDashboard.currentTermId = 't-1';
+
+    const injectCalls = [];
+    global.PloTrend = {
+      trendData: null,
+      selectedTermId: null,
+      injectSparklines: jest.fn(function () {
+        injectCalls.push(this.trendData);
+      }),
+    };
+
+    const trendProg1 = {
+      success: true,
+      program_id: 'prog-1',
+      terms: [{ term_id: 't-1' }, { term_id: 't-2' }],
+      plos: [{ id: 'plo-1', trend: [70, 80] }],
+    };
+    const trendProg2 = {
+      success: true,
+      program_id: 'prog-2',
+      terms: [{ term_id: 't-1' }, { term_id: 't-2' }],
+      plos: [{ id: 'plo-2', trend: [60, 75] }],
+    };
+
+    global.fetch = jest.fn().mockImplementation((url) => {
+      if (url.includes('prog-1')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => trendProg1,
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => trendProg2,
+      });
+    });
+
+    await PloDashboard._loadAllTrendData();
+
+    // Both programs' trend data should have been injected
+    expect(global.PloTrend.injectSparklines).toHaveBeenCalledTimes(2);
+    expect(injectCalls[0]).toBe(trendProg1);
+    expect(injectCalls[1]).toBe(trendProg2);
+    expect(global.PloTrend.selectedTermId).toBe('t-1');
+  });
+
+  test('ignores stale results when generation counter changes', async () => {
+    PloDashboard.programs = [
+      { program_id: 'prog-1', name: 'Biology BS' },
+    ];
+
+    global.PloTrend = {
+      trendData: null,
+      selectedTermId: null,
+      injectSparklines: jest.fn(),
+    };
+
+    let resolveFirst;
+    global.fetch = jest.fn(
+      () => new Promise((r) => { resolveFirst = r; }),
+    );
+
+    const p1 = PloDashboard._loadAllTrendData();
+
+    // Simulate a newer load starting (increments generation counter)
+    PloDashboard._allTrendGen = (PloDashboard._allTrendGen || 0) + 1;
+
+    resolveFirst({
+      ok: true,
+      json: async () => ({
+        success: true,
+        terms: [{ term_id: 't-1' }, { term_id: 't-2' }],
+        plos: [],
+      }),
+    });
+    await p1;
+
+    // Stale result should be ignored — no injection
+    expect(global.PloTrend.injectSparklines).not.toHaveBeenCalled();
+  });
+
+  test('skips failed fetches without breaking other programs', async () => {
+    PloDashboard.programs = [
+      { program_id: 'prog-1', name: 'Biology BS' },
+      { program_id: 'prog-2', name: 'Chemistry BS' },
+    ];
+
+    global.PloTrend = {
+      trendData: null,
+      selectedTermId: null,
+      injectSparklines: jest.fn(),
+    };
+
+    global.fetch = jest.fn().mockImplementation((url) => {
+      if (url.includes('prog-1')) {
+        return Promise.reject(new Error('Network error'));
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          success: true,
+          terms: [{ term_id: 't-1' }, { term_id: 't-2' }],
+          plos: [{ id: 'plo-2' }],
+        }),
+      });
+    });
+
+    await PloDashboard._loadAllTrendData();
+
+    // Only the successful program's sparklines should be injected
+    expect(global.PloTrend.injectSparklines).toHaveBeenCalledTimes(1);
+  });
+
+  test('no-ops when PloTrend is not available', async () => {
+    PloDashboard.programs = [
+      { program_id: 'prog-1', name: 'Biology BS' },
+    ];
+    delete global.PloTrend;
+
+    // Should not throw
+    await PloDashboard._loadAllTrendData();
+  });
+});

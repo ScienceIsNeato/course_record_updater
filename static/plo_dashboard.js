@@ -274,6 +274,9 @@
     // Tree fetch + render
     // ===================================================================
     async loadTree() {
+      // Cancel any in-progress all-programs trend loading
+      this._allTrendGen = (this._allTrendGen || 0) + 1;
+
       const pid = this.currentProgramId;
       this._updateProgramActions();
 
@@ -425,12 +428,42 @@
 
     /**
      * Load trend data for all programs (used in All Programs mode).
+     * Fetches each program's trend data in parallel, then injects
+     * sparklines sequentially to avoid the singleton race guard
+     * in PloTrend.loadTrend().
      */
-    _loadAllTrendData() {
+    async _loadAllTrendData() {
       if (typeof globalThis === "undefined" || !globalThis.PloTrend) return;
-      for (const prog of this.programs) {
+
+      const gen = (this._allTrendGen = (this._allTrendGen || 0) + 1);
+      const termId = this.currentTermId;
+
+      const fetches = this.programs.map(async (prog) => {
         const progId = prog.program_id || prog.id;
-        globalThis.PloTrend.loadTrend(progId, this.currentTermId);
+        const url = `/api/programs/${encodeURIComponent(progId)}/plo-dashboard/trend`;
+        try {
+          const resp = await fetch(url, {
+            credentials: "include",
+            headers: { Accept: "application/json" },
+          });
+          if (!resp.ok) return null;
+          const data = await resp.json();
+          return data.success ? data : null;
+        } catch {
+          return null;
+        }
+      });
+
+      const results = await Promise.all(fetches);
+      if (gen !== this._allTrendGen) return; // stale — user navigated away
+
+      const pt = globalThis.PloTrend;
+      if (!pt) return;
+      if (termId) pt.selectedTermId = termId;
+      for (const data of results) {
+        if (!data) continue;
+        pt.trendData = data;
+        pt.injectSparklines();
       }
     },
 
