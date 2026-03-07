@@ -21,6 +21,7 @@ pytest-xdist>=3.6.1        # Parallel test execution (35% faster)
 # Security scanning
 bandit>=1.7.5              # Security linter for Python
 safety>=2.3.0,<3.7.0       # Cap: 3.7.0 pulls typer 0.24+ which crashes on Python 3.11 (click.Choice not subscriptable)
+typer>=0.16.0,<0.24.0       # Cap: 0.24.0 uses click.Choice[T] which is not subscriptable on Python 3.11
 detect-secrets>=1.4.0        # Secret detection in code
 
 # Code quality and complexity
