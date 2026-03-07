@@ -28,6 +28,7 @@ from src.services.plo_service import (
     get_mapping_matrix,
     get_or_create_draft,
     get_plo_dashboard_tree,
+    get_plo_trend_data,
     get_program_outcome,
     get_published_mappings,
     get_unmapped_clos,
@@ -530,3 +531,28 @@ def unmapped_clos(program_id: str) -> ResponseReturnValue:
         )
     except Exception as exc:
         return handle_api_error(exc, "fetching unmapped CLOs")
+
+
+@plo_bp.route("/<program_id>/plo-dashboard/trend", methods=["GET"])
+@permission_required("view_program_data")
+def plo_trend(program_id: str) -> ResponseReturnValue:
+    """Return multi-term trend data for the PLO dashboard.
+
+    Uses the current published mapping as a lens to aggregate assessment
+    data across all historical terms.  Each PLO and CLO gets a time-series
+    array aligned with the ``terms`` list in the response.
+
+    Response shape is documented in plo_service.get_plo_trend_data.
+    """
+    program, err = _validate_program(program_id)
+    if err:
+        return err
+
+    try:
+        trend = get_plo_trend_data(
+            program_id,
+            institution_id=program["institution_id"],
+        )
+        return jsonify({"success": True, **trend}), 200
+    except Exception as exc:
+        return handle_api_error(exc, "plo_trend", "Failed to build PLO trend data")

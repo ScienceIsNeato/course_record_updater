@@ -252,11 +252,6 @@ const SKELETON = `
     <option value="binary">Binary</option>
   </select>
 
-  <span id="statPloCount">-</span>
-  <span id="statMappedCloCount">-</span>
-  <span id="statOverallPassRate">-</span>
-  <span id="statMappingStatus">-</span>
-
   <button id="createPloBtn"></button>
   <button id="mapCloBtn"></button>
   <button id="expandAllBtn"></button>
@@ -269,7 +264,9 @@ const SKELETON = `
   <div id="ploModal">
     <form id="ploForm">
       <input id="ploModalId" type="hidden">
-      <input id="ploModalNumber">
+      <div id="ploModalNumberGroup">
+        <input id="ploModalNumber">
+      </div>
       <textarea id="ploModalDescription"></textarea>
       <span id="ploModalLabel"></span>
       <div id="ploModalAlert"></div>
@@ -420,11 +417,12 @@ describe('PloDashboard — filter loading', () => {
     await PloDashboard._loadPrograms();
 
     const sel = document.getElementById('ploProgramFilter');
-    expect(sel.options.length).toBe(2);
-    expect(sel.options[0].textContent).toBe('Biology BS');
-    // No localStorage entry → first program is default
-    expect(PloDashboard.currentProgramId).toBe('prog-1');
-    expect(sel.value).toBe('prog-1');
+    expect(sel.options.length).toBe(3); // All Programs + 2 programs
+    expect(sel.options[0].textContent).toBe('All Programs');
+    expect(sel.options[1].textContent).toBe('Biology BS');
+    // No localStorage entry → defaults to All Programs
+    expect(PloDashboard.currentProgramId).toBe('');
+    expect(sel.value).toBe('');
   });
 
   test('_loadPrograms honours localStorage when the stored id is still valid', async () => {
@@ -449,8 +447,8 @@ describe('PloDashboard — filter loading', () => {
       json: async () => ({ programs: [{ id: 'prog-1', name: 'Only One' }] }),
     });
     await PloDashboard._loadPrograms();
-    // Falls back to first valid id (using the `id` alias, not `program_id`)
-    expect(PloDashboard.currentProgramId).toBe('prog-1');
+    // Falls back to All Programs (empty string)
+    expect(PloDashboard.currentProgramId).toBe('');
   });
 
   test('_loadPrograms handles empty list gracefully', async () => {
@@ -519,14 +517,15 @@ describe('PloDashboard — loadTree + render', () => {
     delete global.fetch;
   });
 
-  test('no program selected → empty-state message, no fetch', async () => {
+  test('no program selected with no programs → empty-state message, no fetch', async () => {
     PloDashboard.currentProgramId = null;
+    PloDashboard.programs = [];
     global.fetch = jest.fn();
     await PloDashboard.loadTree();
     expect(global.fetch).not.toHaveBeenCalled();
     expect(
       document.getElementById('ploTreeContainer').textContent,
-    ).toMatch(/select a program/i);
+    ).toMatch(/no programs available/i);
   });
 
   test('successful load renders tree + populates stats', async () => {
@@ -563,16 +562,6 @@ describe('PloDashboard — loadTree + render', () => {
     // First section shows instructor name + pass count detail
     expect(sectionLeaves[0].textContent).toContain('Ada Lovelace');
     expect(sectionLeaves[0].textContent).toContain('27/30 passed');
-
-    // Stats populated
-    expect(document.getElementById('statPloCount').textContent).toBe('2');
-    expect(document.getElementById('statMappedCloCount').textContent).toBe('1');
-    expect(document.getElementById('statOverallPassRate').textContent).toBe(
-      '80%',
-    );
-    expect(document.getElementById('statMappingStatus').textContent).toBe(
-      'Published',
-    );
 
     // Version badge shows v2
     expect(
@@ -672,31 +661,110 @@ describe('PloDashboard — loadTree + render', () => {
     ).toMatch(/network down/);
   });
 
-  test('_updateStats(null) resets all stat cards to "-"', () => {
-    document.getElementById('statPloCount').textContent = 'old';
-    PloDashboard._updateStats(null);
-    expect(document.getElementById('statPloCount').textContent).toBe('-');
-    expect(document.getElementById('statOverallPassRate').textContent).toBe(
-      '-',
-    );
+  test('All Programs mode loads each program tree', async () => {
+    PloDashboard.currentProgramId = '';
+    PloDashboard.programs = [
+      { program_id: 'prog-1', name: 'Biology BS' },
+      { program_id: 'prog-2', name: 'Chemistry BS' },
+    ];
+    // Mock PloTrend to avoid unrelated errors
+    global.PloTrend = { loadTrend: jest.fn() };
+
+    global.fetch = jest.fn().mockImplementation((url) => {
+      if (url.includes('prog-1')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            ...SAMPLE_TREE,
+            program_id: 'prog-1',
+          }),
+        });
+      }
+      if (url.includes('prog-2')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            ...SAMPLE_TREE,
+            program_id: 'prog-2',
+            mapping: { id: 'm-2', version: 1, status: 'published' },
+            plos: [],
+          }),
+        });
+      }
+      return Promise.reject(new Error('unexpected URL'));
+    });
+
+    await PloDashboard.loadTree();
+
+    // Both program headings rendered (now inside collapsible sections)
+    const sections = document.querySelectorAll('.plo-program-section');
+    expect(sections.length).toBe(2);
+    const headings = document.querySelectorAll('.plo-all-programs-heading');
+    expect(headings.length).toBe(2);
+    expect(headings[0].textContent).toContain('Biology BS');
+    expect(headings[1].textContent).toContain('Chemistry BS');
+
+    // First program has PLO tree, second shows "No PLOs defined."
+    const trees = document.querySelectorAll('ul.plo-tree');
+    expect(trees.length).toBe(1);
+    const emptyMsg = document.querySelector('p.text-muted');
+    expect(emptyMsg.textContent).toContain('No PLOs defined.');
+
+    // Programs are collapsible
+    const firstSection = sections[0];
+    expect(firstSection.querySelector('.plo-program-content')).not.toBeNull();
+    expect(firstSection.querySelector('.plo-program-toggle')).not.toBeNull();
+
+    // Clicking heading toggles collapsed state
+    headings[0].click();
+    expect(firstSection.classList.contains('collapsed')).toBe(true);
+    headings[0].click();
+    expect(firstSection.classList.contains('collapsed')).toBe(false);
+
+    // Program name label shows "All Programs"
+    expect(
+      document.getElementById('ploTreeProgramName').textContent,
+    ).toBe('All Programs');
+
+    // Version badge hidden in All Programs mode
+    expect(
+      document.getElementById('ploTreeVersionBadge').style.display,
+    ).toBe('none');
+
+    delete global.PloTrend;
   });
 
-  test('_updateStats shows em dash when no students_took anywhere', () => {
-    // Both PLOs have zero aggregate data → no pass rate to compute
-    PloDashboard._updateStats({
-      plos: [
-        { aggregate: { students_took: 0, students_passed: 0 } },
-        { aggregate: {} },
-      ],
-      mapping_status: 'draft',
+  test('All Programs mode skips programs that fail to load', async () => {
+    PloDashboard.currentProgramId = '';
+    PloDashboard.programs = [
+      { program_id: 'prog-bad', name: 'Failing Program' },
+      { program_id: 'prog-ok', name: 'Good Program' },
+    ];
+    global.PloTrend = { loadTrend: jest.fn() };
+
+    global.fetch = jest.fn().mockImplementation((url) => {
+      if (url.includes('prog-bad')) {
+        return Promise.resolve({ ok: false, status: 500 });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          ...SAMPLE_TREE,
+          program_id: 'prog-ok',
+        }),
+      });
     });
-    expect(document.getElementById('statOverallPassRate').textContent).toBe(
-      '—',
-    );
-    expect(document.getElementById('statMappingStatus').textContent).toBe(
-      'Draft',
-    );
+
+    await PloDashboard.loadTree();
+
+    // Only the successful program renders a heading
+    const headings = document.querySelectorAll('.plo-all-programs-heading');
+    expect(headings.length).toBe(1);
+    expect(headings[0].textContent).toContain('Good Program');
+
+    delete global.PloTrend;
   });
+
 });
 
 describe('PloDashboard — expand/collapse + event wiring', () => {
@@ -834,6 +902,10 @@ describe('PloDashboard — PLO create/edit modal', () => {
       /new/i,
     );
     expect(document.getElementById('ploModalId').value).toBe('');
+    // PLO number group hidden in create mode (auto-assigned by server)
+    expect(
+      document.getElementById('ploModalNumberGroup').classList.contains('d-none'),
+    ).toBe(true);
     // No bootstrap present → fallback adds .show
     expect(
       document.getElementById('ploModal').classList.contains('show'),
@@ -854,11 +926,15 @@ describe('PloDashboard — PLO create/edit modal', () => {
     expect(document.getElementById('ploModalDescription').value).toBe(
       'Capstone assessment.',
     );
+    // PLO number group visible in edit mode
+    expect(
+      document.getElementById('ploModalNumberGroup').classList.contains('d-none'),
+    ).toBe(false);
   });
 
-  test('_submitPloForm POSTs, coerces plo_number to int, hides modal on success', async () => {
+  test('_submitPloForm POSTs without plo_number (auto-assigned), hides modal on success', async () => {
     document.getElementById('ploModalId').value = ''; // create mode
-    document.getElementById('ploModalNumber').value = '7';
+    document.getElementById('ploModalNumber').value = '';
     document.getElementById('ploModalDescription').value = 'New outcome';
 
     // Two fetches: POST for save, then GET from loadTree()
@@ -874,9 +950,8 @@ describe('PloDashboard — PLO create/edit modal', () => {
     const [url, opts] = global.fetch.mock.calls[0];
     expect(url).toMatch(/\/api\/programs\/prog-1\/plos$/);
     expect(opts.method).toBe('POST');
-    // String "7" should have been parsed to integer 7 for the unique constraint
+    // Create mode: plo_number omitted — server auto-assigns
     expect(JSON.parse(opts.body)).toEqual({
-      plo_number: 7,
       description: 'New outcome',
     });
     expect(opts.headers['X-CSRFToken']).toBe('test-csrf-token');
@@ -1108,5 +1183,283 @@ describe('PloDashboard — small helpers', () => {
     PloDashboard._hideModal(m);
     expect(m.classList.contains('show')).toBe(false);
     expect(m.style.display).toBe('none');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Summary bar
+// ---------------------------------------------------------------------------
+describe('PloDashboard — _buildSummaryBar', () => {
+  test('renders rows with sparkline slots for mixed PLO statuses', () => {
+    const plos = [
+      { id: 'p1', plo_number: 1, aggregate: { pass_rate: 90 } },
+      { id: 'p2', plo_number: 2, aggregate: { pass_rate: 85 } },
+      { id: 'p3', plo_number: 3, aggregate: { pass_rate: 60 } },
+      { id: 'p4', plo_number: 4, aggregate: { pass_rate: null } },
+    ];
+
+    const bar = PloDashboard._buildSummaryBar(plos);
+    expect(bar.className).toBe('plo-summary-bar');
+
+    // 3 rows: satisfactory, needs attention, no data
+    const rows = bar.querySelectorAll('.plo-summary-row');
+    expect(rows.length).toBe(3);
+
+    // Stats text in each row
+    const stats = bar.querySelectorAll('.plo-summary-stat');
+    expect(stats.length).toBe(3);
+    expect(stats[0].textContent).toContain('2');
+    expect(stats[0].textContent).toContain('satisfactory');
+    expect(stats[1].textContent).toContain('1');
+    expect(stats[1].textContent).toContain('needs attention');
+    expect(stats[2].textContent).toContain('1');
+    expect(stats[2].textContent).toContain('no data');
+
+    // Sparkline slots with PLO IDs
+    const slots = bar.querySelectorAll('.plo-summary-sparkline-slot');
+    expect(slots.length).toBe(4);
+    expect(slots[0].dataset.ploId).toBe('p1');
+    expect(slots[1].dataset.ploId).toBe('p2');
+
+    // Labels show PLO numbers
+    const labels = bar.querySelectorAll('.plo-summary-sparkline-label');
+    expect(labels[0].textContent).toBe('(1)');
+
+    // Progress bar has 3 segments
+    const segments = bar.querySelectorAll('.plo-summary-segment');
+    expect(segments.length).toBe(3);
+    expect(segments[0].className).toContain('seg-pass');
+    expect(segments[1].className).toContain('seg-fail');
+    expect(segments[2].className).toContain('seg-nodata');
+  });
+
+  test('omits zero-count categories', () => {
+    const plos = [
+      { id: 'p1', plo_number: 1, aggregate: { pass_rate: 90 } },
+      { id: 'p2', plo_number: 2, aggregate: { pass_rate: 80 } },
+    ];
+
+    const bar = PloDashboard._buildSummaryBar(plos);
+    const rows = bar.querySelectorAll('.plo-summary-row');
+    expect(rows.length).toBe(1);
+    const stats = bar.querySelectorAll('.plo-summary-stat');
+    expect(stats.length).toBe(1);
+    expect(stats[0].textContent).toContain('satisfactory');
+    const segments = bar.querySelectorAll('.plo-summary-segment');
+    expect(segments.length).toBe(1);
+  });
+
+  test('returns empty bar for null/empty plos', () => {
+    const bar = PloDashboard._buildSummaryBar([]);
+    expect(bar.querySelector('.plo-summary-stat')).toBeNull();
+
+    const bar2 = PloDashboard._buildSummaryBar(null);
+    expect(bar2.querySelector('.plo-summary-stat')).toBeNull();
+  });
+
+  test('summary bar is inserted above tree in renderTree', async () => {
+    setBody(SKELETON);
+    resetDashboardState();
+    PloDashboard._cacheSelectors();
+    PloDashboard.programs = [{ program_id: 'prog-1', name: 'Biology BS' }];
+    PloDashboard.currentProgramId = 'prog-1';
+    PloDashboard.currentTermId = 't-active';
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => SAMPLE_TREE,
+    });
+    await PloDashboard.loadTree();
+    delete global.fetch;
+
+    const container = document.getElementById('ploTreeContainer');
+    const summaryBar = container.querySelector('.plo-summary-bar');
+    expect(summaryBar).not.toBeNull();
+
+    // SAMPLE_TREE has 2 PLOs: 1 satisfactory (80%) + 1 no data (null)
+    const stats = summaryBar.querySelectorAll('.plo-summary-stat');
+    expect(stats.length).toBe(2);
+    expect(stats[0].textContent).toContain('satisfactory');
+    expect(stats[1].textContent).toContain('no data');
+
+    // Summary bar appears before the tree
+    const tree = container.querySelector('ul.plo-tree');
+    expect(container.children[0]).toBe(summaryBar);
+    expect(container.children[1]).toBe(tree);
+  });
+});
+
+describe('PloDashboard — _loadAllPrograms', () => {
+  beforeEach(() => {
+    setBody(SKELETON);
+    resetDashboardState();
+    PloDashboard._cacheSelectors();
+  });
+
+  afterEach(() => {
+    delete global.fetch;
+  });
+
+  test('fetches all programs in parallel and renders sections', async () => {
+    PloDashboard.programs = [
+      { program_id: 'prog-1', name: 'Biology BS' },
+      { program_id: 'prog-2', name: 'Chemistry BS' },
+    ];
+    PloDashboard.currentProgramId = '';
+    PloDashboard.currentTermId = '';
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => SAMPLE_TREE,
+    });
+
+    await PloDashboard._loadAllPrograms();
+
+    // Both programs should be rendered
+    const headings = document.querySelectorAll('.plo-all-programs-heading');
+    expect(headings.length).toBe(2);
+    expect(headings[0].textContent).toContain('Biology BS');
+    expect(headings[1].textContent).toContain('Chemistry BS');
+  });
+
+  test('handles failed fetch for one program gracefully', async () => {
+    PloDashboard.programs = [
+      { program_id: 'prog-1', name: 'Biology BS' },
+      { program_id: 'prog-2', name: 'Chemistry BS' },
+    ];
+    PloDashboard.currentProgramId = '';
+
+    let callCount = 0;
+    global.fetch = jest.fn(() => {
+      callCount++;
+      if (callCount === 1) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => SAMPLE_TREE,
+        });
+      }
+      return Promise.reject(new Error('Network error'));
+    });
+
+    await PloDashboard._loadAllPrograms();
+
+    // Only the successful program should have a heading
+    const headings = document.querySelectorAll('.plo-all-programs-heading');
+    expect(headings.length).toBe(1);
+    expect(headings[0].textContent).toContain('Biology BS');
+  });
+
+  test('ignores stale results when generation counter changes', async () => {
+    PloDashboard.programs = [
+      { program_id: 'prog-1', name: 'Biology BS' },
+    ];
+    PloDashboard.currentProgramId = '';
+
+    let resolveFirst;
+    global.fetch = jest.fn(
+      () => new Promise((r) => { resolveFirst = r; }),
+    );
+
+    // Start first load
+    const p1 = PloDashboard._loadAllPrograms();
+
+    // Increment generation counter (simulates a second call starting)
+    PloDashboard._allProgramsGen = (PloDashboard._allProgramsGen || 0) + 1;
+
+    // Resolve first load
+    resolveFirst({
+      ok: true,
+      json: async () => SAMPLE_TREE,
+    });
+    await p1;
+
+    // Container should be empty — stale result ignored
+    const container = document.getElementById('ploTreeContainer');
+    expect(container.querySelectorAll('.plo-all-programs-heading').length).toBe(0);
+  });
+
+  test('renders version badge when mapping has version', async () => {
+    PloDashboard.programs = [
+      { program_id: 'prog-1', name: 'Biology BS' },
+    ];
+    PloDashboard.currentProgramId = '';
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => SAMPLE_TREE,
+    });
+
+    await PloDashboard._loadAllPrograms();
+
+    const badge = document.querySelector('.plo-all-programs-heading .badge');
+    expect(badge).not.toBeNull();
+    expect(badge.textContent).toBe('v2');
+  });
+
+  test('collapsible toggle works on heading click', async () => {
+    PloDashboard.programs = [
+      { program_id: 'prog-1', name: 'Biology BS' },
+    ];
+    PloDashboard.currentProgramId = '';
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => SAMPLE_TREE,
+    });
+
+    await PloDashboard._loadAllPrograms();
+
+    const section = document.querySelector('.plo-program-section');
+    const heading = document.querySelector('.plo-all-programs-heading');
+    expect(section).not.toBeNull();
+
+    heading.click();
+    expect(section.classList.contains('collapsed')).toBe(true);
+
+    heading.click();
+    expect(section.classList.contains('collapsed')).toBe(false);
+  });
+
+  test('shows "No PLOs defined" for program with empty plos', async () => {
+    PloDashboard.programs = [
+      { program_id: 'prog-1', name: 'Empty Program' },
+    ];
+    PloDashboard.currentProgramId = '';
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ...SAMPLE_TREE,
+        plos: [],
+        mapping: null,
+      }),
+    });
+
+    await PloDashboard._loadAllPrograms();
+
+    const emptyMsg = document.querySelector('.text-muted.fst-italic');
+    expect(emptyMsg).not.toBeNull();
+    expect(emptyMsg.textContent).toBe('No PLOs defined.');
+  });
+
+  test('saves and restores displayMode per program', async () => {
+    PloDashboard.programs = [
+      { program_id: 'prog-1', name: 'Biology BS' },
+    ];
+    PloDashboard.currentProgramId = '';
+    PloDashboard.displayMode = 'percentage';
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ...SAMPLE_TREE,
+        assessment_display_mode: 'binary',
+      }),
+    });
+
+    await PloDashboard._loadAllPrograms();
+
+    // displayMode should be restored to original after rendering
+    expect(PloDashboard.displayMode).toBe('percentage');
   });
 });

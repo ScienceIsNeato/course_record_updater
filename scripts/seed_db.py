@@ -539,6 +539,9 @@ class BaselineSeeder(ABC):
         term_map = term_id_or_map if isinstance(term_id_or_map, dict) else {}
 
         for offering_data in offerings_data:
+            # Skip JSON comment-only entries
+            if "_comment" in offering_data and len(offering_data) == 1:
+                continue
             course_id = self._resolve_course_id_from_manifest(offering_data, course_map)
             if not course_id:
                 continue
@@ -745,6 +748,9 @@ class BaselineSeeder(ABC):
         clo_count = 0
         status_lookup = self._status_lookup()
         for clo_data in specific_clos:
+            # Skip JSON comment-only entries (e.g. {"_comment": "..."})
+            if "_comment" in clo_data and len(clo_data) == 1:
+                continue
             target_course = self._resolve_target_course(
                 clo_data, course_ids, course_map
             )
@@ -1278,7 +1284,7 @@ class DemoSeeder(BaselineSeeder):
         if "section_outcome_overrides" in manifest:
             self.log("🔧 Applying section-specific CLO overrides...")
             override_count = self.apply_section_outcome_overrides(
-                manifest["section_outcome_overrides"], inst_ids[0]
+                manifest["section_outcome_overrides"], inst_ids[0], term_map
             )
             self.log(f"   ✅ Applied {override_count} section outcome overrides")
 
@@ -1302,7 +1308,10 @@ class DemoSeeder(BaselineSeeder):
         return True
 
     def apply_section_outcome_overrides(
-        self, overrides: List[Dict[str, Any]], institution_id: str
+        self,
+        overrides: List[Dict[str, Any]],
+        institution_id: str,
+        term_map: Optional[Dict[str, str]] = None,
     ) -> int:
         """
         Apply section-specific CLO status overrides after seeding.
@@ -1312,8 +1321,12 @@ class DemoSeeder(BaselineSeeder):
 
         Args:
             overrides: List of override dicts with course_code, section_number,
-                      clo_number, and the updates to apply
+                      clo_number, and the updates to apply.  Optional term_code
+                      disambiguates when the same course/section exists in
+                      multiple terms.
             institution_id: Institution ID to look up course/section
+            term_map: Optional mapping of term_code → term_id for
+                      term-specific override resolution
 
         Returns:
             Number of overrides successfully applied
@@ -1324,10 +1337,31 @@ class DemoSeeder(BaselineSeeder):
         status_lookup = self._status_lookup()
 
         for override in overrides:
+            # Skip JSON comment-only entries
+            if "_comment" in override and len(override) == 1:
+                continue
             course_code = override.get("course_code")
             section_number = override.get("section_number")
             clo_number = str(override.get("clo_number"))
             new_status = override.get("status", "assigned")
+
+            # Resolve optional term_code → term_id for disambiguation
+            term_id = None
+            term_code = override.get("term_code")
+            if term_code:
+                if not term_map:
+                    self.log(
+                        f"   ⚠️ term_code '{term_code}' provided but no term_map available; "
+                        f"skipping override for {course_code} Sec {section_number} CLO {clo_number}"
+                    )
+                    continue
+                term_id = term_map.get(term_code)
+                if term_id is None:
+                    self.log(
+                        f"   ⚠️ Unknown term_code '{term_code}'; "
+                        f"skipping override for {course_code} Sec {section_number} CLO {clo_number}"
+                    )
+                    continue
 
             # Skip if required fields are missing
             if not course_code or not section_number:
@@ -1335,7 +1369,7 @@ class DemoSeeder(BaselineSeeder):
 
             # Look up the section outcome to update
             section_outcome = self._find_section_outcome(
-                course_code, section_number, clo_number, institution_id
+                course_code, section_number, clo_number, institution_id, term_id
             )
             if not section_outcome:
                 self.log(
@@ -1560,6 +1594,7 @@ class DemoSeeder(BaselineSeeder):
         section_number: str,
         clo_number: str,
         institution_id: str,
+        term_id: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """Find a specific section outcome by course/section/CLO number."""
         # Step 1: Find the course by course_code
@@ -1571,28 +1606,12 @@ class DemoSeeder(BaselineSeeder):
             return None
 
         # Step 2: Find the course outcome (template) by clo_number
-        course_outcomes = database_service.db.get_course_outcomes(course_id)
-        outcome_template = None
-        for co in course_outcomes or []:
-            if str(co.get("clo_number")) == clo_number:
-                outcome_template = co
-                break
-        if not outcome_template:
-            return None
-        outcome_id = outcome_template.get("id") or outcome_template.get("outcome_id")
+        outcome_id = self._find_outcome_id(course_id, clo_number)
         if not outcome_id:
             return None
 
-        # Step 3: Find the section by section_number
-        sections = database_service.db.get_sections_by_course(course_id)
-        target_section = None
-        for sec in sections or []:
-            if sec.get("section_number") == section_number:
-                target_section = sec
-                break
-        if not target_section:
-            return None
-        section_id = target_section.get("id") or target_section.get("section_id")
+        # Step 3: Find the section by section_number (optionally filtered by term)
+        section_id = self._find_section_id(course_id, section_number, term_id)
         if not section_id:
             return None
 
@@ -1603,6 +1622,51 @@ class DemoSeeder(BaselineSeeder):
             )
         )
         return section_outcome
+
+    def _find_outcome_id(self, course_id: str, clo_number: str) -> Optional[str]:
+        """Find the outcome template id by CLO number."""
+        course_outcomes = database_service.db.get_course_outcomes(course_id)
+        for co in course_outcomes or []:
+            if str(co.get("clo_number")) == clo_number:
+                return co.get("id") or co.get("outcome_id")
+        return None
+
+    def _find_section_id(
+        self,
+        course_id: str,
+        section_number: str,
+        term_id: Optional[str] = None,
+    ) -> Optional[str]:
+        """Find section id by section number, optionally filtering by term.
+
+        Caches offering lookups to avoid N+1 queries.
+        """
+        sections = database_service.db.get_sections_by_course(course_id)
+        offering_term_cache: dict = {}
+        for sec in sections or []:
+            if sec.get("section_number") != section_number:
+                continue
+            if term_id and not self._section_matches_term(
+                sec, term_id, offering_term_cache
+            ):
+                continue
+            return sec.get("id") or sec.get("section_id")
+        return None
+
+    @staticmethod
+    def _section_matches_term(
+        sec: Dict[str, Any],
+        term_id: str,
+        offering_cache: dict,
+    ) -> bool:
+        """Check if a section belongs to the given term (with caching)."""
+        offering_id = sec.get("offering_id")
+        if not offering_id:
+            return False
+        if offering_id not in offering_cache:
+            offering = database_service.db.get_course_offering(offering_id)
+            offering_cache[offering_id] = offering.get("term_id") if offering else None
+        return offering_cache[offering_id] == term_id
 
     def print_summary(self) -> None:
         """Print demo seeding summary"""
@@ -1773,6 +1837,48 @@ def _confirm_deployed_environment(args: argparse.Namespace, database_url: str) -
     print("\n✅ Confirmation received. Proceeding with remote seeding...\n")
 
 
+def _clear_flask_sessions() -> None:
+    """Clear Flask server-side session files to force re-login after DB reset.
+
+    Flask-Session stores sessions as files in ``flask_session/`` (the default
+    ``SESSION_FILE_DIR``).  When the database is wiped the user rows disappear
+    but stale session files keep browsers "logged in", which is confusing.
+    Removing these files ensures every user must authenticate again.
+    """
+    import glob
+
+    session_dirs = [
+        os.path.join(project_root, "flask_session"),
+        os.path.join(project_root, "data", "flask_session"),
+    ]
+
+    cleared = 0
+    for session_dir in session_dirs:
+        if os.path.isdir(session_dir):
+            files = glob.glob(os.path.join(session_dir, "*"))
+            cleared += len(files)
+            for f in files:
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
+    if cleared:
+        print(f"  🗑️  Cleared {cleared} session file(s)")
+
+
+def _rotate_db_generation() -> None:
+    """Write a new database generation token to invalidate stale sessions.
+
+    Any browser session whose stored ``_db_generation`` doesn't match the new
+    token will be destroyed on the next request, forcing a clean re-login.
+    See ``auth_service._get_session_user()`` for the check.
+    """
+    from src.services.auth_service import write_db_generation
+
+    token = write_db_generation()
+    print(f"  🔑 Rotated database generation token: {token[:8]}…")
+
+
 def _execute_seeding(args: argparse.Namespace) -> bool:
     """Execute the seeding operation."""
     if args.demo:
@@ -1782,6 +1888,8 @@ def _execute_seeding(args: argparse.Namespace) -> bool:
             from src.database.database_service import reset_database
 
             reset_database()
+            _clear_flask_sessions()
+            _rotate_db_generation()
         return demo_seeder.seed_demo()
     else:
         baseline_seeder = BaselineTestSeeder()
@@ -1790,6 +1898,8 @@ def _execute_seeding(args: argparse.Namespace) -> bool:
             from src.database.database_service import reset_database
 
             reset_database()
+            _clear_flask_sessions()
+            _rotate_db_generation()
 
         # Load manifest if provided
         manifest_data = None

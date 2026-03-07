@@ -884,3 +884,107 @@ def test_extract_request_value_from_args():
     with app.test_request_context(query_string="test_key=query_value"):
         value = _extract_request_value("test_key")
         assert value == "query_value"
+
+
+# ---------------------------------------------------------------------------
+#  Stale-session detection (database generation token)
+# ---------------------------------------------------------------------------
+
+
+class TestStaleSessionDetection:
+    """Verify that sessions are destroyed when the DB is re-seeded."""
+
+    def setup_method(self):
+        self.app = Flask(__name__)
+        self.app.config["TESTING"] = True
+        self.app.secret_key = "test-secret"
+
+    def test_stale_session_destroyed_when_generation_changes(self):
+        """A session whose _db_generation differs from disk is invalidated."""
+        with self.app.test_request_context():
+            from flask import session
+
+            from src.services.auth_service import AuthService
+
+            svc = AuthService()
+
+            # Pretend the session was created during generation "old-gen"
+            session["user_id"] = "u1"
+            session["email"] = "alice@example.com"
+            session["_db_generation"] = "old-gen"
+
+            # Patch the file read to return a different generation
+            with patch(
+                "src.services.auth_service._read_db_generation",
+                return_value="new-gen",
+            ):
+                with patch("data.session.manager.SessionService.destroy_session"):
+                    result = svc._get_session_user()
+
+            assert result is None, "Stale session should be rejected"
+
+    def test_session_valid_when_generation_matches(self):
+        """A session whose _db_generation matches disk is accepted."""
+        with self.app.test_request_context():
+            from flask import session
+
+            svc = AuthService()
+
+            session["user_id"] = "u1"
+            session["email"] = "alice@example.com"
+            session["_db_generation"] = "same-gen"
+
+            with patch(
+                "src.services.auth_service._read_db_generation",
+                return_value="same-gen",
+            ):
+                result = svc._get_session_user()
+
+            assert result is not None
+            assert result["email"] == "alice@example.com"
+
+    def test_no_generation_in_session_skips_check(self):
+        """Sessions without _db_generation are not invalidated (tests, old sessions)."""
+        with self.app.test_request_context():
+            from flask import session
+
+            svc = AuthService()
+
+            session["user_id"] = "u1"
+            session["email"] = "alice@example.com"
+            # No _db_generation key → guard is skipped
+
+            result = svc._get_session_user()
+            assert result is not None
+
+    def test_no_generation_file_skips_check(self):
+        """When the generation file doesn't exist, the check is a no-op."""
+        with self.app.test_request_context():
+            from flask import session
+
+            svc = AuthService()
+
+            session["user_id"] = "u1"
+            session["email"] = "alice@example.com"
+            session["_db_generation"] = "some-gen"
+
+            # File returns None (doesn't exist)
+            with patch(
+                "src.services.auth_service._read_db_generation", return_value=None
+            ):
+                result = svc._get_session_user()
+
+            assert result is not None
+
+    def test_write_and_read_db_generation(self, tmp_path):
+        """write_db_generation creates a file that _read_db_generation can read."""
+        from src.services.auth_service import (
+            _read_db_generation,
+            write_db_generation,
+        )
+
+        gen_file = tmp_path / ".db_generation"
+        with patch("src.services.auth_service.DB_GENERATION_FILE", gen_file):
+            token = write_db_generation()
+            assert token  # non-empty UUID string
+            assert _read_db_generation() == token

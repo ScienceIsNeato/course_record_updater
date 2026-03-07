@@ -95,10 +95,6 @@
         treeContainer: document.getElementById("ploTreeContainer"),
         programName: document.getElementById("ploTreeProgramName"),
         versionBadge: document.getElementById("ploTreeVersionBadge"),
-        statPloCount: document.getElementById("statPloCount"),
-        statMappedCloCount: document.getElementById("statMappedCloCount"),
-        statOverallPassRate: document.getElementById("statOverallPassRate"),
-        statMappingStatus: document.getElementById("statMappingStatus"),
         expandAllBtn: document.getElementById("expandAllBtn"),
         collapseAllBtn: document.getElementById("collapseAllBtn"),
         createPloBtn: document.getElementById("createPloBtn"),
@@ -108,6 +104,7 @@
         ploForm: document.getElementById("ploForm"),
         ploModalId: document.getElementById("ploModalId"),
         ploModalNumber: document.getElementById("ploModalNumber"),
+        ploModalNumberGroup: document.getElementById("ploModalNumberGroup"),
         ploModalDescription: document.getElementById("ploModalDescription"),
         ploModalLabel: document.getElementById("ploModalLabel"),
         ploModalAlert: document.getElementById("ploModalAlert"),
@@ -125,6 +122,7 @@
       if (el.programFilter) {
         el.programFilter.addEventListener("change", () => {
           this.currentProgramId = el.programFilter.value;
+          this._updateProgramActions();
           try {
             localStorage.setItem(STORAGE_KEY_PROGRAM, this.currentProgramId);
           } catch (_) {
@@ -143,7 +141,7 @@
         el.displayMode.addEventListener("change", () => {
           this.displayMode = el.displayMode.value;
           this._persistDisplayMode();
-          this._renderTree();
+          this._refreshBadges();
         });
       }
       if (el.expandAllBtn) {
@@ -200,6 +198,12 @@
         return;
       }
 
+      // "All Programs" option for institution admins
+      const allOpt = document.createElement("option");
+      allOpt.value = "";
+      allOpt.textContent = "All Programs";
+      sel.appendChild(allOpt);
+
       this.programs.forEach((p) => {
         const opt = document.createElement("option");
         opt.value = p.program_id || p.id;
@@ -207,7 +211,7 @@
         sel.appendChild(opt);
       });
 
-      // Default program: last selected (localStorage) → first in list
+      // Default program: last selected (localStorage) → "All Programs"
       let initial = null;
       try {
         initial = localStorage.getItem(STORAGE_KEY_PROGRAM);
@@ -216,10 +220,11 @@
       }
       const validIds = this.programs.map((p) => p.program_id || p.id);
       if (!initial || !validIds.includes(initial)) {
-        initial = validIds[0];
+        initial = ""; // default to All Programs
       }
       sel.value = initial;
       this.currentProgramId = initial;
+      this._updateProgramActions();
     },
 
     async _loadTerms() {
@@ -250,19 +255,39 @@
       this.currentTermId = defaultTerm;
     },
 
+    /**
+     * Show / hide program-specific action buttons ("New PLO", "Map CLO to PLO")
+     * based on whether a specific program is selected vs "All Programs".
+     */
+    _updateProgramActions() {
+      const el = this._el;
+      const hasProgram = !!this.currentProgramId;
+      if (el.createPloBtn) {
+        el.createPloBtn.style.display = hasProgram ? "" : "none";
+      }
+      if (el.mapCloBtn) {
+        el.mapCloBtn.style.display = hasProgram ? "" : "none";
+      }
+    },
+
     // ===================================================================
     // Tree fetch + render
     // ===================================================================
     async loadTree() {
       const pid = this.currentProgramId;
+      this._updateProgramActions();
+
+      // "All Programs" mode — load each program's tree
       if (!pid) {
-        setEmptyState(
-          "ploTreeContainer",
-          "Select a program to see its outcomes.",
-        );
-        this._updateStats(null);
+        if (this.programs.length === 0) {
+          setEmptyState("ploTreeContainer", "No programs available.");
+          return;
+        }
+        setLoadingState("ploTreeContainer", "Loading all programs…");
+        await this._loadAllPrograms();
         return;
       }
+
       setLoadingState("ploTreeContainer", "Loading PLO tree…");
 
       const qs = new URLSearchParams();
@@ -287,10 +312,159 @@
         if (this._el.displayMode) this._el.displayMode.value = this.displayMode;
         this.draftMappingId = null; // reset; re-fetched when modal opens
         this._renderTree();
-        this._updateStats(data);
+        this._loadTrendData();
       } catch (err) {
         setErrorState("ploTreeContainer", `Error: ${err.message}`);
       }
+    },
+
+    /**
+     * Load and render PLO trees for every program (bird's-eye view).
+     * Uses parallel fetches with a generation counter to prevent stale results.
+     */
+    async _loadAllPrograms() {
+      const container = this._el.treeContainer;
+      if (!container) return;
+      container.innerHTML = "";
+
+      // Generation counter prevents stale results from overwriting a newer load
+      this._allProgramsGen = (this._allProgramsGen || 0) + 1;
+      const gen = this._allProgramsGen;
+
+      const qs = new URLSearchParams();
+      if (this.currentTermId) qs.set("term_id", this.currentTermId);
+
+      // Fetch all programs in parallel
+      const fetches = this.programs.map((prog) => {
+        const progId = prog.program_id || prog.id;
+        const url = `/api/programs/${encodeURIComponent(progId)}/plo-dashboard?${qs}`;
+        return fetch(url, {
+          credentials: "include",
+          headers: { Accept: "application/json" },
+        })
+          .then((resp) => (resp.ok ? resp.json() : null))
+          .then((data) => ({ prog, data }))
+          .catch(() => ({ prog, data: null }));
+      });
+
+      const results = await Promise.allSettled(fetches);
+
+      // Abort if a newer load has started
+      if (gen !== this._allProgramsGen) return;
+
+      for (const result of results) {
+        const { prog, data } =
+          result.status === "fulfilled" ? result.value : {};
+        if (!data) continue;
+
+        // Program section heading
+        const heading = document.createElement("h5");
+        heading.className = "mt-3 mb-2 plo-all-programs-heading";
+        heading.textContent = prog.name;
+        if (data.mapping && data.mapping.version) {
+          const badge = document.createElement("span");
+          badge.className = "badge bg-secondary ms-2";
+          badge.textContent = `v${data.mapping.version}`;
+          heading.appendChild(badge);
+        }
+        // Collapsible program section
+        const section = document.createElement("div");
+        section.className = "plo-program-section";
+
+        // Add toggle chevron to heading
+        const toggle = document.createElement("span");
+        toggle.className = "plo-program-toggle";
+        toggle.innerHTML = '<i class="fas fa-chevron-down"></i>';
+        heading.insertBefore(toggle, heading.firstChild);
+        heading.style.cursor = "pointer";
+        section.appendChild(heading);
+
+        // Content container (collapsible)
+        const content = document.createElement("div");
+        content.className = "plo-program-content";
+
+        // Render tree for this program
+        if (data.plos && data.plos.length > 0) {
+          content.appendChild(this._buildSummaryBar(data.plos));
+          const ul = document.createElement("ul");
+          ul.className = "plo-tree";
+          const savedTree = this.tree;
+          const savedDisplayMode = this.displayMode;
+          this.tree = data;
+          this.displayMode = data.assessment_display_mode || "both";
+          data.plos.forEach((plo) => ul.appendChild(this._buildPloNode(plo)));
+          this.tree = savedTree;
+          this.displayMode = savedDisplayMode;
+          content.appendChild(ul);
+        } else {
+          const empty = document.createElement("p");
+          empty.className = "text-muted small fst-italic ms-3 mb-3";
+          empty.textContent = "No PLOs defined.";
+          content.appendChild(empty);
+        }
+
+        section.appendChild(content);
+        container.appendChild(section);
+
+        // Wire toggle
+        heading.addEventListener("click", () => {
+          section.classList.toggle("collapsed");
+        });
+      }
+
+      // Load trend sparklines for each program
+      this._loadAllTrendData();
+
+      if (this._el.programName) {
+        this._el.programName.textContent = "All Programs";
+      }
+      if (this._el.versionBadge) {
+        this._el.versionBadge.style.display = "none";
+      }
+    },
+
+    /**
+     * Load trend data for all programs (used in All Programs mode).
+     */
+    _loadAllTrendData() {
+      if (typeof globalThis === "undefined" || !globalThis.PloTrend) return;
+      for (const prog of this.programs) {
+        const progId = prog.program_id || prog.id;
+        globalThis.PloTrend.loadTrend(progId, this.currentTermId);
+      }
+    },
+
+    /**
+     * Load trend sparklines after the tree has been rendered.
+     * Delegates to PloTrend (plo_trend.js) if available.
+     */
+    _loadTrendData() {
+      if (
+        typeof globalThis !== "undefined" &&
+        globalThis.PloTrend &&
+        this.currentProgramId
+      ) {
+        globalThis.PloTrend.loadTrend(
+          this.currentProgramId,
+          this.currentTermId,
+        );
+      }
+    },
+
+    /**
+     * Update all assessment badges in-place for the current displayMode
+     * without rebuilding the DOM tree (preserves expanded/collapsed state).
+     */
+    _refreshBadges() {
+      const container = this._el.treeContainer;
+      if (!container) return;
+      container.querySelectorAll(".plo-assessment-badge").forEach((badge) => {
+        const raw = badge.dataset.passRate;
+        const passRate = raw === "" || raw == null ? null : Number(raw);
+        const { text, cssClass } = formatAssessment(passRate, this.displayMode);
+        badge.className = "plo-assessment-badge " + cssClass;
+        badge.textContent = text;
+      });
     },
 
     _renderTree() {
@@ -328,51 +502,82 @@
       data.plos.forEach((plo) => ul.appendChild(this._buildPloNode(plo)));
 
       container.innerHTML = "";
+      container.appendChild(this._buildSummaryBar(data.plos));
       container.appendChild(ul);
     },
 
-    _updateStats(data) {
-      const set = (el, val) => {
-        if (el) el.textContent = val;
-      };
-      if (!data) {
-        set(this._el.statPloCount, "-");
-        set(this._el.statMappedCloCount, "-");
-        set(this._el.statOverallPassRate, "-");
-        set(this._el.statMappingStatus, "-");
-        return;
-      }
-      const plos = data.plos || [];
-      const cloCount = plos.reduce((n, p) => n + (p.clo_count || 0), 0);
-      set(this._el.statPloCount, plos.length);
-      set(this._el.statMappedCloCount, cloCount);
+    /**
+     * Build a compact summary bar showing PLO status distribution.
+     * Displays counts of satisfactory / needs-attention / no-data PLOs
+     * with a proportional progress bar.
+     */
+    _buildSummaryBar(plos) {
+      const bar = document.createElement("div");
+      bar.className = "plo-summary-bar";
+      if (!plos || plos.length === 0) return bar;
 
-      // overall pass rate aggregated across all PLO aggregates
-      let took = 0;
-      let passed = 0;
-      plos.forEach((p) => {
-        const a = p.aggregate || {};
-        if (a.students_took) {
-          took += a.students_took;
-          passed += a.students_passed || 0;
-        }
+      const threshold = 70;
+      const groups = { pass: [], fail: [], nodata: [] };
+      plos.forEach((plo) => {
+        const rate = plo.aggregate && plo.aggregate.pass_rate;
+        if (rate === null || rate === undefined) groups.nodata.push(plo);
+        else if (rate >= threshold) groups.pass.push(plo);
+        else groups.fail.push(plo);
       });
-      if (took > 0) {
-        set(
-          this._el.statOverallPassRate,
-          `${Math.round((passed / took) * 100)}%`,
-        );
-      } else {
-        set(this._el.statOverallPassRate, "—");
-      }
+      const total = plos.length;
 
-      const status = data.mapping_status || "none";
-      const label = {
-        published: "Published",
-        draft: "Draft",
-        none: "Not mapped",
-      }[status];
-      set(this._el.statMappingStatus, label || status);
+      // Category rows with sparkline slots
+      const addRow = (label, cls, ploList) => {
+        if (ploList.length === 0) return;
+        const row = document.createElement("div");
+        row.className = "plo-summary-row " + cls;
+
+        const stat = document.createElement("span");
+        stat.className = "plo-summary-stat";
+        const dot = document.createElement("span");
+        dot.className = "plo-summary-dot";
+        stat.appendChild(dot);
+        stat.appendChild(document.createTextNode(ploList.length + " " + label));
+        row.appendChild(stat);
+
+        // Sparkline slots (populated after trend data loads)
+        const sparkGroup = document.createElement("div");
+        sparkGroup.className = "plo-summary-sparkline-group";
+        ploList.forEach((plo) => {
+          const slot = document.createElement("span");
+          slot.className = "plo-summary-sparkline-slot";
+          slot.dataset.ploId = plo.id;
+          const slotLabel = document.createElement("span");
+          slotLabel.className = "plo-summary-sparkline-label";
+          slotLabel.textContent =
+            plo.plo_number != null ? "(" + plo.plo_number + ")" : "";
+          slot.appendChild(slotLabel);
+          sparkGroup.appendChild(slot);
+        });
+        row.appendChild(sparkGroup);
+
+        bar.appendChild(row);
+      };
+      addRow("satisfactory", "stat-pass", groups.pass);
+      addRow("needs attention", "stat-fail", groups.fail);
+      addRow("no data", "stat-nodata", groups.nodata);
+
+      // Progress bar
+      const progress = document.createElement("div");
+      progress.className = "plo-summary-progress";
+      const addSegment = (count, cls) => {
+        if (count === 0) return;
+        const seg = document.createElement("div");
+        seg.className = "plo-summary-segment " + cls;
+        seg.style.width = (count / total) * 100 + "%";
+        progress.appendChild(seg);
+      };
+      addSegment(groups.pass.length, "seg-pass");
+      addSegment(groups.fail.length, "seg-fail");
+      addSegment(groups.nodata.length, "seg-nodata");
+      bar.appendChild(progress);
+
+      return bar;
     },
 
     // ===================================================================
@@ -517,6 +722,7 @@
       badge.className = "plo-assessment-badge";
       const passRate =
         aggregate && aggregate.pass_rate != null ? aggregate.pass_rate : null;
+      badge.dataset.passRate = passRate === null ? "" : String(passRate);
       const { text, cssClass } = formatAssessment(passRate, this.displayMode);
       badge.classList.add(cssClass);
       badge.textContent = text;
@@ -610,11 +816,19 @@
         el.ploModalId.value = plo.id;
         el.ploModalNumber.value = plo.plo_number || "";
         el.ploModalDescription.value = plo.description || "";
+        // Show PLO number (read-only) when editing
+        if (el.ploModalNumberGroup) {
+          el.ploModalNumberGroup.classList.remove("d-none");
+        }
       } else {
         el.ploModalLabel.textContent = "New Program Outcome";
         el.ploModalId.value = "";
         el.ploModalNumber.value = "";
         el.ploModalDescription.value = "";
+        // Hide PLO number on create — auto-assigned by server
+        if (el.ploModalNumberGroup) {
+          el.ploModalNumberGroup.classList.add("d-none");
+        }
       }
       this._showModal(el.ploModal);
     },
@@ -623,16 +837,25 @@
       e.preventDefault();
       const el = this._el;
       const pid = this.currentProgramId;
+      if (!pid) {
+        this._modalAlert(
+          el.ploModalAlert,
+          "Please select a specific program first.",
+          "danger",
+        );
+        return;
+      }
       const ploId = el.ploModalId.value;
-      // plo_number is stored as an INTEGER — coerce textual input so the
-      // unique constraint (program_id, plo_number) behaves consistently and
-      // ordering in get_program_outcomes() is numeric.
-      const rawNum = el.ploModalNumber.value.trim();
-      const parsed = parseInt(rawNum, 10);
       const body = {
-        plo_number: Number.isFinite(parsed) ? parsed : rawNum,
         description: el.ploModalDescription.value.trim(),
       };
+      // On edit, include the (read-only) plo_number; on create, omit it
+      // so the server auto-assigns the next available number.
+      if (ploId) {
+        const rawNum = el.ploModalNumber.value.trim();
+        const parsed = parseInt(rawNum, 10);
+        body.plo_number = Number.isFinite(parsed) ? parsed : rawNum;
+      }
 
       const method = ploId ? "PUT" : "POST";
       const url = ploId

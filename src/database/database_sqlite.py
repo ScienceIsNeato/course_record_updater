@@ -991,10 +991,15 @@ class SQLDatabase(DatabaseInterface):
         course_id: Optional[str] = None,
         section_id: Optional[str] = None,
         outcome_ids: Optional[List[str]] = None,
+        term_ids: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Get section outcomes filtered by various criteria.
         This is the source of truth for workflow audits (section-level granularity).
+
+        Args:
+            term_id: Single term filter (backward compat).
+            term_ids: Multiple term filter; when provided, overrides term_id.
 
         Performance Note: Uses eager loading to fetch all related data in one query
         to avoid N+1 query problems when displaying audit pages.
@@ -1041,7 +1046,9 @@ class SQLDatabase(DatabaseInterface):
             if outcome_ids:
                 query = query.where(CourseSectionOutcome.outcome_id.in_(outcome_ids))
 
-            if term_id:
+            if term_ids:
+                query = query.where(CourseOffering.term_id.in_(term_ids))
+            elif term_id:
                 query = query.where(CourseOffering.term_id == term_id)
 
             if program_id:

@@ -114,6 +114,14 @@ class SessionService:
         session["remember_me"] = remember_me
         session["csrf_token"] = SessionSecurity.generate_csrf_token()
 
+        # Stamp the current database generation token so stale sessions
+        # can be detected after a database re-seed (--clear).
+        from src.services.auth_service import _read_db_generation
+
+        db_gen = _read_db_generation()
+        if db_gen is not None:
+            session["_db_generation"] = db_gen
+
         # Set session as permanent if remember me is enabled
         if remember_me:
             session.permanent = True

@@ -6,10 +6,11 @@ around database_service that adds permission context, validation,
 and audit logging.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from src.database import database_service
 from src.utils.logging_config import get_logger
+from src.utils.term_utils import get_term_status
 
 logger = get_logger(__name__)
 
@@ -36,16 +37,26 @@ def get_program_outcome(plo_id: str) -> Optional[Dict[str, Any]]:
 def create_program_outcome(data: Dict[str, Any]) -> str:
     """Create a new PLO template.
 
-    Required keys: program_id, institution_id, plo_number, description.
+    Required keys: program_id, institution_id, description.
+    ``plo_number`` is optional – when omitted (or ``None``) the next
+    available number for the program is assigned automatically.
     Returns the new PLO ID.
 
     Raises:
         ValueError: if required fields are missing.
     """
-    required = ("program_id", "institution_id", "plo_number", "description")
+    required = ("program_id", "institution_id", "description")
     missing = [f for f in required if f not in data or data[f] is None]
     if missing:
         raise ValueError(f"Missing required fields: {', '.join(missing)}")
+
+    # Auto-assign next PLO number when not provided
+    if data.get("plo_number") is None:
+        existing = database_service.get_program_outcomes(
+            data["program_id"], include_inactive=True
+        )
+        max_num = max((p.get("plo_number", 0) or 0 for p in existing), default=0)
+        data["plo_number"] = max_num + 1
 
     plo_id = database_service.create_program_outcome(data)
     logger.info("Created PLO %s for program %s", plo_id, data["program_id"])
@@ -351,26 +362,6 @@ def get_plo_dashboard_tree(
                 "course_title": course.get("course_title"),
             }
 
-    def _aggregate(records: List[Dict[str, Any]]) -> Dict[str, Any]:
-        took = 0
-        passed = 0
-        counted = 0
-        for r in records:
-            t = r.get("students_took")
-            p = r.get("students_passed")
-            if isinstance(t, int) and t > 0 and isinstance(p, int):
-                took += t
-                passed += p
-                counted += 1
-        rate = round(passed / took * 100, 1) if took > 0 else None
-        return {
-            "students_took": took,
-            "students_passed": passed,
-            "pass_rate": rate,
-            "section_count": len(records),
-            "sections_with_data": counted,
-        }
-
     tree: List[Dict[str, Any]] = []
     for plo in plos:
         clo_nodes: List[Dict[str, Any]] = []
@@ -380,7 +371,7 @@ def get_plo_dashboard_tree(
             clo_nodes.append(
                 {
                     **meta,
-                    "aggregate": _aggregate(secs),
+                    "aggregate": _aggregate_section_outcomes(secs),
                     "sections": secs,
                 }
             )
@@ -389,7 +380,7 @@ def get_plo_dashboard_tree(
         tree.append(
             {
                 **plo,
-                "aggregate": _aggregate(all_plo_sections),
+                "aggregate": _aggregate_section_outcomes(all_plo_sections),
                 "clo_count": len(clo_nodes),
                 "clos": clo_nodes,
             }
@@ -440,3 +431,372 @@ def get_unmapped_clos(
                 unmapped.append({**clo, "course": course})
 
     return unmapped
+
+
+# ---------------------------------------------------------------------------
+# Trend data (multi-term time series)
+# ---------------------------------------------------------------------------
+
+
+def _build_term_metadata(
+    all_terms: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Convert raw term rows into metadata dicts with ``is_current`` flag."""
+    meta: List[Dict[str, Any]] = []
+    for t in all_terms:
+        status = get_term_status(
+            str(t.get("start_date", "")),
+            str(t.get("end_date", "")),
+        )
+        meta.append(
+            {
+                "term_id": t.get("id") or t.get("term_id"),
+                "term_name": t.get("name") or t.get("term_name", ""),
+                "start_date": t.get("start_date", ""),
+                "is_current": status == "ACTIVE",
+            }
+        )
+    return meta
+
+
+def _resolve_plo_clo_mapping(
+    program_id: str,
+    plos: List[Dict[str, Any]],
+) -> Tuple[Optional[int], Dict[str, List[str]], set, Dict[str, str]]:
+    """Resolve latest published mapping and build PLO → CLO index.
+
+    Returns:
+        (mapping_version, plo_to_clos, all_clo_ids, plo_snapshots)
+    """
+    mapping = database_service.get_latest_published_plo_mapping(program_id)
+    mapping_version = mapping.get("version") if mapping else None
+    entries = mapping.get("entries", []) if mapping else []
+
+    plo_to_clos: Dict[str, List[str]] = {p["id"]: [] for p in plos}
+    all_clo_ids: set[str] = set()
+    plo_snapshots: Dict[str, str] = {}
+
+    for entry in entries:
+        plo_id = entry.get("program_outcome_id")
+        clo_id = entry.get("course_outcome_id")
+        if plo_id in plo_to_clos and clo_id:
+            plo_to_clos[plo_id].append(clo_id)
+            all_clo_ids.add(clo_id)
+            snap = entry.get("plo_description_snapshot")
+            if snap and plo_id not in plo_snapshots:
+                plo_snapshots[plo_id] = snap
+
+    return mapping_version, plo_to_clos, all_clo_ids, plo_snapshots
+
+
+def _index_outcomes_by_clo_term(
+    section_outcomes: List[Dict[str, Any]],
+) -> Dict[str, Dict[str, List[Dict[str, Any]]]]:
+    """Index section outcomes into ``{clo_id: {term_id: [records]}}``."""
+    by_clo_term: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
+    for so in section_outcomes:
+        clo_id = so.get("outcome_id")
+        so_term_id = _extract_term_id(so)
+        if clo_id and so_term_id:
+            by_clo_term.setdefault(clo_id, {}).setdefault(so_term_id, []).append(so)
+    return by_clo_term
+
+
+def _build_clo_metadata(
+    program_id: str,
+) -> Dict[str, Dict[str, Any]]:
+    """Build ``{clo_id: {outcome_id, clo_number, description, course_number}}``."""
+    clo_meta: Dict[str, Dict[str, Any]] = {}
+    courses = database_service.get_courses_by_program(program_id)
+    for course in courses:
+        for clo in database_service.get_course_outcomes(course["course_id"]):
+            clo_meta[clo["outcome_id"]] = {
+                "outcome_id": clo["outcome_id"],
+                "clo_number": clo.get("clo_number"),
+                "description": clo.get("description"),
+                "course_number": course.get("course_number"),
+            }
+    return clo_meta
+
+
+def _aggregate_section_outcomes(
+    records: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Aggregate section outcomes into a single trend data point."""
+    took = 0
+    passed = 0
+    counted = 0
+    for r in records:
+        t = r.get("students_took")
+        p = r.get("students_passed")
+        if isinstance(t, int) and t > 0 and isinstance(p, int):
+            took += t
+            passed += p
+            counted += 1
+    rate = round(passed / took * 100, 1) if took > 0 else None
+    return {
+        "students_took": took,
+        "students_passed": passed,
+        "pass_rate": rate,
+        "section_count": len(records),
+        "sections_with_data": counted,
+    }
+
+
+def _build_trend_point(
+    records: List[Dict[str, Any]],
+    term_id: str,
+) -> Optional[Dict[str, Any]]:
+    """Return an aggregated trend point for *records*, or ``None`` if empty."""
+    if not records:
+        return None
+    point = _aggregate_section_outcomes(records)
+    point["term_id"] = term_id
+    return point
+
+
+def _detect_discontinuities(
+    clo_ids: List[str],
+    clo_meta: Dict[str, Dict[str, Any]],
+    by_clo_term: Dict[str, Dict[str, List[Dict[str, Any]]]],
+    term_meta: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Detect CLO composition changes between consecutive terms.
+
+    Compares the set of CLOs that have assessment data in each term.
+    When the set changes between term N and N+1, emits a discontinuity
+    marker recording which CLOs were added/removed.
+
+    Returns a list of discontinuity dicts, each with::
+
+        {
+            "term_index": int,       # index of the LATER term
+            "term_id": str,
+            "type": "clo_change",
+            "added": [{"clo_id", "label"}],  # CLOs new in this term
+            "removed": [{"clo_id", "label"}] # CLOs gone from prev term
+        }
+    """
+    discontinuities: List[Dict[str, Any]] = []
+
+    def _clo_label(clo_id: str) -> str:
+        meta = clo_meta.get(clo_id, {})
+        course = meta.get("course_number", "?")
+        num = meta.get("clo_number", "?")
+        return f"{course}/{num}"
+
+    prev_active: Optional[set] = None
+    for idx, tm in enumerate(term_meta):
+        tid = tm["term_id"]
+        active = {cid for cid in clo_ids if by_clo_term.get(cid, {}).get(tid)}
+
+        if prev_active is not None and active != prev_active:
+            added = active - prev_active
+            removed = prev_active - active
+            if added or removed:
+                discontinuities.append(
+                    {
+                        "term_index": idx,
+                        "term_id": tid,
+                        "type": "clo_change",
+                        "added": [
+                            {"clo_id": c, "label": _clo_label(c)} for c in sorted(added)
+                        ],
+                        "removed": [
+                            {"clo_id": c, "label": _clo_label(c)}
+                            for c in sorted(removed)
+                        ],
+                    }
+                )
+
+        # Only start tracking after the first term with any data
+        if active or prev_active is not None:
+            prev_active = active
+
+    return discontinuities
+
+
+def _assemble_plo_trends(
+    plos: List[Dict[str, Any]],
+    plo_to_clos: Dict[str, List[str]],
+    clo_meta: Dict[str, Dict[str, Any]],
+    by_clo_term: Dict[str, Dict[str, List[Dict[str, Any]]]],
+    term_meta: List[Dict[str, Any]],
+    plo_snapshots: Dict[str, str],
+) -> List[Dict[str, Any]]:
+    """Assemble per-PLO and per-CLO trend arrays."""
+    plo_results: List[Dict[str, Any]] = []
+    for plo in plos:
+        clo_ids = plo_to_clos.get(plo["id"], [])
+
+        # CLO-level trends
+        clo_trends = _build_clo_trends(clo_ids, clo_meta, by_clo_term, term_meta)
+
+        # PLO-level trend (aggregate across all CLOs per term)
+        plo_trend_points: List[Optional[Dict[str, Any]]] = []
+        for tm in term_meta:
+            tid = tm["term_id"]
+            all_records: List[Dict[str, Any]] = []
+            for clo_id in clo_ids:
+                all_records.extend(by_clo_term.get(clo_id, {}).get(tid, []))
+            plo_trend_points.append(_build_trend_point(all_records, tid))
+
+        # Detect curriculum changes (CLO composition shifts between terms)
+        discontinuities = _detect_discontinuities(
+            clo_ids, clo_meta, by_clo_term, term_meta
+        )
+
+        plo_results.append(
+            {
+                "id": plo["id"],
+                "plo_number": plo.get("plo_number"),
+                "description": plo_snapshots.get(plo["id"], plo.get("description")),
+                "trend": plo_trend_points,
+                "clos": clo_trends,
+                "discontinuities": discontinuities,
+            }
+        )
+    return plo_results
+
+
+def _build_clo_trends(
+    clo_ids: List[str],
+    clo_meta: Dict[str, Dict[str, Any]],
+    by_clo_term: Dict[str, Dict[str, List[Dict[str, Any]]]],
+    term_meta: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Build per-CLO trend arrays across all terms."""
+    clo_trends: List[Dict[str, Any]] = []
+    for clo_id in clo_ids:
+        meta = clo_meta.get(clo_id, {"outcome_id": clo_id})
+        clo_trend_points: List[Optional[Dict[str, Any]]] = []
+        for tm in term_meta:
+            tid = tm["term_id"]
+            records = by_clo_term.get(clo_id, {}).get(tid, [])
+            clo_trend_points.append(_build_trend_point(records, tid))
+        clo_trends.append({**meta, "trend": clo_trend_points})
+    return clo_trends
+
+
+def get_plo_trend_data(
+    program_id: str,
+    institution_id: str,
+) -> Dict[str, Any]:
+    """Build multi-term trend data for a program's PLO dashboard.
+
+    Uses the **current** published mapping as a "lens" to look back through
+    all historical terms.  This means the mapping is fixed (today's PLO↔CLO
+    links), but assessment data comes from each term independently.
+
+    Defensive design against data volatility:
+    - Queries by CLO IDs directly (skips ``course_programs`` join issues).
+    - Uses ``null`` for terms where a CLO had no data (not ``0``).
+    - Includes ``is_current`` flag for in-progress terms.
+    - Carries ``plo_description_snapshot`` from mapping entries when available.
+
+    Returns::
+
+        {
+            "program_id": str,
+            "mapping_version": int | None,
+            "terms": [
+                {"term_id": str, "term_name": str, "is_current": bool}, ...
+            ],
+            "plos": [
+                {
+                    "id": str, "plo_number": int, "description": str,
+                    "trend": [
+                        {"term_id": str, "pass_rate": float | None,
+                         "students_took": int, "students_passed": int,
+                         "section_count": int} | None, ...
+                    ],
+                    "clos": [
+                        {
+                            "outcome_id": str, "clo_number": str,
+                            "description": str, "course_number": str,
+                            "trend": [ ... ]   # same shape per term
+                        }, ...
+                    ]
+                }, ...
+            ]
+        }
+    """
+    # 1. Get all terms, sorted chronologically (oldest first for charting)
+    all_terms = database_service.get_all_terms(institution_id)
+    all_terms.sort(key=lambda t: t.get("start_date", ""))
+
+    if not all_terms:
+        return {
+            "program_id": program_id,
+            "mapping_version": None,
+            "terms": [],
+            "plos": [],
+        }
+
+    term_meta = _build_term_metadata(all_terms)
+    term_ids = [tm["term_id"] for tm in term_meta]
+
+    # 2. Resolve mapping → PLO↔CLO associations
+    plos = database_service.get_program_outcomes(program_id)
+    mapping_version, plo_to_clos, all_clo_ids, plo_snapshots = _resolve_plo_clo_mapping(
+        program_id, plos
+    )
+
+    # 3. Fetch ALL section outcomes across ALL terms in one query
+    all_section_outcomes: List[Dict[str, Any]] = []
+    if all_clo_ids and term_ids:
+        all_section_outcomes = database_service.get_section_outcomes_by_criteria(
+            institution_id=institution_id,
+            outcome_ids=list(all_clo_ids),
+            term_ids=term_ids,
+        )
+
+    # 4. Index by (clo_id, term_id) and build CLO metadata
+    by_clo_term = _index_outcomes_by_clo_term(all_section_outcomes)
+    clo_meta = _build_clo_metadata(program_id)
+
+    # 5. Assemble trend results
+    plo_results = _assemble_plo_trends(
+        plos, plo_to_clos, clo_meta, by_clo_term, term_meta, plo_snapshots
+    )
+
+    return {
+        "program_id": program_id,
+        "mapping_version": mapping_version,
+        "terms": term_meta,
+        "plos": plo_results,
+    }
+
+
+def _extract_term_id(section_outcome: Dict[str, Any]) -> Optional[str]:
+    """Extract term_id from a section outcome's nested relationships.
+
+    The ``to_dict`` serialisation nests the offering's term under
+    ``_section._offering.term_id`` (or similar paths).  We walk the
+    common shapes to find the term identifier.
+    """
+    # Direct term_id on the section outcome (simplest)
+    tid = section_outcome.get("term_id")
+    if tid:
+        return str(tid)
+
+    # Nested: _section → _offering → term_id
+    sec = section_outcome.get("_section") or section_outcome.get("section") or {}
+    off = sec.get("_offering") or sec.get("offering") or {}
+    tid = off.get("term_id")
+    if tid:
+        return str(tid)
+
+    # Nested: _offering → term_id (flatter serialisation)
+    off2 = section_outcome.get("_offering") or section_outcome.get("offering") or {}
+    tid = off2.get("term_id")
+    if tid:
+        return str(tid)
+
+    # Nested term object
+    term = off.get("_term") or off.get("term") or off2.get("_term") or {}
+    tid = term.get("id") or term.get("term_id")
+    if tid:
+        return str(tid)
+
+    return None

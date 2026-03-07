@@ -188,7 +188,7 @@ def _run_setup(commands: List[str], *, skip: bool, auto: bool) -> bool:
         # shell=True is intentional: setup blocks use &&, source, etc.
         # Commands come from a repo-controlled markdown file.
         rc = subprocess.run(  # nosec B602
-            cmd, shell=True, cwd=_REPO_ROOT
+            cmd, shell=True, cwd=_REPO_ROOT  # nosemgrep: python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
         ).returncode
         if rc != 0:
             print(f"\n✗ Setup command failed (exit {rc}): {cmd}\n")

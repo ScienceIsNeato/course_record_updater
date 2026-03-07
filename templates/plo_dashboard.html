@@ -19,45 +19,9 @@
             </p>
         </div>
         <div>
-            <button class="btn btn-primary" id="createPloBtn">
+            <button class="btn btn-primary" id="createPloBtn" style="display:none">
                 <i class="fas fa-plus me-1"></i> New PLO
             </button>
-        </div>
-    </div>
-
-    <!-- Summary stats -->
-    <div class="row mb-4">
-        <div class="col">
-            <div class="card" style="border-color: #0d6efd; border-width: 2px;">
-                <div class="card-body text-center py-2">
-                    <h4 class="mb-0" id="statPloCount" style="color: #0d6efd;">-</h4>
-                    <p class="mb-0 small" style="color: #0d6efd;">Program Outcomes</p>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="card" style="border-color: #6c757d; border-width: 2px;">
-                <div class="card-body text-center py-2">
-                    <h4 class="mb-0" id="statMappedCloCount" style="color: #6c757d;">-</h4>
-                    <p class="mb-0 small" style="color: #6c757d;">Mapped CLOs</p>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="card" style="border-color: #198754; border-width: 2px;">
-                <div class="card-body text-center py-2">
-                    <h4 class="mb-0" id="statOverallPassRate" style="color: #198754;">-</h4>
-                    <p class="mb-0 small" style="color: #198754;">Overall Pass Rate</p>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="card" style="border-color: #fd7e14; border-width: 2px;">
-                <div class="card-body text-center py-2">
-                    <h4 class="mb-0" id="statMappingStatus" style="color: #fd7e14;">-</h4>
-                    <p class="mb-0 small" style="color: #fd7e14;">Mapping Status</p>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -136,12 +100,12 @@
             <form id="ploForm">
                 <div class="modal-body">
                     <input type="hidden" id="ploModalId">
-                    <div class="mb-3">
-                        <label for="ploModalNumber" class="form-label">PLO Number *</label>
+                    <div class="mb-3 d-none" id="ploModalNumberGroup">
+                        <label for="ploModalNumber" class="form-label">PLO Number</label>
                         <input type="number" min="1" class="form-control" id="ploModalNumber"
-                               required placeholder="e.g. 5">
+                               readonly>
                         <small class="text-muted">
-                            Displayed as PLO-&lt;n&gt;. Must be unique within this program.
+                            Automatically assigned. Displayed as PLO-&lt;n&gt;.
                         </small>
                     </div>
                     <div class="mb-3">
@@ -206,6 +170,10 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"
+        integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" {# pragma: allowlist secret - SRI hash #}
+        crossorigin="anonymous"></script>
 <script src="{{ url_for('static', filename='dashboard_utils.js') }}"></script>
+<script src="{{ url_for('static', filename='plo_trend.js') }}"></script>
 <script src="{{ url_for('static', filename='plo_dashboard.js') }}"></script>
 {% endblock %}
