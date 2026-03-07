@@ -517,11 +517,12 @@
 
         const stat = document.createElement("span");
         stat.className = "plo-summary-stat";
-        stat.innerHTML =
-          '<span class="plo-summary-dot"></span>' +
-          ploList.length +
-          " " +
-          label;
+        const dot = document.createElement("span");
+        dot.className = "plo-summary-dot";
+        stat.appendChild(dot);
+        stat.appendChild(
+          document.createTextNode(ploList.length + " " + label),
+        );
         row.appendChild(stat);
 
         // Sparkline slots (populated after trend data loads)

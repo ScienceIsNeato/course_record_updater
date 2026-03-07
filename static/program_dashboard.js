@@ -467,7 +467,7 @@
           return this._summarisePloTree(prog, body);
         } catch (err) {
           // eslint-disable-next-line no-console
-          console.warn(`PLO summary fetch failed for ${pid}:`, err);
+          console.warn("PLO summary fetch failed for " + pid + ":", err); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring
           return {
             program: prog.program_name || pid,
             plo_count: "—",

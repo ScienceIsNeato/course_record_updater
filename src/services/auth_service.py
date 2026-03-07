@@ -740,7 +740,7 @@ def write_db_generation() -> str:
     token = str(uuid.uuid4())
     DB_GENERATION_FILE.parent.mkdir(parents=True, exist_ok=True)
     DB_GENERATION_FILE.write_text(token)
-    logger.info("[Auth] Wrote new database generation token: %s", token)
+    logger.info("[Auth] Wrote new database generation token")
     return token
 
 
