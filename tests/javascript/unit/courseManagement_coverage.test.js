@@ -1,6 +1,6 @@
-const { setBody, flushPromises } = require('../helpers/dom');
+const { setBody, flushPromises } = require("../helpers/dom");
 
-describe('courseManagement.js Coverage Boost', () => {
+describe("courseManagement.js Coverage Boost", () => {
   let mockLoadCourses;
 
   beforeEach(() => {
@@ -41,21 +41,21 @@ describe('courseManagement.js Coverage Boost', () => {
     global.bootstrap = {
       Modal: jest.fn().mockImplementation(() => ({
         show: jest.fn(),
-        hide: jest.fn()
-      }))
+        hide: jest.fn(),
+      })),
     };
     global.bootstrap.Modal.getInstance = jest.fn(() => ({ hide: jest.fn() }));
 
     mockLoadCourses = jest.fn();
     global.loadCourses = mockLoadCourses;
-    
-    jest.spyOn(window, 'alert').mockImplementation(() => {});
-    jest.spyOn(window, 'confirm').mockReturnValue(true);
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    jest.spyOn(window, "alert").mockImplementation(() => {});
+    jest.spyOn(window, "confirm").mockReturnValue(true);
+    jest.spyOn(console, "error").mockImplementation(() => {});
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ success: true, message: 'Success' })
+      json: async () => ({ success: true, message: "Success" }),
     });
   });
 
@@ -64,33 +64,32 @@ describe('courseManagement.js Coverage Boost', () => {
     delete global.loadCourses;
   });
 
-  test('createCourseForm calls loadCourses on success', async () => {
-    require('../../../static/courseManagement.js');
-    document.dispatchEvent(new Event('DOMContentLoaded'));
-    
-    const form = document.getElementById('createCourseForm');
-    form.dispatchEvent(new Event('submit'));
-    
+  test("createCourseForm calls loadCourses on success", async () => {
+    require("../../../static/courseManagement.js");
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+
+    const form = document.getElementById("createCourseForm");
+    form.dispatchEvent(new Event("submit"));
+
     await flushPromises();
     expect(mockLoadCourses).toHaveBeenCalled();
   });
 
-  test('editCourseForm calls loadCourses on success', async () => {
-    require('../../../static/courseManagement.js');
-    document.dispatchEvent(new Event('DOMContentLoaded'));
-    
-    const form = document.getElementById('editCourseForm');
-    form.dispatchEvent(new Event('submit'));
-    
+  test("editCourseForm calls loadCourses on success", async () => {
+    require("../../../static/courseManagement.js");
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+
+    const form = document.getElementById("editCourseForm");
+    form.dispatchEvent(new Event("submit"));
+
     await flushPromises();
     expect(mockLoadCourses).toHaveBeenCalled();
   });
 
-  test('deleteCourse calls loadCourses on success', async () => {
-    require('../../../static/courseManagement.js');
-    await global.deleteCourse('c1', 'Intro');
+  test("deleteCourse calls loadCourses on success", async () => {
+    require("../../../static/courseManagement.js");
+    await global.deleteCourse("c1", "Intro");
     await flushPromises();
     expect(mockLoadCourses).toHaveBeenCalled();
   });
 });
-

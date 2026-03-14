@@ -13,13 +13,14 @@ dashboard. Covers the decisions embodied in
 CLO → Section) rather than a flat grid or a matrix view.
 
 **Why:**
-- The *domain is inherently hierarchical.* A matrix view (PLOs × CLOs
+
+- The _domain is inherently hierarchical._ A matrix view (PLOs × CLOs
   on two axes) scales badly — six PLOs × forty CLOs gives you a 240-
   cell sparse grid where most cells are empty. A tree only renders
   what exists.
 - **Progressive disclosure.** An accreditor asking "how are we doing
   on PLO-3?" wants one number first (the pass-rate badge on the
-  collapsed PLO-3 row), *then* the option to drill into which CLOs
+  collapsed PLO-3 row), _then_ the option to drill into which CLOs
   contribute and which sections delivered them. A table shows
   everything at once; a tree lets you stop where your question stops.
 - **Cheap empty states.** A PLO with no mappings renders as a single
@@ -28,7 +29,7 @@ CLO → Section) rather than a flat grid or a matrix view.
 
 **Trade-off:** Matrices are better for spotting gaps ("which CLOs are
 orphaned?"). We mitigate that in the Map-CLO modal — its dropdown is
-pre-filtered to *unmapped* CLOs so the gap list is always one click
+pre-filtered to _unmapped_ CLOs so the gap list is always one click
 away.
 
 ---
@@ -41,6 +42,7 @@ whose format is controlled by a **per-program** setting
 `78%`, `"both"` → `S (78%)`.
 
 **Why per-program and not per-institution?**
+
 - Different departments have genuinely different reporting cultures.
   Nursing programs often accredit on binary mastery (Satisfactory /
   Unsatisfactory); engineering programs prefer raw percentages. One
@@ -50,12 +52,14 @@ whose format is controlled by a **per-program** setting
   `PUT /api/programs/<id>`.
 
 **Why three modes, not two?**
-- `both` is the *explainer mode*. When you're walking a dean through
+
+- `both` is the _explainer mode_. When you're walking a dean through
   the dashboard you want "we render S/U because XX% passed" visible at
   a glance. When they're doing self-service later they'll flip to
   whichever single mode their report template uses.
 
 **Why one badge per node, not sparklines or mini-charts?**
+
 - A tree with a sparkline at every row is visually noisy — your eye
   can't pick out the failing PLO. A single coloured token (green / amber)
   is a faster scan.
@@ -73,7 +77,8 @@ explicit **Publish Draft** button — publishing isn't implied by
 closing the modal.
 
 **Why keep the workflow surface-level?**
-- PLO↔CLO mappings are the *audit trail* for accreditation. A user
+
+- PLO↔CLO mappings are the _audit trail_ for accreditation. A user
   should never accidentally publish because they clicked away. Making
   "Publish" an explicit button and showing the version badge at all
   times means you always know whether you're looking at the version of
@@ -93,7 +98,8 @@ back to most-recent by `start_date`. "All Terms" is an explicit
 option, not the default.
 
 **Why:**
-- The common question is "how are we doing *this semester*?" Not "how
+
+- The common question is "how are we doing _this semester_?" Not "how
   are we doing across all of history?" Defaulting to all-terms makes
   the first number you see the least actionable one.
 - Respecting the existing term-status infrastructure
@@ -105,30 +111,32 @@ option, not the default.
 
 ## 5. Three distinct empty states, three distinct messages
 
-| Level | Condition | Message | Call to action |
-| ----- | --------- | ------- | -------------- |
-| Tree  | `plos.length === 0` | "No Program Outcomes defined for this program yet." | Opens the **New PLO** modal |
-| PLO   | `plo.clos.length === 0` | "No CLOs mapped to this PLO yet." | Points at **Map CLO to PLO** |
-| CLO   | `clo.sections.length === 0` | "No section assessments in the selected term." | Hints at the **Term** filter |
+| Level | Condition                   | Message                                             | Call to action               |
+| ----- | --------------------------- | --------------------------------------------------- | ---------------------------- |
+| Tree  | `plos.length === 0`         | "No Program Outcomes defined for this program yet." | Opens the **New PLO** modal  |
+| PLO   | `plo.clos.length === 0`     | "No CLOs mapped to this PLO yet."                   | Points at **Map CLO to PLO** |
+| CLO   | `clo.sections.length === 0` | "No section assessments in the selected term."      | Hints at the **Term** filter |
 
 **Why three and not one generic "nothing here"?**
-- Each empty state has a *different resolution path.* A missing PLO is
+
+- Each empty state has a _different resolution path._ A missing PLO is
   solved by creating one; a missing CLO mapping is solved by opening a
   draft and linking; an empty section list is solved by changing the
   term filter (or waiting for instructors to submit). One generic
-  message would tell the user *that* something's missing but not
-  *which tool fixes it*.
+  message would tell the user _that_ something's missing but not
+  _which tool fixes it_.
 
 ---
 
 ## 6. Mini-panel on the program-admin dashboard is fire-and-forget
 
 **Decision:** The PLO summary on the main program-admin dashboard
-(`loadPloSummary()` in `static/program_dashboard.js`) runs *after* the
+(`loadPloSummary()` in `static/program_dashboard.js`) runs _after_ the
 core dashboard renders, tolerates per-program fetch failures, and
 shows a compact table rather than a mini-tree.
 
 **Why not inline the tree?**
+
 - The `/api/programs/<id>/plo-dashboard` endpoint walks
   mappings + section outcomes and joins across five tables per
   program. Doing that for every program in the institution before the
@@ -138,7 +146,7 @@ shows a compact table rather than a mini-tree.
 - A per-program fetch-failure yields a placeholder row
   (`plo_count: "—"`) rather than blanking the whole panel — one stale
   program shouldn't hide the other nine.
-- The panel's job is *"should I go look at the PLO dashboard?"* — a
+- The panel's job is _"should I go look at the PLO dashboard?"_ — a
   five-column summary table (Program · PLOs · Mapped CLOs · Mapping
   Status · Pass Rate) answers that. Drilldown belongs on the
   dedicated page.
@@ -152,13 +160,14 @@ UI renders it as `PLO-<n>` and the New-PLO form takes
 `<input type="number" min="1">`.
 
 **Why an integer and not a free-text label like "PLO-1a"?**
+
 - **Sorting.** `ORDER BY plo_number` gives you PLO-1 through PLO-12
   in the right order. String labels give you PLO-1, PLO-10, PLO-11,
   PLO-2.
 - **Uniqueness is cheap.** `(program_id, plo_number)` is a natural
   unique constraint. With free-text labels you'd need case-folded
   comparison and users would wonder why "PLO 1" ≠ "PLO-1".
-- **Room to grow.** If a program later *does* need sub-lettered
+- **Room to grow.** If a program later _does_ need sub-lettered
   outcomes (PLO-1a, PLO-1b) that's a `sub_letter` column away.
   Going the other direction — from strings back to integers — would
   be a destructive migration.
@@ -172,6 +181,7 @@ through the real API (`api_post`/`api_put`) but verifies results with
 `sqlite3` queries in `post_commands`.
 
 **Why not verify via `api_get`?**
+
 - The JSON runner's `api_get` action doesn't capture the response
   body — you get a status code, not data you can assert on. Direct
   sqlite queries can assert `COUNT(*) = 1`, `version = 2`,

@@ -1,5 +1,6 @@
 # Excel Import Logs
-*Captured during simulated course import flow*
+
+_Captured during simulated course import flow_
 
 ```
 2025-11-20 00:05:02,973 - simulate_actions - INFO - Simulating Course Import...
@@ -23,4 +24,3 @@
 2025-11-20 00:05:03 - ImportService - INFO - Created section 001 for PHYS-101 in 2024 Fall
 2025-11-20 00:05:03,025 - simulate_actions - INFO - Import Result: Success=True, Created=2, Updated=6
 ```
-

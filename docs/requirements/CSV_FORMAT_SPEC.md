@@ -83,6 +83,7 @@ Metadata about the export.
 **Table**: `institutions`
 
 **Columns**:
+
 ```csv
 id,name,short_name,website_url,created_by,admin_email,allow_self_registration,require_email_verification,is_active,created_at,updated_at
 ```
@@ -90,6 +91,7 @@ id,name,short_name,website_url,created_by,admin_email,allow_self_registration,re
 **Foreign Keys**: None
 
 **Example**:
+
 ```csv
 id,name,short_name,website_url,created_by,admin_email,allow_self_registration,require_email_verification,is_active,created_at,updated_at
 mocku-123,Example University,MockU,https://example.edu,admin-001,admin@example.edu,false,true,true,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
@@ -100,14 +102,17 @@ mocku-123,Example University,MockU,https://example.edu,admin-001,admin@example.e
 **Table**: `programs`
 
 **Columns**:
+
 ```csv
 id,name,short_name,description,institution_id,created_by,is_default,is_active,created_at,updated_at
 ```
 
 **Foreign Keys**:
+
 - `institution_id` → `institutions.id`
 
 **Example**:
+
 ```csv
 id,name,short_name,description,institution_id,created_by,is_default,is_active,created_at,updated_at
 prog-1,Computer Science Program,CS,Undergraduate CS Program,mocku-123,admin-001,true,true,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
@@ -119,27 +124,32 @@ prog-2,Nursing Program,RN,Registered Nurse Program,mocku-123,admin-001,false,tru
 **Table**: `users`
 
 **Columns**:
+
 ```csv
 id,email,first_name,last_name,display_name,role,institution_id,invited_by,invited_at,registration_completed_at,oauth_provider,created_at,updated_at
 ```
 
 **Excluded Sensitive Fields** (always omitted for security):
+
 - `password_hash` - Excluded (security risk)
 - `password_reset_token` - Excluded (active security token)
 - `password_reset_expires_at` - Excluded (related to token)
 - `email_verification_token` - Excluded (active security token)
 
 **Import Behavior**:
+
 - Imported users are created with `account_status: "pending"`
 - Imported users have `email_verified: false`
 - Users must complete invitation/registration flow to set password
 - `login_attempts`, `locked_until`, `last_login_at` reset to defaults
 
 **Foreign Keys**:
+
 - `institution_id` → `institutions.id`
 - `invited_by` → `users.id` (self-reference)
 
 **Example**:
+
 ```csv
 id,email,first_name,last_name,display_name,role,institution_id,invited_by,invited_at,registration_completed_at,oauth_provider,created_at,updated_at
 user-1,john.doe@example.edu,John,Doe,,instructor,mocku-123,,,2024-08-01T00:00:00Z,,2024-08-01T00:00:00Z,2024-10-01T00:00:00Z
@@ -152,15 +162,18 @@ user-1,john.doe@example.edu,John,Doe,,instructor,mocku-123,,,2024-08-01T00:00:00
 **Table**: `user_programs` (many-to-many association)
 
 **Columns**:
+
 ```csv
 user_id,program_id
 ```
 
 **Foreign Keys**:
+
 - `user_id` → `users.id`
 - `program_id` → `programs.id`
 
 **Example**:
+
 ```csv
 user_id,program_id
 user-1,prog-1
@@ -173,14 +186,17 @@ user-2,prog-2
 **Table**: `courses`
 
 **Columns**:
+
 ```csv
 id,course_number,course_title,department,credit_hours,institution_id,active,created_at,updated_at
 ```
 
 **Foreign Keys**:
+
 - `institution_id` → `institutions.id`
 
 **Example**:
+
 ```csv
 id,course_number,course_title,department,credit_hours,institution_id,active,created_at,updated_at
 course-1,CS101,Introduction to Programming,Computer Science,3,mocku-123,true,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
@@ -192,15 +208,18 @@ course-2,NUR201,Fundamentals of Nursing,Nursing,4,mocku-123,true,2024-01-01T00:0
 **Table**: `course_programs` (many-to-many association)
 
 **Columns**:
+
 ```csv
 course_id,program_id
 ```
 
 **Foreign Keys**:
+
 - `course_id` → `courses.id`
 - `program_id` → `programs.id`
 
 **Example**:
+
 ```csv
 course_id,program_id
 course-1,prog-1
@@ -212,16 +231,19 @@ course-2,prog-2
 **Table**: `terms`
 
 **Columns**:
+
 ```csv
 id,term_name,name,start_date,end_date,assessment_due_date,active,institution_id,created_at,updated_at
 ```
 
 **Foreign Keys**:
+
 - `institution_id` → `institutions.id`
 
 **Note**: Both `term_name` and `name` columns exist in schema (legacy compatibility).
 
 **Example**:
+
 ```csv
 id,term_name,name,start_date,end_date,assessment_due_date,active,institution_id,created_at,updated_at
 term-1,FA2024,Fall 2024,2024-08-26,2024-12-15,2024-12-20,true,mocku-123,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
@@ -233,16 +255,19 @@ term-2,SP2025,Spring 2025,2025-01-13,2025-05-10,2025-05-15,true,mocku-123,2024-0
 **Table**: `course_offerings`
 
 **Columns**:
+
 ```csv
 id,course_id,term_id,institution_id,status,capacity,total_enrollment,section_count,created_at,updated_at
 ```
 
 **Foreign Keys**:
+
 - `course_id` → `courses.id`
 - `term_id` → `terms.id`
 - `institution_id` → `institutions.id`
 
 **Example**:
+
 ```csv
 id,course_id,term_id,institution_id,status,capacity,total_enrollment,section_count,created_at,updated_at
 off-1,course-1,term-1,mocku-123,active,75,50,2,2024-08-01T00:00:00Z,2024-09-01T00:00:00Z
@@ -254,17 +279,20 @@ off-2,course-2,term-1,mocku-123,active,60,45,2,2024-08-01T00:00:00Z,2024-09-01T0
 **Table**: `course_sections`
 
 **Columns**:
+
 ```csv
 id,offering_id,instructor_id,section_number,enrollment,status,grade_distribution,assigned_date,completed_date,created_at,updated_at
 ```
 
 **Foreign Keys**:
+
 - `offering_id` → `course_offerings.id`
 - `instructor_id` → `users.id`
 
 **Note**: `grade_distribution` is JSON - serialize as JSON string in CSV.
 
 **Example**:
+
 ```csv
 id,offering_id,instructor_id,section_number,enrollment,status,grade_distribution,assigned_date,completed_date,created_at,updated_at
 section-1,off-1,user-1,001,25,in_progress,{},2024-08-01T00:00:00Z,,2024-08-01T00:00:00Z,2024-09-15T00:00:00Z
@@ -276,16 +304,19 @@ section-2,off-1,user-2,002,25,in_progress,{},2024-08-01T00:00:00Z,,2024-08-01T00
 **Table**: `course_outcomes`
 
 **Columns**:
+
 ```csv
 id,course_id,clo_number,description,assessment_method,active,assessment_data,narrative,created_at,updated_at
 ```
 
 **Foreign Keys**:
+
 - `course_id` → `courses.id`
 
 **Note**: `assessment_data` is JSON - serialize as JSON string in CSV.
 
 **Example**:
+
 ```csv
 id,course_id,clo_number,description,assessment_method,active,assessment_data,narrative,created_at,updated_at
 outcome-1,course-1,CLO1,Students will understand basic programming concepts,Written Exam,true,{},,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
@@ -297,24 +328,29 @@ outcome-2,course-1,CLO2,Students will write simple programs,Programming Assignme
 **Table**: `user_invitations`
 
 **Columns**:
+
 ```csv
 id,email,role,institution_id,invited_by,invited_at,status,accepted_at,personal_message,created_at,updated_at
 ```
 
 **Excluded Sensitive Fields**:
+
 - `token` - Excluded (active security token)
 - `expires_at` - Excluded (will be regenerated on import)
 
 **Import Behavior**:
+
 - New invitation tokens are generated on import
 - Expiration dates are set to 14 days from import time
 - Only `pending` invitations are imported (accepted/expired invitations are skipped)
 
 **Foreign Keys**:
+
 - `institution_id` → `institutions.id`
 - `invited_by` → `users.id`
 
 **Example**:
+
 ```csv
 id,email,role,institution_id,invited_by,invited_at,status,accepted_at,personal_message,created_at,updated_at
 inv-1,new.instructor@example.edu,instructor,mocku-123,user-1,2024-10-01T00:00:00Z,pending,,Welcome to our institution!,2024-10-01T00:00:00Z,2024-10-01T00:00:00Z
@@ -327,22 +363,27 @@ inv-1,new.instructor@example.edu,instructor,mocku-123,user-1,2024-10-01T00:00:00
 ## CSV Formatting Standards
 
 ### NULL Values
+
 - Empty string: `""`
 - Omitted optional fields: `,,` (consecutive commas)
 
 ### Booleans
+
 - `true` / `false` (lowercase)
 
 ### Dates/Timestamps
+
 - ISO 8601 format: `2024-10-05T22:00:00Z`
 - Always UTC timezone
 
 ### JSON Fields
+
 - Serialize as JSON string: `"{\"key\":\"value\"}"`
 - Quote the entire JSON string in CSV
 - Empty JSON object: `{}`
 
 ### Strings with Commas/Quotes
+
 - Follow CSV RFC 4180 standard
 - Quote fields containing commas: `"Last, First"`
 - Escape quotes by doubling: `"He said ""hello"""`
@@ -354,6 +395,7 @@ inv-1,new.instructor@example.edu,instructor,mocku-123,user-1,2024-10-01T00:00:00
 ### Sensitive Data Exclusion
 
 **Always Excluded Fields** (security-first approach):
+
 - User passwords: `password_hash`
 - Active tokens: `password_reset_token`, `email_verification_token`, `invitation.token`
 - Token expiration: `password_reset_expires_at`, `invitation.expires_at`
@@ -361,11 +403,13 @@ inv-1,new.instructor@example.edu,instructor,mocku-123,user-1,2024-10-01T00:00:00
 **Rationale**: This adapter prioritizes security over immediate usability. Users must complete registration/invitation workflows after import.
 
 **Trade-off**: Imported users cannot immediately login. They must:
+
 1. Complete email verification OR
-2. Accept new invitation OR  
+2. Accept new invitation OR
 3. Complete password reset flow
 
 This is the **most secure** approach and prevents:
+
 - Password hash exposure in transit
 - Token reuse attacks
 - Stale authentication state
@@ -373,6 +417,7 @@ This is the **most secure** approach and prevents:
 ### Extras Column Handling
 
 The `extras` column (PickleType) is serialized as JSON:
+
 - Export: Convert PickleType → JSON string
 - Import: Parse JSON string → dict → save as extras
 - Empty extras: `{}`
@@ -380,6 +425,7 @@ The `extras` column (PickleType) is serialized as JSON:
 ## Implementation Notes
 
 ### Export Process
+
 1. Query database for each entity type
 2. **Exclude sensitive fields** (passwords, tokens)
 3. **Serialize extras as JSON**
@@ -389,6 +435,7 @@ The `extras` column (PickleType) is serialized as JSON:
 7. Return ZIP file
 
 ### Import Process
+
 1. Extract ZIP to temporary directory
 2. Read manifest.json (validate version)
 3. Parse each CSV in dependency order
@@ -400,6 +447,7 @@ The `extras` column (PickleType) is serialized as JSON:
 9. Clean up temporary files
 
 ### Error Handling
+
 - **Invalid foreign keys**: Skip record, log error
 - **Duplicate IDs**: Skip record, log warning (or update if conflict resolution enabled)
 - **Missing required fields**: Skip record, log error
@@ -410,10 +458,10 @@ The `extras` column (PickleType) is serialized as JSON:
 ## Version History
 
 **v1.0** (2024-10-05)
+
 - Initial specification
 - 12 CSV files covering all core entities
 - ZIP-based single-file export/import
 - JSON manifest for metadata
 - Security-first: Excludes passwords and active tokens
 - Extras columns serialized as JSON
-

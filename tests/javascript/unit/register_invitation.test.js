@@ -1,6 +1,6 @@
-const { setBody } = require('../helpers/dom');
+const { setBody } = require("../helpers/dom");
 
-describe('register_invitation.js', () => {
+describe("register_invitation.js", () => {
   let mockFetch;
   let consoleErrorSpy;
 
@@ -33,17 +33,17 @@ describe('register_invitation.js', () => {
 
     mockFetch = jest.fn();
     global.fetch = mockFetch;
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation();
 
     // Mock location
     delete global.location;
-    global.location = { href: '', pathname: '/register-invitation' };
+    global.location = { href: "", pathname: "/register-invitation" };
 
     jest.useFakeTimers();
 
     // Load module after DOM is ready (it attaches DOMContentLoaded handlers)
-    require('../../../static/register_invitation');
-    document.dispatchEvent(new Event('DOMContentLoaded'));
+    require("../../../static/register_invitation");
+    document.dispatchEvent(new Event("DOMContentLoaded"));
   });
 
   afterEach(() => {
@@ -51,33 +51,33 @@ describe('register_invitation.js', () => {
     jest.restoreAllMocks();
   });
 
-  test('should handle network error during validation', async () => {
-    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+  test("should handle network error during validation", async () => {
+    mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
-    await global.validateInvitation('token');
+    await global.validateInvitation("token");
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Error validating'),
-      expect.anything()
+      expect.stringContaining("Error validating"),
+      expect.anything(),
     );
-    const msg = document.getElementById('statusMessage');
-    expect(msg.textContent).toContain('Failed to validate');
+    const msg = document.getElementById("statusMessage");
+    expect(msg.textContent).toContain("Failed to validate");
   });
 
-  test('should handle network error during acceptance', async () => {
-    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+  test("should handle network error during acceptance", async () => {
+    mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
     await global.acceptInvitation();
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Error accepting'),
-      expect.anything()
+      expect.stringContaining("Error accepting"),
+      expect.anything(),
     );
-    const msg = document.getElementById('statusMessage');
-    expect(msg.textContent).toContain('Failed to create account');
+    const msg = document.getElementById("statusMessage");
+    expect(msg.textContent).toContain("Failed to create account");
   });
 
-  test('should redirect on success', async () => {
+  test("should redirect on success", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ success: true }),
@@ -85,49 +85,56 @@ describe('register_invitation.js', () => {
 
     await global.acceptInvitation();
 
-    expect(document.getElementById('statusMessage').textContent).toContain(
-      'created successfully'
+    expect(document.getElementById("statusMessage").textContent).toContain(
+      "created successfully",
     );
 
     // Fast forward
     jest.advanceTimersByTime(2000);
 
-    expect(global.location.href).toContain('/login');
+    expect(global.location.href).toContain("/login");
   });
 
-  test('should format role correctly', () => {
-    expect(global.formatRole('institution_admin')).toBe('Institution Admin');
+  test("should format role correctly", () => {
+    expect(global.formatRole("institution_admin")).toBe("Institution Admin");
   });
 
-  test('password toggles should switch input type', () => {
-    const passwordInput = document.getElementById('password');
-    const confirmInput = document.getElementById('confirmPassword');
+  test("password toggles should switch input type", () => {
+    const passwordInput = document.getElementById("password");
+    const confirmInput = document.getElementById("confirmPassword");
 
-    expect(passwordInput.getAttribute('type')).toBe(null); // not set in fixture
-    passwordInput.setAttribute('type', 'password');
-    confirmInput.setAttribute('type', 'password');
+    expect(passwordInput.getAttribute("type")).toBe(null); // not set in fixture
+    passwordInput.setAttribute("type", "password");
+    confirmInput.setAttribute("type", "password");
 
-    document.getElementById('togglePassword').click();
-    expect(passwordInput.getAttribute('type')).toBe('text');
+    document.getElementById("togglePassword").click();
+    expect(passwordInput.getAttribute("type")).toBe("text");
 
-    document.getElementById('toggleConfirmPassword').click();
-    expect(confirmInput.getAttribute('type')).toBe('text');
+    document.getElementById("toggleConfirmPassword").click();
+    expect(confirmInput.getAttribute("type")).toBe("text");
   });
 
-  test('submit handler should block when passwords do not match', async () => {
-    jest.spyOn(HTMLFormElement.prototype, 'checkValidity').mockReturnValue(true);
+  test("submit handler should block when passwords do not match", async () => {
+    jest
+      .spyOn(HTMLFormElement.prototype, "checkValidity")
+      .mockReturnValue(true);
 
-    document.getElementById('password').value = 'a';
-    document.getElementById('confirmPassword').value = 'b';
+    document.getElementById("password").value = "a";
+    document.getElementById("confirmPassword").value = "b";
 
     document
-      .getElementById('acceptInvitationForm')
-      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      .getElementById("acceptInvitationForm")
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
 
     await Promise.resolve();
 
-    expect(document.getElementById('statusMessage').textContent).toContain('Passwords do not match');
-    expect(document.getElementById('confirmPassword').classList.contains('is-invalid')).toBe(true);
+    expect(document.getElementById("statusMessage").textContent).toContain(
+      "Passwords do not match",
+    );
+    expect(
+      document
+        .getElementById("confirmPassword")
+        .classList.contains("is-invalid"),
+    ).toBe(true);
   });
 });
-

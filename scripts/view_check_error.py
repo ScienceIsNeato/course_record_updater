@@ -4,7 +4,7 @@ view_check_error.py - View full error output for a failed quality check
 
 Usage:
     python scripts/view_check_error.py <check-name>
-    python scripts/view_check_error.py sonar-status
+    python scripts/view_check_error.py frontend-sanity
     python scripts/view_check_error.py e2e
 
     # List all available error logs for current PR
@@ -117,7 +117,7 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python scripts/view_check_error.py sonar-status
+    python scripts/view_check_error.py frontend-sanity
   python scripts/view_check_error.py e2e
   python scripts/view_check_error.py --list
   python scripts/view_check_error.py --latest imports
@@ -127,7 +127,7 @@ Examples:
     parser.add_argument(
         "check",
         nargs="?",
-        help="Check name/flag to view error for (e.g., sonar-status, e2e, imports)",
+        help="Check name/flag to view error for (e.g., frontend-sanity, e2e, imports)",
     )
 
     parser.add_argument(

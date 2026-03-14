@@ -103,8 +103,9 @@ function getSectionAssessmentStatus(outcomes) {
   }
 
   // 6. NOT_STARTED - if all CLOs are unassigned/assigned with no data
-  if (statuses.every((s) => s === "assigned" || s === "unassigned"))
+  if (statuses.every((s) => s === "assigned" || s === "unassigned")) {
     return "not_started";
+  }
 
   // 7. UNKNOWN - fallback
   return "unknown";
@@ -171,8 +172,9 @@ function applyFilters() {
     courseSections.forEach((section) => {
       // Apply combined filters (term AND course)
       if (activeTermFilter && section.term_name !== activeTermFilter) return;
-      if (activeCourseFilter && course.course_number !== activeCourseFilter)
+      if (activeCourseFilter && course.course_number !== activeCourseFilter) {
         return;
+      }
 
       // Filter outcomes to this specific section
       const sectionOutcomes = outcomes.filter(
@@ -213,7 +215,7 @@ let allCourseSections = [];
 let courseOutcomesMap = {};
 let termFilter, courseFilter, clearFiltersBtn, courseSelect;
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", () => {
   courseSelect = document.getElementById("courseSelect");
   const outcomesContainer = document.getElementById("outcomesContainer");
   const parseOptionalInt = (value) => {
@@ -266,12 +268,12 @@ document.addEventListener("DOMContentLoaded", function () {
       console.log(`📢 Got ${sections.length} sections`);
       if (sections.length > 0) {
         console.log(
-          `📢 First section FULL:`,
+          "📢 First section FULL:",
           JSON.stringify(sections[0], null, 2),
         );
-        console.log(`📢 First section course_id:`, sections[0].course_id);
-        console.log(`📢 First section offering_id:`, sections[0].offering_id);
-        console.log(`📢 First section enrollment:`, sections[0].enrollment);
+        console.log("📢 First section course_id:", sections[0].course_id);
+        console.log("📢 First section offering_id:", sections[0].offering_id);
+        console.log("📢 First section enrollment:", sections[0].enrollment);
       }
 
       // Get unique course IDs from sections
@@ -373,7 +375,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const section = sectionId
         ? instructorSections.find((s) => s.section_id === sectionId)
         : instructorSections.find((s) => s.course_id === courseId);
-      let termName = section?.term_name || "Unknown Term";
+      const termName = section?.term_name || "Unknown Term";
 
       const courseHeader = section
         ? `${termName} - ${data.course_number} - Section ${section.section_number || "001"}`
@@ -770,7 +772,7 @@ document.addEventListener("DOMContentLoaded", function () {
   ["studentsTook", "studentsPassed", "assessmentTool"].forEach((fieldId) => {
     const field = document.getElementById(fieldId);
     if (field) {
-      field.addEventListener("input", function () {
+      field.addEventListener("input", () => {
         // Auto-mark as in_progress on first edit (debounced)
         if (!autoMarkTriggered) {
           autoMarkTriggered = true;
@@ -804,7 +806,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Handle assessment form submission
-  updateAssessmentForm.addEventListener("submit", async function (e) {
+  updateAssessmentForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     const outcomeId = document.getElementById("assessmentOutcomeId").value;
@@ -1043,7 +1045,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // Submit Course Button Handler (ONCE - prevents duplicate submissions)
   const submitCourseBtn = document.getElementById("submitCourseBtn");
   if (submitCourseBtn) {
-    submitCourseBtn.addEventListener("click", function () {
+    submitCourseBtn.addEventListener("click", () => {
       const compositeId = courseSelect.value;
       if (!compositeId) {
         alert("Please select a course first");
@@ -1156,7 +1158,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Save course-level data
   if (saveCourseDataBtn) {
-    saveCourseDataBtn.addEventListener("click", async function () {
+    saveCourseDataBtn.addEventListener("click", async () => {
       const compositeId = courseSelect.value;
       if (!compositeId) {
         alert("Please select a course first");
@@ -1276,7 +1278,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   if (clearFiltersBtn) {
-    clearFiltersBtn.addEventListener("click", function () {
+    clearFiltersBtn.addEventListener("click", () => {
       activeTermFilter = "";
       activeCourseFilter = "";
       termFilter.value = "";

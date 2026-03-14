@@ -574,7 +574,7 @@
           return {
             course: number ? `${number} — ${title || ""}` : title || "Course",
             section: section.section_number || section.section_id || "—",
-            term: term,
+            term,
             faculty: instructor,
             enrollment: enrollment.toString(),
             enrollment_sort: enrollment.toString(),

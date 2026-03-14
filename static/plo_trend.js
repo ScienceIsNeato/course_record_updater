@@ -29,10 +29,11 @@
    * Must be called before removing DOM elements to avoid memory leaks.
    */
   function _destroyCharts(el) {
-    if (typeof Chart === "undefined" || typeof Chart.getChart !== "function")
+    if (typeof Chart === "undefined" || typeof Chart.getChart !== "function") {
       return;
-    el.querySelectorAll("canvas").forEach(function (canvas) {
-      var chart = Chart.getChart(canvas);
+    }
+    el.querySelectorAll("canvas").forEach((canvas) => {
+      const chart = Chart.getChart(canvas);
       if (chart && typeof chart.destroy === "function") {
         chart.destroy();
       }
@@ -197,8 +198,9 @@
                     : undefined,
                 borderColor: (ctx) => {
                   // Grey for segments beyond the selected term
-                  if (hasFuture && ctx.p0DataIndex >= selectedTermIndex)
+                  if (hasFuture && ctx.p0DataIndex >= selectedTermIndex) {
                     return TREND_LINE_COLOR_FUTURE;
+                  }
                   // Red segment when both endpoints are below threshold
                   const p0 = ctx.p0.parsed.y;
                   const p1 = ctx.p1.parsed.y;
@@ -207,8 +209,9 @@
                     !isNaN(p1) &&
                     p0 < threshold &&
                     p1 < threshold
-                  )
+                  ) {
                     return TREND_LINE_COLOR_FAIL;
+                  }
                   return undefined;
                 },
               },
@@ -691,8 +694,9 @@
                 // Filter out null entries from tooltip
                 filter: (item) => item.raw !== null && !isNaN(item.raw),
                 afterBody: (items) => {
-                  if (!discontinuities || discontinuities.length === 0)
+                  if (!discontinuities || discontinuities.length === 0) {
                     return "";
+                  }
                   const idx = items[0] && items[0].dataIndex;
                   if (idx == null) return "";
                   // Find any discontinuity AT this term index

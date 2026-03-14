@@ -23,7 +23,6 @@ function generateSecureId(prefix = "id") {
   }
 
   // Fallback for older browsers - use timestamp, performance counter, and monotonic counter
-  // Avoids Math.random() to address SonarCloud security concerns
   const timestamp = Date.now();
   const performanceNow = globalThis.performance?.now
     ? globalThis.performance.now()

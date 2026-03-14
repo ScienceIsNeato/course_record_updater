@@ -17,7 +17,7 @@ const {
   setLoadingState,
   setErrorState,
   setEmptyState,
-} = require('../../../static/dashboard_utils');
+} = require("../../../static/dashboard_utils");
 global.setLoadingState = setLoadingState;
 global.setErrorState = setErrorState;
 global.setEmptyState = setEmptyState;
@@ -27,176 +27,184 @@ const {
   formatAssessment,
   pickDefaultTerm,
   DEFAULT_PASS_THRESHOLD,
-} = require('../../../static/plo_dashboard');
-const { setBody } = require('../helpers/dom');
+} = require("../../../static/plo_dashboard");
+const { setBody } = require("../helpers/dom");
 
-describe('plo_dashboard.js — formatAssessment', () => {
-  describe('no-data sentinel', () => {
-    test('null → em dash, nodata class (regardless of mode)', () => {
-      for (const mode of ['binary', 'percentage', 'both']) {
+describe("plo_dashboard.js — formatAssessment", () => {
+  describe("no-data sentinel", () => {
+    test("null → em dash, nodata class (regardless of mode)", () => {
+      for (const mode of ["binary", "percentage", "both"]) {
         const r = formatAssessment(null, mode);
-        expect(r).toEqual({ text: '—', cssClass: 'nodata' });
+        expect(r).toEqual({ text: "—", cssClass: "nodata" });
       }
     });
 
-    test('undefined → em dash, nodata class', () => {
-      expect(formatAssessment(undefined, 'both')).toEqual({
-        text: '—',
-        cssClass: 'nodata',
+    test("undefined → em dash, nodata class", () => {
+      expect(formatAssessment(undefined, "both")).toEqual({
+        text: "—",
+        cssClass: "nodata",
       });
     });
 
-    test('0 is real data (0% passed), not the no-data sentinel', () => {
+    test("0 is real data (0% passed), not the no-data sentinel", () => {
       // 0 !== null — a section where everyone failed is still a data point.
-      const r = formatAssessment(0, 'percentage');
-      expect(r.text).toBe('0%');
-      expect(r.cssClass).toBe('fail');
+      const r = formatAssessment(0, "percentage");
+      expect(r.text).toBe("0%");
+      expect(r.cssClass).toBe("fail");
     });
   });
 
-  describe('mode: binary', () => {
-    test('at threshold → S', () => {
+  describe("mode: binary", () => {
+    test("at threshold → S", () => {
       // >= is inclusive: exactly hitting the bar is a pass.
-      const r = formatAssessment(DEFAULT_PASS_THRESHOLD, 'binary');
-      expect(r).toEqual({ text: 'S', cssClass: 'pass' });
+      const r = formatAssessment(DEFAULT_PASS_THRESHOLD, "binary");
+      expect(r).toEqual({ text: "S", cssClass: "pass" });
     });
 
-    test('above threshold → S', () => {
-      expect(formatAssessment(95, 'binary')).toEqual({
-        text: 'S',
-        cssClass: 'pass',
+    test("above threshold → S", () => {
+      expect(formatAssessment(95, "binary")).toEqual({
+        text: "S",
+        cssClass: "pass",
       });
     });
 
-    test('just below threshold → U', () => {
-      const r = formatAssessment(DEFAULT_PASS_THRESHOLD - 0.1, 'binary');
-      expect(r).toEqual({ text: 'U', cssClass: 'fail' });
+    test("just below threshold → U", () => {
+      const r = formatAssessment(DEFAULT_PASS_THRESHOLD - 0.1, "binary");
+      expect(r).toEqual({ text: "U", cssClass: "fail" });
     });
   });
 
-  describe('mode: percentage', () => {
-    test('rounds to nearest whole percent', () => {
-      expect(formatAssessment(71.7, 'percentage').text).toBe('72%');
-      expect(formatAssessment(71.4, 'percentage').text).toBe('71%');
+  describe("mode: percentage", () => {
+    test("rounds to nearest whole percent", () => {
+      expect(formatAssessment(71.7, "percentage").text).toBe("72%");
+      expect(formatAssessment(71.4, "percentage").text).toBe("71%");
     });
 
-    test('cssClass still respects pass/fail threshold', () => {
-      expect(formatAssessment(90, 'percentage').cssClass).toBe('pass');
-      expect(formatAssessment(40, 'percentage').cssClass).toBe('fail');
+    test("cssClass still respects pass/fail threshold", () => {
+      expect(formatAssessment(90, "percentage").cssClass).toBe("pass");
+      expect(formatAssessment(40, "percentage").cssClass).toBe("fail");
     });
   });
 
-  describe('mode: both (default)', () => {
+  describe("mode: both (default)", () => {
     test('formats as "S (NN%)"', () => {
-      expect(formatAssessment(78.3, 'both').text).toBe('S (78%)');
+      expect(formatAssessment(78.3, "both").text).toBe("S (78%)");
     });
 
-    test('failing grade shows U + percent', () => {
-      expect(formatAssessment(54.6, 'both').text).toBe('U (55%)');
+    test("failing grade shows U + percent", () => {
+      expect(formatAssessment(54.6, "both").text).toBe("U (55%)");
     });
 
     test('unknown mode string falls through to "both" behaviour', () => {
       // Any mode other than binary/percentage hits the else branch.
-      const r = formatAssessment(80, 'garbage');
-      expect(r.text).toBe('S (80%)');
-      expect(r.cssClass).toBe('pass');
+      const r = formatAssessment(80, "garbage");
+      expect(r.text).toBe("S (80%)");
+      expect(r.cssClass).toBe("pass");
     });
   });
 
-  describe('custom threshold', () => {
-    test('explicit threshold overrides default', () => {
+  describe("custom threshold", () => {
+    test("explicit threshold overrides default", () => {
       // With threshold=85, an 80% pass rate is a fail.
-      const r = formatAssessment(80, 'binary', 85);
-      expect(r).toEqual({ text: 'U', cssClass: 'fail' });
+      const r = formatAssessment(80, "binary", 85);
+      expect(r).toEqual({ text: "U", cssClass: "fail" });
     });
 
-    test('non-numeric threshold falls back to DEFAULT_PASS_THRESHOLD', () => {
+    test("non-numeric threshold falls back to DEFAULT_PASS_THRESHOLD", () => {
       // A caller passing nonsense shouldn't break the render — just
       // use the constant. 71 passes against default 70.
-      const r = formatAssessment(71, 'binary', 'not-a-number');
-      expect(r.text).toBe('S');
+      const r = formatAssessment(71, "binary", "not-a-number");
+      expect(r.text).toBe("S");
     });
 
-    test('threshold=0 means everything passes', () => {
-      expect(formatAssessment(0, 'binary', 0).text).toBe('S');
+    test("threshold=0 means everything passes", () => {
+      expect(formatAssessment(0, "binary", 0).text).toBe("S");
     });
   });
 
-  test('DEFAULT_PASS_THRESHOLD is exported and reasonable', () => {
-    expect(typeof DEFAULT_PASS_THRESHOLD).toBe('number');
+  test("DEFAULT_PASS_THRESHOLD is exported and reasonable", () => {
+    expect(typeof DEFAULT_PASS_THRESHOLD).toBe("number");
     expect(DEFAULT_PASS_THRESHOLD).toBe(70);
   });
 });
 
-describe('plo_dashboard.js — pickDefaultTerm', () => {
-  describe('empty / degenerate inputs', () => {
-    test('empty array → empty string', () => {
-      expect(pickDefaultTerm([])).toBe('');
+describe("plo_dashboard.js — pickDefaultTerm", () => {
+  describe("empty / degenerate inputs", () => {
+    test("empty array → empty string", () => {
+      expect(pickDefaultTerm([])).toBe("");
     });
 
-    test('null → empty string', () => {
-      expect(pickDefaultTerm(null)).toBe('');
+    test("null → empty string", () => {
+      expect(pickDefaultTerm(null)).toBe("");
     });
 
-    test('not-an-array → empty string', () => {
-      expect(pickDefaultTerm({ term_id: 't1' })).toBe('');
+    test("not-an-array → empty string", () => {
+      expect(pickDefaultTerm({ term_id: "t1" })).toBe("");
     });
   });
 
-  describe('active-term preference', () => {
+  describe("active-term preference", () => {
     test('prefers term_status === "ACTIVE"', () => {
       const terms = [
-        { term_id: 't-old', term_status: 'CLOSED', start_date: '2025-01-01' },
-        { term_id: 't-active', term_status: 'ACTIVE', start_date: '2024-09-01' },
-        { term_id: 't-future', term_status: 'PLANNED', start_date: '2026-01-01' },
+        { term_id: "t-old", term_status: "CLOSED", start_date: "2025-01-01" },
+        {
+          term_id: "t-active",
+          term_status: "ACTIVE",
+          start_date: "2024-09-01",
+        },
+        {
+          term_id: "t-future",
+          term_status: "PLANNED",
+          start_date: "2026-01-01",
+        },
       ];
       // Active wins even though t-future has the latest start_date.
-      expect(pickDefaultTerm(terms)).toBe('t-active');
+      expect(pickDefaultTerm(terms)).toBe("t-active");
     });
 
     test('accepts status alias (status === "ACTIVE")', () => {
-      const terms = [{ id: 't1', status: 'ACTIVE' }];
-      expect(pickDefaultTerm(terms)).toBe('t1');
+      const terms = [{ id: "t1", status: "ACTIVE" }];
+      expect(pickDefaultTerm(terms)).toBe("t1");
     });
 
-    test('accepts is_active boolean alias', () => {
+    test("accepts is_active boolean alias", () => {
       const terms = [
-        { term_id: 't-off', is_active: false },
-        { term_id: 't-on', is_active: true },
+        { term_id: "t-off", is_active: false },
+        { term_id: "t-on", is_active: true },
       ];
-      expect(pickDefaultTerm(terms)).toBe('t-on');
+      expect(pickDefaultTerm(terms)).toBe("t-on");
     });
 
-    test('accepts active boolean alias', () => {
-      const terms = [{ term_id: 't1', active: true }];
-      expect(pickDefaultTerm(terms)).toBe('t1');
+    test("accepts active boolean alias", () => {
+      const terms = [{ term_id: "t1", active: true }];
+      expect(pickDefaultTerm(terms)).toBe("t1");
     });
 
-    test('first active wins when multiple are active', () => {
+    test("first active wins when multiple are active", () => {
       const terms = [
-        { term_id: 't-a', term_status: 'ACTIVE' },
-        { term_id: 't-b', term_status: 'ACTIVE' },
+        { term_id: "t-a", term_status: "ACTIVE" },
+        { term_id: "t-b", term_status: "ACTIVE" },
       ];
       // Array.find returns first match — t-a wins. No tie-breaking
       // logic beyond that (intentionally simple).
-      expect(pickDefaultTerm(terms)).toBe('t-a');
+      expect(pickDefaultTerm(terms)).toBe("t-a");
     });
   });
 
-  describe('start_date fallback (no active term)', () => {
-    test('picks most-recent by start_date', () => {
+  describe("start_date fallback (no active term)", () => {
+    test("picks most-recent by start_date", () => {
       const terms = [
-        { term_id: 't-2024s', start_date: '2024-01-10' },
-        { term_id: 't-2025s', start_date: '2025-01-10' },
-        { term_id: 't-2023f', start_date: '2023-09-01' },
+        { term_id: "t-2024s", start_date: "2024-01-10" },
+        { term_id: "t-2025s", start_date: "2025-01-10" },
+        { term_id: "t-2023f", start_date: "2023-09-01" },
       ];
-      expect(pickDefaultTerm(terms)).toBe('t-2025s');
+      expect(pickDefaultTerm(terms)).toBe("t-2025s");
     });
 
-    test('does not mutate the input array', () => {
+    test("does not mutate the input array", () => {
       const terms = [
-        { term_id: 't-a', start_date: '2024-01-01' },
-        { term_id: 't-b', start_date: '2025-01-01' },
+        { term_id: "t-a", start_date: "2024-01-01" },
+        { term_id: "t-b", start_date: "2025-01-01" },
       ];
       const snapshot = terms.map((t) => t.term_id);
       pickDefaultTerm(terms);
@@ -204,29 +212,31 @@ describe('plo_dashboard.js — pickDefaultTerm', () => {
       expect(terms.map((t) => t.term_id)).toEqual(snapshot);
     });
 
-    test('missing start_date treated as epoch (0)', () => {
+    test("missing start_date treated as epoch (0)", () => {
       const terms = [
-        { term_id: 't-no-date' }, // no start_date → Date(0)
-        { term_id: 't-dated', start_date: '2025-01-01' },
+        { term_id: "t-no-date" }, // no start_date → Date(0)
+        { term_id: "t-dated", start_date: "2025-01-01" },
       ];
-      expect(pickDefaultTerm(terms)).toBe('t-dated');
+      expect(pickDefaultTerm(terms)).toBe("t-dated");
     });
   });
 
-  describe('id-field aliases', () => {
-    test('falls through term_id → id', () => {
+  describe("id-field aliases", () => {
+    test("falls through term_id → id", () => {
       // The "All Terms" option and some API payloads use `id` not `term_id`.
-      expect(pickDefaultTerm([{ id: 'x', term_status: 'ACTIVE' }])).toBe('x');
+      expect(pickDefaultTerm([{ id: "x", term_status: "ACTIVE" }])).toBe("x");
     });
 
-    test('prefers term_id over id when both present', () => {
-      const terms = [{ term_id: 'prefer-me', id: 'not-me', term_status: 'ACTIVE' }];
-      expect(pickDefaultTerm(terms)).toBe('prefer-me');
+    test("prefers term_id over id when both present", () => {
+      const terms = [
+        { term_id: "prefer-me", id: "not-me", term_status: "ACTIVE" },
+      ];
+      expect(pickDefaultTerm(terms)).toBe("prefer-me");
     });
 
-    test('term with neither id key → empty string (not crash)', () => {
-      const terms = [{ term_status: 'ACTIVE', name: 'Spring 2025' }];
-      expect(pickDefaultTerm(terms)).toBe('');
+    test("term with neither id key → empty string (not crash)", () => {
+      const terms = [{ term_status: "ACTIVE", name: "Spring 2025" }];
+      expect(pickDefaultTerm(terms)).toBe("");
     });
   });
 });
@@ -290,7 +300,7 @@ function resetDashboardState() {
   PloDashboard.tree = null;
   PloDashboard.currentProgramId = null;
   PloDashboard.currentTermId = null;
-  PloDashboard.displayMode = 'both';
+  PloDashboard.displayMode = "both";
   PloDashboard.draftMappingId = null;
   // setupTests.js installs a global bootstrap mock but it lacks
   // getOrCreateInstance (Bootstrap 5 API our _showModal uses). Drop it
@@ -306,16 +316,16 @@ function resetDashboardState() {
  */
 const SAMPLE_TREE = {
   success: true,
-  program_id: 'prog-1',
-  term_id: 't-active',
-  mapping_status: 'published',
-  mapping: { id: 'm-1', version: 2, status: 'published' },
-  assessment_display_mode: 'both',
+  program_id: "prog-1",
+  term_id: "t-active",
+  mapping_status: "published",
+  mapping: { id: "m-1", version: 2, status: "published" },
+  assessment_display_mode: "both",
   plos: [
     {
-      id: 'plo-1',
+      id: "plo-1",
       plo_number: 1,
-      description: 'Students will design experiments.',
+      description: "Students will design experiments.",
       clo_count: 1,
       aggregate: {
         students_took: 50,
@@ -325,10 +335,10 @@ const SAMPLE_TREE = {
       },
       clos: [
         {
-          outcome_id: 'clo-A',
-          clo_number: '3',
-          description: 'Formulate a testable hypothesis.',
-          course_number: 'BIOL-301',
+          outcome_id: "clo-A",
+          clo_number: "3",
+          description: "Formulate a testable hypothesis.",
+          course_number: "BIOL-301",
           aggregate: {
             students_took: 50,
             students_passed: 40,
@@ -339,18 +349,18 @@ const SAMPLE_TREE = {
             {
               students_took: 30,
               students_passed: 27,
-              assessment_tool: 'Lab Report',
-              _section: { section_number: '001' },
-              _term: { name: 'Fall 2025' },
-              _instructor: { first_name: 'Ada', last_name: 'Lovelace' },
-              _offering: { offering_id: 'off-1' },
+              assessment_tool: "Lab Report",
+              _section: { section_number: "001" },
+              _term: { name: "Fall 2025" },
+              _instructor: { first_name: "Ada", last_name: "Lovelace" },
+              _offering: { offering_id: "off-1" },
             },
             {
               // Failing section: 13/20 = 65% < 70 threshold → "U" badge
               students_took: 20,
               students_passed: 13,
-              _section: { section_number: '002' },
-              _term: { name: 'Fall 2025' },
+              _section: { section_number: "002" },
+              _term: { name: "Fall 2025" },
               _instructor: {},
               _offering: {},
             },
@@ -360,9 +370,9 @@ const SAMPLE_TREE = {
     },
     {
       // PLO with zero CLOs → triggers the "No CLOs mapped" leaf message
-      id: 'plo-2',
+      id: "plo-2",
       plo_number: 2,
-      description: 'Students will communicate findings.',
+      description: "Students will communicate findings.",
       clo_count: 0,
       aggregate: {
         students_took: 0,
@@ -391,7 +401,7 @@ function routeFetch(routes) {
   });
 }
 
-describe('PloDashboard — filter loading', () => {
+describe("PloDashboard — filter loading", () => {
   beforeEach(() => {
     setBody(SKELETON);
     resetDashboardState();
@@ -403,65 +413,65 @@ describe('PloDashboard — filter loading', () => {
     localStorage.clear();
   });
 
-  test('_loadPrograms populates dropdown and picks first program', async () => {
+  test("_loadPrograms populates dropdown and picks first program", async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         programs: [
-          { program_id: 'prog-1', name: 'Biology BS' },
-          { program_id: 'prog-2', name: 'Zoology BS' },
+          { program_id: "prog-1", name: "Biology BS" },
+          { program_id: "prog-2", name: "Zoology BS" },
         ],
       }),
     });
 
     await PloDashboard._loadPrograms();
 
-    const sel = document.getElementById('ploProgramFilter');
+    const sel = document.getElementById("ploProgramFilter");
     expect(sel.options.length).toBe(3); // All Programs + 2 programs
-    expect(sel.options[0].textContent).toBe('All Programs');
-    expect(sel.options[1].textContent).toBe('Biology BS');
+    expect(sel.options[0].textContent).toBe("All Programs");
+    expect(sel.options[1].textContent).toBe("Biology BS");
     // No localStorage entry → defaults to All Programs
-    expect(PloDashboard.currentProgramId).toBe('');
-    expect(sel.value).toBe('');
+    expect(PloDashboard.currentProgramId).toBe("");
+    expect(sel.value).toBe("");
   });
 
-  test('_loadPrograms honours localStorage when the stored id is still valid', async () => {
-    localStorage.setItem('ploDashboard.lastProgramId', 'prog-2');
+  test("_loadPrograms honours localStorage when the stored id is still valid", async () => {
+    localStorage.setItem("ploDashboard.lastProgramId", "prog-2");
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         programs: [
-          { program_id: 'prog-1', name: 'Biology' },
-          { program_id: 'prog-2', name: 'Zoology' },
+          { program_id: "prog-1", name: "Biology" },
+          { program_id: "prog-2", name: "Zoology" },
         ],
       }),
     });
     await PloDashboard._loadPrograms();
-    expect(PloDashboard.currentProgramId).toBe('prog-2');
+    expect(PloDashboard.currentProgramId).toBe("prog-2");
   });
 
-  test('_loadPrograms ignores stale localStorage id not in the list', async () => {
-    localStorage.setItem('ploDashboard.lastProgramId', 'deleted-prog');
+  test("_loadPrograms ignores stale localStorage id not in the list", async () => {
+    localStorage.setItem("ploDashboard.lastProgramId", "deleted-prog");
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ programs: [{ id: 'prog-1', name: 'Only One' }] }),
+      json: async () => ({ programs: [{ id: "prog-1", name: "Only One" }] }),
     });
     await PloDashboard._loadPrograms();
     // Falls back to All Programs (empty string)
-    expect(PloDashboard.currentProgramId).toBe('');
+    expect(PloDashboard.currentProgramId).toBe("");
   });
 
-  test('_loadPrograms handles empty list gracefully', async () => {
+  test("_loadPrograms handles empty list gracefully", async () => {
     global.fetch = jest
       .fn()
       .mockResolvedValue({ ok: true, json: async () => ({ programs: [] }) });
     await PloDashboard._loadPrograms();
-    const sel = document.getElementById('ploProgramFilter');
+    const sel = document.getElementById("ploProgramFilter");
     expect(sel.options[0].textContent).toMatch(/no programs/i);
     expect(PloDashboard.currentProgramId).toBeNull();
   });
 
-  test('_loadPrograms bails silently on non-OK response', async () => {
+  test("_loadPrograms bails silently on non-OK response", async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 500 });
     await PloDashboard._loadPrograms();
     // State untouched, no throw
@@ -473,62 +483,70 @@ describe('PloDashboard — filter loading', () => {
       ok: true,
       json: async () => ({
         terms: [
-          { term_id: 't-2024', term_name: 'Spring 2024', start_date: '2024-01-10' },
-          { term_id: 't-2025', term_name: 'Spring 2025', start_date: '2025-01-10' },
+          {
+            term_id: "t-2024",
+            term_name: "Spring 2024",
+            start_date: "2024-01-10",
+          },
+          {
+            term_id: "t-2025",
+            term_name: "Spring 2025",
+            start_date: "2025-01-10",
+          },
         ],
       }),
     });
     await PloDashboard._loadTerms();
-    const sel = document.getElementById('ploTermFilter');
+    const sel = document.getElementById("ploTermFilter");
     // 1 existing "All Terms" + 2 appended
     expect(sel.options.length).toBe(3);
     // most-recent first (2025 before 2024)
-    expect(sel.options[1].textContent).toBe('Spring 2025');
+    expect(sel.options[1].textContent).toBe("Spring 2025");
     // No active term → pickDefaultTerm falls back to most-recent start_date
-    expect(PloDashboard.currentTermId).toBe('t-2025');
+    expect(PloDashboard.currentTermId).toBe("t-2025");
   });
 
-  test('_loadTerms selects active term when present', async () => {
+  test("_loadTerms selects active term when present", async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         terms: [
-          { term_id: 't-old', term_status: 'CLOSED', start_date: '2024-01-01' },
-          { term_id: 't-now', term_status: 'ACTIVE', start_date: '2024-09-01' },
+          { term_id: "t-old", term_status: "CLOSED", start_date: "2024-01-01" },
+          { term_id: "t-now", term_status: "ACTIVE", start_date: "2024-09-01" },
         ],
       }),
     });
     await PloDashboard._loadTerms();
-    expect(PloDashboard.currentTermId).toBe('t-now');
+    expect(PloDashboard.currentTermId).toBe("t-now");
   });
 });
 
-describe('PloDashboard — loadTree + render', () => {
+describe("PloDashboard — loadTree + render", () => {
   beforeEach(() => {
     setBody(SKELETON);
     resetDashboardState();
     PloDashboard._cacheSelectors();
-    PloDashboard.programs = [{ program_id: 'prog-1', name: 'Biology BS' }];
-    PloDashboard.currentProgramId = 'prog-1';
-    PloDashboard.currentTermId = 't-active';
+    PloDashboard.programs = [{ program_id: "prog-1", name: "Biology BS" }];
+    PloDashboard.currentProgramId = "prog-1";
+    PloDashboard.currentTermId = "t-active";
   });
 
   afterEach(() => {
     delete global.fetch;
   });
 
-  test('no program selected with no programs → empty-state message, no fetch', async () => {
+  test("no program selected with no programs → empty-state message, no fetch", async () => {
     PloDashboard.currentProgramId = null;
     PloDashboard.programs = [];
     global.fetch = jest.fn();
     await PloDashboard.loadTree();
     expect(global.fetch).not.toHaveBeenCalled();
-    expect(
-      document.getElementById('ploTreeContainer').textContent,
-    ).toMatch(/no programs available/i);
+    expect(document.getElementById("ploTreeContainer").textContent).toMatch(
+      /no programs available/i,
+    );
   });
 
-  test('successful load renders tree + populates stats', async () => {
+  test("successful load renders tree + populates stats", async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => SAMPLE_TREE,
@@ -542,55 +560,55 @@ describe('PloDashboard — loadTree + render', () => {
     );
 
     // Tree rendered
-    const tree = document.querySelector('ul.plo-tree');
+    const tree = document.querySelector("ul.plo-tree");
     expect(tree).toBeTruthy();
-    const ploNodes = tree.querySelectorAll(':scope > li.plo-tree-node');
+    const ploNodes = tree.querySelectorAll(":scope > li.plo-tree-node");
     expect(ploNodes.length).toBe(2);
 
     // PLO-1 header carries the number + CLO count pill
-    const plo1Num = ploNodes[0].querySelector('.plo-tree-number');
-    expect(plo1Num.textContent).toContain('PLO-1');
-    expect(plo1Num.textContent).toContain('1 CLO');
+    const plo1Num = ploNodes[0].querySelector(".plo-tree-number");
+    expect(plo1Num.textContent).toContain("PLO-1");
+    expect(plo1Num.textContent).toContain("1 CLO");
 
     // PLO-2 has empty clos → leaf message + auto-expanded
-    expect(ploNodes[1].classList.contains('expanded')).toBe(true);
+    expect(ploNodes[1].classList.contains("expanded")).toBe(true);
     expect(ploNodes[1].textContent).toMatch(/no clos mapped/i);
 
     // Section leaves under PLO-1: 2 sections
-    const sectionLeaves = ploNodes[0].querySelectorAll('li.plo-tree-node.leaf');
+    const sectionLeaves = ploNodes[0].querySelectorAll("li.plo-tree-node.leaf");
     expect(sectionLeaves.length).toBe(2);
     // First section shows instructor name + pass count detail
-    expect(sectionLeaves[0].textContent).toContain('Ada Lovelace');
-    expect(sectionLeaves[0].textContent).toContain('27/30 passed');
+    expect(sectionLeaves[0].textContent).toContain("Ada Lovelace");
+    expect(sectionLeaves[0].textContent).toContain("27/30 passed");
 
     // Version badge shows v2
-    expect(
-      document.getElementById('ploTreeVersionBadge').textContent,
-    ).toMatch(/v2/);
+    expect(document.getElementById("ploTreeVersionBadge").textContent).toMatch(
+      /v2/,
+    );
 
     // Display mode picked up from API response
-    expect(PloDashboard.displayMode).toBe('both');
-    expect(document.getElementById('ploDisplayMode').value).toBe('both');
+    expect(PloDashboard.displayMode).toBe("both");
+    expect(document.getElementById("ploDisplayMode").value).toBe("both");
   });
 
-  test('assessment badges honour display mode', async () => {
+  test("assessment badges honour display mode", async () => {
     // Same tree, but program says "binary"
-    const binaryTree = { ...SAMPLE_TREE, assessment_display_mode: 'binary' };
+    const binaryTree = { ...SAMPLE_TREE, assessment_display_mode: "binary" };
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => binaryTree,
     });
     await PloDashboard.loadTree();
 
-    const badges = document.querySelectorAll('.plo-assessment-badge');
+    const badges = document.querySelectorAll(".plo-assessment-badge");
     // PLO-1 (80% → S), CLO-A (80% → S), Section 001 (90% → S),
     // Section 002 (65% → U), PLO-2 (null → —)
     const texts = Array.from(badges).map((b) => b.textContent);
-    expect(texts).toContain('S');
-    expect(texts).toContain('U');
-    expect(texts).toContain('—');
+    expect(texts).toContain("S");
+    expect(texts).toContain("U");
+    expect(texts).toContain("—");
     // In binary mode no percent sign anywhere
-    expect(texts.join('')).not.toContain('%');
+    expect(texts.join("")).not.toContain("%");
   });
 
   test('CLO with zero sections → "no section assessments" leaf message', async () => {
@@ -598,17 +616,17 @@ describe('PloDashboard — loadTree + render', () => {
       ...SAMPLE_TREE,
       plos: [
         {
-          id: 'plo-x',
+          id: "plo-x",
           plo_number: 1,
-          description: 'x',
+          description: "x",
           clo_count: 1,
           aggregate: { pass_rate: null },
           clos: [
             {
-              outcome_id: 'clo-x',
-              clo_number: '1',
-              course_number: 'X-100',
-              description: 'x',
+              outcome_id: "clo-x",
+              clo_number: "1",
+              course_number: "X-100",
+              description: "x",
               aggregate: { pass_rate: null },
               sections: [], // <-- the empty state under test
             },
@@ -620,9 +638,9 @@ describe('PloDashboard — loadTree + render', () => {
       .fn()
       .mockResolvedValue({ ok: true, json: async () => treeNoSections });
     await PloDashboard.loadTree();
-    expect(
-      document.getElementById('ploTreeContainer').textContent,
-    ).toMatch(/no section assessments/i);
+    expect(document.getElementById("ploTreeContainer").textContent).toMatch(
+      /no section assessments/i,
+    );
   });
 
   test('empty plos array → "no PLOs defined" empty state', async () => {
@@ -632,125 +650,125 @@ describe('PloDashboard — loadTree + render', () => {
         ...SAMPLE_TREE,
         plos: [],
         mapping: null,
-        mapping_status: 'none',
+        mapping_status: "none",
       }),
     });
     await PloDashboard.loadTree();
-    expect(
-      document.getElementById('ploTreeContainer').textContent,
-    ).toMatch(/no program learning outcomes/i);
+    expect(document.getElementById("ploTreeContainer").textContent).toMatch(
+      /no program learning outcomes/i,
+    );
     // version badge hidden when no mapping version
-    expect(
-      document.getElementById('ploTreeVersionBadge').style.display,
-    ).toBe('none');
+    expect(document.getElementById("ploTreeVersionBadge").style.display).toBe(
+      "none",
+    );
   });
 
-  test('HTTP error → setErrorState message with status code', async () => {
+  test("HTTP error → setErrorState message with status code", async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 500 });
     await PloDashboard.loadTree();
-    expect(
-      document.getElementById('ploTreeContainer').textContent,
-    ).toMatch(/500/);
+    expect(document.getElementById("ploTreeContainer").textContent).toMatch(
+      /500/,
+    );
   });
 
-  test('fetch throws → error state with exception message', async () => {
-    global.fetch = jest.fn().mockRejectedValue(new Error('network down'));
+  test("fetch throws → error state with exception message", async () => {
+    global.fetch = jest.fn().mockRejectedValue(new Error("network down"));
     await PloDashboard.loadTree();
-    expect(
-      document.getElementById('ploTreeContainer').textContent,
-    ).toMatch(/network down/);
+    expect(document.getElementById("ploTreeContainer").textContent).toMatch(
+      /network down/,
+    );
   });
 
-  test('All Programs mode loads each program tree', async () => {
-    PloDashboard.currentProgramId = '';
+  test("All Programs mode loads each program tree", async () => {
+    PloDashboard.currentProgramId = "";
     PloDashboard.programs = [
-      { program_id: 'prog-1', name: 'Biology BS' },
-      { program_id: 'prog-2', name: 'Chemistry BS' },
+      { program_id: "prog-1", name: "Biology BS" },
+      { program_id: "prog-2", name: "Chemistry BS" },
     ];
     // Mock PloTrend to avoid unrelated errors
     global.PloTrend = { loadTrend: jest.fn() };
 
     global.fetch = jest.fn().mockImplementation((url) => {
-      if (url.includes('prog-1')) {
+      if (url.includes("prog-1")) {
         return Promise.resolve({
           ok: true,
           json: async () => ({
             ...SAMPLE_TREE,
-            program_id: 'prog-1',
+            program_id: "prog-1",
           }),
         });
       }
-      if (url.includes('prog-2')) {
+      if (url.includes("prog-2")) {
         return Promise.resolve({
           ok: true,
           json: async () => ({
             ...SAMPLE_TREE,
-            program_id: 'prog-2',
-            mapping: { id: 'm-2', version: 1, status: 'published' },
+            program_id: "prog-2",
+            mapping: { id: "m-2", version: 1, status: "published" },
             plos: [],
           }),
         });
       }
-      return Promise.reject(new Error('unexpected URL'));
+      return Promise.reject(new Error("unexpected URL"));
     });
 
     await PloDashboard.loadTree();
 
     // Both program headings rendered (now inside collapsible sections)
-    const sections = document.querySelectorAll('.plo-program-section');
+    const sections = document.querySelectorAll(".plo-program-section");
     expect(sections.length).toBe(2);
-    const headings = document.querySelectorAll('.plo-all-programs-heading');
+    const headings = document.querySelectorAll(".plo-all-programs-heading");
     expect(headings.length).toBe(2);
-    expect(headings[0].textContent).toContain('Biology BS');
-    expect(headings[1].textContent).toContain('Chemistry BS');
+    expect(headings[0].textContent).toContain("Biology BS");
+    expect(headings[1].textContent).toContain("Chemistry BS");
 
     // First program has PLO tree, second shows "No PLOs defined."
-    const trees = document.querySelectorAll('ul.plo-tree');
+    const trees = document.querySelectorAll("ul.plo-tree");
     expect(trees.length).toBe(1);
-    const emptyMsg = document.querySelector('p.text-muted');
-    expect(emptyMsg.textContent).toContain('No PLOs defined.');
+    const emptyMsg = document.querySelector("p.text-muted");
+    expect(emptyMsg.textContent).toContain("No PLOs defined.");
 
     // Programs are collapsible
     const firstSection = sections[0];
-    expect(firstSection.querySelector('.plo-program-content')).not.toBeNull();
-    expect(firstSection.querySelector('.plo-program-toggle')).not.toBeNull();
+    expect(firstSection.querySelector(".plo-program-content")).not.toBeNull();
+    expect(firstSection.querySelector(".plo-program-toggle")).not.toBeNull();
 
     // Clicking heading toggles collapsed state
     headings[0].click();
-    expect(firstSection.classList.contains('collapsed')).toBe(true);
+    expect(firstSection.classList.contains("collapsed")).toBe(true);
     headings[0].click();
-    expect(firstSection.classList.contains('collapsed')).toBe(false);
+    expect(firstSection.classList.contains("collapsed")).toBe(false);
 
     // Program name label shows "All Programs"
-    expect(
-      document.getElementById('ploTreeProgramName').textContent,
-    ).toBe('All Programs');
+    expect(document.getElementById("ploTreeProgramName").textContent).toBe(
+      "All Programs",
+    );
 
     // Version badge hidden in All Programs mode
-    expect(
-      document.getElementById('ploTreeVersionBadge').style.display,
-    ).toBe('none');
+    expect(document.getElementById("ploTreeVersionBadge").style.display).toBe(
+      "none",
+    );
 
     delete global.PloTrend;
   });
 
-  test('All Programs mode skips programs that fail to load', async () => {
-    PloDashboard.currentProgramId = '';
+  test("All Programs mode skips programs that fail to load", async () => {
+    PloDashboard.currentProgramId = "";
     PloDashboard.programs = [
-      { program_id: 'prog-bad', name: 'Failing Program' },
-      { program_id: 'prog-ok', name: 'Good Program' },
+      { program_id: "prog-bad", name: "Failing Program" },
+      { program_id: "prog-ok", name: "Good Program" },
     ];
     global.PloTrend = { loadTrend: jest.fn() };
 
     global.fetch = jest.fn().mockImplementation((url) => {
-      if (url.includes('prog-bad')) {
+      if (url.includes("prog-bad")) {
         return Promise.resolve({ ok: false, status: 500 });
       }
       return Promise.resolve({
         ok: true,
         json: async () => ({
           ...SAMPLE_TREE,
-          program_id: 'prog-ok',
+          program_id: "prog-ok",
         }),
       });
     });
@@ -758,84 +776,83 @@ describe('PloDashboard — loadTree + render', () => {
     await PloDashboard.loadTree();
 
     // Only the successful program renders a heading
-    const headings = document.querySelectorAll('.plo-all-programs-heading');
+    const headings = document.querySelectorAll(".plo-all-programs-heading");
     expect(headings.length).toBe(1);
-    expect(headings[0].textContent).toContain('Good Program');
+    expect(headings[0].textContent).toContain("Good Program");
 
     delete global.PloTrend;
   });
-
 });
 
-describe('PloDashboard — expand/collapse + event wiring', () => {
+describe("PloDashboard — expand/collapse + event wiring", () => {
   beforeEach(() => {
     setBody(SKELETON);
     resetDashboardState();
     PloDashboard._cacheSelectors();
     PloDashboard._bindEvents();
-    PloDashboard.programs = [{ program_id: 'prog-1', name: 'Biology' }];
-    PloDashboard.currentProgramId = 'prog-1';
+    PloDashboard.programs = [{ program_id: "prog-1", name: "Biology" }];
+    PloDashboard.currentProgramId = "prog-1";
   });
 
   afterEach(() => {
     delete global.fetch;
   });
 
-  test('expandAll / collapseAll toggle .expanded on every node', async () => {
+  test("expandAll / collapseAll toggle .expanded on every node", async () => {
     global.fetch = jest
       .fn()
       .mockResolvedValue({ ok: true, json: async () => SAMPLE_TREE });
     await PloDashboard.loadTree();
 
     // After render: PLO-2 is auto-expanded (empty), PLO-1 is collapsed
-    let expanded = document.querySelectorAll('.plo-tree-node.expanded');
+    let expanded = document.querySelectorAll(".plo-tree-node.expanded");
     const initialCount = expanded.length;
 
-    document.getElementById('expandAllBtn').click();
-    expanded = document.querySelectorAll('.plo-tree-node.expanded');
+    document.getElementById("expandAllBtn").click();
+    expanded = document.querySelectorAll(".plo-tree-node.expanded");
     expect(expanded.length).toBeGreaterThan(initialCount);
 
-    document.getElementById('collapseAllBtn').click();
-    expanded = document.querySelectorAll('.plo-tree-node.expanded');
+    document.getElementById("collapseAllBtn").click();
+    expanded = document.querySelectorAll(".plo-tree-node.expanded");
     expect(expanded.length).toBe(0);
   });
 
-  test('clicking a PLO header toggles its expanded state', async () => {
+  test("clicking a PLO header toggles its expanded state", async () => {
     global.fetch = jest
       .fn()
       .mockResolvedValue({ ok: true, json: async () => SAMPLE_TREE });
     await PloDashboard.loadTree();
 
-    const plo1 = document.querySelector('ul.plo-tree > li.plo-tree-node');
-    const header = plo1.querySelector('.plo-tree-header');
-    expect(plo1.classList.contains('expanded')).toBe(false);
+    const plo1 = document.querySelector("ul.plo-tree > li.plo-tree-node");
+    const header = plo1.querySelector(".plo-tree-header");
+    expect(plo1.classList.contains("expanded")).toBe(false);
     header.click();
-    expect(plo1.classList.contains('expanded')).toBe(true);
+    expect(plo1.classList.contains("expanded")).toBe(true);
     header.click();
-    expect(plo1.classList.contains('expanded')).toBe(false);
+    expect(plo1.classList.contains("expanded")).toBe(false);
   });
 
-  test('term filter change triggers loadTree with new term', async () => {
+  test("term filter change triggers loadTree with new term", async () => {
     global.fetch = jest
       .fn()
       .mockResolvedValue({ ok: true, json: async () => SAMPLE_TREE });
 
-    const termSel = document.getElementById('ploTermFilter');
+    const termSel = document.getElementById("ploTermFilter");
     // add an option we can switch to
     termSel.innerHTML += '<option value="t-spring">Spring</option>';
-    termSel.value = 't-spring';
-    termSel.dispatchEvent(new Event('change'));
+    termSel.value = "t-spring";
+    termSel.dispatchEvent(new Event("change"));
 
     // event handler updates state then calls loadTree → awaits fetch
     await Promise.resolve(); // let the async loadTree settle its first tick
     await Promise.resolve();
 
-    expect(PloDashboard.currentTermId).toBe('t-spring');
+    expect(PloDashboard.currentTermId).toBe("t-spring");
     expect(global.fetch).toHaveBeenCalled();
     expect(global.fetch.mock.calls[0][0]).toMatch(/term_id=t-spring/);
   });
 
-  test('display-mode change re-renders without re-fetching', async () => {
+  test("display-mode change re-renders without re-fetching", async () => {
     global.fetch = jest
       .fn()
       .mockResolvedValue({ ok: true, json: async () => SAMPLE_TREE });
@@ -843,53 +860,55 @@ describe('PloDashboard — expand/collapse + event wiring', () => {
     expect(global.fetch).toHaveBeenCalledTimes(1);
 
     // swap fetch for a PUT-capture mock (display mode persists via PUT)
-    const putMock = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    const putMock = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({}) });
     global.fetch = putMock;
 
-    const modeSel = document.getElementById('ploDisplayMode');
-    modeSel.value = 'percentage';
-    modeSel.dispatchEvent(new Event('change'));
+    const modeSel = document.getElementById("ploDisplayMode");
+    modeSel.value = "percentage";
+    modeSel.dispatchEvent(new Event("change"));
     await Promise.resolve();
 
-    expect(PloDashboard.displayMode).toBe('percentage');
+    expect(PloDashboard.displayMode).toBe("percentage");
     // PUT was fired to persist the setting, but no GET for the tree
     expect(putMock).toHaveBeenCalledTimes(1);
     const [putUrl, putOpts] = putMock.mock.calls[0];
-    expect(putOpts.method).toBe('PUT');
+    expect(putOpts.method).toBe("PUT");
     expect(putUrl).toMatch(/\/api\/programs\/prog-1$/);
-    expect(putOpts.headers['X-CSRFToken']).toBe('test-csrf-token');
+    expect(putOpts.headers["X-CSRFToken"]).toBe("test-csrf-token");
     expect(JSON.parse(putOpts.body)).toEqual({
-      assessment_display_mode: 'percentage',
+      assessment_display_mode: "percentage",
     });
 
     // badges now show percentages
-    const badges = document.querySelectorAll('.plo-assessment-badge');
-    expect(Array.from(badges).some((b) => b.textContent.includes('%'))).toBe(
+    const badges = document.querySelectorAll(".plo-assessment-badge");
+    expect(Array.from(badges).some((b) => b.textContent.includes("%"))).toBe(
       true,
     );
   });
 
-  test('program filter change persists to localStorage', async () => {
+  test("program filter change persists to localStorage", async () => {
     global.fetch = jest
       .fn()
       .mockResolvedValue({ ok: true, json: async () => SAMPLE_TREE });
 
-    const sel = document.getElementById('ploProgramFilter');
+    const sel = document.getElementById("ploProgramFilter");
     sel.innerHTML = '<option value="prog-X">X</option>';
-    sel.value = 'prog-X';
-    sel.dispatchEvent(new Event('change'));
+    sel.value = "prog-X";
+    sel.dispatchEvent(new Event("change"));
 
-    expect(localStorage.getItem('ploDashboard.lastProgramId')).toBe('prog-X');
-    expect(PloDashboard.currentProgramId).toBe('prog-X');
+    expect(localStorage.getItem("ploDashboard.lastProgramId")).toBe("prog-X");
+    expect(PloDashboard.currentProgramId).toBe("prog-X");
   });
 });
 
-describe('PloDashboard — PLO create/edit modal', () => {
+describe("PloDashboard — PLO create/edit modal", () => {
   beforeEach(() => {
     setBody(SKELETON);
     resetDashboardState();
     PloDashboard._cacheSelectors();
-    PloDashboard.currentProgramId = 'prog-1';
+    PloDashboard.currentProgramId = "prog-1";
   });
 
   afterEach(() => {
@@ -898,49 +917,53 @@ describe('PloDashboard — PLO create/edit modal', () => {
 
   test('_openPloModal(undefined) prepares for "create" mode', () => {
     PloDashboard._openPloModal();
-    expect(document.getElementById('ploModalLabel').textContent).toMatch(
+    expect(document.getElementById("ploModalLabel").textContent).toMatch(
       /new/i,
     );
-    expect(document.getElementById('ploModalId').value).toBe('');
+    expect(document.getElementById("ploModalId").value).toBe("");
     // PLO number group hidden in create mode (auto-assigned by server)
     expect(
-      document.getElementById('ploModalNumberGroup').classList.contains('d-none'),
+      document
+        .getElementById("ploModalNumberGroup")
+        .classList.contains("d-none"),
     ).toBe(true);
     // No bootstrap present → fallback adds .show
-    expect(
-      document.getElementById('ploModal').classList.contains('show'),
-    ).toBe(true);
+    expect(document.getElementById("ploModal").classList.contains("show")).toBe(
+      true,
+    );
   });
 
   test('_openPloModal(plo) prefills for "edit" mode', () => {
     PloDashboard._openPloModal({
-      id: 'plo-abc',
+      id: "plo-abc",
       plo_number: 5,
-      description: 'Capstone assessment.',
+      description: "Capstone assessment.",
     });
-    expect(document.getElementById('ploModalLabel').textContent).toMatch(
+    expect(document.getElementById("ploModalLabel").textContent).toMatch(
       /edit/i,
     );
-    expect(document.getElementById('ploModalId').value).toBe('plo-abc');
-    expect(document.getElementById('ploModalNumber').value).toBe('5');
-    expect(document.getElementById('ploModalDescription').value).toBe(
-      'Capstone assessment.',
+    expect(document.getElementById("ploModalId").value).toBe("plo-abc");
+    expect(document.getElementById("ploModalNumber").value).toBe("5");
+    expect(document.getElementById("ploModalDescription").value).toBe(
+      "Capstone assessment.",
     );
     // PLO number group visible in edit mode
     expect(
-      document.getElementById('ploModalNumberGroup').classList.contains('d-none'),
+      document
+        .getElementById("ploModalNumberGroup")
+        .classList.contains("d-none"),
     ).toBe(false);
   });
 
-  test('_submitPloForm POSTs without plo_number (auto-assigned), hides modal on success', async () => {
-    document.getElementById('ploModalId').value = ''; // create mode
-    document.getElementById('ploModalNumber').value = '';
-    document.getElementById('ploModalDescription').value = 'New outcome';
+  test("_submitPloForm POSTs without plo_number (auto-assigned), hides modal on success", async () => {
+    document.getElementById("ploModalId").value = ""; // create mode
+    document.getElementById("ploModalNumber").value = "";
+    document.getElementById("ploModalDescription").value = "New outcome";
 
     // Two fetches: POST for save, then GET from loadTree()
     global.fetch = routeFetch([
-      ['/plos', { body: { success: true, plo: { id: 'new-id' } } }],
-      ['/plo-dashboard', { body: { ...SAMPLE_TREE } }],
+      ["/plos", { body: { success: true, plo: { id: "new-id" } } }],
+      ["/plo-dashboard", { body: { ...SAMPLE_TREE } }],
     ]);
 
     const evt = { preventDefault: jest.fn() };
@@ -949,60 +972,63 @@ describe('PloDashboard — PLO create/edit modal', () => {
     expect(evt.preventDefault).toHaveBeenCalled();
     const [url, opts] = global.fetch.mock.calls[0];
     expect(url).toMatch(/\/api\/programs\/prog-1\/plos$/);
-    expect(opts.method).toBe('POST');
+    expect(opts.method).toBe("POST");
     // Create mode: plo_number omitted — server auto-assigns
     expect(JSON.parse(opts.body)).toEqual({
-      description: 'New outcome',
+      description: "New outcome",
     });
-    expect(opts.headers['X-CSRFToken']).toBe('test-csrf-token');
+    expect(opts.headers["X-CSRFToken"]).toBe("test-csrf-token");
 
     // Modal hidden on success
-    expect(
-      document.getElementById('ploModal').classList.contains('show'),
-    ).toBe(false);
+    expect(document.getElementById("ploModal").classList.contains("show")).toBe(
+      false,
+    );
   });
 
-  test('_submitPloForm PUTs when ploModalId is set', async () => {
-    document.getElementById('ploModalId').value = 'existing-plo';
-    document.getElementById('ploModalNumber').value = '3';
-    document.getElementById('ploModalDescription').value = 'edited';
+  test("_submitPloForm PUTs when ploModalId is set", async () => {
+    document.getElementById("ploModalId").value = "existing-plo";
+    document.getElementById("ploModalNumber").value = "3";
+    document.getElementById("ploModalDescription").value = "edited";
 
     global.fetch = routeFetch([
-      ['/plos/existing-plo', { body: { success: true } }],
-      ['/plo-dashboard', { body: SAMPLE_TREE }],
+      ["/plos/existing-plo", { body: { success: true } }],
+      ["/plo-dashboard", { body: SAMPLE_TREE }],
     ]);
 
     await PloDashboard._submitPloForm({ preventDefault: jest.fn() });
     const [url, opts] = global.fetch.mock.calls[0];
-    expect(opts.method).toBe('PUT');
+    expect(opts.method).toBe("PUT");
     expect(url).toMatch(/\/plos\/existing-plo$/);
   });
 
-  test('_submitPloForm shows danger alert on API error', async () => {
-    document.getElementById('ploModalNumber').value = '1';
-    document.getElementById('ploModalDescription').value = 'dup';
+  test("_submitPloForm shows danger alert on API error", async () => {
+    document.getElementById("ploModalNumber").value = "1";
+    document.getElementById("ploModalDescription").value = "dup";
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,
       status: 400,
-      json: async () => ({ success: false, error: 'PLO number already exists' }),
+      json: async () => ({
+        success: false,
+        error: "PLO number already exists",
+      }),
     });
 
     await PloDashboard._submitPloForm({ preventDefault: jest.fn() });
 
-    const alert = document.getElementById('ploModalAlert');
-    expect(alert.className).toContain('alert-danger');
-    expect(alert.textContent).toContain('PLO number already exists');
+    const alert = document.getElementById("ploModalAlert");
+    expect(alert.className).toContain("alert-danger");
+    expect(alert.textContent).toContain("PLO number already exists");
     // Modal stays open on error
     // (it was never shown in this test so just verify no hide was forced)
   });
 });
 
-describe('PloDashboard — Map CLO modal + publish', () => {
+describe("PloDashboard — Map CLO modal + publish", () => {
   beforeEach(() => {
     setBody(SKELETON);
     resetDashboardState();
     PloDashboard._cacheSelectors();
-    PloDashboard.currentProgramId = 'prog-1';
+    PloDashboard.currentProgramId = "prog-1";
     PloDashboard.tree = SAMPLE_TREE; // for PLO-dropdown population
   });
 
@@ -1010,22 +1036,22 @@ describe('PloDashboard — Map CLO modal + publish', () => {
     delete global.fetch;
   });
 
-  test('_openMapCloModal populates PLOs + unmapped CLOs', async () => {
+  test("_openMapCloModal populates PLOs + unmapped CLOs", async () => {
     global.fetch = routeFetch([
       [
-        '/plo-mappings/draft',
-        { body: { success: true, mapping: { id: 'draft-1' } } },
+        "/plo-mappings/draft",
+        { body: { success: true, mapping: { id: "draft-1" } } },
       ],
       [
-        '/unmapped-clos',
+        "/unmapped-clos",
         {
           body: {
             unmapped_clos: [
               {
-                outcome_id: 'clo-1',
-                clo_number: '4',
-                description: 'Analyze data',
-                course: { course_number: 'BIOL-201' },
+                outcome_id: "clo-1",
+                clo_number: "4",
+                description: "Analyze data",
+                course: { course_number: "BIOL-201" },
               },
             ],
           },
@@ -1033,65 +1059,65 @@ describe('PloDashboard — Map CLO modal + publish', () => {
       ],
     ]);
 
-    await PloDashboard._openMapCloModal('plo-1');
+    await PloDashboard._openMapCloModal("plo-1");
 
-    expect(PloDashboard.draftMappingId).toBe('draft-1');
+    expect(PloDashboard.draftMappingId).toBe("draft-1");
 
     // PLO select: placeholder + 2 PLOs from SAMPLE_TREE
-    const ploSel = document.getElementById('mapCloModalPlo');
+    const ploSel = document.getElementById("mapCloModalPlo");
     expect(ploSel.options.length).toBe(3);
-    expect(ploSel.value).toBe('plo-1'); // prefill honoured
+    expect(ploSel.value).toBe("plo-1"); // prefill honoured
 
     // CLO select: placeholder + 1 unmapped CLO
-    const cloSel = document.getElementById('mapCloModalClo');
+    const cloSel = document.getElementById("mapCloModalClo");
     expect(cloSel.options.length).toBe(2);
-    expect(cloSel.options[1].textContent).toContain('BIOL-201');
+    expect(cloSel.options[1].textContent).toContain("BIOL-201");
   });
 
   test('_openMapCloModal shows "all mapped" when list is empty', async () => {
     global.fetch = routeFetch([
-      ['/plo-mappings/draft', { body: { mapping: { id: 'd-2' } } }],
-      ['/unmapped-clos', { body: { unmapped_clos: [] } }],
+      ["/plo-mappings/draft", { body: { mapping: { id: "d-2" } } }],
+      ["/unmapped-clos", { body: { unmapped_clos: [] } }],
     ]);
     await PloDashboard._openMapCloModal();
-    expect(
-      document.getElementById('mapCloModalClo').textContent,
-    ).toMatch(/all clos are already mapped/i);
+    expect(document.getElementById("mapCloModalClo").textContent).toMatch(
+      /all clos are already mapped/i,
+    );
   });
 
-  test('_submitMapCloForm warns when PLO or CLO missing', async () => {
-    PloDashboard.draftMappingId = 'draft-x';
-    document.getElementById('mapCloModalPlo').innerHTML =
+  test("_submitMapCloForm warns when PLO or CLO missing", async () => {
+    PloDashboard.draftMappingId = "draft-x";
+    document.getElementById("mapCloModalPlo").innerHTML =
       '<option value="">-</option>';
-    document.getElementById('mapCloModalClo').innerHTML =
+    document.getElementById("mapCloModalClo").innerHTML =
       '<option value="clo-1">CLO</option>';
-    document.getElementById('mapCloModalClo').value = 'clo-1';
+    document.getElementById("mapCloModalClo").value = "clo-1";
 
     global.fetch = jest.fn(); // should NOT be called
     await PloDashboard._submitMapCloForm({ preventDefault: jest.fn() });
 
     expect(global.fetch).not.toHaveBeenCalled();
-    const alert = document.getElementById('mapCloModalAlert');
-    expect(alert.className).toContain('alert-warning');
+    const alert = document.getElementById("mapCloModalAlert");
+    expect(alert.className).toContain("alert-warning");
     expect(alert.textContent).toMatch(/select both/i);
   });
 
-  test('_submitMapCloForm POSTs entry with selected ids', async () => {
-    PloDashboard.draftMappingId = 'draft-y';
-    document.getElementById('mapCloModalPlo').innerHTML =
+  test("_submitMapCloForm POSTs entry with selected ids", async () => {
+    PloDashboard.draftMappingId = "draft-y";
+    document.getElementById("mapCloModalPlo").innerHTML =
       '<option value="plo-1">PLO-1</option>';
-    document.getElementById('mapCloModalClo').innerHTML =
+    document.getElementById("mapCloModalClo").innerHTML =
       '<option value="clo-A">CLO-A</option>';
 
     // The submit path re-opens the modal on success, which fires two more
     // fetches (draft + unmapped-clos). Route all three.
     global.fetch = routeFetch([
       [
-        '/plo-mappings/draft-y/entries',
-        { body: { success: true, entry: { id: 'e-1' } } },
+        "/plo-mappings/draft-y/entries",
+        { body: { success: true, entry: { id: "e-1" } } },
       ],
-      ['/plo-mappings/draft', { body: { mapping: { id: 'draft-y' } } }],
-      ['/unmapped-clos', { body: { unmapped_clos: [] } }],
+      ["/plo-mappings/draft", { body: { mapping: { id: "draft-y" } } }],
+      ["/unmapped-clos", { body: { unmapped_clos: [] } }],
     ]);
 
     await PloDashboard._submitMapCloForm({ preventDefault: jest.fn() });
@@ -1099,8 +1125,8 @@ describe('PloDashboard — Map CLO modal + publish', () => {
     const [url, opts] = global.fetch.mock.calls[0];
     expect(url).toMatch(/draft-y\/entries$/);
     expect(JSON.parse(opts.body)).toEqual({
-      program_outcome_id: 'plo-1',
-      course_outcome_id: 'clo-A',
+      program_outcome_id: "plo-1",
+      course_outcome_id: "clo-A",
     });
 
     // On success the modal re-opens itself (fire-and-forget, not awaited)
@@ -1110,160 +1136,163 @@ describe('PloDashboard — Map CLO modal + publish', () => {
     // contract under test.
   });
 
-  test('_publishDraft no-ops without a draft id', async () => {
+  test("_publishDraft no-ops without a draft id", async () => {
     PloDashboard.draftMappingId = null;
     global.fetch = jest.fn();
     await PloDashboard._publishDraft();
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
-  test('_publishDraft POSTs and refreshes tree on success', async () => {
-    PloDashboard.draftMappingId = 'draft-z';
+  test("_publishDraft POSTs and refreshes tree on success", async () => {
+    PloDashboard.draftMappingId = "draft-z";
     global.fetch = routeFetch([
-      ['/draft-z/publish', { body: { success: true, mapping: { version: 3 } } }],
-      ['/plo-dashboard', { body: SAMPLE_TREE }],
+      [
+        "/draft-z/publish",
+        { body: { success: true, mapping: { version: 3 } } },
+      ],
+      ["/plo-dashboard", { body: SAMPLE_TREE }],
     ]);
 
     await PloDashboard._publishDraft();
 
     const [url, opts] = global.fetch.mock.calls[0];
     expect(url).toMatch(/\/plo-mappings\/draft-z\/publish$/);
-    expect(opts.method).toBe('POST');
+    expect(opts.method).toBe("POST");
     // Modal hidden after publish
     expect(
-      document.getElementById('mapCloModal').classList.contains('show'),
+      document.getElementById("mapCloModal").classList.contains("show"),
     ).toBe(false);
     // Tree was reloaded
     expect(global.fetch.mock.calls[1][0]).toMatch(/\/plo-dashboard/);
   });
 
-  test('_publishDraft shows error alert on API failure', async () => {
-    PloDashboard.draftMappingId = 'draft-err';
+  test("_publishDraft shows error alert on API failure", async () => {
+    PloDashboard.draftMappingId = "draft-err";
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,
       status: 409,
-      json: async () => ({ success: false, error: 'Nothing to publish' }),
+      json: async () => ({ success: false, error: "Nothing to publish" }),
     });
     await PloDashboard._publishDraft();
-    const alert = document.getElementById('mapCloModalAlert');
-    expect(alert.className).toContain('alert-danger');
-    expect(alert.textContent).toContain('Nothing to publish');
+    const alert = document.getElementById("mapCloModalAlert");
+    expect(alert.className).toContain("alert-danger");
+    expect(alert.textContent).toContain("Nothing to publish");
   });
 });
 
-describe('PloDashboard — small helpers', () => {
-  test('_csrf reads from meta tag', () => {
+describe("PloDashboard — small helpers", () => {
+  test("_csrf reads from meta tag", () => {
     setBody('<meta name="csrf-token" content="abc123">');
     PloDashboard._cacheSelectors();
-    expect(PloDashboard._csrf()).toBe('abc123');
+    expect(PloDashboard._csrf()).toBe("abc123");
   });
 
-  test('_csrf returns empty string when meta missing', () => {
-    setBody('');
-    expect(PloDashboard._csrf()).toBe('');
+  test("_csrf returns empty string when meta missing", () => {
+    setBody("");
+    expect(PloDashboard._csrf()).toBe("");
   });
 
-  test('_modalAlert sets class + text; tolerates null element', () => {
+  test("_modalAlert sets class + text; tolerates null element", () => {
     setBody('<div id="a"></div>');
-    const el = document.getElementById('a');
-    PloDashboard._modalAlert(el, 'hello', 'warning');
-    expect(el.className).toBe('alert alert-warning');
-    expect(el.textContent).toBe('hello');
+    const el = document.getElementById("a");
+    PloDashboard._modalAlert(el, "hello", "warning");
+    expect(el.className).toBe("alert alert-warning");
+    expect(el.textContent).toBe("hello");
 
     // null element → no throw
-    expect(() => PloDashboard._modalAlert(null, 'x', 'info')).not.toThrow();
+    expect(() => PloDashboard._modalAlert(null, "x", "info")).not.toThrow();
   });
 
-  test('_showModal/_hideModal use class-toggle fallback when no bootstrap', () => {
+  test("_showModal/_hideModal use class-toggle fallback when no bootstrap", () => {
     setBody('<div id="m" style="display:none"></div>');
-    const m = document.getElementById('m');
+    const m = document.getElementById("m");
     PloDashboard._showModal(m);
-    expect(m.classList.contains('show')).toBe(true);
-    expect(m.style.display).toBe('block');
+    expect(m.classList.contains("show")).toBe(true);
+    expect(m.style.display).toBe("block");
     PloDashboard._hideModal(m);
-    expect(m.classList.contains('show')).toBe(false);
-    expect(m.style.display).toBe('none');
+    expect(m.classList.contains("show")).toBe(false);
+    expect(m.style.display).toBe("none");
   });
 });
 
 // ---------------------------------------------------------------------------
 // Summary bar
 // ---------------------------------------------------------------------------
-describe('PloDashboard — _buildSummaryBar', () => {
-  test('renders rows with sparkline slots for mixed PLO statuses', () => {
+describe("PloDashboard — _buildSummaryBar", () => {
+  test("renders rows with sparkline slots for mixed PLO statuses", () => {
     const plos = [
-      { id: 'p1', plo_number: 1, aggregate: { pass_rate: 90 } },
-      { id: 'p2', plo_number: 2, aggregate: { pass_rate: 85 } },
-      { id: 'p3', plo_number: 3, aggregate: { pass_rate: 60 } },
-      { id: 'p4', plo_number: 4, aggregate: { pass_rate: null } },
+      { id: "p1", plo_number: 1, aggregate: { pass_rate: 90 } },
+      { id: "p2", plo_number: 2, aggregate: { pass_rate: 85 } },
+      { id: "p3", plo_number: 3, aggregate: { pass_rate: 60 } },
+      { id: "p4", plo_number: 4, aggregate: { pass_rate: null } },
     ];
 
     const bar = PloDashboard._buildSummaryBar(plos);
-    expect(bar.className).toBe('plo-summary-bar');
+    expect(bar.className).toBe("plo-summary-bar");
 
     // 3 rows: satisfactory, needs attention, no data
-    const rows = bar.querySelectorAll('.plo-summary-row');
+    const rows = bar.querySelectorAll(".plo-summary-row");
     expect(rows.length).toBe(3);
 
     // Stats text in each row
-    const stats = bar.querySelectorAll('.plo-summary-stat');
+    const stats = bar.querySelectorAll(".plo-summary-stat");
     expect(stats.length).toBe(3);
-    expect(stats[0].textContent).toContain('2');
-    expect(stats[0].textContent).toContain('satisfactory');
-    expect(stats[1].textContent).toContain('1');
-    expect(stats[1].textContent).toContain('needs attention');
-    expect(stats[2].textContent).toContain('1');
-    expect(stats[2].textContent).toContain('no data');
+    expect(stats[0].textContent).toContain("2");
+    expect(stats[0].textContent).toContain("satisfactory");
+    expect(stats[1].textContent).toContain("1");
+    expect(stats[1].textContent).toContain("needs attention");
+    expect(stats[2].textContent).toContain("1");
+    expect(stats[2].textContent).toContain("no data");
 
     // Sparkline slots with PLO IDs
-    const slots = bar.querySelectorAll('.plo-summary-sparkline-slot');
+    const slots = bar.querySelectorAll(".plo-summary-sparkline-slot");
     expect(slots.length).toBe(4);
-    expect(slots[0].dataset.ploId).toBe('p1');
-    expect(slots[1].dataset.ploId).toBe('p2');
+    expect(slots[0].dataset.ploId).toBe("p1");
+    expect(slots[1].dataset.ploId).toBe("p2");
 
     // Labels show PLO numbers
-    const labels = bar.querySelectorAll('.plo-summary-sparkline-label');
-    expect(labels[0].textContent).toBe('(1)');
+    const labels = bar.querySelectorAll(".plo-summary-sparkline-label");
+    expect(labels[0].textContent).toBe("(1)");
 
     // Progress bar has 3 segments
-    const segments = bar.querySelectorAll('.plo-summary-segment');
+    const segments = bar.querySelectorAll(".plo-summary-segment");
     expect(segments.length).toBe(3);
-    expect(segments[0].className).toContain('seg-pass');
-    expect(segments[1].className).toContain('seg-fail');
-    expect(segments[2].className).toContain('seg-nodata');
+    expect(segments[0].className).toContain("seg-pass");
+    expect(segments[1].className).toContain("seg-fail");
+    expect(segments[2].className).toContain("seg-nodata");
   });
 
-  test('omits zero-count categories', () => {
+  test("omits zero-count categories", () => {
     const plos = [
-      { id: 'p1', plo_number: 1, aggregate: { pass_rate: 90 } },
-      { id: 'p2', plo_number: 2, aggregate: { pass_rate: 80 } },
+      { id: "p1", plo_number: 1, aggregate: { pass_rate: 90 } },
+      { id: "p2", plo_number: 2, aggregate: { pass_rate: 80 } },
     ];
 
     const bar = PloDashboard._buildSummaryBar(plos);
-    const rows = bar.querySelectorAll('.plo-summary-row');
+    const rows = bar.querySelectorAll(".plo-summary-row");
     expect(rows.length).toBe(1);
-    const stats = bar.querySelectorAll('.plo-summary-stat');
+    const stats = bar.querySelectorAll(".plo-summary-stat");
     expect(stats.length).toBe(1);
-    expect(stats[0].textContent).toContain('satisfactory');
-    const segments = bar.querySelectorAll('.plo-summary-segment');
+    expect(stats[0].textContent).toContain("satisfactory");
+    const segments = bar.querySelectorAll(".plo-summary-segment");
     expect(segments.length).toBe(1);
   });
 
-  test('returns empty bar for null/empty plos', () => {
+  test("returns empty bar for null/empty plos", () => {
     const bar = PloDashboard._buildSummaryBar([]);
-    expect(bar.querySelector('.plo-summary-stat')).toBeNull();
+    expect(bar.querySelector(".plo-summary-stat")).toBeNull();
 
     const bar2 = PloDashboard._buildSummaryBar(null);
-    expect(bar2.querySelector('.plo-summary-stat')).toBeNull();
+    expect(bar2.querySelector(".plo-summary-stat")).toBeNull();
   });
 
-  test('summary bar is inserted above tree in renderTree', async () => {
+  test("summary bar is inserted above tree in renderTree", async () => {
     setBody(SKELETON);
     resetDashboardState();
     PloDashboard._cacheSelectors();
-    PloDashboard.programs = [{ program_id: 'prog-1', name: 'Biology BS' }];
-    PloDashboard.currentProgramId = 'prog-1';
-    PloDashboard.currentTermId = 't-active';
+    PloDashboard.programs = [{ program_id: "prog-1", name: "Biology BS" }];
+    PloDashboard.currentProgramId = "prog-1";
+    PloDashboard.currentTermId = "t-active";
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -1272,24 +1301,24 @@ describe('PloDashboard — _buildSummaryBar', () => {
     await PloDashboard.loadTree();
     delete global.fetch;
 
-    const container = document.getElementById('ploTreeContainer');
-    const summaryBar = container.querySelector('.plo-summary-bar');
+    const container = document.getElementById("ploTreeContainer");
+    const summaryBar = container.querySelector(".plo-summary-bar");
     expect(summaryBar).not.toBeNull();
 
     // SAMPLE_TREE has 2 PLOs: 1 satisfactory (80%) + 1 no data (null)
-    const stats = summaryBar.querySelectorAll('.plo-summary-stat');
+    const stats = summaryBar.querySelectorAll(".plo-summary-stat");
     expect(stats.length).toBe(2);
-    expect(stats[0].textContent).toContain('satisfactory');
-    expect(stats[1].textContent).toContain('no data');
+    expect(stats[0].textContent).toContain("satisfactory");
+    expect(stats[1].textContent).toContain("no data");
 
     // Summary bar appears before the tree
-    const tree = container.querySelector('ul.plo-tree');
+    const tree = container.querySelector("ul.plo-tree");
     expect(container.children[0]).toBe(summaryBar);
     expect(container.children[1]).toBe(tree);
   });
 });
 
-describe('PloDashboard — _loadAllPrograms', () => {
+describe("PloDashboard — _loadAllPrograms", () => {
   beforeEach(() => {
     setBody(SKELETON);
     resetDashboardState();
@@ -1300,13 +1329,13 @@ describe('PloDashboard — _loadAllPrograms', () => {
     delete global.fetch;
   });
 
-  test('fetches all programs in parallel and renders sections', async () => {
+  test("fetches all programs in parallel and renders sections", async () => {
     PloDashboard.programs = [
-      { program_id: 'prog-1', name: 'Biology BS' },
-      { program_id: 'prog-2', name: 'Chemistry BS' },
+      { program_id: "prog-1", name: "Biology BS" },
+      { program_id: "prog-2", name: "Chemistry BS" },
     ];
-    PloDashboard.currentProgramId = '';
-    PloDashboard.currentTermId = '';
+    PloDashboard.currentProgramId = "";
+    PloDashboard.currentTermId = "";
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -1316,18 +1345,18 @@ describe('PloDashboard — _loadAllPrograms', () => {
     await PloDashboard._loadAllPrograms();
 
     // Both programs should be rendered
-    const headings = document.querySelectorAll('.plo-all-programs-heading');
+    const headings = document.querySelectorAll(".plo-all-programs-heading");
     expect(headings.length).toBe(2);
-    expect(headings[0].textContent).toContain('Biology BS');
-    expect(headings[1].textContent).toContain('Chemistry BS');
+    expect(headings[0].textContent).toContain("Biology BS");
+    expect(headings[1].textContent).toContain("Chemistry BS");
   });
 
-  test('handles failed fetch for one program gracefully', async () => {
+  test("handles failed fetch for one program gracefully", async () => {
     PloDashboard.programs = [
-      { program_id: 'prog-1', name: 'Biology BS' },
-      { program_id: 'prog-2', name: 'Chemistry BS' },
+      { program_id: "prog-1", name: "Biology BS" },
+      { program_id: "prog-2", name: "Chemistry BS" },
     ];
-    PloDashboard.currentProgramId = '';
+    PloDashboard.currentProgramId = "";
 
     let callCount = 0;
     global.fetch = jest.fn(() => {
@@ -1338,26 +1367,27 @@ describe('PloDashboard — _loadAllPrograms', () => {
           json: async () => SAMPLE_TREE,
         });
       }
-      return Promise.reject(new Error('Network error'));
+      return Promise.reject(new Error("Network error"));
     });
 
     await PloDashboard._loadAllPrograms();
 
     // Only the successful program should have a heading
-    const headings = document.querySelectorAll('.plo-all-programs-heading');
+    const headings = document.querySelectorAll(".plo-all-programs-heading");
     expect(headings.length).toBe(1);
-    expect(headings[0].textContent).toContain('Biology BS');
+    expect(headings[0].textContent).toContain("Biology BS");
   });
 
-  test('ignores stale results when generation counter changes', async () => {
-    PloDashboard.programs = [
-      { program_id: 'prog-1', name: 'Biology BS' },
-    ];
-    PloDashboard.currentProgramId = '';
+  test("ignores stale results when generation counter changes", async () => {
+    PloDashboard.programs = [{ program_id: "prog-1", name: "Biology BS" }];
+    PloDashboard.currentProgramId = "";
 
     let resolveFirst;
     global.fetch = jest.fn(
-      () => new Promise((r) => { resolveFirst = r; }),
+      () =>
+        new Promise((r) => {
+          resolveFirst = r;
+        }),
     );
 
     // Start first load
@@ -1374,15 +1404,15 @@ describe('PloDashboard — _loadAllPrograms', () => {
     await p1;
 
     // Container should be empty — stale result ignored
-    const container = document.getElementById('ploTreeContainer');
-    expect(container.querySelectorAll('.plo-all-programs-heading').length).toBe(0);
+    const container = document.getElementById("ploTreeContainer");
+    expect(container.querySelectorAll(".plo-all-programs-heading").length).toBe(
+      0,
+    );
   });
 
-  test('renders version badge when mapping has version', async () => {
-    PloDashboard.programs = [
-      { program_id: 'prog-1', name: 'Biology BS' },
-    ];
-    PloDashboard.currentProgramId = '';
+  test("renders version badge when mapping has version", async () => {
+    PloDashboard.programs = [{ program_id: "prog-1", name: "Biology BS" }];
+    PloDashboard.currentProgramId = "";
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -1391,16 +1421,14 @@ describe('PloDashboard — _loadAllPrograms', () => {
 
     await PloDashboard._loadAllPrograms();
 
-    const badge = document.querySelector('.plo-all-programs-heading .badge');
+    const badge = document.querySelector(".plo-all-programs-heading .badge");
     expect(badge).not.toBeNull();
-    expect(badge.textContent).toBe('v2');
+    expect(badge.textContent).toBe("v2");
   });
 
-  test('collapsible toggle works on heading click', async () => {
-    PloDashboard.programs = [
-      { program_id: 'prog-1', name: 'Biology BS' },
-    ];
-    PloDashboard.currentProgramId = '';
+  test("collapsible toggle works on heading click", async () => {
+    PloDashboard.programs = [{ program_id: "prog-1", name: "Biology BS" }];
+    PloDashboard.currentProgramId = "";
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -1409,22 +1437,20 @@ describe('PloDashboard — _loadAllPrograms', () => {
 
     await PloDashboard._loadAllPrograms();
 
-    const section = document.querySelector('.plo-program-section');
-    const heading = document.querySelector('.plo-all-programs-heading');
+    const section = document.querySelector(".plo-program-section");
+    const heading = document.querySelector(".plo-all-programs-heading");
     expect(section).not.toBeNull();
 
     heading.click();
-    expect(section.classList.contains('collapsed')).toBe(true);
+    expect(section.classList.contains("collapsed")).toBe(true);
 
     heading.click();
-    expect(section.classList.contains('collapsed')).toBe(false);
+    expect(section.classList.contains("collapsed")).toBe(false);
   });
 
   test('shows "No PLOs defined" for program with empty plos', async () => {
-    PloDashboard.programs = [
-      { program_id: 'prog-1', name: 'Empty Program' },
-    ];
-    PloDashboard.currentProgramId = '';
+    PloDashboard.programs = [{ program_id: "prog-1", name: "Empty Program" }];
+    PloDashboard.currentProgramId = "";
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -1437,34 +1463,32 @@ describe('PloDashboard — _loadAllPrograms', () => {
 
     await PloDashboard._loadAllPrograms();
 
-    const emptyMsg = document.querySelector('.text-muted.fst-italic');
+    const emptyMsg = document.querySelector(".text-muted.fst-italic");
     expect(emptyMsg).not.toBeNull();
-    expect(emptyMsg.textContent).toBe('No PLOs defined.');
+    expect(emptyMsg.textContent).toBe("No PLOs defined.");
   });
 
-  test('saves and restores displayMode per program', async () => {
-    PloDashboard.programs = [
-      { program_id: 'prog-1', name: 'Biology BS' },
-    ];
-    PloDashboard.currentProgramId = '';
-    PloDashboard.displayMode = 'percentage';
+  test("saves and restores displayMode per program", async () => {
+    PloDashboard.programs = [{ program_id: "prog-1", name: "Biology BS" }];
+    PloDashboard.currentProgramId = "";
+    PloDashboard.displayMode = "percentage";
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         ...SAMPLE_TREE,
-        assessment_display_mode: 'binary',
+        assessment_display_mode: "binary",
       }),
     });
 
     await PloDashboard._loadAllPrograms();
 
     // displayMode should be restored to original after rendering
-    expect(PloDashboard.displayMode).toBe('percentage');
+    expect(PloDashboard.displayMode).toBe("percentage");
   });
 });
 
-describe('PloDashboard — _loadAllTrendData', () => {
+describe("PloDashboard — _loadAllTrendData", () => {
   beforeEach(() => {
     setBody(SKELETON);
     resetDashboardState();
@@ -1477,12 +1501,12 @@ describe('PloDashboard — _loadAllTrendData', () => {
     delete global.PloTrend;
   });
 
-  test('injects sparklines for ALL programs, not just the last', async () => {
+  test("injects sparklines for ALL programs, not just the last", async () => {
     PloDashboard.programs = [
-      { program_id: 'prog-1', name: 'Biology BS' },
-      { program_id: 'prog-2', name: 'Chemistry BS' },
+      { program_id: "prog-1", name: "Biology BS" },
+      { program_id: "prog-2", name: "Chemistry BS" },
     ];
-    PloDashboard.currentTermId = 't-1';
+    PloDashboard.currentTermId = "t-1";
 
     const injectCalls = [];
     global.PloTrend = {
@@ -1495,19 +1519,19 @@ describe('PloDashboard — _loadAllTrendData', () => {
 
     const trendProg1 = {
       success: true,
-      program_id: 'prog-1',
-      terms: [{ term_id: 't-1' }, { term_id: 't-2' }],
-      plos: [{ id: 'plo-1', trend: [70, 80] }],
+      program_id: "prog-1",
+      terms: [{ term_id: "t-1" }, { term_id: "t-2" }],
+      plos: [{ id: "plo-1", trend: [70, 80] }],
     };
     const trendProg2 = {
       success: true,
-      program_id: 'prog-2',
-      terms: [{ term_id: 't-1' }, { term_id: 't-2' }],
-      plos: [{ id: 'plo-2', trend: [60, 75] }],
+      program_id: "prog-2",
+      terms: [{ term_id: "t-1" }, { term_id: "t-2" }],
+      plos: [{ id: "plo-2", trend: [60, 75] }],
     };
 
     global.fetch = jest.fn().mockImplementation((url) => {
-      if (url.includes('prog-1')) {
+      if (url.includes("prog-1")) {
         return Promise.resolve({
           ok: true,
           json: async () => trendProg1,
@@ -1525,13 +1549,11 @@ describe('PloDashboard — _loadAllTrendData', () => {
     expect(global.PloTrend.injectSparklines).toHaveBeenCalledTimes(2);
     expect(injectCalls[0]).toBe(trendProg1);
     expect(injectCalls[1]).toBe(trendProg2);
-    expect(global.PloTrend.selectedTermId).toBe('t-1');
+    expect(global.PloTrend.selectedTermId).toBe("t-1");
   });
 
-  test('ignores stale results when generation counter changes', async () => {
-    PloDashboard.programs = [
-      { program_id: 'prog-1', name: 'Biology BS' },
-    ];
+  test("ignores stale results when generation counter changes", async () => {
+    PloDashboard.programs = [{ program_id: "prog-1", name: "Biology BS" }];
 
     global.PloTrend = {
       trendData: null,
@@ -1541,7 +1563,10 @@ describe('PloDashboard — _loadAllTrendData', () => {
 
     let resolveFirst;
     global.fetch = jest.fn(
-      () => new Promise((r) => { resolveFirst = r; }),
+      () =>
+        new Promise((r) => {
+          resolveFirst = r;
+        }),
     );
 
     const p1 = PloDashboard._loadAllTrendData();
@@ -1553,7 +1578,7 @@ describe('PloDashboard — _loadAllTrendData', () => {
       ok: true,
       json: async () => ({
         success: true,
-        terms: [{ term_id: 't-1' }, { term_id: 't-2' }],
+        terms: [{ term_id: "t-1" }, { term_id: "t-2" }],
         plos: [],
       }),
     });
@@ -1563,10 +1588,10 @@ describe('PloDashboard — _loadAllTrendData', () => {
     expect(global.PloTrend.injectSparklines).not.toHaveBeenCalled();
   });
 
-  test('skips failed fetches without breaking other programs', async () => {
+  test("skips failed fetches without breaking other programs", async () => {
     PloDashboard.programs = [
-      { program_id: 'prog-1', name: 'Biology BS' },
-      { program_id: 'prog-2', name: 'Chemistry BS' },
+      { program_id: "prog-1", name: "Biology BS" },
+      { program_id: "prog-2", name: "Chemistry BS" },
     ];
 
     global.PloTrend = {
@@ -1576,15 +1601,15 @@ describe('PloDashboard — _loadAllTrendData', () => {
     };
 
     global.fetch = jest.fn().mockImplementation((url) => {
-      if (url.includes('prog-1')) {
-        return Promise.reject(new Error('Network error'));
+      if (url.includes("prog-1")) {
+        return Promise.reject(new Error("Network error"));
       }
       return Promise.resolve({
         ok: true,
         json: async () => ({
           success: true,
-          terms: [{ term_id: 't-1' }, { term_id: 't-2' }],
-          plos: [{ id: 'plo-2' }],
+          terms: [{ term_id: "t-1" }, { term_id: "t-2" }],
+          plos: [{ id: "plo-2" }],
         }),
       });
     });
@@ -1595,13 +1620,13 @@ describe('PloDashboard — _loadAllTrendData', () => {
     expect(global.PloTrend.injectSparklines).toHaveBeenCalledTimes(1);
   });
 
-  test('no-ops when PloTrend is not available', async () => {
-    PloDashboard.programs = [
-      { program_id: 'prog-1', name: 'Biology BS' },
-    ];
+  test("no-ops when PloTrend is not available", async () => {
+    PloDashboard.programs = [{ program_id: "prog-1", name: "Biology BS" }];
     delete global.PloTrend;
 
-    // Should not throw
-    await PloDashboard._loadAllTrendData();
+    await expect(PloDashboard._loadAllTrendData()).resolves.toBeUndefined();
+    expect(PloDashboard.programs).toEqual([
+      { program_id: "prog-1", name: "Biology BS" },
+    ]);
   });
 });

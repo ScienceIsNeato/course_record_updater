@@ -212,7 +212,7 @@ function initializeEditUserModal() {
     const updateData = {
       first_name: firstName,
       last_name: lastName,
-      email: email,
+      email,
       ...(displayName && { display_name: displayName }),
     };
 

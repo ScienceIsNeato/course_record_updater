@@ -397,8 +397,11 @@ class TestSessionRefresh:
 
     def test_refresh_session_when_not_logged_in(self, request_context):
         """Test refreshing session when not logged in"""
-        # Should not raise exception
-        SessionService.refresh_session()
+        assert is_user_logged_in() is False
+        assert get_current_user() is None
+        assert SessionService.refresh_session() is None
+        assert is_user_logged_in() is False
+        assert get_current_user() is None
 
 
 class TestSecurityHelpers:

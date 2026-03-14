@@ -396,8 +396,7 @@ class TestUserPasswordMethods:
 
     def test_validate_password_valid(self):
         """Test password validation with valid password"""
-        # Should not raise exception
-        User.validate_password("ValidPass123!")
+        assert User.validate_password("ValidPass123!") is None
 
     def test_validate_password_invalid(self):
         """Test password validation with invalid password"""

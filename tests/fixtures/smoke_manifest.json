@@ -1,57 +1,57 @@
 {
-    "institutions": [
+  "institutions": [
+    {
+      "name": "Mock University",
+      "short_name": "MockU",
+      "admin_email": "demo2025.admin@example.com",
+      "website_url": "https://mocku.test"
+    }
+  ],
+  "programs": [
+    {
+      "name": "Computer Science",
+      "short_name": "CS",
+      "code": "CS",
+      "institution_short_name": "MockU"
+    }
+  ],
+  "courses": [
+    {
+      "code": "CS-101",
+      "name": "Introduction to Computer Science",
+      "program_code": "CS",
+      "program_idx": 0,
+      "credits": 3
+    }
+  ],
+  "terms": [
+    {
+      "name": "Smoke Term",
+      "start_date": "2025-08-30",
+      "end_date": "2025-12-15",
+      "is_active": true
+    }
+  ],
+  "offerings": [
+    {
+      "course_idx": 0,
+      "term_idx": 0,
+      "sections": [
         {
-            "name": "Mock University",
-            "short_name": "MockU",
-            "admin_email": "demo2025.admin@example.com",
-            "website_url": "https://mocku.test"
+          "section_number": "001",
+          "enrollment": 25
         }
-    ],
-    "programs": [
-        {
-            "name": "Computer Science",
-            "short_name": "CS",
-            "code": "CS",
-            "institution_short_name": "MockU"
-        }
-    ],
-    "courses": [
-        {
-            "code": "CS-101",
-            "name": "Introduction to Computer Science",
-            "program_code": "CS",
-            "program_idx": 0,
-            "credits": 3
-        }
-    ],
-    "terms": [
-        {
-            "name": "Smoke Term",
-            "start_date": "2025-08-30",
-            "end_date": "2025-12-15",
-            "is_active": true
-        }
-    ],
-    "offerings": [
-        {
-            "course_idx": 0,
-            "term_idx": 0,
-            "sections": [
-                {
-                    "section_number": "001",
-                    "enrollment": 25
-                }
-            ]
-        }
-    ],
-    "users": [
-        {
-            "email": "siteadmin@system.local",
-            "first_name": "Smoke",
-            "last_name": "Admin",
-            "role": "site_admin",
-            "institution_short_name": "MockU",
-            "password_env_var": "SITE_ADMIN_PASSWORD"
-        }
-    ]
+      ]
+    }
+  ],
+  "users": [
+    {
+      "email": "siteadmin@system.local",
+      "first_name": "Smoke",
+      "last_name": "Admin",
+      "role": "site_admin",
+      "institution_short_name": "MockU",
+      "password_env_var": "SITE_ADMIN_PASSWORD"
+    }
+  ]
 }

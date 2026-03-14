@@ -236,7 +236,7 @@ def extract_auth_requirements(file_path: Path, function_name: str) -> Dict[str, 
     return auth_info
 
 
-def map_route_to_template(route_path: str, source_file: str) -> str:
+def map_route_to_template(route_path: str, _source_file: str) -> str:
     """Map route path to template file."""
     # Map known routes to templates
     template_map = {
@@ -244,9 +244,9 @@ def map_route_to_template(route_path: str, source_file: str) -> str:
         "/login": "auth/login.html",
         "/reminder-login": "auth/login.html",
         "/register": "auth/register.html",
-        "/register/accept/<token>": "auth/register_invitation.html",
-        "/forgot-password": "auth/forgot_password.html",
-        "/reset-password/<token>": "auth/reset_password.html",
+        "/register/accept/<token>": "auth/register_invitation.html",  # pragma: allowlist secret
+        "/forgot-password": "auth/forgot_password.html",  # pragma: allowlist secret
+        "/reset-password/<token>": "auth/reset_password.html",  # pragma: allowlist secret
         "/profile": "auth/profile.html",
         "/admin/users": "admin/user_management.html",
         "/dashboard": "dashboard/{role}.html",  # Role-specific
@@ -282,7 +282,7 @@ def _determine_api_role_access(route_path: str, auth_info: Dict[str, Any]) -> Li
         if (
             "login" in route_path
             or "register" in route_path
-            or "forgot-password" in route_path
+            or "forgot-password" in route_path  # pragma: allowlist secret
         ):
             return ["public"]
 
@@ -323,7 +323,7 @@ def _determine_page_role_access(
 
 
 def determine_role_access(
-    route_path: str, auth_info: Dict, source_file: str
+    route_path: str, auth_info: Dict, _source_file: str
 ) -> List[str]:
     """Determine which roles can access this route."""
     # API routes are typically accessible based on permissions

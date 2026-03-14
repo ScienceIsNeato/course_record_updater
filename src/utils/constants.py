@@ -20,6 +20,7 @@ DEFAULT_EXPORT_LIMIT = 1000
 # Use GENERIC_PASSWORD everywhere except password validation testing
 # Do NOT hardcode passwords elsewhere - import from here
 GENERIC_PASSWORD = "TestPass123!"  # nosec B105 # pragma: allowlist secret
+SITE_ADMIN_PASSWORD = "SiteAdmin123!"  # nosec B105 # pragma: allowlist secret
 WEAK_PASSWORD = "weak"  # nosec B105 # pragma: allowlist secret
 INVALID_PASSWORD = "password123"  # nosec B105 # pragma: allowlist secret
 
@@ -76,11 +77,6 @@ OUTCOME_NOT_FOUND_MSG = "Outcome not found"
 COURSE_OFFERING_NOT_FOUND_MSG = "Course offering not found"
 MISSING_REQUIRED_FIELD_EMAIL_MSG = "Missing required field: email"
 
-# SonarLint configuration constants
-SONAR_CLOUD_ORGANIZATION = "scienceisneat"
-SONAR_PROJECT_KEY = "course-record-updater"
-SONAR_REGION = "US"
-
 # Application route constants
 DASHBOARD_ENDPOINT = "dashboard"
 
@@ -113,9 +109,6 @@ CSRF_ERROR_MESSAGE = "CSRF validation failed. Please refresh the page and try ag
 
 # Email subject templates
 EMAIL_SUBJECT_REMINDER_PREFIX = "Reminder: Please submit your course data"
-
-# SonarCloud configuration
-SONARCLOUD_PROJECT_KEY_DEFAULT = "ScienceIsNeato_course_record_updater"
 
 # Seed data constants
 PROGRAM_COMPUTER_SCIENCE = "Computer Science"

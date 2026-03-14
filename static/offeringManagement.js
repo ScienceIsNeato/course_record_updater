@@ -192,8 +192,9 @@ async function loadCoursesAndTermsForEditDropdown() {
 
   // Set loading state
   programSelect.innerHTML = '<option value="">Loading programs...</option>';
-  if (termSelect)
+  if (termSelect) {
     termSelect.innerHTML = '<option value="">Loading terms...</option>';
+  }
 
   try {
     // Fetch programs and terms
@@ -235,8 +236,9 @@ async function loadCoursesAndTermsForEditDropdown() {
     console.error("Failed to load dropdown data:", error);
     programSelect.innerHTML =
       '<option value="">Error loading programs</option>';
-    if (termSelect)
+    if (termSelect) {
       termSelect.innerHTML = '<option value="">Error loading terms</option>';
+    }
   }
 }
 
@@ -374,7 +376,7 @@ function initializeCreateOfferingModal() {
       term_id: document.getElementById("offeringTermId").value,
       // Treat empty selection as null so API doesn't receive "" (often fails UUID validation)
       program_id: programIdValue || null,
-      sections: sections,
+      sections,
     };
 
     const createBtn = document.getElementById("createOfferingBtn");

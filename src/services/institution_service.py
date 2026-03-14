@@ -13,7 +13,9 @@ import mimetypes
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import Any, Dict, Optional
+
+from werkzeug.datastructures import FileStorage
 
 from src.database import database_service as db
 from src.utils.constants import (
@@ -24,9 +26,6 @@ from src.utils.constants import (
 )
 
 LOGGER = logging.getLogger(__name__)
-
-if TYPE_CHECKING:  # pragma: no cover - type checking only
-    from werkzeug.datastructures import FileStorage
 
 
 @dataclass
@@ -66,7 +65,7 @@ class InstitutionService:
         return institution
 
     def save_logo(
-        self, institution_id: str, file: "FileStorage", *, allow_empty: bool = False
+        self, institution_id: str, file: FileStorage, *, allow_empty: bool = False
     ) -> Optional[str]:
         if file.filename == "" or (
             file.content_length is not None and file.content_length == 0
@@ -116,7 +115,7 @@ class InstitutionService:
         name: Optional[str] = None,
         short_name: Optional[str] = None,
         website_url: Optional[str] = None,
-        logo: Optional["FileStorage"] = None,
+        logo: Optional[FileStorage] = None,
         remove_logo: bool = False,
     ) -> Optional[Dict[str, Any]]:
         institution = self.get_institution(institution_id)

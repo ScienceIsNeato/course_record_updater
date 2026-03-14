@@ -530,8 +530,9 @@
         });
         const agg = plo.aggregate || {};
         if (typeof agg.students_took === "number") took += agg.students_took;
-        if (typeof agg.students_passed === "number")
+        if (typeof agg.students_passed === "number") {
           passed += agg.students_passed;
+        }
       });
       const rate = took > 0 ? Math.round((passed / took) * 100) : null;
       const status = tree.mapping_status || "none";

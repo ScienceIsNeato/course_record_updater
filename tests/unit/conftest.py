@@ -9,10 +9,8 @@ per test. Schema is created once per session and only data is cleared between te
 Table list is derived from SQLAlchemy metadata (never hardcoded) so it stays in sync
 with the schema automatically.
 
-Invocation: Use `python scripts/ship_it.py --checks python-unit-tests` as the primary
-interface. The ship_it.py wrapper handles venv activation, env vars, and parallel
-execution via maintAInability-gate.sh. Direct pytest is acceptable for single-file
-verification during development only.
+Invocation: Use `sm swab -g overconfidence:untested-code.py --verbose` as the primary
+interface. For single-file development feedback, direct pytest remains acceptable.
 """
 
 import os

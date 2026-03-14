@@ -793,8 +793,9 @@ async function reopenOutcome(outcomeId) {
     !confirm(
       "Are you sure you want to reopen this outcome? Status will be set to 'In Progress'.",
     )
-  )
+  ) {
     return;
+  }
   try {
     const csrfToken = document.querySelector(
       'meta[name="csrf-token"]',
@@ -935,10 +936,10 @@ async function remindOutcome(outcomeId, instructorId, courseId) {
     const dueLine = dueDateText ? `\nSubmission due date: ${dueDateText}` : "";
     reminderMessage.value =
       `Dear ${instructorName},\n\n` +
-      `This is a friendly reminder to submit your assessment results for ` +
+      "This is a friendly reminder to submit your assessment results for " +
       `${termLabel}${courseNumber} (${sectionLabel}) ${cloLabel}.` +
       `${dueLine}\n\n` +
-      `Thank you.`;
+      "Thank you.";
   }
 
   const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -1365,8 +1366,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const sectionKey = clo.section_number
         ? `Section ${clo.section_number}`
         : "Unassigned Section";
-      if (!groupedData[courseKey][sectionKey])
+      if (!groupedData[courseKey][sectionKey]) {
         groupedData[courseKey][sectionKey] = [];
+      }
 
       groupedData[courseKey][sectionKey].push(clo);
     });

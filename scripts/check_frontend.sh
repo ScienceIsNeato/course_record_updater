@@ -102,4 +102,4 @@ else
 fi
 
 echo -e "${GREEN}🎉 Frontend check passed!${NC}"
-echo -e "${BLUE}💡 For comprehensive testing, run: python scripts/ship_it.py --checks smoke${NC}"
+echo -e "${BLUE}💡 For comprehensive testing, run: sm scour -g overconfidence:smoke --verbose${NC}"

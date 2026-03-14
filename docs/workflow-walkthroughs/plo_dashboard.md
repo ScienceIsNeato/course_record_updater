@@ -28,11 +28,13 @@ python scripts/seed_db.py --demo --manifest demos/full_semester_manifest.json --
 ```
 
 **Demo Account:**
+
 - URL: http://localhost:3001/plo-dashboard
 - Email: `loopcloser_demo_admin@proton.me`
 - Password: `TestPass123!`
 
 **Seeded state:**
+
 - **BIOL** — display mode `both` · 4 PLOs · v1 mapping published
   - PLO-4 is intentionally unmapped (demonstrates empty state)
 - **ZOOL** — display mode `percentage` · 2 PLOs · v1 mapping published
@@ -52,7 +54,7 @@ In the left nav, click **Program Outcomes** (sitemap icon). You land on
 The tree shows **PLO-1** through **PLO-4**. Each PLO header has a
 pass-rate badge — BIOL uses the "both" display mode so badges read
 something like `S (78%)`. PLO-4 has no badge and shows a muted
-*"No CLOs mapped yet"* pill instead.
+_"No CLOs mapped yet"_ pill instead.
 
 The summary strip across the top reads: **4 Program Outcomes · 8 Mapped
 CLOs · ~XX% Overall Pass Rate · v1 published**.
@@ -66,16 +68,17 @@ CLOs · ~XX% Overall Pass Rate · v1 published**.
 Click **New PLO** (top right).
 
 In the modal:
+
 - **PLO Number:** `5`
 - **Description:** `Students will integrate biological knowledge across
-  scales from molecules to ecosystems.`
+scales from molecules to ecosystems.`
 
 Click **Save**. The modal closes and the tree reloads in place.
 
-**PLO-5** appears at the bottom with the same *"No CLOs mapped yet"*
+**PLO-5** appears at the bottom with the same _"No CLOs mapped yet"_
 pill that PLO-4 has. The summary strip ticks up to **5 Program Outcomes**.
 
-*Why no version bump?* PLO templates live on `program_outcomes`, not
+_Why no version bump?_ PLO templates live on `program_outcomes`, not
 `plo_mappings`. Only mapping entries are versioned.
 
 **Press Enter to continue →**
@@ -108,6 +111,7 @@ auto-creates a new **draft** (v2-to-be) copied from v1. The tree header
 badge changes from **v1 · published** to **draft**.
 
 In the modal:
+
 - **Program Outcome:** select **PLO-5**
 - **Course Outcome:** select **BIOL-301 CLO-3** (it appears in the
   dropdown because no PLO currently owns it in the draft)
@@ -184,12 +188,12 @@ numbers.
 
 Done! You've covered all four beats:
 
-| Beat       | What you did                                            |
-| ---------- | ------------------------------------------------------- |
-| Create PLO | PLO-5 via **New PLO** modal                             |
-| Edit PLO   | Updated PLO-5 description inline                        |
-| Map CLO    | Draft → BIOL-301 CLO-3 into PLO-5 → Publish v2          |
-| Drilldown  | Program → PLO-1 → BIOL-101 CLO-1 → section rows         |
+| Beat       | What you did                                    |
+| ---------- | ----------------------------------------------- |
+| Create PLO | PLO-5 via **New PLO** modal                     |
+| Edit PLO   | Updated PLO-5 description inline                |
+| Map CLO    | Draft → BIOL-301 CLO-3 into PLO-5 → Publish v2  |
+| Drilldown  | Program → PLO-1 → BIOL-101 CLO-1 → section rows |
 
 **Press Enter to continue →**
 

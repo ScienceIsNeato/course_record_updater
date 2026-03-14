@@ -16,7 +16,7 @@ Features:
 
 import os
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import Any, Dict, Optional
 from urllib.parse import urljoin
 
 from flask import Flask, current_app
@@ -537,7 +537,7 @@ class EmailService:
         Determine the log file destination for email previews.
         """
         try:
-            cfg: "Mapping[str, Any]" = current_app.config
+            cfg: Dict[str, Any] = current_app.config
         except RuntimeError:
             cfg = {}
 

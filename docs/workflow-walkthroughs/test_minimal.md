@@ -43,4 +43,3 @@ This is step 3. We're done!
 ## Summary
 
 Demo complete! All mechanics work.
-

@@ -39,7 +39,7 @@ Database continues using UUIDs for primary keys and foreign key relationships:
 class Institution:
     id = Column(String, primary_key=True)  # UUID
     short_name = Column(String, unique=True, nullable=False)  # Natural key
-    
+
 class User:
     user_id = Column(String, primary_key=True)  # UUID
     email = Column(String, unique=True, nullable=False)  # Natural key
@@ -73,36 +73,38 @@ def get_dashboard_data():
 
 ## Natural Keys by Entity
 
-| Entity | Natural Key | Notes |
-|--------|-------------|-------|
-| **Institution** | `short_name` | Unique, stable (e.g., "DEMO2025", "MIT", "STANFORD") |
-| **User** | `email` | Unique, stable, user-controlled |
-| **Course** | `course_number` + `institution_short_name` | Composite key (e.g., "BIOL-101" at "MIT") |
-| **Program** | `name` + `institution_short_name` | Composite key (e.g., "Biology" at "MIT") |
-| **Term** | `term_code` + `institution_short_name` | Composite key (e.g., "FA2024" at "MIT") |
+| Entity          | Natural Key                                | Notes                                                |
+| --------------- | ------------------------------------------ | ---------------------------------------------------- |
+| **Institution** | `short_name`                               | Unique, stable (e.g., "DEMO2025", "MIT", "STANFORD") |
+| **User**        | `email`                                    | Unique, stable, user-controlled                      |
+| **Course**      | `course_number` + `institution_short_name` | Composite key (e.g., "BIOL-101" at "MIT")            |
+| **Program**     | `name` + `institution_short_name`          | Composite key (e.g., "Biology" at "MIT")             |
+| **Term**        | `term_code` + `institution_short_name`     | Composite key (e.g., "FA2024" at "MIT")              |
 
 ## Benefits
 
 ### ✅ Session Persistence
 
 **Before:**
+
 ```bash
 # Seed database
 python seed_db.py --demo --clear --env dev
 # Login as demo2025.admin@example.com
 # Session stores institution_id: "abc123-uuid..."
 
-# Reseed database  
+# Reseed database
 python seed_db.py --demo --clear --env dev
 # New institution_id: "def456-uuid..."
 # ❌ Session invalid! User sees empty dashboard
 ```
 
 **After:**
+
 ```bash
 # Seed database
 python seed_db.py --demo --clear --env dev
-# Login as demo2025.admin@example.com  
+# Login as demo2025.admin@example.com
 # Session stores institution_short_name: "DEMO2025"
 
 # Reseed database
@@ -114,6 +116,7 @@ python seed_db.py --demo --clear --env dev
 ### ✅ Logical Identity
 
 **Before:**
+
 ```python
 # Admin deletes "Biology 101" course
 delete_course(course_id="abc123-uuid")
@@ -125,6 +128,7 @@ new_course_id = create_course(number="BIOL-101")  # new_course_id="def456-uuid"
 ```
 
 **After:**
+
 ```python
 # Lookups use natural keys
 course = get_course_by_number("BIOL-101", institution_short_name="MIT")
@@ -152,6 +156,7 @@ course = get_course_by_number("BIOL-101", institution_short_name="MIT")
 ### Future Enhancements
 
 1. **Add natural-key lookups for other entities:**
+
    ```python
    get_course_by_number_and_institution(course_number, institution_short_name)
    get_program_by_name_and_institution(program_name, institution_short_name)
@@ -159,6 +164,7 @@ course = get_course_by_number("BIOL-101", institution_short_name="MIT")
    ```
 
 2. **Session natural keys for programs:**
+
    ```python
    session["current_program_name"] = "Biological Sciences"  # Instead of UUID
    ```
@@ -172,7 +178,7 @@ course = get_course_by_number("BIOL-101", institution_short_name="MIT")
 ### When to Use UUIDs
 
 - **Database primary keys**: Always
-- **Foreign key relationships**: Always  
+- **Foreign key relationships**: Always
 - **Internal service APIs**: Prefer UUIDs for performance
 - **Temporary references within single request**: UUIDs are fine
 
@@ -217,7 +223,5 @@ python scripts/seed_db.py --demo --clear --env dev
 
 ---
 
-*Last Updated: 2025-11-13*
-*Author: Architecture refactor to address session stability issues*
-
-
+_Last Updated: 2025-11-13_
+_Author: Architecture refactor to address session stability issues_

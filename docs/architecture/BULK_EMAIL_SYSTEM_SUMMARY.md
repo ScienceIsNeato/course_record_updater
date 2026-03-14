@@ -35,6 +35,7 @@ This PR implements a complete bulk email system with intelligent rate limiting, 
 ## API Endpoints
 
 ### 1. Start Bulk Reminder Job
+
 ```http
 POST /api/bulk-email/send-instructor-reminders
 Content-Type: application/json
@@ -56,6 +57,7 @@ Response (202):
 ```
 
 ### 2. Get Job Status
+
 ```http
 GET /api/bulk-email/job-status/{job_id}
 
@@ -82,6 +84,7 @@ Response (200):
 ```
 
 ### 3. Get Recent Jobs
+
 ```http
 GET /api/bulk-email/recent-jobs?limit=50
 
@@ -96,18 +99,21 @@ Response (200):
 ## Rate Limiting Strategy
 
 ### Configuration
+
 - **Rate**: 0.1 emails/second (1 email every 10 seconds)
 - **Max Retries**: 3 attempts per email
 - **Base Delay**: 5 seconds
 - **Max Delay**: 60 seconds (exponential backoff cap)
 
 ### Algorithm
+
 1. **Token Bucket**: Ensures emails are sent at configured rate
 2. **Exponential Backoff**: On failure, wait 5s → 10s → 20s before retry
 3. **Smart Queueing**: Maintains queue of emails to send
 4. **Progress Updates**: Real-time status updates to database
 
 ### Example Timeline
+
 ```
 Time    Action
 ----    ------
@@ -122,6 +128,7 @@ Time    Action
 ## Database Schema
 
 ### `bulk_email_jobs` Table
+
 ```sql
 CREATE TABLE bulk_email_jobs (
   id VARCHAR(36) PRIMARY KEY,
@@ -130,17 +137,17 @@ CREATE TABLE bulk_email_jobs (
   created_at DATETIME NOT NULL,
   started_at DATETIME,
   completed_at DATETIME,
-  
+
   recipient_count INTEGER NOT NULL,
   recipients JSON NOT NULL,
   template_data JSON,
   personal_message TEXT,
-  
+
   status VARCHAR(20) NOT NULL,  -- pending, running, completed, failed, cancelled
   emails_sent INTEGER NOT NULL DEFAULT 0,
   emails_failed INTEGER NOT NULL DEFAULT 0,
   emails_pending INTEGER NOT NULL DEFAULT 0,
-  
+
   failed_recipients JSON,
   error_message TEXT
 );
@@ -149,6 +156,7 @@ CREATE TABLE bulk_email_jobs (
 ## Email Template
 
 ### HTML Template
+
 - Professional styling with brand colors
 - Personal message callout (if provided)
 - Deadline display (if provided)
@@ -156,6 +164,7 @@ CREATE TABLE bulk_email_jobs (
 - Responsive design
 
 ### Plain Text Template
+
 - Clean formatting for email clients without HTML support
 - All same information as HTML version
 - Proper line breaks and structure
@@ -163,6 +172,7 @@ CREATE TABLE bulk_email_jobs (
 ## Testing
 
 ### Unit Tests (11 tests, all passing)
+
 - `test_send_instructor_reminders_success` - Happy path
 - `test_send_instructor_reminders_missing_body` - Validation
 - `test_send_instructor_reminders_empty_list` - Validation
@@ -176,6 +186,7 @@ CREATE TABLE bulk_email_jobs (
 - `test_get_recent_jobs_limit_capped` - Security (max limit)
 
 ### EmailManager Tests (26 tests, all passing)
+
 - EmailJob creation and metadata
 - Queue management (add, clear, status, failed jobs)
 - Rate limiting (token bucket algorithm)
@@ -186,12 +197,14 @@ CREATE TABLE bulk_email_jobs (
 ## Security & Permissions
 
 ### Access Control
+
 - All endpoints require `manage_programs` permission
 - Program admins can send reminders to their instructors
 - Institution admins can send reminders to any instructor
 - Site admins have full access
 
 ### Safety Features
+
 - Non-production environment restrictions
 - Rate limiting prevents abuse
 - Failed recipient tracking for audit
@@ -200,11 +213,13 @@ CREATE TABLE bulk_email_jobs (
 ## Performance Characteristics
 
 ### Scalability
+
 - **10 instructors**: ~100 seconds (1.5 minutes)
 - **30 instructors**: ~300 seconds (5 minutes)
 - **100 instructors**: ~1000 seconds (16 minutes)
 
 ### Resource Usage
+
 - Background thread (non-blocking)
 - Database updates every email
 - Memory efficient queue
@@ -213,6 +228,7 @@ CREATE TABLE bulk_email_jobs (
 ## Future Enhancements
 
 ### V2 Features (Not in this PR)
+
 1. **Frontend UI**
    - Instructor selection with checkboxes
    - Progress modal with live updates
@@ -239,6 +255,7 @@ CREATE TABLE bulk_email_jobs (
 ## Files Changed
 
 ### New Files
+
 ```
 bulk_email_models/
   __init__.py
@@ -254,6 +271,7 @@ BULK_EMAIL_SYSTEM_SUMMARY.md
 ```
 
 ### Modified Files
+
 ```
 api/__init__.py (registered bulk_email_bp)
 models_sql.py (imported BulkEmailJob for registration)
@@ -264,16 +282,19 @@ planning/EMAIL_SYSTEM_V1_IMPLEMENTATION.md (updated)
 ## Deployment Notes
 
 ### Database Migration
+
 - New `bulk_email_jobs` table created automatically via SQLAlchemy
 - No manual migration needed
 - Table will be created on first app startup
 
 ### Configuration
+
 - No new environment variables required
 - Uses existing email configuration
 - Rate limits configurable in code (not env vars for V1)
 
 ### Monitoring
+
 - Check `bulk_email_jobs` table for job status
 - Monitor application logs for errors
 - Failed recipients tracked in `failed_recipients` JSON field
@@ -281,6 +302,7 @@ planning/EMAIL_SYSTEM_V1_IMPLEMENTATION.md (updated)
 ## Testing the System
 
 ### Manual Testing Steps
+
 1. Start the Flask server
 2. Log in as program admin
 3. Call POST `/api/bulk-email/send-instructor-reminders` with instructor IDs
@@ -289,6 +311,7 @@ planning/EMAIL_SYSTEM_V1_IMPLEMENTATION.md (updated)
 6. Verify `bulk_email_jobs` table for accurate tracking
 
 ### Integration with Mailtrap
+
 - All emails sent to Mailtrap sandbox
 - Emails visible at https://mailtrap.io/inboxes
 - No real emails sent in development

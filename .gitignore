@@ -23,8 +23,6 @@ test-results/
 
 # Log files and directories
 logs/
-# SonarCloud issues tracking file
-logs/sonarcloud_issues.txt
 # PR coverage analysis reports
 logs/pr_coverage_gaps.txt
 
@@ -65,3 +63,17 @@ demo_artifacts/
 coverage-diff.json
 *.log
 .vscode
+.specstory/
+
+# Generated Copilot instructions (from cursor-rules)
+.github/instructions/*.instructions.md
+
+# Local agent scratch and slop-mop runtime files
+.tmp/
+.slopmop/
+
+# Local database generation token
+data/.db_generation
+
+# Scratch backups
+*.backup.*

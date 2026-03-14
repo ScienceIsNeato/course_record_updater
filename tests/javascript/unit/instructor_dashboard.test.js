@@ -1,13 +1,17 @@
 // Load dashboard utilities globally (simulates browser <script> tag)
-const { setLoadingState, setErrorState, setEmptyState } = require('../../../static/dashboard_utils');
+const {
+  setLoadingState,
+  setErrorState,
+  setEmptyState,
+} = require("../../../static/dashboard_utils");
 global.setLoadingState = setLoadingState;
 global.setErrorState = setErrorState;
 global.setEmptyState = setEmptyState;
 
-const InstructorDashboard = require('../../../static/instructor_dashboard');
-const { setBody } = require('../helpers/dom');
+const InstructorDashboard = require("../../../static/instructor_dashboard");
+const { setBody } = require("../helpers/dom");
 
-describe('InstructorDashboard', () => {
+describe("InstructorDashboard", () => {
   beforeEach(() => {
     setBody(`
       <div id="instructorName"></div>
@@ -22,61 +26,75 @@ describe('InstructorDashboard', () => {
 
     window.panelManager = {
       createSortableTable: jest.fn(() => {
-        const table = document.createElement('table');
-        table.innerHTML = '<tbody></tbody>';
+        const table = document.createElement("table");
+        table.innerHTML = "<tbody></tbody>";
         return table;
-      })
+      }),
     };
   });
 
   const sampleData = {
     summary: { courses: 2, sections: 4, students: 120 },
     assessment_tasks: [
-      { status: 'completed', course_number: 'BIO101', due_date: '2024-01-02' },
-      { status: 'pending', course_number: 'CHEM201', due_date: '2024-01-03' }
+      { status: "completed", course_number: "BIO101", due_date: "2024-01-02" },
+      { status: "pending", course_number: "CHEM201", due_date: "2024-01-03" },
     ],
     teaching_assignments: [
-      { course_id: 'c1', course_number: 'BIO101', course_title: 'Biology', sections: [{ status: 'completed' }] }
+      {
+        course_id: "c1",
+        course_number: "BIO101",
+        course_title: "Biology",
+        sections: [{ status: "completed" }],
+      },
     ],
-    sections: [
-      { course_id: 'c1', enrollment: 30, status: 'completed' }
-    ],
-    metadata: { last_updated: '2024-02-01T12:00:00Z' }
+    sections: [{ course_id: "c1", enrollment: 30, status: "completed" }],
+    metadata: { last_updated: "2024-02-01T12:00:00Z" },
   };
 
-  it('renders instructor metrics and tables', () => {
+  it("renders instructor metrics and tables", () => {
     InstructorDashboard.render(sampleData);
 
-    expect(document.getElementById('instructorAssessmentContainer').querySelector('table')).not.toBeNull();
+    expect(
+      document
+        .getElementById("instructorAssessmentContainer")
+        .querySelector("table"),
+    ).not.toBeNull();
   });
 
-  it('shows error state for containers', () => {
-    InstructorDashboard.showError('instructorAssessmentContainer', 'Unable to load');
-    expect(document.getElementById('instructorAssessmentContainer').textContent).toContain('Unable to load');
+  it("shows error state for containers", () => {
+    InstructorDashboard.showError(
+      "instructorAssessmentContainer",
+      "Unable to load",
+    );
+    expect(
+      document.getElementById("instructorAssessmentContainer").textContent,
+    ).toContain("Unable to load");
   });
 
-  it('handles different data scenarios', () => {
+  it("handles different data scenarios", () => {
     // Test with minimal data
     const minimalData = {
       instructor_metrics: {
         course_count: 0,
-        assessment_progress: 0
+        assessment_progress: 0,
       },
       instructor_courses: [],
-      metadata: { last_updated: '2024-02-01T12:00:00Z' }
+      metadata: { last_updated: "2024-02-01T12:00:00Z" },
     };
 
     InstructorDashboard.render(minimalData);
 
     // Header stats removed, just verify render completes without errors
-    expect(document.getElementById('instructorAssessmentContainer')).not.toBeNull();
+    expect(
+      document.getElementById("instructorAssessmentContainer"),
+    ).not.toBeNull();
   });
 
-  describe('data loading and refresh functionality', () => {
+  describe("data loading and refresh functionality", () => {
     beforeEach(() => {
       global.fetch = jest.fn();
       jest.useFakeTimers();
-      jest.spyOn(console, 'error').mockImplementation(() => { });
+      jest.spyOn(console, "error").mockImplementation(() => {});
     });
 
     afterEach(() => {
@@ -86,54 +104,60 @@ describe('InstructorDashboard', () => {
       console.error.mockRestore();
     });
 
-    it('handles successful data loading and refresh', async () => {
+    it("handles successful data loading and refresh", async () => {
       global.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           success: true,
-          data: sampleData
-        })
+          data: sampleData,
+        }),
       });
 
-      const renderSpy = jest.spyOn(InstructorDashboard, 'render');
+      const renderSpy = jest.spyOn(InstructorDashboard, "render");
 
       await InstructorDashboard.refresh();
 
-      expect(fetch).toHaveBeenCalledWith('/api/dashboard/data', {
-        credentials: 'include',
+      expect(fetch).toHaveBeenCalledWith("/api/dashboard/data", {
+        credentials: "include",
         headers: {
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
-        }
+          Accept: "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+        },
       });
       expect(renderSpy).toHaveBeenCalledWith(sampleData);
 
       renderSpy.mockRestore();
     });
 
-    it('handles network errors during data loading', async () => {
-      global.fetch.mockRejectedValueOnce(new Error('Network error'));
+    it("handles network errors during data loading", async () => {
+      global.fetch.mockRejectedValueOnce(new Error("Network error"));
 
-      const showErrorSpy = jest.spyOn(InstructorDashboard, 'showError');
+      const showErrorSpy = jest.spyOn(InstructorDashboard, "showError");
 
       await InstructorDashboard.loadData();
 
-      expect(showErrorSpy).toHaveBeenCalledWith('instructorAssessmentContainer', 'Unable to load assessment tasks');
-      expect(showErrorSpy).toHaveBeenCalledWith('instructorSummaryContainer', 'Unable to build summary');
+      expect(showErrorSpy).toHaveBeenCalledWith(
+        "instructorAssessmentContainer",
+        "Unable to load assessment tasks",
+      );
+      expect(showErrorSpy).toHaveBeenCalledWith(
+        "instructorSummaryContainer",
+        "Unable to build summary",
+      );
 
       showErrorSpy.mockRestore();
     });
 
-    it('handles API response errors', async () => {
+    it("handles API response errors", async () => {
       global.fetch.mockResolvedValueOnce({
         ok: false,
         json: async () => ({
           success: false,
-          error: 'Access denied'
-        })
+          error: "Access denied",
+        }),
       });
 
-      const showErrorSpy = jest.spyOn(InstructorDashboard, 'showError');
+      const showErrorSpy = jest.spyOn(InstructorDashboard, "showError");
 
       await InstructorDashboard.loadData();
 
@@ -142,13 +166,15 @@ describe('InstructorDashboard', () => {
       showErrorSpy.mockRestore();
     });
 
-    it('handles malformed JSON responses', async () => {
+    it("handles malformed JSON responses", async () => {
       global.fetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => { throw new Error('Invalid JSON'); }
+        json: async () => {
+          throw new Error("Invalid JSON");
+        },
       });
 
-      const showErrorSpy = jest.spyOn(InstructorDashboard, 'showError');
+      const showErrorSpy = jest.spyOn(InstructorDashboard, "showError");
 
       await InstructorDashboard.loadData();
 
@@ -157,35 +183,41 @@ describe('InstructorDashboard', () => {
       showErrorSpy.mockRestore();
     });
 
-    it('sets loading states correctly during non-silent operations', async () => {
+    it("sets loading states correctly during non-silent operations", async () => {
       global.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           success: true,
-          data: sampleData
-        })
+          data: sampleData,
+        }),
       });
 
-      const setLoadingSpy = jest.spyOn(InstructorDashboard, 'setLoading');
+      const setLoadingSpy = jest.spyOn(InstructorDashboard, "setLoading");
 
       await InstructorDashboard.loadData({ silent: false });
 
-      expect(setLoadingSpy).toHaveBeenCalledWith('instructorAssessmentContainer', 'Loading assessment tasks...');
-      expect(setLoadingSpy).toHaveBeenCalledWith('instructorSummaryContainer', 'Building summary...');
+      expect(setLoadingSpy).toHaveBeenCalledWith(
+        "instructorAssessmentContainer",
+        "Loading assessment tasks...",
+      );
+      expect(setLoadingSpy).toHaveBeenCalledWith(
+        "instructorSummaryContainer",
+        "Building summary...",
+      );
 
       setLoadingSpy.mockRestore();
     });
 
-    it('skips loading states during silent operations', async () => {
+    it("skips loading states during silent operations", async () => {
       global.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           success: true,
-          data: sampleData
-        })
+          data: sampleData,
+        }),
       });
 
-      const setLoadingSpy = jest.spyOn(InstructorDashboard, 'setLoading');
+      const setLoadingSpy = jest.spyOn(InstructorDashboard, "setLoading");
 
       await InstructorDashboard.loadData({ silent: true });
 
@@ -195,14 +227,14 @@ describe('InstructorDashboard', () => {
     });
   });
 
-  describe('initialization and event handling', () => {
+  describe("initialization and event handling", () => {
     beforeEach(() => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ success: true, data: sampleData })
+        json: async () => ({ success: true, data: sampleData }),
       });
       jest.useFakeTimers();
-      jest.spyOn(console, 'error').mockImplementation(() => { });
+      jest.spyOn(console, "error").mockImplementation(() => {});
     });
 
     afterEach(() => {
@@ -212,10 +244,10 @@ describe('InstructorDashboard', () => {
       console.error.mockRestore();
     });
 
-    it('initializes with correct event listeners and intervals', () => {
-      const loadDataSpy = jest.spyOn(InstructorDashboard, 'loadData');
-      const setIntervalSpy = jest.spyOn(global, 'setInterval');
-      const addEventListenerSpy = jest.spyOn(document, 'addEventListener');
+    it("initializes with correct event listeners and intervals", () => {
+      const loadDataSpy = jest.spyOn(InstructorDashboard, "loadData");
+      const setIntervalSpy = jest.spyOn(global, "setInterval");
+      const addEventListenerSpy = jest.spyOn(document, "addEventListener");
 
       InstructorDashboard.init();
 
@@ -225,11 +257,14 @@ describe('InstructorDashboard', () => {
       // Check that setInterval was called with correct parameters
       expect(setIntervalSpy).toHaveBeenCalledWith(
         expect.any(Function),
-        5 * 60 * 1000 // refreshInterval
+        5 * 60 * 1000, // refreshInterval
       );
 
       // Check that document visibility change listener was added
-      expect(addEventListenerSpy).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+      expect(addEventListenerSpy).toHaveBeenCalledWith(
+        "visibilitychange",
+        expect.any(Function),
+      );
 
       loadDataSpy.mockRestore();
       setIntervalSpy.mockRestore();
@@ -238,21 +273,21 @@ describe('InstructorDashboard', () => {
 
     // Refresh button removed from UI - data auto-refreshes after mutations
 
-    it('handles visibility change events for auto-refresh', () => {
-      const loadDataSpy = jest.spyOn(InstructorDashboard, 'loadData');
+    it("handles visibility change events for auto-refresh", () => {
+      const loadDataSpy = jest.spyOn(InstructorDashboard, "loadData");
 
       // Set lastFetch to an old time to trigger refresh
-      InstructorDashboard.lastFetch = Date.now() - (6 * 60 * 1000); // 6 minutes ago
+      InstructorDashboard.lastFetch = Date.now() - 6 * 60 * 1000; // 6 minutes ago
 
       InstructorDashboard.init();
 
       // Simulate document becoming visible
-      Object.defineProperty(document, 'hidden', {
+      Object.defineProperty(document, "hidden", {
         writable: true,
-        value: false
+        value: false,
       });
 
-      const visibilityChangeEvent = new Event('visibilitychange');
+      const visibilityChangeEvent = new Event("visibilitychange");
       document.dispatchEvent(visibilityChangeEvent);
 
       expect(loadDataSpy).toHaveBeenCalledWith({ silent: true });
@@ -260,21 +295,21 @@ describe('InstructorDashboard', () => {
       loadDataSpy.mockRestore();
     });
 
-    it('skips auto-refresh when lastFetch is recent', () => {
-      const loadDataSpy = jest.spyOn(InstructorDashboard, 'loadData');
+    it("skips auto-refresh when lastFetch is recent", () => {
+      const loadDataSpy = jest.spyOn(InstructorDashboard, "loadData");
 
       // Set lastFetch to a recent time
-      InstructorDashboard.lastFetch = Date.now() - (2 * 60 * 1000); // 2 minutes ago
+      InstructorDashboard.lastFetch = Date.now() - 2 * 60 * 1000; // 2 minutes ago
 
       InstructorDashboard.init();
 
       // Simulate document becoming visible
-      Object.defineProperty(document, 'hidden', {
+      Object.defineProperty(document, "hidden", {
         writable: true,
-        value: false
+        value: false,
       });
 
-      const visibilityChangeEvent = new Event('visibilitychange');
+      const visibilityChangeEvent = new Event("visibilitychange");
       document.dispatchEvent(visibilityChangeEvent);
 
       // Should not call loadData for visibility change since lastFetch is recent
@@ -285,14 +320,14 @@ describe('InstructorDashboard', () => {
     });
   });
 
-  describe('cache and state management', () => {
-    it('updates cache and lastFetch after successful data load', async () => {
+  describe("cache and state management", () => {
+    it("updates cache and lastFetch after successful data load", async () => {
       global.fetch = jest.fn().mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           success: true,
-          data: sampleData
-        })
+          data: sampleData,
+        }),
       });
 
       const initialLastFetch = InstructorDashboard.lastFetch;
@@ -306,137 +341,159 @@ describe('InstructorDashboard', () => {
       global.fetch.mockRestore();
     });
 
-    it('has correct initial state', () => {
+    it("has correct initial state", () => {
       expect(InstructorDashboard.cache).toBeNull();
       expect(InstructorDashboard.refreshInterval).toBe(5 * 60 * 1000);
-      expect(typeof InstructorDashboard.lastFetch).toBe('number');
+      expect(typeof InstructorDashboard.lastFetch).toBe("number");
     });
   });
 
-  describe('loading and error state management', () => {
-    it('sets loading state correctly', () => {
-      InstructorDashboard.setLoading('instructorAssessmentContainer', 'Loading...');
+  describe("loading and error state management", () => {
+    it("sets loading state correctly", () => {
+      InstructorDashboard.setLoading(
+        "instructorAssessmentContainer",
+        "Loading...",
+      );
 
-      const container = document.getElementById('instructorAssessmentContainer');
-      expect(container.textContent).toContain('Loading...');
-      expect(container.querySelector('.spinner-border')).toBeTruthy();
+      const container = document.getElementById(
+        "instructorAssessmentContainer",
+      );
+      expect(container.textContent).toContain("Loading...");
+      expect(container.querySelector(".spinner-border")).toBeTruthy();
     });
 
-    it('shows error state correctly', () => {
-      InstructorDashboard.showError('instructorAssessmentContainer', 'Error occurred');
+    it("shows error state correctly", () => {
+      InstructorDashboard.showError(
+        "instructorAssessmentContainer",
+        "Error occurred",
+      );
 
-      const container = document.getElementById('instructorAssessmentContainer');
-      expect(container.textContent).toContain('Error occurred');
-      expect(container.querySelector('.fa-exclamation-triangle')).toBeTruthy();
-      expect(container.querySelector('.alert-danger')).toBeTruthy();
+      const container = document.getElementById(
+        "instructorAssessmentContainer",
+      );
+      expect(container.textContent).toContain("Error occurred");
+      expect(container.querySelector(".fa-exclamation-triangle")).toBeTruthy();
+      expect(container.querySelector(".alert-danger")).toBeTruthy();
     });
 
-    it('handles empty state rendering', () => {
-      const emptyElement = InstructorDashboard.renderEmptyState('No data available', 'Refresh');
+    it("handles empty state rendering", () => {
+      const emptyElement = InstructorDashboard.renderEmptyState(
+        "No data available",
+        "Refresh",
+      );
 
-      expect(emptyElement.tagName).toBe('DIV');
-      expect(emptyElement.textContent).toContain('No data available');
-      expect(emptyElement.textContent).toContain('Refresh');
-      expect(emptyElement.classList.contains('panel-empty')).toBe(true);
+      expect(emptyElement.tagName).toBe("DIV");
+      expect(emptyElement.textContent).toContain("No data available");
+      expect(emptyElement.textContent).toContain("Refresh");
+      expect(emptyElement.classList.contains("panel-empty")).toBe(true);
     });
   });
 
-  describe('branch coverage for conditional logic', () => {
-    it('handles null/missing timestamp in updateLastUpdated', () => {
+  describe("branch coverage for conditional logic", () => {
+    it("handles null/missing timestamp in updateLastUpdated", () => {
       // Element was removed from UI - test graceful handling when element is missing
       expect(() => InstructorDashboard.updateLastUpdated(null)).not.toThrow();
     });
 
-    it('handles missing elements gracefully in renderAssessmentTasks', () => {
-      document.body.innerHTML = ''; // Remove all elements
+    it("handles missing elements gracefully in renderAssessmentTasks", () => {
+      document.body.innerHTML = ""; // Remove all elements
 
       // Should not throw
       expect(() => InstructorDashboard.renderAssessmentTasks([])).not.toThrow();
     });
 
-    it('handles missing elements gracefully in renderRecentActivity', () => {
-      document.body.innerHTML = ''; // Remove all elements
+    it("handles missing elements gracefully in renderRecentActivity", () => {
+      document.body.innerHTML = ""; // Remove all elements
 
       // Should not throw
       expect(() => InstructorDashboard.renderRecentActivity([])).not.toThrow();
     });
 
-    it('handles missing elements gracefully in renderCourseSummary', () => {
-      document.body.innerHTML = ''; // Remove all elements
+    it("handles missing elements gracefully in renderCourseSummary", () => {
+      document.body.innerHTML = ""; // Remove all elements
 
       // Should not throw
-      expect(() => InstructorDashboard.renderCourseSummary([], [])).not.toThrow();
+      expect(() =>
+        InstructorDashboard.renderCourseSummary([], []),
+      ).not.toThrow();
     });
 
-    it('handles missing elements gracefully in updateLastUpdated', () => {
-      document.body.innerHTML = ''; // Remove lastUpdated element
+    it("handles missing elements gracefully in updateLastUpdated", () => {
+      document.body.innerHTML = ""; // Remove lastUpdated element
 
       // Should not throw
-      expect(() => InstructorDashboard.updateLastUpdated('2024-01-01T12:00:00Z')).not.toThrow();
+      expect(() =>
+        InstructorDashboard.updateLastUpdated("2024-01-01T12:00:00Z"),
+      ).not.toThrow();
     });
 
-
-    it('identifies completed tasks with various status strings', () => {
-      expect(InstructorDashboard.isTaskComplete('completed')).toBe(true);
-      expect(InstructorDashboard.isTaskComplete('COMPLETED')).toBe(true);
-      expect(InstructorDashboard.isTaskComplete('complete')).toBe(true);
-      expect(InstructorDashboard.isTaskComplete('done')).toBe(true);
-      expect(InstructorDashboard.isTaskComplete('DONE')).toBe(true);
+    it("identifies completed tasks with various status strings", () => {
+      expect(InstructorDashboard.isTaskComplete("completed")).toBe(true);
+      expect(InstructorDashboard.isTaskComplete("COMPLETED")).toBe(true);
+      expect(InstructorDashboard.isTaskComplete("complete")).toBe(true);
+      expect(InstructorDashboard.isTaskComplete("done")).toBe(true);
+      expect(InstructorDashboard.isTaskComplete("DONE")).toBe(true);
       expect(InstructorDashboard.isTaskComplete(null)).toBe(false);
-      expect(InstructorDashboard.isTaskComplete('pending')).toBe(false);
-      expect(InstructorDashboard.isTaskComplete('in_progress')).toBe(false);
+      expect(InstructorDashboard.isTaskComplete("pending")).toBe(false);
+      expect(InstructorDashboard.isTaskComplete("in_progress")).toBe(false);
     });
 
-    it('handles sections without courseId in renderCourseSummary', () => {
+    it("handles sections without courseId in renderCourseSummary", () => {
       setBody(`
         <div id="instructorSummaryContainer"></div>
       `);
 
-      const assignments = [{
-        course_id: 'c1',
-        course_number: 'BIO101',
-        course_title: 'Biology',
-        sections: []
-      }];
+      const assignments = [
+        {
+          course_id: "c1",
+          course_number: "BIO101",
+          course_title: "Biology",
+          sections: [],
+        },
+      ];
 
       const sections = [
         { enrollment: 30 }, // No course_id
-        { course_id: null, enrollment: 20 } // Null course_id
+        { course_id: null, enrollment: 20 }, // Null course_id
       ];
 
       window.panelManager = {
         createSortableTable: jest.fn(() => {
-          const table = document.createElement('table');
+          const table = document.createElement("table");
           return table;
-        })
+        }),
       };
 
       InstructorDashboard.renderCourseSummary(assignments, sections);
 
       // Should not throw and should skip sections without course_id
-      const container = document.getElementById('instructorSummaryContainer');
+      const container = document.getElementById("instructorSummaryContainer");
       expect(container).not.toBeNull();
     });
 
-    it('handles missing activityList element during silent load', async () => {
-      document.body.innerHTML = ''; // Remove activityList
+    it("handles missing activityList element during silent load", async () => {
+      document.body.innerHTML = ""; // Remove activityList
 
       global.fetch = jest.fn().mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true, data: sampleData })
+        json: async () => ({ success: true, data: sampleData }),
       });
 
       // Should not throw
-      await expect(InstructorDashboard.loadData({ silent: true })).resolves.not.toThrow();
+      await expect(
+        InstructorDashboard.loadData({ silent: true }),
+      ).resolves.not.toThrow();
 
       global.fetch.mockRestore();
     });
 
-    it('handles missing activityList element during error', async () => {
-      document.body.innerHTML = ''; // Remove activityList
+    it("handles missing activityList element during error", async () => {
+      document.body.innerHTML = ""; // Remove activityList
 
-      global.fetch = jest.fn().mockRejectedValueOnce(new Error('Network error'));
-      jest.spyOn(console, 'error').mockImplementation(() => { });
+      global.fetch = jest
+        .fn()
+        .mockRejectedValueOnce(new Error("Network error"));
+      jest.spyOn(console, "error").mockImplementation(() => {});
 
       // Should not throw
       await expect(InstructorDashboard.loadData()).resolves.not.toThrow();
@@ -447,7 +504,7 @@ describe('InstructorDashboard', () => {
   });
 });
 
-describe('InstructorDashboard Initialization', () => {
+describe("InstructorDashboard Initialization", () => {
   beforeEach(() => {
     jest.resetModules();
     jest.useFakeTimers();
@@ -457,15 +514,17 @@ describe('InstructorDashboard Initialization', () => {
     jest.useRealTimers();
   });
 
-  test('should warn if panelManager is missing', () => {
+  test("should warn if panelManager is missing", () => {
     delete global.panelManager;
     delete window.panelManager;
-    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation();
 
-    require('../../../static/instructor_dashboard');
-    document.dispatchEvent(new Event('DOMContentLoaded'));
+    require("../../../static/instructor_dashboard");
+    document.dispatchEvent(new Event("DOMContentLoaded"));
     jest.advanceTimersByTime(200);
 
-    expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Panel manager not initialized'));
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Panel manager not initialized"),
+    );
   });
 });
