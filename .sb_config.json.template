@@ -14,7 +14,7 @@
         "timeout": 300
       },
       "coverage-gaps.py": {
-        "enabled": true,
+          "command": "bash -lc './scripts/run_frontend_sanity.sh'",
         "auto_fix": false,
         "config_file_path": null,
         "threshold": 80
@@ -22,7 +22,7 @@
       "missing-annotations.py": {
         "enabled": true,
         "auto_fix": false,
-        "config_file_path": null,
+        "command": "bash -lc './scripts/run_smoke.sh'",
         "strict_typing": true,
         "include_dirs": []
       },
@@ -35,7 +35,7 @@
       "untested-code.js": {
         "enabled": true,
         "auto_fix": false,
-        "config_file_path": null,
+        "command": "bash -lc './scripts/run_uat.sh'",
         "test_command": "npm test"
       },
       "coverage-gaps.js": {

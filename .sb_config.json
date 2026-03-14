@@ -6,7 +6,7 @@
       "name": "frontend-sanity",
       "description": "LoopCloser frontend HTML asset API and JS syntax sanity",
       "category": "overconfidence",
-      "command": "zsh -lc 'source ~/.zshrc && activate && ./scripts/run_frontend_sanity.sh'",
+      "command": "bash -lc './scripts/run_frontend_sanity.sh'",
       "level": "swab",
       "timeout": 45
     },
@@ -14,7 +14,7 @@
       "name": "smoke",
       "description": "LoopCloser smoke suite",
       "category": "overconfidence",
-      "command": "zsh -lc 'source ~/.zshrc && activate && ./scripts/run_smoke.sh'",
+      "command": "bash -lc './scripts/run_smoke.sh'",
       "level": "scour",
       "timeout": 90
     },
@@ -22,7 +22,7 @@
       "name": "e2e",
       "description": "LoopCloser end-to-end suite",
       "category": "overconfidence",
-      "command": "zsh -lc 'source ~/.zshrc && activate && ./scripts/run_uat.sh'",
+      "command": "bash -lc './scripts/run_uat.sh'",
       "level": "scour",
       "timeout": 180
     }

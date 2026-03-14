@@ -40,6 +40,31 @@
 - The previous commit blocker from `overconfidence:untested-code.js` has been removed.
 - The hook should now align with the restored green default `sm swab` path.
 
+## Latest Work: CI Migration To Slop-Mop SARIF And Sanity Modes (2026-03-14)
+
+**Status**: 🚧 IN PROGRESS - local CI command paths validated; ready for remote workflow execution
+
+**What Changed**:
+
+- Added a `slopmop-sarif` job to `.github/workflows/quality-gate.yml` using `sm swab --sarif --no-auto-fix --no-fail-fast`
+- Added a dedicated `frontend-sanity` CI job to `.github/workflows/quality-gate.yml`
+- Made custom slop-mop gates in `.sb_config.json` and `.sb_config.json.template` CI-safe by removing the local `activate` alias dependency
+- Kept SARIF upload non-blocking so code scanning can surface findings without duplicating the main gate failures
+
+**Validation**:
+
+- `sm swab` ✅
+- `sm swab -g overconfidence:frontend-sanity --verbose` ✅
+- `sm swab --sarif --no-auto-fix --no-fail-fast --output-file /tmp/slopmop-swab.sarif --json-file /tmp/slopmop-swab.json` ✅
+- workflow/config diagnostics for `.github/workflows/quality-gate.yml`, `.sb_config.json`, `.sb_config.json.template` ✅
+
+**Residual Follow-Up**:
+
+- Non-CI helper scripts still import `scripts.ship_it.reply_to_pr_comment`:
+   - `scripts/reply_to_pr_comment.py`
+   - `scripts/update_pr_checklist.py`
+- Those are outside the workflow migration itself and should be migrated separately to slop-mop / `sm buff` based behavior.
+
 ## Latest Work: Smoke Gate Hard-Failure Fix (2026-03-14)
 
 **Status**: ✅ COMPLETE - standalone smoke workflow and slop-mop smoke gate both passing

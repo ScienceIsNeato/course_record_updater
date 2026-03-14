@@ -4,6 +4,10 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  security-events: write
+
 env:
   PYTHON_VERSION: "3.11" # Source of truth for Python version - must match Dockerfile
   DATABASE_TYPE: "sqlite"
@@ -39,6 +43,64 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
+
+  slopmop-sarif:
+    runs-on: ubuntu-latest
+    needs: setup
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Cache pip dependencies
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        with:
+          path: ~/.cache/pip
+          key: ${{ needs.setup.outputs.cache-key }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Install JavaScript dependencies
+        run: npm install
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+          pip install slopmop
+      - name: Generate slop-mop SARIF
+        continue-on-error: true
+        run: |
+          sm swab \
+            --sarif \
+            --no-auto-fix \
+            --no-fail-fast \
+            --no-cache \
+            --output-file slopmop-swab.sarif \
+            --json-file slopmop-swab.json
+        env:
+          PYTHONPATH: .
+      - name: Upload slop-mop SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: slopmop-swab.sarif
+          category: slopmop-swab
+      - name: Upload slop-mop structured output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: slopmop-sarif-output
+          path: |
+            slopmop-swab.sarif
+            slopmop-swab.json
 
   python-lint-format:
     runs-on: ubuntu-latest
@@ -447,6 +509,48 @@ jobs:
         run: sm scour -g myopia:source-duplication --verbose --no-cache
         env:
           PYTHONPATH: .
+
+  frontend-sanity:
+    runs-on: ubuntu-latest
+    needs: setup
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ needs.setup.outputs.cache-key }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Install JavaScript dependencies
+        run: npm install
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+          pip install slopmop
+      - name: Run Frontend Sanity Gate
+        run: sm swab -g overconfidence:frontend-sanity --verbose --no-cache
+        env:
+          PYTHONPATH: .
+      - name: Upload frontend sanity logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-sanity-logs
+          path: |
+            logs/frontend_sanity_server.log
+            logs/application.log
 
   js-checks:
     runs-on: ubuntu-latest
