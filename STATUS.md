@@ -1,5 +1,37 @@
 # LoopCloser - Current Status
 
+## Latest Work: Scour Stabilization + Green Validation (2026-03-18)
+
+**Status**: ✅ PASSING - full `sm scour` green (`22` passed, `0` failed)
+
+**Root Causes Fixed**:
+
+- Frontend sanity loopback mismatch (`localhost` resolution) created flaky startup checks.
+- Smoke runner used global process management patterns that could interfere with other app processes.
+- E2E runner cleanup only targeted port `3002`, leaving stale worker ports behind between runs.
+
+**What Changed**:
+
+- `scripts/run_frontend_sanity.sh`
+   - switched health target to explicit IPv4 loopback (`127.0.0.1`).
+- `scripts/run_uat.sh`
+   - restored full-suite parallel worker mode (`-n auto`) for worker-isolated execution.
+   - added pre-run stale worker-port cleanup across E2E port range.
+   - expanded exit cleanup from single port to full worker-port range.
+- `scripts/run_smoke.sh`
+   - moved smoke default port off E2E range and enforces non-overlap guard.
+   - replaced global process kill fallback with port-scoped shutdown.
+   - switched smoke `BASE_URL` to explicit IPv4 loopback.
+   - replaced `restart_server.sh`-based startup with local PID-owned server startup.
+   - removed global pre-seed `pkill` behavior.
+
+**Validation**:
+
+- `sm scour -g overconfidence:frontend-sanity --verbose --no-cache` ✅
+- `sm scour -g overconfidence:smoke --verbose --no-cache` ✅
+- `sm scour -g overconfidence:e2e --verbose --no-cache` ✅
+- `sm scour --json --output-file /tmp/scour-green-final.json --no-cache` ✅ (`all_passed: true`)
+
 ## Latest Work: Swab/Scour Policy Update (2026-03-17)
 
 **Status**: ✅ Applied via `sm config`

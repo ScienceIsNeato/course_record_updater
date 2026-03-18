@@ -111,8 +111,8 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Keep full-suite execution serial for reliability.
-PARALLEL_WORKERS=""
+# Default full-suite execution to worker-isolated parallel mode.
+PARALLEL_WORKERS="auto"
 
 if [[ -n "$TEST_FILTER" ]]; then
     # For single/filtered tests: disable parallel execution
@@ -286,15 +286,24 @@ cleanup() {
     echo ""
     echo -e "${YELLOW}🧹 Cleaning up E2E test server...${NC}"
     
-    # Kill server on E2E port (from LOOPCLOSER_DEFAULT_PORT_E2E env var)
-    local e2e_port="${LOOPCLOSER_DEFAULT_PORT_E2E:-3002}"
-    local pids
-    pids=$(lsof -ti:$e2e_port 2>/dev/null || true)
-    if [[ -n "$pids" ]]; then
-        for pid in $pids; do
-            echo -e "${BLUE}  Stopping E2E server (PID: $pid)${NC}"
-            kill $pid 2>/dev/null || kill -9 $pid 2>/dev/null || true
-        done
+    # Kill any worker server in the E2E port range.
+    local start_port="${LOOPCLOSER_DEFAULT_PORT_E2E:-3002}"
+    local end_port=$((start_port + 20))
+    local found="0"
+
+    for port in $(seq "$start_port" "$end_port"); do
+        local pids
+        pids=$(lsof -ti:"$port" 2>/dev/null || true)
+        if [[ -n "$pids" ]]; then
+            found="1"
+            for pid in $pids; do
+                echo -e "${BLUE}  Stopping E2E server on port ${port} (PID: $pid)${NC}"
+                kill "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null || true
+            done
+        fi
+    done
+
+    if [[ "$found" = "1" ]]; then
         sleep 1
     fi
     
@@ -304,6 +313,25 @@ cleanup() {
 
 # Register cleanup on script exit
 trap cleanup EXIT
+
+# Clear stale e2e worker servers before starting tests. Previous failed runs can
+# leave orphaned processes on worker ports and poison subsequent executions.
+cleanup_e2e_ports() {
+    local start_port="${LOOPCLOSER_DEFAULT_PORT_E2E:-3002}"
+    local end_port=$((start_port + 20))
+
+    for port in $(seq "$start_port" "$end_port"); do
+        local pids
+        pids=$(lsof -ti:"$port" 2>/dev/null || true)
+        if [[ -n "$pids" ]]; then
+            for pid in $pids; do
+                kill "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null || true
+            done
+        fi
+    done
+}
+
+cleanup_e2e_ports
 
 if $PYTEST_CMD; then
     echo ""

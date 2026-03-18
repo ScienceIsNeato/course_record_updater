@@ -12,11 +12,16 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
-TEST_PORT="${LOOPCLOSER_DEFAULT_PORT_SMOKE:-3003}"
+TEST_PORT="${LOOPCLOSER_DEFAULT_PORT_SMOKE:-3103}"
 SERVER_PID=""
 SMOKE_DB_PATH="${PROJECT_ROOT}/course_records_smoke.db"
 SMOKE_DATABASE_URL="sqlite:///${SMOKE_DB_PATH}"
 SMOKE_SESSION_FILE="${PROJECT_ROOT}/.tmp/smoke_session_cookies.json"
+
+# Keep smoke off the e2e worker port range to avoid cross-gate interference.
+if [[ "$TEST_PORT" -ge 3002 && "$TEST_PORT" -le 3022 ]]; then
+  TEST_PORT="3103"
+fi
 
 stop_test_server() {
   if [[ -n "$SERVER_PID" ]]; then
@@ -30,7 +35,13 @@ stop_test_server() {
     done
     kill -9 "$SERVER_PID" 2>/dev/null || true
   else
-    pkill -f "python.*src.app" 2>/dev/null || true
+    local port_pid
+    port_pid=$(lsof -ti:"$TEST_PORT" 2>/dev/null || true)
+    if [[ -n "$port_pid" ]]; then
+      kill "$port_pid" 2>/dev/null || true
+      sleep 1
+      kill -9 "$port_pid" 2>/dev/null || true
+    fi
   fi
   rm -f logs/server_smoke.pid
 }
@@ -67,7 +78,7 @@ export ENV="test"
 export DATABASE_TYPE="sqlite"
 export DATABASE_URL="$SMOKE_DATABASE_URL"
 export DATABASE_URL_SMOKE="$SMOKE_DATABASE_URL"
-export BASE_URL="http://localhost:${TEST_PORT}"
+export BASE_URL="http://127.0.0.1:${TEST_PORT}"
 export SMOKE_SESSION_FILE="$SMOKE_SESSION_FILE"
 export SITE_ADMIN_PASSWORD="${SITE_ADMIN_PASSWORD:-SiteAdmin123!}"
 export SMOKE_ADMIN_EMAIL="siteadmin@system.local"
@@ -102,12 +113,20 @@ check_chrome() {
 
 start_test_server() {
   echo -e "${BLUE}🚀 Starting smoke server...${NC}"
-  if ./scripts/restart_server.sh smoke; then
-    sleep 2
-    SERVER_PID="$(pgrep -f "python.*src.app" | head -1)"
-    echo -e "${GREEN}✅ Smoke server started successfully${NC}"
-    return 0
-  fi
+  mkdir -p logs
+  PORT="$TEST_PORT" "$EXPECTED_PYTHON" -m src.app > logs/smoke_server.log 2>&1 &
+  SERVER_PID=$!
+
+  for _ in {1..30}; do
+    if curl -s "$BASE_URL/login" >/dev/null 2>&1; then
+      echo -e "${GREEN}✅ Smoke server started successfully${NC}"
+      return 0
+    fi
+    if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+      break
+    fi
+    sleep 1
+  done
 
   echo -e "${RED}❌ Smoke server failed to start${NC}"
   return 1
@@ -184,8 +203,7 @@ PY
 check_chrome
 
 echo -e "${BLUE}🧹 Ensuring clean state before seeding...${NC}"
-pkill -f "python.*src.app" 2>/dev/null || true
-sleep 1
+stop_test_server || true
 
 echo -e "${BLUE}🌱 Seeding smoke database from manifest...${NC}"
 python scripts/seed_db.py --demo --clear --env smoke --manifest tests/fixtures/smoke_manifest.json

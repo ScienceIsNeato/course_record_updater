@@ -7,7 +7,7 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
 PORT="${1:-${LOOPCLOSER_DEFAULT_PORT_FRONTEND_SANITY:-3011}}"
-BASE_URL="http://localhost:${PORT}"
+BASE_URL="http://127.0.0.1:${PORT}"
 SERVER_PID=""
 
 stop_frontend_server() {
