@@ -1,5 +1,418 @@
 # LoopCloser - Current Status
 
+## Latest Work: Swab/Scour Policy Update (2026-03-17)
+
+**Status**: ✅ Applied via `sm config`
+
+**Policy Applied**:
+
+- Set `sm` swabbing-time budget to `30s` with:
+   - `sm config --swabbing-time 30`
+- This keeps long-running checks (including E2E) out of the fast swab path by budget.
+
+**Verification**:
+
+- `sm config --show` now reports `Swabbing-time budget: 30s`.
+- `sm swab --json --output-file /tmp/swab-30s-policy.json --no-cache` ✅ `all_passed: true`.
+- Runtime warning confirms timed checks were deferred (`swabbing_time_budget_skipped`, `skipped_timed_checks: 9`).
+
+## Latest Work: E2E Stability Follow-up (2026-03-17)
+
+**Status**: ✅ PASSING - full `sm swab --no-cache` green (including `overconfidence:e2e`)
+
+**Additional Root Causes Addressed**:
+
+- E2E host drift (`localhost` vs `127.0.0.1`) caused session/cookie mismatches and redirect flakes.
+- IMAP parsing was brittle for mixed fetch payloads (`int` decode crash path).
+- One program-admin dashboard assertion depended on a fragile nav container selector.
+- `loadgroup` scheduling proved unstable with current fixture lifecycle; reverted to stable `loadscope`.
+
+**What Changed**:
+
+- `tests/e2e/conftest.py`
+   - normalized dynamic `BASE_URL` and server health checks to `127.0.0.1`.
+   - added per-worker server log file wiring for easier crash diagnostics.
+- `tests/e2e/test_site_admin_dashboard.py`
+- `tests/e2e/test_program_admin_dashboard.py`
+- `tests/e2e/test_institution_admin_dashboard.py`
+- `tests/e2e/test_instructor_dashboard.py`
+- `tests/e2e/test_bulk_reminders_workflow.py`
+- `tests/e2e/test_course_offering_creation.py`
+   - replaced hardcoded localhost URLs with shared dynamic `BASE_URL`.
+- `tests/e2e/test_program_admin_dashboard.py`
+   - replaced `HeaderNavigator`-based nav wait in one test with direct `nav .nav-link` assertions.
+- `tests/e2e/email_utils.py`
+   - hardened IMAP fetch parsing to ignore non-byte parts.
+   - made subject/identifier matching case-insensitive.
+- `tests/e2e/test_admin_invitation_workflow.py`
+- `tests/e2e/test_registration_password_workflow.py`
+- `tests/e2e/test_bulk_reminders_workflow.py`
+- `tests/e2e/test_bulk_reminders_failure_workflow.py`
+- `tests/e2e/test_edge_cases.py`
+   - added `pytest.mark.xdist_group("email")` tagging for shared-email workflows.
+- `scripts/run_uat.sh`
+   - kept parallel mode with stable `--dist=loadscope`.
+- `.sb_config.json`
+   - increased custom `overconfidence:e2e` timeout to `1800`.
+
+**Validation**:
+
+- `sm swab -g overconfidence:e2e --verbose --no-cache` ✅
+- `sm swab --json --output-file /tmp/swab-continue-final.json --no-cache` ✅ (`all_passed: true`)
+
+## Latest Work: E2E Hang Remediation (2026-03-17)
+
+**Status**: ✅ PASSING - `overconfidence:e2e` now completes cleanly (no hang/timeout)
+**Root Cause**:
+
+- E2E infrastructure ownership drifted between `scripts/run_uat.sh` and pytest E2E fixtures.
+- During serial runs this caused duplicate server/database ownership and readonly login failures.
+- During parallel runs this caused worker port mismatches (`localhost:3003+` connection refused) when only one external server existed.
+
+**What I Changed**:
+
+- `scripts/run_uat.sh`
+   - restored full-suite parallel worker mode (`-n auto`) with serial fallback only for filtered test runs.
+   - removed external single-server startup dependency for pytest execution.
+   - ensured pytest fixtures own E2E server lifecycle by unsetting `E2E_EXTERNAL_SERVER`.
+- `tests/e2e/conftest.py`
+   - kept support for optional externally-managed infra (`E2E_EXTERNAL_SERVER=1`) but default path remains fixture-managed.
+- `tests/e2e/test_clo_reminder_and_invite.py`
+   - replaced fragile modal `.show` class waits with robust visibility assertions.
+- `.sb_config.json`
+   - increased custom `overconfidence:e2e` timeout from `180` to `900` for realistic suite/runtime headroom.
+
+**Validation**:
+
+- `./scripts/run_uat.sh --test admin_invitation_workflow --fail-fast` ✅
+- `./scripts/run_uat.sh --test clo_reminder_and_invite --fail-fast` ✅
+- `sm swab -g overconfidence:e2e --verbose --no-cache` ✅ (`NO SLOP DETECTED`, ~`1m 20s`)
+
+## Latest Work: Silenced-Gates + E2E Rail Remediation (2026-03-17)
+
+**Status**: ✅ PASSING - full `sm scour` green with `22/22` checks passed
+**What I Changed**:
+
+- Eliminated `laziness:silenced-gates` debt by re-enabling gates in `.sb_config.json`:
+   - `laziness:broken-templates.py`
+   - `laziness:sloppy-frontend.js`
+   - `overconfidence:type-blindness.js`
+   - removed explicit `disabled_gates` entries (`overconfidence:e2e`, `myopia:security-scan`)
+- Fixed E2E gate startup environment in `scripts/run_uat.sh`:
+   - now always prefers activating repository `venv` when available
+   - avoids inherited shell environments missing project Python deps
+- Fixed E2E runtime failures:
+   - `tests/e2e/conftest.py`: use dedicated `SITE_ADMIN_PASSWORD` constant for site admin login fixture
+   - `tests/e2e/test_submit_assessments_with_alert.py`: Playwright dialog compatibility (`dialog.message` property vs callable)
+
+**Validation**:
+
+- `sm swab -g laziness:silenced-gates --json --no-cache` ✅ (`passed`, no debt)
+- `sm swab -g overconfidence:e2e --verbose` ✅
+- `sm scour` ✅ (`NO SLOP DETECTED`, `22 checks passed`)
+
+## Latest Work: Diff-Coverage Recovery + Full Scour Green (2026-03-17)
+
+**Status**: ✅ PASSING - full `sm scour` now green (non-blocking warning only)
+**What I Changed**:
+
+- Added focused script coverage tests:
+   - `tests/unit/scripts/test_generate_route_inventory.py`
+   - `tests/unit/scripts/test_seed_db_tail.py`
+- Added focused E2E utility unit coverage:
+   - `tests/unit/e2e/test_email_utils_unit.py`
+- These tests target previously exposed diff-coverage hotspots in:
+   - `scripts/generate_route_inventory.py`
+   - tail helper/entrypoint paths in `scripts/seed_db.py`
+   - `tests/e2e/email_utils.py`
+
+**Validation**:
+
+- `pytest tests/unit/scripts/test_generate_route_inventory.py -q` ✅ (`5 passed`)
+- `pytest tests/unit/scripts/test_seed_db_tail.py -q` ✅ (`6 passed`)
+- `pytest tests/unit/e2e/test_email_utils_unit.py -q` ✅ (`9 passed`)
+- `sm swab -g overconfidence:coverage-gaps.py --verbose` ✅
+- `sm scour` ✅ (all gates pass)
+
+**Remaining Non-Blocking Item**:
+
+- `laziness:silenced-gates` warning (`4` config debt items) still present.
+
+## Latest Work: Type-Blindness Remediation + Scour Recheck (2026-03-17)
+
+**Status**: 🚧 IN PROGRESS - `overconfidence:type-blindness.py` is now green; full `sm scour` still blocked by diff coverage gate
+**What I Changed**:
+
+- Completed a broad strict-typing cleanup pass across routes/services/adapters/models/utils, including:
+   - `src/api/routes/{audit,auth,auth_profile,clo_workflow,context,exports,imports,management,offerings,outcomes,plos,reminders,sections,terms}.py`
+   - `src/services/{clo_workflow_service,dashboard_service,export_service,import_service,plo_service}.py`
+   - `src/database/database_sqlite.py`
+   - `src/adapters/file_base_adapter.py`
+   - `src/app.py`
+   - `src/bulk_email_models/bulk_email_job.py`
+   - `src/email_providers/brevo_provider.py`
+   - `src/models/models.py`
+   - `src/utils/{__init__,time_utils}.py`
+- Updated model dispatch tests in `tests/unit/test_models_sql.py` to use lightweight SQLAlchemy instances where serializer logic now requires SQLAlchemy instance state.
+
+**Validation**:
+
+- `sm swab -g overconfidence:type-blindness.py --no-cache` ✅ (green)
+- `pytest tests/unit/test_models_sql.py -q` ✅ (`20 passed`)
+- `sm scour` ❌ only remaining hard fail: `overconfidence:coverage-gaps.py`
+
+**Current Blocker**:
+
+- `overconfidence:coverage-gaps.py` reports very large uncovered diff ranges across pre-existing changed files (including scripts and multiple e2e test files) outside this focused typing remediation slice.
+- Non-blocking warning remains in `laziness:silenced-gates`.
+
+## Latest Work: Slopmop 0.9.0 Pin + Immediate Remediation Resume (2026-03-16)
+
+**Status**: 🚧 IN PROGRESS - pinned to `0.9.0`, local template workaround applied, remediation resumed
+**What I Changed**:
+
+- Confirmed pipx install now resolves to `slopmop 0.9.0`
+- Applied local runtime workaround for missing agent template dirs in pipx venv so `sm` can start:
+   - created template directories: `claude`, `cursor`, `copilot`, `windsurf`, `cline`, `roo`
+- Pinned CI installs to `slopmop==0.9.0` in `.github/workflows/quality-gate.yml` (all install sites)
+
+**Validation**:
+
+- `sm --version` ✅ (`0.9.0`)
+- `sm swab -g laziness:silenced-gates --json --no-cache` ✅ (warn-only, unchanged config debt)
+- `sm swab -g overconfidence:type-blindness.py --json --output-file /tmp/typeblind-after-090-pin.json --no-cache` ❌ but improved
+
+**Remediation Delta**:
+
+- `overconfidence:type-blindness.py` findings reduced from `46` -> `38`
+- Targeted adapter fixes landed in:
+   - `src/adapters/adapter_registry.py`
+   - `src/adapters/base_adapter.py`
+   - `src/adapters/file_base_adapter.py`
+   - `src/adapters/cei_excel_adapter.py`
+- Additional utility typing cleanup landed in:
+   - `src/utils/__init__.py`
+   - `src/utils/term_utils.py`
+   - `src/utils/time_utils.py`
+
+## Latest Work: Slopmop 0.9.0 Post-Upgrade Config Check (2026-03-16)
+
+**Status**: 🚧 IN PROGRESS - 0.9.0 is available and installed, but release has agent-template packaging regression; config itself remains compatible
+**What I Verified**:
+
+- Confirmed package availability and install:
+   - `pipx list` shows `slopmop 0.9.0`
+   - `python3 -m pip index versions slopmop` shows `0.9.0` latest
+- Initial 0.9.0 CLI failed before command parsing with:
+   - `FileNotFoundError: Template directory not found: claude`
+- Inspected installed package data under pipx venv:
+   - `slopmop/agent_install/templates` only contained `_shared` and `aider`
+   - missing expected dirs: `claude`, `cursor`, `copilot`, `windsurf`, `cline`, `roo`
+- Reinstall from source/no-cache did **not** fix (same missing templates)
+- Applied local runtime workaround by creating missing template directories in the pipx venv, which restored CLI startup
+
+**Post-Upgrade Validation (with workaround active)**:
+
+- `sm scour --no-cache` runs successfully (tooling compatibility confirmed)
+- No `.sb_config.json` schema/migration errors surfaced
+- `laziness:silenced-gates` warning remains unchanged at `4` debt items (same as pre-upgrade):
+   - `laziness:sloppy-frontend.js` disabled while JS present
+   - `overconfidence:type-blindness.js` disabled while JS present
+   - `laziness:broken-templates.py` disabled while templates/Python present
+   - explicit disabled gates: `myopia:security-scan`, `overconfidence:e2e`
+
+**Conclusion So Far**:
+
+- This is **not** a project config migration issue.
+- It is a **0.9.0 package-data regression** in agent templates.
+- No mandatory config rewrite or `sm init` rerun is required solely due to upgrade.
+
+## Latest Work: Slopmop 0.9.0 Availability + Config Debt Audit (2026-03-16)
+
+**Status**: 🚧 IN PROGRESS - requested 0.9.0 upgrade is unavailable on configured index; scour run completed on latest available 0.8.1
+**What I Verified**:
+
+- Attempted `pipx install slopmop==0.9.0 --force` and confirmed no matching distribution on current package index (available versions stop at `0.8.1`)
+- Verified `pipx upgrade slopmop` leaves install at latest available `0.8.1`
+- Ran full `sm scour` on current toolchain
+- Ran focused `sm scour -g laziness:silenced-gates --json --no-cache` to extract config-debt specifics
+
+**Current Config-Drift Signals From Slopmop**:
+
+- `2` JS gates disabled while JS detected: `laziness:sloppy-frontend.js`, `overconfidence:type-blindness.js`
+- `1` Python gate disabled while Python detected: `laziness:broken-templates.py`
+- explicitly disabled gates: `myopia:security-scan`, `overconfidence:e2e`
+
+**Recommendation Direction**:
+
+- Do **not** blindly rerun `sm init` yet; current config includes custom gates and tuned include/exclude paths that init may reset
+- Prefer targeted manual gate re-enables (one at a time), validate impact, then keep or revert
+- If 0.9.0 is expected from a private index, configure that index first and retry install
+
+## Latest Work: Slopmop Remaining-Issues Burn-Down (2026-03-16)
+
+**Status**: 🚧 IN PROGRESS - functional and dead-code regressions fixed; only `overconfidence:type-blindness.py` remains red
+
+**What Changed In This Pass**:
+
+- Fixed functional regressions uncovered by `sm scour`:
+   - restored term extraction fallback in `src/services/plo_service.py`
+   - corrected invitation test patch targets in `tests/unit/test_routes_invitations.py`
+   - removed unreachable code in `src/api/routes/terms.py`
+- Cleared non-type failing gates:
+   - `sm swab -g laziness:dead-code.py --verbose --no-cache` ✅
+   - `sm swab -g overconfidence:untested-code.py --verbose --no-cache` ✅
+- Applied broad strict-typing remediation across key hotspots, including:
+   - `src/models/models_sql.py`
+   - `src/services/bulk_email_service.py`
+   - `src/api/routes/{courses,programs,offerings,management,auth_invitations,bulk_email,institutions,reminders,users}.py`
+   - `src/services/{auth_service,clo_workflow_service,password_reset_service,registration_service}.py`
+   - `src/adapters/adapter_registry.py`
+   - `src/email_providers/brevo_provider.py`
+
+**Type-Blindness Trend In This Session**:
+
+- `123` → `121` → `98` → `87` → `67` → `59` → `46`
+
+**Current Validation Snapshot**:
+
+- `sm swab -g laziness:dead-code.py --verbose --no-cache` ✅
+- `sm swab -g overconfidence:untested-code.py --verbose --no-cache` ✅
+- `sm swab -g overconfidence:type-blindness.py --verbose --no-cache` ❌ (`46` findings remaining)
+
+**Current Top Remaining Blockers**:
+
+- `src/services/clo_workflow_service.py` (`3`)
+- `src/services/dashboard_service.py` (`3`)
+- `src/utils/term_utils.py` (`3`)
+- `src/utils/time_utils.py` (`3`)
+- multiple files with `1-2` residual strict-typing findings
+
+## Latest Work: Type-Blindness Focused Reduction Pass (2026-03-14)
+
+**Status**: 🚧 IN PROGRESS - strict type-completeness debt reduced significantly, but branch still not green
+
+**What Changed**:
+
+- Tightened local collection typing and ID normalization in `src/services/dashboard_service.py`
+- Added typed mapping-entry extraction and safer nested-dict handling in `src/services/plo_service.py`
+- Added a typed argparse namespace in `src/import_cli.py`
+- Added typed import stats and typed local conflict/report collections in `src/services/import_service.py`
+
+**Validation**:
+
+- `sm scour -g overconfidence:type-blindness.py --verbose --no-cache` ❌ but improved twice
+
+**Type-Blindness Trend**:
+
+- Started at `849`
+- Reduced to `757` after `dashboard_service` + `plo_service`
+- Reduced to `678` after `import_cli` + `import_service`
+- Reduced to `644` after `clo_workflow_service`
+- Reduced to `609` after `auth.py`
+- Reduced to `576` after `email_service` + `users.py`
+- Reduced to `517` after `auth_invitations.py`
+- Reduced to `493` after `programs.py`
+- Reduced to `466` after `plos.py`
+- Reduced to `426` after `base_adapter.py` + `cei_excel_adapter.py`
+- Reduced to `405` after `audit.py`
+- Reduced to `387` after `clo_workflow.py`
+- Reduced to `370` after `offerings.py`
+- Reduced to `359` after `courses.py`
+- Reduced to `348` after `database_sqlite.py`
+- Reduced to `331` after `outcomes.py`
+- Reduced to `314` after `file_adapter_dispatcher.py`
+- Reduced to `298` after `auth_profile.py`
+- Reduced to `284` after `institutions.py`
+- Reduced to `273` after `bulk_email_service.py`
+- Reduced to `265` after additional `cei_excel_adapter.py` cleanup
+- Reduced to `251` after `ethereal_provider.py`
+- Reduced to `242` after `adapter_registry.py`
+- Reduced to `232` after `reminders.py`
+- Reduced to `223` after `bulk_email.py`
+- Reduced to `212` after `sections.py`
+- Reduced to `202` after `terms.py`
+- Reduced to `192` after `app.py`
+- Reduced to `188` after `courses.py`
+- Reduced to `179` after `audit_service.py`
+- Reduced to `173` after `dashboard_service.py`
+- Reduced to `166` after `bulk_email_job.py`
+- Reduced to `158` after `database_service.py`
+- Reduced to `152` after `database_sqlite.py`
+- Reduced to `149` after `programs.py`
+- Reduced to `142` after `database_validator.py`
+- Reduced to `130` after `cei_excel_adapter.py` regression fix
+- Reduced to `125` after `generic_csv_adapter.py`
+- Reduced to `123` after `auth_invitations.py`
+
+**Current Top Offenders**:
+
+- `src/models/models_sql.py` (`24`)
+- `src/api/routes/courses.py` (`5`)
+- `src/models/models_sql.py` is now the clear dominant remaining hotspot
+- most route-level strict-typing debt has been materially reduced or pushed out of the top ranks
+
+## Latest Work: Mergeability Check Blocked By Branch Scope (2026-03-14)
+
+**Status**: 🚧 IN PROGRESS - no PR exists yet; current worktree is not mergeable under `sm scour`
+
+**What I Verified**:
+
+- The isolated Python timeout fix is valid on its own as a swab-level change: `overconfidence:untested-code.py` is no longer timing out and `deceptiveness:bogus-tests.py` is green after the password test cleanup
+- There is currently **no GitHub PR** associated with branch `chore/slop-mop-remediation`, so `sm buff` cannot start yet
+- A full-tree `sm scour` on the restored remediation branch still fails on broader work already present in the worktree:
+   - `overconfidence:type-blindness.py` (`849` type-completeness findings)
+   - `overconfidence:coverage-gaps.py`
+   - `myopia:just-this-once.py`
+- Attempting to isolate only the Python timeout subset exposed a second problem: without the broader in-progress annotation fixes, the base tree regresses on `overconfidence:missing-annotations.py` and the smoke rail
+
+**Interpretation**:
+
+- This is not a single remaining bug. The current local branch mixes at least two scopes:
+   - a mergeable Python gate timeout fix
+   - a much larger typing/codemod remediation touching scripts, E2E tests, and many unit/integration files
+- Those larger changes are what make `sm scour` red and prevent a push/PR/buff workflow right now
+- The diff-coverage blockers strongly suggest the branch needs to be split into smaller PR-safe slices, or the broader remediation needs substantially more test/type work before it can be pushed as one PR
+
+**Validation**:
+
+- `sm scour` ❌
+- `sm scour -g deceptiveness:bogus-tests.py --verbose --no-cache` ✅
+- `sm scour -g overconfidence:type-blindness.py --verbose --no-cache` ❌
+- `sm scour -g overconfidence:coverage-gaps.py --verbose --no-cache` ❌
+- isolated staged-tree `sm scour --no-cache` ❌ (fails on smoke, missing-annotations, diff coverage)
+
+## Latest Work: Python Gate Timeout Was Discovery Scope, Not Runtime (2026-03-14)
+
+**Status**: ✅ COMPLETE - Python swab gate no longer times out; live default `sm swab --no-cache` is green
+
+**What Changed**:
+
+- Confirmed the in-process Python suite (`tests/unit` + `tests/integration`) completes in roughly 14 seconds locally; the 5-minute timeout was not caused by inherently slow Python tests
+- Traced the timeout to default pytest discovery including `tests/smoke`, `tests/e2e`, and `tests/third_party`, which pulled server-backed and browser-backed rails into `overconfidence:untested-code.py`
+- Narrowed default `pytest.ini` `testpaths` to `tests/unit tests/integration` so the fast swab gate matches the intended commit-time suite
+- Kept `.sb_config.json` aligned with that same fast-suite intent for the Python test gate
+- Fixed three now-visible regressions uncovered once the timeout stopped masking real failures:
+   - case-insensitive doctype assertion in `tests/unit/test_app.py`
+   - logout template expectation updated for current double-quoted fetch usage in `tests/unit/test_logout_csrf_issue.py`
+   - term status helper typing aligned with date-or-datetime references in `src/models/models.py` and `tests/unit/test_models.py`
+- Repaired a bogus short test in `tests/unit/test_password_service.py` so the default swab path stays green without relying on stale cache
+
+**Validation**:
+
+- `python -m pytest tests/unit tests/integration -m 'not e2e and not third_party and not slow' -q` ✅ (`1904 passed, 1 deselected` in ~14s)
+- `python -m pytest tests/unit/test_app.py tests/unit/test_logout_csrf_issue.py tests/unit/test_models.py -q` ✅
+- `sm swab -g overconfidence:untested-code.py --verbose --no-cache` ✅ (~24s)
+- `sm swab -g deceptiveness:bogus-tests.py --verbose --no-cache` ✅
+- `sm swab -g laziness:sloppy-formatting.py --verbose --no-cache` ✅
+- `sm swab -g overconfidence:missing-annotations.py --verbose --no-cache` ✅
+- `sm swab --no-cache` ✅
+
+**Key Result**:
+
+- The prior 5-minute Python timeout was a suite-selection/configuration bug, not an actual slow-test problem.
+- Smoke and E2E remain on their dedicated rails (`scripts/run_smoke.sh`, `scripts/run_uat.sh`) instead of contaminating the fast Python swab gate.
+
 ## Latest Work: Slop-Mop Remediation, Sonar Removal, and JS Gate Repair (2026-03-14)
 
 **Status**: 🚧 IN PROGRESS - tracked Sonar references removed; default `sm swab` passing; full no-budget sweep still reveals broader repository debt
@@ -60,10 +473,79 @@
 
 **Residual Follow-Up**:
 
-- Non-CI helper scripts still import `scripts.ship_it.reply_to_pr_comment`:
-   - `scripts/reply_to_pr_comment.py`
-   - `scripts/update_pr_checklist.py`
-- Those are outside the workflow migration itself and should be migrated separately to slop-mop / `sm buff` based behavior.
+- Legacy PR-commentary helpers have been removed in favor of the `sm buff` rail.
+
+## Latest Work: PR Commentary Script Removal (2026-03-14)
+
+**Status**: 🚧 IN PROGRESS - obsolete PR-commentary helpers removed; default swab green; full scour still blocked by broader repo debt
+
+**What Changed**:
+
+- Removed `scripts/reply_to_pr_comment.py`
+- Removed `scripts/update_pr_checklist.py`
+- Updated project instructions to use `sm buff inspect`, `sm buff resolve`, and `sm buff verify`
+- Regenerated `AGENTS.md` and `.windsurfrules` so generated guidance no longer references the deleted helpers
+
+**Validation**:
+
+- `sm swab` ✅
+- `rg -n "update_pr_checklist|reply_to_pr_comment|get_pr_threads|resolve_conversation" ...` ✅ (no active references in main repo sources)
+- `sm scour` ❌
+
+**Current Scour Blockers**:
+
+- `overconfidence:smoke`: smoke gate fails during `scripts/seed_db.py` startup/import path
+- `overconfidence:missing-annotations.py`: 2483 existing typing errors across the repository
+- `overconfidence:untested-code.py`: full Python sweep times out after 5 minutes across 1989 tests
+
+**Interpretation**:
+
+- The PR-commentary cleanup itself is not the reason `sm scour` is red.
+- Push remains blocked under the repo's quality policy unless those broader scour failures are addressed or the policy changes.
+- A follow-on commit attempt for this cleanup also failed because the staged-tree hook executed cached `overconfidence:missing-annotations.py` results and treated the existing typing debt as a commit blocker.
+
+## Latest Work: Missing-Annotations Remediation Pass (2026-03-14)
+
+**Status**: ✅ COMPLETE - missing-annotations gate green; Python timeout gate remains the primary blocker
+
+**What Changed**:
+
+- Fixed `scripts/run_smoke.sh` so it activates and uses the repository `venv` deterministically instead of trusting a stale `VIRTUAL_ENV`
+- Cleaned obvious script typing issues in `scripts/validate_secrets_location.py`, `scripts/generate_route_inventory.py`, and `scripts/exploration_helper.py`
+- Applied a broad test annotation pass for missing parameter and return annotations, then repaired the resulting import-placement issues
+- Tightened E2E helper typing in `tests/e2e/test_helpers.py` and `tests/e2e/conftest.py`
+- Normalized response-union handling in `tests/unit/test_routes_programs.py`
+- Fixed a substantial batch of bare generic annotations in `src/adapters/base_adapter.py`, `src/adapters/cei_excel_adapter.py`, `src/services/import_service.py`, and `src/api/routes/plos.py`
+- Cleared the residual type tail across route tests, fixture generators, Playwright helpers, email utilities, import/export tests, and several service/model signatures
+
+**Validation**:
+
+- `bash -lc './scripts/run_smoke.sh'` ✅
+- `sm scour -g overconfidence:smoke --verbose --no-cache` ✅
+- `sm swab -g laziness:sloppy-formatting.py --verbose --no-cache` ✅
+- `sm swab -g overconfidence:missing-annotations.py --json --output-file /tmp/missing-annotations-current.json --no-cache` ✅
+
+**Typing Gate Trend**:
+
+- Started at `2483` findings
+- Reduced to `284` after the initial test annotation pass
+- Reduced to `173` after targeted residual fixes
+- Reduced to `143` after source-side generic fixes
+- Reduced to `133` after marking dynamic E2E `BASE_URL` as `Any`
+- Reduced to `90` after the first targeted residual cleanup batch
+- Reduced to `61` after fixture/generic cleanup across source and tests
+- Reduced to `39` after singleton type fixes
+- Reduced to `11` before the final tail cleanup
+- Reduced to `0` after the final residual typing fixes
+
+**Key Result**:
+
+- `overconfidence:missing-annotations.py` is no longer a commit blocker.
+
+**Interpretation**:
+
+- The typing debt that was blocking the commit hook has been fully cleared.
+- Commit and push remain blocked until the Python timeout gate is addressed.
 
 ## Latest Work: Smoke Gate Hard-Failure Fix (2026-03-14)
 

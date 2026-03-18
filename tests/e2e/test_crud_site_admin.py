@@ -26,7 +26,7 @@ from tests.e2e.conftest import BASE_URL
 
 
 @pytest.mark.e2e
-def test_tc_crud_sa_001_create_institution(authenticated_site_admin_page: Page):
+def test_tc_crud_sa_001_create_institution(authenticated_site_admin_page: Page) -> None:
     """
     TC-CRUD-SA-001: Site Admin creates new institution via UI
 
@@ -63,7 +63,7 @@ def test_tc_crud_sa_001_create_institution(authenticated_site_admin_page: Page):
 @pytest.mark.e2e
 def test_tc_crud_sa_002_update_institution_settings(
     authenticated_site_admin_page: Page,
-):
+) -> None:
     """
     TC-CRUD-SA-002: Site Admin has capability to update institution settings
 
@@ -94,7 +94,9 @@ def test_tc_crud_sa_002_update_institution_settings(
 
 
 @pytest.mark.e2e
-def test_tc_crud_sa_003_create_institution_admin(authenticated_site_admin_page: Page):
+def test_tc_crud_sa_003_create_institution_admin(
+    authenticated_site_admin_page: Page,
+) -> None:
     """TC-CRUD-SA-003: Site Admin creates institution admin via UI"""
     # Navigate to site admin dashboard
     authenticated_site_admin_page.goto(f"{BASE_URL}/dashboard")
@@ -133,7 +135,9 @@ def test_tc_crud_sa_003_create_institution_admin(authenticated_site_admin_page: 
 
 
 @pytest.mark.e2e
-def test_tc_crud_sa_004_manage_global_users(authenticated_site_admin_page: Page):
+def test_tc_crud_sa_004_manage_global_users(
+    authenticated_site_admin_page: Page,
+) -> None:
     """
     TC-CRUD-SA-004: Site Admin has global user management capabilities
 
@@ -170,7 +174,7 @@ def test_tc_crud_sa_004_manage_global_users(authenticated_site_admin_page: Page)
 @pytest.mark.e2e
 def test_tc_crud_sa_005_view_all_data_across_institutions(
     authenticated_site_admin_page: Page,
-):
+) -> None:
     """
     TC-CRUD-SA-005: Site Admin can access data pages across system
 
@@ -206,7 +210,9 @@ def test_tc_crud_sa_005_view_all_data_across_institutions(
 
 
 @pytest.mark.e2e
-def test_tc_crud_sa_006_delete_empty_institution(authenticated_site_admin_page: Page):
+def test_tc_crud_sa_006_delete_empty_institution(
+    authenticated_site_admin_page: Page,
+) -> None:
     """
     TC-CRUD-SA-006: Site Admin can create and delete institutions
 
@@ -241,7 +247,9 @@ def test_tc_crud_sa_006_delete_empty_institution(authenticated_site_admin_page: 
 
 
 @pytest.mark.e2e
-def test_tc_crud_sa_007_system_wide_reporting(authenticated_site_admin_page: Page):
+def test_tc_crud_sa_007_system_wide_reporting(
+    authenticated_site_admin_page: Page,
+) -> None:
     """
     TC-CRUD-SA-007: Site Admin sees system-wide metrics
 
@@ -286,7 +294,7 @@ def test_tc_crud_sa_007_system_wide_reporting(authenticated_site_admin_page: Pag
 @pytest.mark.e2e
 def test_tc_crud_sa_008_multi_institution_workflows(
     authenticated_site_admin_page: Page,
-):
+) -> None:
     """
     TC-CRUD-SA-008: Site Admin can create users in any institution
 

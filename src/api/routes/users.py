@@ -1,6 +1,6 @@
 """User Management API Routes for user CRUD operations and instructor listing."""
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
@@ -44,6 +44,12 @@ logger = get_logger(__name__)
 users_bp = Blueprint("users", __name__, url_prefix="/api")
 
 
+def _get_request_json() -> Dict[str, Any]:
+    """Return a typed JSON object body or an empty dict."""
+    payload = request.get_json(silent=True)
+    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
+
+
 def _resolve_users_scope() -> Tuple[Dict[str, Any], List[str], bool]:
     """Resolve institution scope for user listing."""
     try:
@@ -77,10 +83,10 @@ def _get_global_users(
             ]
         return users
     else:
-        users = []
+        scoped_users: List[Dict[str, Any]] = []
         for inst_id in institution_ids:
-            users.extend(get_all_users(inst_id))
-        return users
+            scoped_users.extend(get_all_users(inst_id))
+        return scoped_users
 
 
 def _get_institution_users(
@@ -159,7 +165,7 @@ def list_users() -> ResponseReturnValue:
 def create_user() -> ResponseReturnValue:
     """Create a new user with role-based authorization checks."""
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
@@ -188,23 +194,45 @@ def create_user() -> ResponseReturnValue:
         from src.models.models import User
         from src.services.password_service import hash_password
 
-        password_hash = None
-        if data.get("password"):
-            password_hash = hash_password(data["password"])
-
-        user_schema = User.create_schema(
-            email=data["email"],
-            first_name=data["first_name"],
-            last_name=data["last_name"],
-            role=data["role"],
-            institution_id=data.get("institution_id"),
-            password_hash=password_hash,
-            account_status=data.get("account_status", "active"),
-            program_ids=data.get("program_ids", []),
-            display_name=data.get("display_name"),
+        email = str(data.get("email", "")).strip().lower()
+        first_name = str(data.get("first_name", "")).strip()
+        last_name = str(data.get("last_name", "")).strip()
+        role = str(data.get("role", "")).strip()
+        institution_id = data.get("institution_id")
+        institution_id_str = str(institution_id) if institution_id else None
+        password = data.get("password")
+        password_str = str(password) if password else None
+        account_status = str(data.get("account_status", "active"))
+        display_name = data.get("display_name")
+        display_name_str = str(display_name) if display_name else None
+        raw_program_ids = data.get("program_ids")
+        program_ids = (
+            [
+                str(program_id_value)
+                for program_id_value in cast(List[Any], raw_program_ids)
+                if program_id_value
+            ]
+            if isinstance(raw_program_ids, list)
+            else []
         )
 
-        if data.get("email_verified", False):
+        password_hash = None
+        if password_str:
+            password_hash = hash_password(password_str)
+
+        user_schema = User.create_schema(
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            role=role,
+            institution_id=institution_id_str,
+            password_hash=password_hash,
+            account_status=account_status,
+            program_ids=program_ids,
+            display_name=display_name_str,
+        )
+
+        if bool(data.get("email_verified", False)):
             user_schema["email_verified"] = True
 
         user_id = create_user_db(user_schema)
@@ -253,7 +281,7 @@ def get_user_api(user_id: str) -> ResponseReturnValue:
 def update_user_api(user_id: str) -> ResponseReturnValue:
     """Update user details."""
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
@@ -302,7 +330,7 @@ def update_user_profile_endpoint(user_id: str) -> ResponseReturnValue:
         if current_user["user_id"] != user_id and not has_permission("manage_users"):
             return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
 
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -346,11 +374,10 @@ def update_user_profile_endpoint(user_id: str) -> ResponseReturnValue:
 def update_user_role_endpoint(user_id: str) -> ResponseReturnValue:
     """Update a user's role (admin only)."""
     try:
-        data = request.get_json(silent=True) or {}
-        if not data or "role" not in data:
+        data = _get_request_json()
+        new_role = str(data.get("role", "")).strip()
+        if not data or not new_role:
             return jsonify({"success": False, "error": "Role is required"}), 400
-
-        new_role = data["role"]
         valid_roles = ["instructor", "program_admin", "institution_admin"]
 
         if new_role not in valid_roles:

@@ -6,7 +6,7 @@ current user information, and system date override functionality.
 Also includes the global context validation before_app_request handler.
 """
 
-from typing import Optional
+from typing import Any, Optional, cast
 
 from flask import Blueprint, jsonify, request, session
 from flask.typing import ResponseReturnValue
@@ -133,10 +133,20 @@ def get_program_context() -> ResponseReturnValue:
     try:
         current_user = get_current_user_safe()
         current_program_id = get_current_program_id()
-        accessible_programs = current_user.get("program_ids", [])
+        raw_program_ids = current_user.get("program_ids")
+        program_id_values: list[Any] = (
+            cast(list[Any], raw_program_ids)
+            if isinstance(raw_program_ids, list)
+            else []
+        )
+        accessible_programs: list[str] = (
+            [str(program_id) for program_id in program_id_values if program_id]
+            if program_id_values
+            else []
+        )
 
         # Get program details for accessible programs
-        program_details = []
+        program_details: list[dict[str, Any]] = []
         for program_id in accessible_programs:
             program = get_program_by_id(program_id)
             if program:

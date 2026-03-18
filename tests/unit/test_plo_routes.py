@@ -7,6 +7,9 @@ All tests use the database directly (no mocks) via unit test fixtures
 that auto-reset between tests.
 """
 
+from collections.abc import Generator
+from typing import Any
+
 import pytest
 
 import src.database.database_service as database_service
@@ -17,6 +20,7 @@ from tests.test_utils import create_test_session
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 INST_DATA = {
     "name": "PLO Route Test University",
     "short_name": "PRTU",
@@ -26,14 +30,14 @@ INST_DATA = {
 
 
 @pytest.fixture
-def client():
+def client() -> Generator[Any, None, None]:
     """Flask test client with an authenticated site-admin session."""
     app.config["TESTING"] = True
     with app.test_client() as c:
         yield c
 
 
-def _auth(client, institution_id="inst-1"):
+def _auth(client: Any, institution_id: Any = "inst-1") -> None:
     """Set up an admin session for the client."""
     create_test_session(
         client,
@@ -50,7 +54,7 @@ def _auth(client, institution_id="inst-1"):
     )
 
 
-def _setup_program(suffix=""):
+def _setup_program(suffix: Any = "") -> Any:
     """Create an institution + program, returning (inst_id, program_id)."""
     inst_id = database_service.create_institution(
         {**INST_DATA, "name": f"PLO Route Uni {suffix}", "short_name": f"PRU{suffix}"}
@@ -65,7 +69,7 @@ def _setup_program(suffix=""):
     return inst_id, prog_id
 
 
-def _setup_user(inst_id, email="route-admin@test.edu"):
+def _setup_user(inst_id: Any, email: Any = "route-admin@test.edu") -> Any:
     """Create a user and return user_id."""
     return database_service.create_user(
         {
@@ -79,7 +83,9 @@ def _setup_user(inst_id, email="route-admin@test.edu"):
     )
 
 
-def _setup_course_and_clo(inst_id, number="CS101", clo_desc="Test CLO"):
+def _setup_course_and_clo(
+    inst_id: Any, number: Any = "CS101", clo_desc: Any = "Test CLO"
+) -> Any:
     """Create a course + CLO, return (course_id, clo_id)."""
     course_id = database_service.create_course(
         {
@@ -109,7 +115,7 @@ def _setup_course_and_clo(inst_id, number="CS101", clo_desc="Test CLO"):
 class TestPLOCrudRoutes:
     """Tests for GET/POST/PUT/DELETE on /api/programs/<id>/plos."""
 
-    def test_list_plos_empty(self, client):
+    def test_list_plos_empty(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("L1")
         _auth(client, institution_id=inst_id)
         resp = client.get(f"/api/programs/{prog_id}/plos")
@@ -119,7 +125,7 @@ class TestPLOCrudRoutes:
         assert data["plos"] == []
         assert data["total"] == 0
 
-    def test_create_plo(self, client):
+    def test_create_plo(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("C1")
         _auth(client, institution_id=inst_id)
         resp = client.post(
@@ -132,7 +138,7 @@ class TestPLOCrudRoutes:
         assert data["plo"]["plo_number"] == 1
         assert data["plo"]["description"] == "Critical thinking"
 
-    def test_create_plo_missing_fields(self, client):
+    def test_create_plo_missing_fields(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("C2")
         _auth(client, institution_id=inst_id)
         resp = client.post(
@@ -142,13 +148,13 @@ class TestPLOCrudRoutes:
         assert resp.status_code == 400
         assert resp.get_json()["success"] is False
 
-    def test_create_plo_no_body(self, client):
+    def test_create_plo_no_body(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("C3")
         _auth(client, institution_id=inst_id)
         resp = client.post(f"/api/programs/{prog_id}/plos")
         assert resp.status_code == 400
 
-    def test_get_plo(self, client):
+    def test_get_plo(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("G1")
         _auth(client, institution_id=inst_id)
         plo_id = database_service.create_program_outcome(
@@ -164,13 +170,13 @@ class TestPLOCrudRoutes:
         data = resp.get_json()
         assert data["plo"]["id"] == plo_id
 
-    def test_get_plo_not_found(self, client):
+    def test_get_plo_not_found(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("G2")
         _auth(client, institution_id=inst_id)
         resp = client.get(f"/api/programs/{prog_id}/plos/nonexistent")
         assert resp.status_code == 404
 
-    def test_update_plo(self, client):
+    def test_update_plo(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("U1")
         _auth(client, institution_id=inst_id)
         plo_id = database_service.create_program_outcome(
@@ -188,7 +194,7 @@ class TestPLOCrudRoutes:
         assert resp.status_code == 200
         assert resp.get_json()["plo"]["description"] == "Updated"
 
-    def test_update_plo_not_found(self, client):
+    def test_update_plo_not_found(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("U2")
         _auth(client, institution_id=inst_id)
         resp = client.put(
@@ -197,7 +203,7 @@ class TestPLOCrudRoutes:
         )
         assert resp.status_code == 404
 
-    def test_update_plo_filters_sensitive_fields(self, client):
+    def test_update_plo_filters_sensitive_fields(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("U2b")
         _auth(client, institution_id=inst_id)
         plo_id = database_service.create_program_outcome(
@@ -226,7 +232,7 @@ class TestPLOCrudRoutes:
         assert plo["institution_id"] == inst_id
         assert plo["is_active"] is True
 
-    def test_update_plo_only_sensitive_fields_rejected(self, client):
+    def test_update_plo_only_sensitive_fields_rejected(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("U2c")
         _auth(client, institution_id=inst_id)
         plo_id = database_service.create_program_outcome(
@@ -245,7 +251,7 @@ class TestPLOCrudRoutes:
         assert resp.status_code == 400
         assert "No updatable fields" in resp.get_json()["error"]
 
-    def test_update_plo_no_body(self, client):
+    def test_update_plo_no_body(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("U3")
         _auth(client, institution_id=inst_id)
         plo_id = database_service.create_program_outcome(
@@ -259,7 +265,7 @@ class TestPLOCrudRoutes:
         resp = client.put(f"/api/programs/{prog_id}/plos/{plo_id}")
         assert resp.status_code == 400
 
-    def test_delete_plo(self, client):
+    def test_delete_plo(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("D1")
         _auth(client, institution_id=inst_id)
         plo_id = database_service.create_program_outcome(
@@ -278,18 +284,18 @@ class TestPLOCrudRoutes:
         resp2 = client.get(f"/api/programs/{prog_id}/plos")
         assert resp2.get_json()["total"] == 0
 
-    def test_delete_plo_not_found(self, client):
+    def test_delete_plo_not_found(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("D2")
         _auth(client, institution_id=inst_id)
         resp = client.delete(f"/api/programs/{prog_id}/plos/nonexistent")
         assert resp.status_code == 404
 
-    def test_list_plos_program_not_found(self, client):
+    def test_list_plos_program_not_found(self, client: Any) -> None:
         _auth(client)
         resp = client.get("/api/programs/nonexistent-prog/plos")
         assert resp.status_code == 404
 
-    def test_list_plos_include_inactive(self, client):
+    def test_list_plos_include_inactive(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("LI")
         _auth(client, institution_id=inst_id)
         plo_id = database_service.create_program_outcome(
@@ -319,7 +325,7 @@ class TestPLOCrudRoutes:
 class TestPLOMappingDraftRoutes:
     """Tests for draft create/get/discard endpoints."""
 
-    def test_create_draft(self, client):
+    def test_create_draft(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("MD1")
         _auth(client, institution_id=inst_id)
         resp = client.post(f"/api/programs/{prog_id}/plo-mappings/draft")
@@ -329,19 +335,19 @@ class TestPLOMappingDraftRoutes:
         assert data["mapping"]["status"] == "draft"
         assert data["mapping"]["entries"] == []
 
-    def test_create_draft_idempotent(self, client):
+    def test_create_draft_idempotent(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("MD2")
         _auth(client, institution_id=inst_id)
         r1 = client.post(f"/api/programs/{prog_id}/plo-mappings/draft")
         r2 = client.post(f"/api/programs/{prog_id}/plo-mappings/draft")
         assert r1.get_json()["mapping"]["id"] == r2.get_json()["mapping"]["id"]
 
-    def test_create_draft_program_not_found(self, client):
+    def test_create_draft_program_not_found(self, client: Any) -> None:
         _auth(client)
         resp = client.post("/api/programs/nonexistent/plo-mappings/draft")
         assert resp.status_code == 404
 
-    def test_get_draft(self, client):
+    def test_get_draft(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("MD3")
         _auth(client, institution_id=inst_id)
         client.post(f"/api/programs/{prog_id}/plo-mappings/draft")
@@ -350,13 +356,13 @@ class TestPLOMappingDraftRoutes:
         assert resp.status_code == 200
         assert resp.get_json()["mapping"]["status"] == "draft"
 
-    def test_get_draft_not_found(self, client):
+    def test_get_draft_not_found(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("MD4")
         _auth(client, institution_id=inst_id)
         resp = client.get(f"/api/programs/{prog_id}/plo-mappings/draft")
         assert resp.status_code == 404
 
-    def test_discard_draft(self, client):
+    def test_discard_draft(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("MD5")
         _auth(client, institution_id=inst_id)
         client.post(f"/api/programs/{prog_id}/plo-mappings/draft")
@@ -369,7 +375,7 @@ class TestPLOMappingDraftRoutes:
         resp2 = client.get(f"/api/programs/{prog_id}/plo-mappings/draft")
         assert resp2.status_code == 404
 
-    def test_discard_draft_not_found(self, client):
+    def test_discard_draft_not_found(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("MD6")
         _auth(client, institution_id=inst_id)
         resp = client.delete(f"/api/programs/{prog_id}/plo-mappings/draft")
@@ -384,7 +390,7 @@ class TestPLOMappingDraftRoutes:
 class TestPLOMappingEntryRoutes:
     """Tests for adding/removing PLO↔CLO mapping entries."""
 
-    def test_add_and_remove_entry(self, client):
+    def test_add_and_remove_entry(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("ME1")
         _auth(client, institution_id=inst_id)
         plo_id = database_service.create_program_outcome(
@@ -417,7 +423,7 @@ class TestPLOMappingEntryRoutes:
         assert del_resp.status_code == 200
         assert del_resp.get_json()["success"] is True
 
-    def test_add_entry_missing_fields(self, client):
+    def test_add_entry_missing_fields(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("ME2")
         _auth(client, institution_id=inst_id)
         draft_resp = client.post(f"/api/programs/{prog_id}/plo-mappings/draft")
@@ -430,7 +436,7 @@ class TestPLOMappingEntryRoutes:
         assert resp.status_code == 400
         assert "course_outcome_id" in resp.get_json()["error"]
 
-    def test_remove_entry_not_found(self, client):
+    def test_remove_entry_not_found(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("ME3")
         _auth(client, institution_id=inst_id)
         draft_resp = client.post(f"/api/programs/{prog_id}/plo-mappings/draft")
@@ -450,7 +456,7 @@ class TestPLOMappingEntryRoutes:
 class TestPLOMappingPublishRoutes:
     """Tests for publishing a draft mapping."""
 
-    def test_publish_draft(self, client):
+    def test_publish_draft(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("MP1")
         _auth(client, institution_id=inst_id)
         plo_id = database_service.create_program_outcome(
@@ -481,7 +487,7 @@ class TestPLOMappingPublishRoutes:
         assert data["mapping"]["status"] == "published"
         assert data["mapping"]["description"] == "Initial mapping"
 
-    def test_publish_without_description(self, client):
+    def test_publish_without_description(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("MP2")
         _auth(client, institution_id=inst_id)
         draft_resp = client.post(f"/api/programs/{prog_id}/plo-mappings/draft")
@@ -502,7 +508,7 @@ class TestPLOMappingPublishRoutes:
 class TestPLOMappingRetrievalRoutes:
     """Tests for listing/fetching published mapping versions."""
 
-    def _publish_versions(self, client, prog_id, count=2):
+    def _publish_versions(self, client: Any, prog_id: Any, count: Any = 2) -> Any:
         """Helper to publish N versions. Returns list of published mapping dicts."""
         published = []
         for i in range(count):
@@ -516,7 +522,7 @@ class TestPLOMappingRetrievalRoutes:
             published.append(pub)
         return published
 
-    def test_list_published_mappings(self, client):
+    def test_list_published_mappings(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("MR1")
         _auth(client, institution_id=inst_id)
         self._publish_versions(client, prog_id, count=3)
@@ -527,7 +533,7 @@ class TestPLOMappingRetrievalRoutes:
         assert data["total"] == 3
         assert [m["version"] for m in data["mappings"]] == [1, 2, 3]
 
-    def test_get_latest_published(self, client):
+    def test_get_latest_published(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("MR2")
         _auth(client, institution_id=inst_id)
         self._publish_versions(client, prog_id, count=3)
@@ -536,13 +542,13 @@ class TestPLOMappingRetrievalRoutes:
         assert resp.status_code == 200
         assert resp.get_json()["mapping"]["version"] == 3
 
-    def test_get_latest_published_none(self, client):
+    def test_get_latest_published_none(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("MR3")
         _auth(client, institution_id=inst_id)
         resp = client.get(f"/api/programs/{prog_id}/plo-mappings/latest")
         assert resp.status_code == 404
 
-    def test_get_mapping_by_version(self, client):
+    def test_get_mapping_by_version(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("MR4")
         _auth(client, institution_id=inst_id)
         self._publish_versions(client, prog_id, count=2)
@@ -551,13 +557,13 @@ class TestPLOMappingRetrievalRoutes:
         assert resp.status_code == 200
         assert resp.get_json()["mapping"]["version"] == 1
 
-    def test_get_mapping_by_version_not_found(self, client):
+    def test_get_mapping_by_version_not_found(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("MR5")
         _auth(client, institution_id=inst_id)
         resp = client.get(f"/api/programs/{prog_id}/plo-mappings/version/99")
         assert resp.status_code == 404
 
-    def test_get_mapping_by_id(self, client):
+    def test_get_mapping_by_id(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("MR6")
         _auth(client, institution_id=inst_id)
         versions = self._publish_versions(client, prog_id, count=1)
@@ -567,7 +573,7 @@ class TestPLOMappingRetrievalRoutes:
         assert resp.status_code == 200
         assert resp.get_json()["mapping"]["id"] == mapping_id
 
-    def test_get_mapping_by_id_not_found(self, client):
+    def test_get_mapping_by_id_not_found(self, client: Any) -> None:
         inst_id, prog_id = _setup_program("MR7")
         _auth(client, institution_id=inst_id)
         resp = client.get(f"/api/programs/{prog_id}/plo-mappings/nonexistent")
@@ -579,7 +585,9 @@ class TestPLOMappingRetrievalRoutes:
 # ---------------------------------------------------------------------------
 
 
-def _setup_program_with_courses(suffix, num_courses=2, clos_per_course=2):
+def _setup_program_with_courses(
+    suffix: Any, num_courses: Any = 2, clos_per_course: Any = 2
+) -> Any:
     """Create a fully wired program with courses linked and CLOs.
 
     Returns (inst_id, prog_id, [(course_id, [clo_id, ...]), ...]).
@@ -615,7 +623,7 @@ def _setup_program_with_courses(suffix, num_courses=2, clos_per_course=2):
 class TestPLOMappingMatrixRoutes:
     """Tests for GET /api/programs/<id>/plo-mappings/matrix."""
 
-    def test_matrix_empty_program(self, client):
+    def test_matrix_empty_program(self, client: Any) -> None:
         """Matrix with no courses, PLOs, or mappings."""
         inst_id, prog_id = _setup_program("MX1")
         _auth(client, institution_id=inst_id)
@@ -630,7 +638,7 @@ class TestPLOMappingMatrixRoutes:
         # No draft or published mapping yet
         assert data["mapping"] is None
 
-    def test_matrix_with_draft_entries(self, client):
+    def test_matrix_with_draft_entries(self, client: Any) -> None:
         """Matrix populates cells from a draft mapping."""
         inst_id, prog_id, courses = _setup_program_with_courses("MX2")
         _auth(client, institution_id=inst_id)
@@ -664,7 +672,7 @@ class TestPLOMappingMatrixRoutes:
         assert clo_id in matrix[plo_id]
         assert matrix[plo_id][clo_id] is not None  # has entry_id
 
-    def test_matrix_with_explicit_mapping_id(self, client):
+    def test_matrix_with_explicit_mapping_id(self, client: Any) -> None:
         """Matrix can target a specific mapping via query param."""
         inst_id, prog_id, courses = _setup_program_with_courses("MX3")
         _auth(client, institution_id=inst_id)
@@ -683,7 +691,7 @@ class TestPLOMappingMatrixRoutes:
         data = resp.get_json()
         assert data["mapping"]["id"] == mapping_id
 
-    def test_matrix_with_version_param(self, client):
+    def test_matrix_with_version_param(self, client: Any) -> None:
         """Matrix can target a specific version number."""
         inst_id, prog_id, courses = _setup_program_with_courses("MX4")
         _auth(client, institution_id=inst_id)
@@ -702,7 +710,7 @@ class TestPLOMappingMatrixRoutes:
         data = resp.get_json()
         assert data["mapping"]["version"] == 1
 
-    def test_matrix_courses_include_clos(self, client):
+    def test_matrix_courses_include_clos(self, client: Any) -> None:
         """Each course in the response includes its CLOs."""
         inst_id, prog_id, courses = _setup_program_with_courses(
             "MX5", num_courses=1, clos_per_course=3
@@ -719,7 +727,7 @@ class TestPLOMappingMatrixRoutes:
 class TestPLOUnmappedCLOsRoutes:
     """Tests for GET /api/programs/<id>/plo-mappings/unmapped-clos."""
 
-    def test_all_clos_unmapped_when_no_mapping(self, client):
+    def test_all_clos_unmapped_when_no_mapping(self, client: Any) -> None:
         """All CLOs are unmapped when no mapping exists."""
         inst_id, prog_id, courses = _setup_program_with_courses("UM1")
         _auth(client, institution_id=inst_id)
@@ -731,7 +739,7 @@ class TestPLOUnmappedCLOsRoutes:
         total_clos = sum(len(clos) for _, clos in courses)
         assert data["count"] == total_clos
 
-    def test_mapped_clo_excluded(self, client):
+    def test_mapped_clo_excluded(self, client: Any) -> None:
         """A CLO that has a mapping entry should not appear in unmapped list."""
         inst_id, prog_id, courses = _setup_program_with_courses(
             "UM2", num_courses=1, clos_per_course=3
@@ -762,7 +770,7 @@ class TestPLOUnmappedCLOsRoutes:
         unmapped_ids = [c["outcome_id"] for c in data["unmapped_clos"]]
         assert mapped_clo not in unmapped_ids
 
-    def test_unmapped_with_explicit_mapping_id(self, client):
+    def test_unmapped_with_explicit_mapping_id(self, client: Any) -> None:
         """Unmapped CLOs can target a specific mapping via query param."""
         inst_id, prog_id, courses = _setup_program_with_courses("UM3")
         _auth(client, institution_id=inst_id)
@@ -781,7 +789,7 @@ class TestPLOUnmappedCLOsRoutes:
         data = resp.get_json()
         assert data["success"] is True
 
-    def test_unmapped_includes_course_info(self, client):
+    def test_unmapped_includes_course_info(self, client: Any) -> None:
         """Each unmapped CLO includes its parent course info."""
         inst_id, prog_id, courses = _setup_program_with_courses(
             "UM4", num_courses=1, clos_per_course=1
@@ -805,7 +813,7 @@ class TestPLOUnmappedCLOsRoutes:
 class TestPLOAuthorizationScoping:
     """Tests verifying institution scoping and ownership validation."""
 
-    def test_cross_institution_program_access_denied(self, client):
+    def test_cross_institution_program_access_denied(self, client: Any) -> None:
         """User from institution A cannot access program from institution B."""
         inst_a, _ = _setup_program("SA1")
         inst_b, prog_b = _setup_program("SB1")
@@ -817,7 +825,7 @@ class TestPLOAuthorizationScoping:
         resp = client.get(f"/api/programs/{prog_b}/plos")
         assert resp.status_code == 404
 
-    def test_cross_program_plo_access_denied(self, client):
+    def test_cross_program_plo_access_denied(self, client: Any) -> None:
         """PLO from program A cannot be fetched via program B's URL."""
         inst_id, prog_a = _setup_program("XP1")
         _, prog_b = _setup_program("XP2")
@@ -840,7 +848,7 @@ class TestPLOAuthorizationScoping:
         resp = client.get(f"/api/programs/{prog_b}/plos/{plo_id}")
         assert resp.status_code == 404
 
-    def test_cross_program_mapping_access_denied(self, client):
+    def test_cross_program_mapping_access_denied(self, client: Any) -> None:
         """Mapping from program A cannot be fetched via program B's URL."""
         inst_id, prog_a = _setup_program("XM1")
         prog_b = database_service.create_program(
@@ -856,7 +864,7 @@ class TestPLOAuthorizationScoping:
         resp = client.get(f"/api/programs/{prog_b}/plo-mappings/{mapping_id}")
         assert resp.status_code == 404
 
-    def test_create_plo_derives_institution_from_program(self, client):
+    def test_create_plo_derives_institution_from_program(self, client: Any) -> None:
         """institution_id on created PLO comes from program, not session."""
         inst_id, prog_id = _setup_program("DI1")
         _auth(client, institution_id=inst_id)
@@ -878,7 +886,7 @@ class TestPLOAuthorizationScoping:
 class TestDraftStatusEnforcement:
     """Tests verifying mutations are blocked on published mappings."""
 
-    def test_add_entry_to_published_mapping_rejected(self, client):
+    def test_add_entry_to_published_mapping_rejected(self, client: Any) -> None:
         """Adding an entry to a published mapping returns 400."""
         inst_id, prog_id = _setup_program("DSE1")
         _auth(client, institution_id=inst_id)
@@ -915,7 +923,7 @@ class TestDraftStatusEnforcement:
 class TestMatrixVersionValidation:
     """Tests for invalid version query parameter handling."""
 
-    def test_matrix_invalid_version_returns_400(self, client):
+    def test_matrix_invalid_version_returns_400(self, client: Any) -> None:
         """Non-integer version param returns 400, not 404."""
         inst_id, prog_id = _setup_program("MVV1")
         _auth(client, institution_id=inst_id)
@@ -927,7 +935,7 @@ class TestMatrixVersionValidation:
         assert resp.status_code == 400
         assert "invalid version" in resp.get_json()["error"].lower()
 
-    def test_matrix_nonexistent_version_returns_404(self, client):
+    def test_matrix_nonexistent_version_returns_404(self, client: Any) -> None:
         """Valid integer version that doesn't exist returns 404."""
         inst_id, prog_id = _setup_program("MVV2")
         _auth(client, institution_id=inst_id)
@@ -944,7 +952,7 @@ class TestMatrixVersionValidation:
 # ---------------------------------------------------------------------------
 
 
-def _publish_mapping(client, prog_id, entries):
+def _publish_mapping(client: Any, prog_id: Any, entries: Any) -> Any:
     """Open a draft, add *entries* [(plo_id, clo_id), ...], publish. Return mapping id."""
     draft = client.post(f"/api/programs/{prog_id}/plo-mappings/draft").get_json()[
         "mapping"
@@ -972,7 +980,7 @@ class TestPLODashboardRoute:
     per-program assessment_display_mode lookup.
     """
 
-    def test_empty_program_returns_none_status(self, client):
+    def test_empty_program_returns_none_status(self, client: Any) -> None:
         """No PLOs, no mappings → mapping_status='none', empty plos list."""
         inst_id, prog_id = _setup_program("DASH1")
         _auth(client, institution_id=inst_id)
@@ -988,7 +996,7 @@ class TestPLODashboardRoute:
         # Default display mode when none configured
         assert data["assessment_display_mode"] == "both"
 
-    def test_unmapped_plos_appear_with_empty_clos(self, client):
+    def test_unmapped_plos_appear_with_empty_clos(self, client: Any) -> None:
         """PLOs exist but no mapping → each PLO has clos=[], clo_count=0."""
         inst_id, prog_id = _setup_program("DASH2")
         _auth(client, institution_id=inst_id)
@@ -1015,7 +1023,7 @@ class TestPLODashboardRoute:
             assert p["aggregate"]["students_took"] == 0
             assert p["aggregate"]["pass_rate"] is None
 
-    def test_draft_mapping_shows_as_draft(self, client):
+    def test_draft_mapping_shows_as_draft(self, client: Any) -> None:
         """Draft-only mapping → mapping_status='draft', CLOs visible."""
         inst_id, prog_id, courses = _setup_program_with_courses(
             "DASH3", num_courses=1, clos_per_course=1
@@ -1049,7 +1057,7 @@ class TestPLODashboardRoute:
         assert data["plos"][0]["clo_count"] == 1
         assert data["plos"][0]["clos"][0]["outcome_id"] == clo_ids[0]
 
-    def test_published_mapping_preferred_over_draft(self, client):
+    def test_published_mapping_preferred_over_draft(self, client: Any) -> None:
         """When both a published v1 and a newer draft exist, tree uses published."""
         inst_id, prog_id, courses = _setup_program_with_courses(
             "DASH4", num_courses=1, clos_per_course=2
@@ -1086,7 +1094,7 @@ class TestPLODashboardRoute:
         # The draft-only CLO should NOT appear
         assert clo_ids[1] not in clo_node_ids
 
-    def test_term_id_echoed_in_response(self, client):
+    def test_term_id_echoed_in_response(self, client: Any) -> None:
         """term_id query param is echoed back for client-side filter state."""
         inst_id, prog_id = _setup_program("DASH5")
         _auth(client, institution_id=inst_id)
@@ -1102,7 +1110,7 @@ class TestPLODashboardRoute:
         resp2 = client.get(f"/api/programs/{prog_id}/plo-dashboard")
         assert resp2.get_json()["term_id"] is None
 
-    def test_per_program_display_mode_returned(self, client):
+    def test_per_program_display_mode_returned(self, client: Any) -> None:
         """assessment_display_mode comes from program extras."""
         inst_id, prog_id = _setup_program("DASH6")
         _auth(client, institution_id=inst_id)
@@ -1114,7 +1122,7 @@ class TestPLODashboardRoute:
         assert resp.status_code == 200
         assert resp.get_json()["assessment_display_mode"] == "percentage"
 
-    def test_unknown_program_returns_404(self, client):
+    def test_unknown_program_returns_404(self, client: Any) -> None:
         """Invalid program_id → 404."""
         inst_id, _ = _setup_program("DASH7")
         _auth(client, institution_id=inst_id)
@@ -1122,14 +1130,14 @@ class TestPLODashboardRoute:
         resp = client.get("/api/programs/no-such-program/plo-dashboard")
         assert resp.status_code == 404
 
-    def test_requires_auth(self, client):
+    def test_requires_auth(self, client: Any) -> None:
         """Anonymous request → redirected to login (not 200)."""
         _, prog_id = _setup_program("DASH8")
         # No _auth() call — client is anonymous
         resp = client.get(f"/api/programs/{prog_id}/plo-dashboard")
         assert resp.status_code != 200
 
-    def test_clo_metadata_populated(self, client):
+    def test_clo_metadata_populated(self, client: Any) -> None:
         """Each CLO node carries course_number/title/description even with no section data."""
         inst_id, prog_id, courses = _setup_program_with_courses(
             "DASH9", num_courses=1, clos_per_course=1

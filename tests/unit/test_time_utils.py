@@ -4,13 +4,14 @@ TDD: These tests define the expected behavior for get_current_time().
 """
 
 from datetime import datetime, timezone
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
 
 @pytest.fixture
-def flask_app():
+def flask_app() -> Any:
     """Create Flask app context for testing."""
     from src.app import app
 
@@ -21,7 +22,7 @@ def flask_app():
 class TestGetCurrentTime:
     """Tests for get_current_time() function."""
 
-    def test_returns_datetime_with_timezone(self, flask_app):
+    def test_returns_datetime_with_timezone(self, flask_app: Any) -> None:
         """get_current_time() returns timezone-aware datetime."""
         from src.utils.time_utils import get_current_time
 
@@ -30,7 +31,7 @@ class TestGetCurrentTime:
             assert isinstance(result, datetime)
             assert result.tzinfo == timezone.utc
 
-    def test_returns_real_time_when_no_user(self, flask_app):
+    def test_returns_real_time_when_no_user(self, flask_app: Any) -> None:
         """Without a logged-in user, returns real datetime.now()."""
         from flask import g
 
@@ -48,7 +49,7 @@ class TestGetCurrentTime:
             # Result should be between before and after (real time)
             assert before <= result <= after
 
-    def test_returns_real_time_when_user_has_no_override(self, flask_app):
+    def test_returns_real_time_when_user_has_no_override(self, flask_app: Any) -> None:
         """User without override gets real datetime.now()."""
         from flask import g
 
@@ -65,7 +66,7 @@ class TestGetCurrentTime:
 
             assert before <= result <= after
 
-    def test_returns_override_when_user_has_override_set(self, flask_app):
+    def test_returns_override_when_user_has_override_set(self, flask_app: Any) -> None:
         """User with override gets override datetime."""
         from flask import g
 
@@ -81,7 +82,7 @@ class TestGetCurrentTime:
 
             assert result == override_date
 
-    def test_handles_missing_current_user_attribute_on_g(self, flask_app):
+    def test_handles_missing_current_user_attribute_on_g(self, flask_app: Any) -> None:
         """Handles case where g doesn't have current_user attr."""
         from flask import g
 
@@ -98,7 +99,7 @@ class TestGetCurrentTime:
 
             assert before <= result <= after
 
-    def test_returns_real_time_outside_request_context(self):
+    def test_returns_real_time_outside_request_context(self) -> None:
         """Outside of any Flask context, returns real datetime.now()."""
         from src.utils.time_utils import get_current_time
 

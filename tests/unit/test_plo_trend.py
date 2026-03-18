@@ -40,7 +40,7 @@ INST_DATA = {
 
 
 class TestBuildTermMetadata:
-    def test_active_term_flagged(self):
+    def test_active_term_flagged(self) -> None:
         terms = [
             {
                 "id": "t1",
@@ -56,7 +56,7 @@ class TestBuildTermMetadata:
         assert result[0]["term_name"] == "Fall 2023"
         assert result[0]["is_current"] is True
 
-    def test_past_term_not_current(self):
+    def test_past_term_not_current(self) -> None:
         terms = [
             {
                 "id": "t2",
@@ -69,7 +69,7 @@ class TestBuildTermMetadata:
             result = _build_term_metadata(terms)
         assert result[0]["is_current"] is False
 
-    def test_uses_term_id_fallback(self):
+    def test_uses_term_id_fallback(self) -> None:
         """Falls back to term_id key when id is missing."""
         terms = [
             {"term_id": "tx", "term_name": "Test", "start_date": "", "end_date": ""}
@@ -79,7 +79,7 @@ class TestBuildTermMetadata:
         assert result[0]["term_id"] == "tx"
         assert result[0]["term_name"] == "Test"
 
-    def test_empty_list(self):
+    def test_empty_list(self) -> None:
         assert _build_term_metadata([]) == []
 
 
@@ -89,7 +89,7 @@ class TestBuildTermMetadata:
 
 
 class TestAggregateSectionOutcomes:
-    def test_basic_aggregation(self):
+    def test_basic_aggregation(self) -> None:
         records = [
             {"students_took": 20, "students_passed": 16},
             {"students_took": 30, "students_passed": 24},
@@ -101,7 +101,7 @@ class TestAggregateSectionOutcomes:
         assert result["section_count"] == 2
         assert result["sections_with_data"] == 2
 
-    def test_ignores_zero_took(self):
+    def test_ignores_zero_took(self) -> None:
         records = [
             {"students_took": 10, "students_passed": 8},
             {"students_took": 0, "students_passed": 0},
@@ -112,8 +112,8 @@ class TestAggregateSectionOutcomes:
         assert result["sections_with_data"] == 1
         assert result["section_count"] == 2
 
-    def test_ignores_none_values(self):
-        records = [
+    def test_ignores_none_values(self) -> None:
+        records: List[Dict[str, Any]] = [
             {"students_took": None, "students_passed": None},
             {"students_took": 10, "students_passed": 7},
         ]
@@ -121,7 +121,7 @@ class TestAggregateSectionOutcomes:
         assert result["students_took"] == 10
         assert result["sections_with_data"] == 1
 
-    def test_empty_list_returns_none_rate(self):
+    def test_empty_list_returns_none_rate(self) -> None:
         result = _aggregate_section_outcomes([])
         assert result["pass_rate"] is None
         assert result["students_took"] == 0
@@ -135,10 +135,10 @@ class TestAggregateSectionOutcomes:
 
 
 class TestBuildTrendPoint:
-    def test_returns_none_for_empty(self):
+    def test_returns_none_for_empty(self) -> None:
         assert _build_trend_point([], "t1") is None
 
-    def test_returns_point_with_term_id(self):
+    def test_returns_point_with_term_id(self) -> None:
         records = [{"students_took": 20, "students_passed": 18}]
         result = _build_trend_point(records, "t-abc")
         assert result is not None
@@ -152,26 +152,26 @@ class TestBuildTrendPoint:
 
 
 class TestExtractTermId:
-    def test_direct_term_id(self):
+    def test_direct_term_id(self) -> None:
         assert _extract_term_id({"term_id": "t1"}) == "t1"
 
-    def test_nested_section_offering(self):
+    def test_nested_section_offering(self) -> None:
         so = {"_section": {"_offering": {"term_id": "t2"}}}
         assert _extract_term_id(so) == "t2"
 
-    def test_nested_offering_flat(self):
+    def test_nested_offering_flat(self) -> None:
         so = {"_offering": {"term_id": "t3"}}
         assert _extract_term_id(so) == "t3"
 
-    def test_nested_term_object(self):
+    def test_nested_term_object(self) -> None:
         so = {"_section": {"_offering": {"_term": {"id": "t4"}}}}
         assert _extract_term_id(so) == "t4"
 
-    def test_section_offering_keys(self):
+    def test_section_offering_keys(self) -> None:
         so = {"section": {"offering": {"term_id": "t5"}}}
         assert _extract_term_id(so) == "t5"
 
-    def test_returns_none_when_missing(self):
+    def test_returns_none_when_missing(self) -> None:
         assert _extract_term_id({}) is None
         assert _extract_term_id({"_section": {}}) is None
 
@@ -182,7 +182,7 @@ class TestExtractTermId:
 
 
 class TestIndexOutcomesByCloTerm:
-    def test_indexes_correctly(self):
+    def test_indexes_correctly(self) -> None:
         records = [
             {"outcome_id": "c1", "term_id": "t1", "students_took": 10},
             {"outcome_id": "c1", "term_id": "t2", "students_took": 20},
@@ -194,7 +194,7 @@ class TestIndexOutcomesByCloTerm:
         assert len(idx["c2"]["t1"]) == 1
         assert "c2" not in idx or "t2" not in idx.get("c2", {})
 
-    def test_multiple_sections_same_clo_term(self):
+    def test_multiple_sections_same_clo_term(self) -> None:
         records = [
             {"outcome_id": "c1", "term_id": "t1", "students_took": 10},
             {"outcome_id": "c1", "term_id": "t1", "students_took": 20},
@@ -202,7 +202,7 @@ class TestIndexOutcomesByCloTerm:
         idx = _index_outcomes_by_clo_term(records)
         assert len(idx["c1"]["t1"]) == 2
 
-    def test_skips_records_without_term_or_outcome(self):
+    def test_skips_records_without_term_or_outcome(self) -> None:
         records = [
             {"outcome_id": "c1"},  # no term_id
             {"term_id": "t1"},  # no outcome_id
@@ -211,7 +211,7 @@ class TestIndexOutcomesByCloTerm:
         idx = _index_outcomes_by_clo_term(records)
         assert idx == {}
 
-    def test_empty_input(self):
+    def test_empty_input(self) -> None:
         assert _index_outcomes_by_clo_term([]) == {}
 
 
@@ -221,7 +221,7 @@ class TestIndexOutcomesByCloTerm:
 
 
 class TestBuildCloTrends:
-    def test_produces_trend_per_clo(self):
+    def test_produces_trend_per_clo(self) -> None:
         clo_ids = ["c1", "c2"]
         clo_meta = {
             "c1": {
@@ -267,7 +267,7 @@ class TestBuildCloTrends:
 # ---------------------------------------------------------------------------
 
 
-def _wire(suffix: str, num_clos: int = 2):
+def _wire(suffix: str, num_clos: int = 2) -> Any:
     """Build institution + program + 1 course + CLOs. Returns (inst_id, prog_id, [clo_ids])."""
     inst_id = database_service.create_institution(
         {**INST_DATA, "name": f"TTU {suffix}", "short_name": f"TTU{suffix}"}
@@ -315,7 +315,7 @@ def _make_plo(prog_id: str, inst_id: str, n: int) -> str:
     )
 
 
-def _publish(prog_id: str, entries: list) -> str:
+def _publish(prog_id: str, entries: list[tuple[str, str]]) -> str:
     draft = database_service.get_or_create_plo_mapping_draft(prog_id)
     mapping_id = draft["id"]
     for plo_id, clo_id in entries:
@@ -348,7 +348,7 @@ def _make_terms(inst_id: str, count: int = 3) -> List[str]:
 
 
 def _stub_section_outcomes(
-    monkeypatch,
+    monkeypatch: Any,
     records: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
     """Patch section outcome query with canned records."""
@@ -367,7 +367,7 @@ def _stub_section_outcomes(
 
 
 class TestGetPloTrendData:
-    def test_no_terms_returns_empty(self, monkeypatch):
+    def test_no_terms_returns_empty(self, monkeypatch: Any) -> None:
         """No terms in institution → empty result."""
         inst_id, prog_id, _ = _wire("TRD_NT", num_clos=1)
         # No terms created → get_all_terms returns []
@@ -376,7 +376,7 @@ class TestGetPloTrendData:
         assert result["plos"] == []
         assert result["mapping_version"] is None
 
-    def test_no_mapping_returns_empty_plos(self, monkeypatch):
+    def test_no_mapping_returns_empty_plos(self, monkeypatch: Any) -> None:
         """Terms exist but no published mapping → empty trends on each PLO."""
         inst_id, prog_id, _ = _wire("TRD_NM", num_clos=1)
         _make_terms(inst_id, 2)
@@ -391,7 +391,7 @@ class TestGetPloTrendData:
         # No mapping → no CLOs mapped → stub never called
         assert len(calls) == 0
 
-    def test_trend_data_across_terms(self, monkeypatch):
+    def test_trend_data_across_terms(self, monkeypatch: Any) -> None:
         """Correct pass rates per term with nulls for missing terms."""
         inst_id, prog_id, clo_ids = _wire("TRD_OK", num_clos=1)
         term_ids = _make_terms(inst_id, 3)
@@ -437,7 +437,7 @@ class TestGetPloTrendData:
         assert clo["trend"][1] is None
         assert clo["trend"][2]["pass_rate"] == 85.0
 
-    def test_multiple_plos_independent_trends(self, monkeypatch):
+    def test_multiple_plos_independent_trends(self, monkeypatch: Any) -> None:
         """Each PLO aggregates only its own mapped CLOs."""
         inst_id, prog_id, clo_ids = _wire("TRD_MP", num_clos=2)
         term_ids = _make_terms(inst_id, 2)
@@ -471,7 +471,7 @@ class TestGetPloTrendData:
         # PLO 2 → CLO 1: 50%
         assert by_num[2]["trend"][0]["pass_rate"] == 50.0
 
-    def test_term_ids_passed_to_query(self, monkeypatch):
+    def test_term_ids_passed_to_query(self, monkeypatch: Any) -> None:
         """The section-outcome query receives correct term_ids filter."""
         inst_id, prog_id, clo_ids = _wire("TRD_FI", num_clos=1)
         term_ids = _make_terms(inst_id, 2)
@@ -485,7 +485,7 @@ class TestGetPloTrendData:
         assert set(calls[0]["term_ids"]) == set(term_ids)
         assert calls[0]["outcome_ids"] == [clo_ids[0]]
 
-    def test_plo_description_fallback_to_plo(self, monkeypatch):
+    def test_plo_description_fallback_to_plo(self, monkeypatch: Any) -> None:
         """PLO description falls back to PLO record when no snapshot."""
         inst_id, prog_id, clo_ids = _wire("TRD_SN", num_clos=1)
         _make_terms(inst_id, 1)

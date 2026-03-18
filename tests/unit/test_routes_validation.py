@@ -1,5 +1,6 @@
 """Unit tests for validation API routes (migrated from test_api_routes.py)."""
 
+from typing import Any
 from unittest.mock import patch
 
 from src.app import app
@@ -11,14 +12,14 @@ TEST_PASSWORD = GENERIC_PASSWORD  # Test password for unit tests
 class TestErrorHandling:
     """Test error handling across endpoints."""
 
-    def test_method_not_allowed(self):
+    def test_method_not_allowed(self) -> None:
         """Test method not allowed responses."""
         with app.test_client() as client:
             # Try DELETE on an endpoint that doesn't support it
             response = client.delete("/api/health")
             assert response.status_code == 405
 
-    def test_api_endpoints_return_json(self):
+    def test_api_endpoints_return_json(self) -> None:
         """Test that API endpoints return JSON responses."""
         with app.test_client() as client:
             response = client.get("/api/health")
@@ -29,7 +30,7 @@ class TestErrorHandling:
 class TestRequestValidation:
     """Test request data validation."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.app = app
         self.app.config["TESTING"] = True
@@ -42,7 +43,7 @@ class TestRequestValidation:
             "institution_id": "riverside-tech-institute",
         }
 
-    def _login_site_admin(self, overrides=None):
+    def _login_site_admin(self, overrides: Any = None) -> Any:
         from tests.test_utils import create_test_session
 
         user_data = {**self.site_admin_user}
@@ -52,7 +53,7 @@ class TestRequestValidation:
         return user_data
 
     @patch("src.services.auth_service.has_permission")
-    def test_course_creation_validation(self, mock_has_permission):
+    def test_course_creation_validation(self, mock_has_permission: Any) -> None:
         """Test course creation with various validation scenarios."""
         self._login_site_admin()
 
@@ -70,7 +71,7 @@ class TestRequestValidation:
         assert response.status_code == 400
 
     @patch("src.services.auth_service.has_permission")
-    def test_term_creation_validation(self, mock_has_permission):
+    def test_term_creation_validation(self, mock_has_permission: Any) -> None:
         """Test term creation with date validation."""
         self._login_site_admin()
 
@@ -92,7 +93,7 @@ class TestRequestValidation:
 class TestAPIRoutesErrorHandling:
     """Test API routes error handling and edge cases."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test client."""
         from src.app import app
 
@@ -107,7 +108,7 @@ class TestAPIRoutesErrorHandling:
             "institution_id": "test-institution",
         }
 
-    def _login_site_admin(self, overrides=None):
+    def _login_site_admin(self, overrides: Any = None) -> Any:
         from tests.test_utils import create_test_session
 
         user_data = {**self.site_admin_user}
@@ -122,11 +123,11 @@ class TestAPIRoutesErrorHandling:
     @patch("src.api.routes.users.has_permission")
     def test_list_users_no_role_filter_coverage(
         self,
-        mock_has_permission,
-        mock_get_current_user,
-        mock_get_mocku_id,
-        mock_get_all_users,
-    ):
+        mock_has_permission: Any,
+        mock_get_current_user: Any,
+        mock_get_mocku_id: Any,
+        mock_get_all_users: Any,
+    ) -> None:
         """Test list_users endpoint without role filter."""
         self._login_site_admin({"institution_id": "riverside-tech-institute"})
         mock_has_permission.return_value = True
@@ -149,11 +150,11 @@ class TestAPIRoutesErrorHandling:
     @patch("src.api.routes.users.has_permission")
     def test_get_user_not_found_coverage(
         self,
-        mock_has_permission,
-        mock_get_current_user,
-        mock_get_mocku_id,
-        mock_get_user,
-    ):
+        mock_has_permission: Any,
+        mock_get_current_user: Any,
+        mock_get_mocku_id: Any,
+        mock_get_user: Any,
+    ) -> None:
         """Test get_user endpoint when user not found."""
         self._login_site_admin({"institution_id": "riverside-tech-institute"})
         mock_get_current_user.return_value = {
@@ -174,8 +175,11 @@ class TestAPIRoutesErrorHandling:
     @patch("src.api.utils.get_current_user")
     @patch("src.api.routes.users.has_permission")
     def test_create_user_stub_success_coverage(
-        self, mock_has_permission, mock_get_current_user, mock_get_mocku_id
-    ):
+        self,
+        mock_has_permission: Any,
+        mock_get_current_user: Any,
+        mock_get_mocku_id: Any,
+    ) -> None:
         """Test create_user endpoint with real implementation."""
         self._login_site_admin({"institution_id": "riverside-tech-institute"})
         mock_has_permission.return_value = True
@@ -201,7 +205,7 @@ class TestAPIRoutesErrorHandling:
         assert data["success"] is True
         assert "user_id" in data  # Real API returns actual user_id
 
-    def test_import_excel_empty_filename_coverage(self):
+    def test_import_excel_empty_filename_coverage(self) -> None:
         """Test import_excel endpoint with empty filename."""
         self._login_site_admin()
 
@@ -222,7 +226,9 @@ class TestAPIRoutesErrorHandling:
 
     @patch("src.api.routes.imports._check_excel_import_permissions")
     @patch("src.services.auth_service.has_permission")
-    def test_import_excel_permission_error(self, mock_has_permission, mock_check_perms):
+    def test_import_excel_permission_error(
+        self, mock_has_permission: Any, mock_check_perms: Any
+    ) -> None:
         """Test import_excel endpoint with PermissionError."""
         self._login_site_admin()
         mock_has_permission.return_value = True
@@ -246,10 +252,10 @@ class TestAPIRoutesErrorHandling:
     @patch("src.api.routes.users.has_permission")
     def test_list_users_value_error(
         self,
-        mock_has_permission,
-        mock_get_current_user,
-        mock_resolve_scope,
-    ):
+        mock_has_permission: Any,
+        mock_get_current_user: Any,
+        mock_resolve_scope: Any,
+    ) -> None:
         """Test list_users with ValueError from scope resolution."""
         self._login_site_admin()
         mock_has_permission.return_value = True
@@ -267,7 +273,7 @@ class TestAPIRoutesErrorHandling:
 class TestAPIRoutesValidation:
     """Test API validation endpoints."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test client."""
         from src.app import app
 
@@ -282,7 +288,7 @@ class TestAPIRoutesValidation:
             "institution_id": "test-institution",
         }
 
-    def _login_site_admin(self, overrides=None):
+    def _login_site_admin(self, overrides: Any = None) -> Any:
         from tests.test_utils import create_test_session
 
         user_data = {**self.site_admin_user}
@@ -295,8 +301,11 @@ class TestAPIRoutesValidation:
     @patch("src.api.routes.imports.import_excel")
     @patch("src.api.utils.get_current_institution_id")
     def test_validate_import_file_coverage(
-        self, mock_get_institution_id, mock_import_excel, mock_has_permission
-    ):
+        self,
+        mock_get_institution_id: Any,
+        mock_import_excel: Any,
+        mock_has_permission: Any,
+    ) -> None:
         """Test import file validation endpoint."""
         self._login_site_admin()
         mock_has_permission.return_value = True
@@ -334,7 +343,7 @@ class TestAPIRoutesValidation:
         assert data["success"] is True
         assert "validation" in data
 
-    def test_validate_import_no_file(self):
+    def test_validate_import_no_file(self) -> None:
         """Test validation endpoint with no file."""
         self._login_site_admin()
 
@@ -345,7 +354,7 @@ class TestAPIRoutesValidation:
             data = response.get_json()
             assert data["error"] == "No Excel file provided"
 
-    def test_validate_import_empty_filename(self):
+    def test_validate_import_empty_filename(self) -> None:
         """Test validation endpoint with empty filename."""
         self._login_site_admin()
 
@@ -370,11 +379,11 @@ class TestAPIRoutesValidation:
     @patch("src.api.utils.get_current_institution_id")
     def test_validate_import_cleanup_error(
         self,
-        mock_get_institution_id,
-        mock_unlink,
-        mock_import_excel,
-        mock_has_permission,
-    ):
+        mock_get_institution_id: Any,
+        mock_unlink: Any,
+        mock_import_excel: Any,
+        mock_has_permission: Any,
+    ) -> None:
         """Test validation endpoint cleanup error handling."""
         self._login_site_admin()
         mock_has_permission.return_value = True

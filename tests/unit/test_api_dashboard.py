@@ -2,14 +2,18 @@
 Unit tests for Dashboard API routes.
 """
 
-# Patch login_required BEFORE importing dashboard routes
 import sys
+
+# Patch login_required BEFORE importing dashboard routes
+from collections.abc import Generator
+
+# Save original module so the reimport doesn't break auth for other tests
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 
-# Save original module so the reimport doesn't break auth for other tests
 _original_dashboard_module = sys.modules.get("src.api.routes.dashboard")
 
 with patch("src.services.auth_service.login_required", lambda f: f):
@@ -30,7 +34,7 @@ from src.services.dashboard_service import DashboardServiceError
 
 
 @pytest.fixture(autouse=True)
-def _swap_dashboard_module():
+def _swap_dashboard_module() -> Generator[None, None, None]:
     """Swap the test's dashboard module into sys.modules so @patch targets work."""
     saved = sys.modules.get("src.api.routes.dashboard")
     sys.modules["src.api.routes.dashboard"] = _test_dashboard_module
@@ -42,7 +46,7 @@ def _swap_dashboard_module():
 
 
 @pytest.fixture
-def app():
+def app() -> Any:
     """Create test Flask app with dashboard blueprint."""
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -51,13 +55,13 @@ def app():
 
 
 @pytest.fixture
-def client(app):
+def client(app: Any) -> Any:
     """Create test client."""
     return app.test_client()
 
 
 @pytest.fixture
-def mock_user():
+def mock_user() -> Any:
     """Mock authenticated user."""
     return {
         "user_id": "user-123",
@@ -73,8 +77,8 @@ class TestGetDashboardData:
     @patch("src.api.routes.dashboard.DashboardService")
     @patch("src.api.routes.dashboard.get_current_user")
     def test_get_dashboard_data_success(
-        self, mock_get_user, mock_service_class, client, mock_user
-    ):
+        self, mock_get_user: Any, mock_service_class: Any, client: Any, mock_user: Any
+    ) -> None:
         """Test successful dashboard data retrieval."""
         mock_get_user.return_value = mock_user
         mock_service = MagicMock()
@@ -98,8 +102,8 @@ class TestGetDashboardData:
     @patch("src.api.routes.dashboard.DashboardService")
     @patch("src.api.routes.dashboard.get_current_user")
     def test_get_dashboard_data_service_error(
-        self, mock_get_user, mock_service_class, client, mock_user
-    ):
+        self, mock_get_user: Any, mock_service_class: Any, client: Any, mock_user: Any
+    ) -> None:
         """Test error handling when DashboardService raises DashboardServiceError."""
         mock_get_user.return_value = mock_user
         mock_service = MagicMock()
@@ -118,8 +122,8 @@ class TestGetDashboardData:
     @patch("src.api.routes.dashboard.DashboardService")
     @patch("src.api.routes.dashboard.get_current_user")
     def test_get_dashboard_data_generic_exception(
-        self, mock_get_user, mock_service_class, client, mock_user
-    ):
+        self, mock_get_user: Any, mock_service_class: Any, client: Any, mock_user: Any
+    ) -> None:
         """Test error handling when service raises generic exception."""
         mock_get_user.return_value = mock_user
         mock_service = MagicMock()

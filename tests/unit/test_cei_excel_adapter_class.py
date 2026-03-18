@@ -4,7 +4,7 @@ Unit tests for CEI Excel Adapter class implementation
 
 import tempfile
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 import pandas as pd
 import pytest
@@ -12,11 +12,13 @@ import pytest
 from src.adapters.cei_excel_adapter import CEIExcelAdapter
 from src.adapters.file_base_adapter import FileCompatibilityError
 
+ExportableAdapterData = dict[str, list[dict[str, Any]]]
+
 
 class TestCEIExcelAdapterClass:
     """Test suite for CEI Excel Adapter class"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test environment"""
         self.adapter = CEIExcelAdapter()
 
@@ -30,7 +32,7 @@ class TestCEIExcelAdapterClass:
         temp_file.close()
         return temp_file.name
 
-    def test_adapter_info(self):
+    def test_adapter_info(self) -> None:
         """Test adapter metadata"""
         info = self.adapter.get_adapter_info()
 
@@ -46,12 +48,12 @@ class TestCEIExcelAdapterClass:
         assert "sections" in info["data_types"]
         assert info["version"] == "1.2.0"
 
-    def test_file_size_and_record_limits(self):
+    def test_file_size_and_record_limits(self) -> None:
         """Test custom limits for CEI adapter"""
         assert self.adapter.get_file_size_limit() == 500 * 1024 * 1024  # 500MB
         assert self.adapter.get_max_records() == 500000
 
-    def test_validate_file_compatibility_original_format(self):
+    def test_validate_file_compatibility_original_format(self) -> None:
         """Test compatibility validation with original CEI format"""
         # Create test file with original format columns
         data = {
@@ -73,7 +75,7 @@ class TestCEIExcelAdapterClass:
         finally:
             Path(test_file).unlink()
 
-    def test_validate_file_compatibility_test_format(self):
+    def test_validate_file_compatibility_test_format(self) -> None:
         """Test compatibility validation with test CEI format"""
         # Create test file with test format columns
         data = {
@@ -95,7 +97,7 @@ class TestCEIExcelAdapterClass:
         finally:
             Path(test_file).unlink()
 
-    def test_validate_file_compatibility_invalid_format(self):
+    def test_validate_file_compatibility_invalid_format(self) -> None:
         """Test compatibility validation with invalid format"""
         # Create test file missing required columns
         data = {
@@ -116,7 +118,7 @@ class TestCEIExcelAdapterClass:
         finally:
             Path(test_file).unlink()
 
-    def test_validate_file_compatibility_invalid_course_numbers(self):
+    def test_validate_file_compatibility_invalid_course_numbers(self) -> None:
         """Test compatibility validation with invalid course numbers"""
         # Create test file with invalid course numbers
         data = {
@@ -137,7 +139,7 @@ class TestCEIExcelAdapterClass:
         finally:
             Path(test_file).unlink()
 
-    def test_validate_file_compatibility_invalid_term_codes(self):
+    def test_validate_file_compatibility_invalid_term_codes(self) -> None:
         """Test compatibility validation with invalid term codes"""
         # Create test file with invalid term codes
         data = {
@@ -159,7 +161,7 @@ class TestCEIExcelAdapterClass:
         finally:
             Path(test_file).unlink()
 
-    def test_validate_file_compatibility_non_excel_file(self):
+    def test_validate_file_compatibility_non_excel_file(self) -> None:
         """Test compatibility validation with non-Excel file"""
         # Create a text file instead of Excel
         temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
@@ -177,10 +179,10 @@ class TestCEIExcelAdapterClass:
         finally:
             Path(temp_file.name).unlink()
 
-    def test_validate_file_compatibility_empty_file(self):
+    def test_validate_file_compatibility_empty_file(self) -> None:
         """Test compatibility validation with empty Excel file"""
         # Create empty Excel file
-        data = {}
+        data: Dict[str, Any] = {}
         test_file = self.create_test_excel_file(data)
 
         try:
@@ -192,7 +194,7 @@ class TestCEIExcelAdapterClass:
         finally:
             Path(test_file).unlink()
 
-    def test_detect_data_types_original_format(self):
+    def test_detect_data_types_original_format(self) -> None:
         """Test data type detection with original format"""
         # Create test file with original format
         data = {
@@ -215,7 +217,7 @@ class TestCEIExcelAdapterClass:
         finally:
             Path(test_file).unlink()
 
-    def test_detect_data_types_test_format(self):
+    def test_detect_data_types_test_format(self) -> None:
         """Test data type detection with test format"""
         # Create test file with test format
         data = {
@@ -238,7 +240,7 @@ class TestCEIExcelAdapterClass:
         finally:
             Path(test_file).unlink()
 
-    def test_detect_data_types_partial_data(self):
+    def test_detect_data_types_partial_data(self) -> None:
         """Test data type detection with partial data"""
         # Create test file with only course data
         data = {"course": ["MATH-101", "ENG-201"], "other_column": ["value1", "value2"]}
@@ -256,14 +258,14 @@ class TestCEIExcelAdapterClass:
         finally:
             Path(test_file).unlink()
 
-    def test_detect_data_types_unreadable_file(self):
+    def test_detect_data_types_unreadable_file(self) -> None:
         """Test data type detection with unreadable file"""
         # Test with non-existent file
         detected_types = self.adapter.detect_data_types("/nonexistent/file.xlsx")
 
         assert detected_types == []
 
-    def test_parse_file_original_format(self):
+    def test_parse_file_original_format(self) -> None:
         """Test file parsing with original format"""
         # Create test file with original format
         data = {
@@ -308,7 +310,7 @@ class TestCEIExcelAdapterClass:
         finally:
             Path(test_file).unlink()
 
-    def test_parse_file_test_format(self):
+    def test_parse_file_test_format(self) -> None:
         """Test file parsing with test format"""
         # Create test file with test format
         data = {
@@ -333,7 +335,7 @@ class TestCEIExcelAdapterClass:
         finally:
             Path(test_file).unlink()
 
-    def test_parse_file_missing_institution_id(self):
+    def test_parse_file_missing_institution_id(self) -> None:
         """Test file parsing without institution_id in options"""
         data = {
             "course": ["MATH-101"],
@@ -345,7 +347,7 @@ class TestCEIExcelAdapterClass:
         test_file = self.create_test_excel_file(data)
 
         try:
-            options = {}  # Missing institution_id
+            options: Dict[str, Any] = {}  # Missing institution_id
 
             with pytest.raises(ValueError) as exc_info:
                 self.adapter.parse_file(test_file, options)
@@ -355,7 +357,7 @@ class TestCEIExcelAdapterClass:
         finally:
             Path(test_file).unlink()
 
-    def test_parse_file_incompatible_file(self):
+    def test_parse_file_incompatible_file(self) -> None:
         """Test file parsing with incompatible file"""
         # Create incompatible file
         data = {"wrong_column": ["value1"], "another_wrong": ["value2"]}
@@ -373,7 +375,7 @@ class TestCEIExcelAdapterClass:
         finally:
             Path(test_file).unlink()
 
-    def test_parse_file_no_valid_records(self):
+    def test_parse_file_no_valid_records(self) -> None:
         """Test file parsing with no valid records"""
         # Create file with correct structure but all empty/invalid data
         # This should pass the basic structure validation but produce no valid records
@@ -398,7 +400,7 @@ class TestCEIExcelAdapterClass:
         finally:
             Path(test_file).unlink()
 
-    def test_deduplicate_results(self):
+    def test_deduplicate_results(self) -> None:
         """Test result deduplication"""
         # Create test data with duplicates
         result = {
@@ -456,12 +458,12 @@ class TestCEIExcelAdapterClass:
         assert "test@example.com" in emails
         assert "jane@example.com" in emails
 
-    def test_export_data_success(self):
+    def test_export_data_success(self) -> None:
         """Test successful export of data to CEI Excel format."""
         import tempfile
 
         # Sample data to export
-        data = {
+        data: ExportableAdapterData = {
             "courses": [{"course_number": "MATH-101", "title": "Calculus I"}],
             "users": [
                 {
@@ -497,11 +499,16 @@ class TestCEIExcelAdapterClass:
             assert "Successfully exported" in message
             assert records_exported == 1
 
-    def test_export_data_no_records(self):
+    def test_export_data_no_records(self) -> None:
         """Test export with no records to export."""
         import tempfile
 
-        data = {"courses": [], "users": [], "terms": [], "offerings": []}
+        data: ExportableAdapterData = {
+            "courses": [],
+            "users": [],
+            "terms": [],
+            "offerings": [],
+        }
 
         options = {"institution_id": "test_institution"}
 
@@ -514,24 +521,27 @@ class TestCEIExcelAdapterClass:
             assert "No valid records to export" in message
             assert records_exported == 0
 
-    def test_export_data_error(self):
+    def test_export_data_error(self) -> None:
         """Test export data with invalid output path."""
         # First create valid data that will generate records
-        data = {
-            "courses": [{"course_number": "MATH-101"}],
-            "users": [
-                {
-                    "user_id": "1",
-                    "first_name": "John",
-                    "last_name": "Smith",
-                    "role": "instructor",
-                }
-            ],
-            "terms": [{"term_id": "1", "year": 2024, "season": "Fall"}],
-            "offerings": [
-                {"course_number": "MATH-101", "term_id": "1", "instructor_id": "1"}
-            ],
-        }
+        data = cast(
+            ExportableAdapterData,
+            {
+                "courses": [{"course_number": "MATH-101"}],
+                "users": [
+                    {
+                        "user_id": "1",
+                        "first_name": "John",
+                        "last_name": "Smith",
+                        "role": "instructor",
+                    }
+                ],
+                "terms": [{"term_id": "1", "year": 2024, "season": "Fall"}],
+                "offerings": [
+                    {"course_number": "MATH-101", "term_id": "1", "instructor_id": "1"}
+                ],
+            },
+        )
 
         options = {"institution_id": "test_institution"}
 
@@ -544,7 +554,7 @@ class TestCEIExcelAdapterClass:
         assert "Export failed:" in message
         assert records_exported == 0
 
-    def test_format_term_for_cei_export(self):
+    def test_format_term_for_cei_export(self) -> None:
         """Test term formatting for CEI export format (YEAR+SEASON)."""
         # Test with year and season
         term = {"year": 2024, "season": "Fall"}
@@ -577,11 +587,11 @@ class TestCEIExcelAdapterClass:
         result = self.adapter._format_term_for_cei_export(None)
         assert result == ""
 
-    def test_supports_export(self):
+    def test_supports_export(self) -> None:
         """Test that adapter supports export."""
         assert self.adapter.supports_export() is True
 
-    def test_get_export_formats(self):
+    def test_get_export_formats(self) -> None:
         """Test getting export formats."""
         formats = self.adapter.get_export_formats()
         assert ".xlsx" in formats

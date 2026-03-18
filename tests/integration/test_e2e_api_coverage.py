@@ -10,13 +10,14 @@ E2E tests with direct API calls. By moving them to integration tests, we:
 See E2E_API_AUDIT.md for rationale and mapping to original E2E tests.
 """
 
+from typing import Any
 from unittest.mock import patch
 
 from src.app import app
 from tests.test_utils import CommonAuthMixin, create_test_session
 
 
-def get_csrf_token(client):
+def get_csrf_token(client: Any) -> Any:
     """Get CSRF token using Flask-WTF's generate_csrf."""
     from flask import session as flask_session
     from flask_wtf.csrf import generate_csrf
@@ -35,7 +36,7 @@ def get_csrf_token(client):
 class TestProgramDeletionScenarios(CommonAuthMixin):
     """Test program deletion scenarios: empty programs vs programs with courses"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         import src.database.database_service as db
 
@@ -87,7 +88,7 @@ class TestProgramDeletionScenarios(CommonAuthMixin):
         )
         self.test_course_id = course_id
 
-    def test_delete_empty_program_success_200(self):
+    def test_delete_empty_program_success_200(self) -> None:
         """
         Test that deleting an empty program (no courses) succeeds with 200.
 
@@ -102,7 +103,7 @@ class TestProgramDeletionScenarios(CommonAuthMixin):
         data = response.get_json()
         assert data["success"] is True
 
-    def test_delete_program_with_courses_fails_referential_integrity(self):
+    def test_delete_program_with_courses_fails_referential_integrity(self) -> None:
         """
         Test that deleting a program with courses fails with 400/409.
 
@@ -126,13 +127,13 @@ class TestProgramDeletionScenarios(CommonAuthMixin):
 class TestRoleHierarchyUserDeletion(CommonAuthMixin):
     """Test that users cannot delete users with higher or equal privilege levels"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.app = app
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
 
-    def _login_program_admin(self, overrides=None):
+    def _login_program_admin(self, overrides: Any = None) -> Any:
         """Helper to login as program admin"""
         defaults = {
             "user_id": "prog-admin-123",
@@ -152,8 +153,12 @@ class TestRoleHierarchyUserDeletion(CommonAuthMixin):
     @patch("src.services.auth_service.auth_service.has_permission")
     @patch("src.services.auth_service.auth_service.get_current_user")
     def test_program_admin_cannot_delete_higher_role_user_403(
-        self, mock_current_user, mock_has_perm, mock_get_user, mock_delete
-    ):
+        self,
+        mock_current_user: Any,
+        mock_has_perm: Any,
+        mock_get_user: Any,
+        mock_delete: Any,
+    ) -> None:
         """
         Test that program admin cannot delete institution admin (higher role).
 
@@ -200,8 +205,12 @@ class TestRoleHierarchyUserDeletion(CommonAuthMixin):
     @patch("src.services.auth_service.auth_service.has_permission")
     @patch("src.services.auth_service.auth_service.get_current_user")
     def test_program_admin_cannot_delete_equal_role_user_403(
-        self, mock_current_user, mock_has_perm, mock_get_user, mock_delete
-    ):
+        self,
+        mock_current_user: Any,
+        mock_has_perm: Any,
+        mock_get_user: Any,
+        mock_delete: Any,
+    ) -> None:
         """
         Test that program admin cannot delete another program admin (equal role).
 
@@ -247,7 +256,7 @@ class TestRoleHierarchyUserDeletion(CommonAuthMixin):
 class TestInvitationAPI(CommonAuthMixin):
     """Test invitation creation API"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         import src.database.database_service as db
 
@@ -269,7 +278,7 @@ class TestInvitationAPI(CommonAuthMixin):
         # Login with test institution ID
         self._login_institution_admin({"institution_id": self.institution_id})
 
-    def test_create_invitation_success_201(self):
+    def test_create_invitation_success_201(self) -> None:
         """
         Test that institution admin can create invitation successfully.
 
@@ -296,7 +305,7 @@ class TestInvitationAPI(CommonAuthMixin):
         data = response.get_json()
         assert data["success"] is True
 
-    def test_create_invitation_duplicate_email_fails_400(self):
+    def test_create_invitation_duplicate_email_fails_400(self) -> None:
         """
         Test that creating invitation with duplicate email fails.
 
@@ -339,13 +348,13 @@ class TestInvitationAPI(CommonAuthMixin):
 class TestHealthEndpoint:
     """Smoke test for health endpoint"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.app = app
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
 
-    def test_health_endpoint_returns_200(self):
+    def test_health_endpoint_returns_200(self) -> None:
         """
         Test that health endpoint returns 200 OK.
 
@@ -365,7 +374,7 @@ class TestHealthEndpoint:
             or "health" in str(data).lower()
         )
 
-    def test_health_endpoint_no_authentication_required(self):
+    def test_health_endpoint_no_authentication_required(self) -> None:
         """
         Test that health endpoint doesn't require authentication.
 

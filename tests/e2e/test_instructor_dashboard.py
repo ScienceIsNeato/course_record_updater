@@ -5,6 +5,7 @@ E2E tests for Instructor Dashboard navigation after the header refresh.
 import pytest
 from playwright.sync_api import Page, expect
 
+from tests.e2e.conftest import BASE_URL
 from tests.e2e.header_navigator import HeaderNavigator
 
 
@@ -14,9 +15,9 @@ class TestInstructorDashboardWorkflow:
 
     def test_logo_link_navigates_to_dashboard(
         self, instructor_authenticated_page: Page
-    ):
+    ) -> None:
         page = instructor_authenticated_page
-        page.goto("http://localhost:3002/dashboard")
+        page.goto(f"{BASE_URL}/dashboard")
         page.wait_for_load_state("networkidle")
 
         logo_anchor = page.locator("a.navbar-brand")
@@ -25,11 +26,11 @@ class TestInstructorDashboardWorkflow:
 
         logo_anchor.click()
         page.wait_for_load_state("networkidle")
-        expect(page).to_have_url("http://localhost:3002/dashboard")
+        expect(page).to_have_url(f"{BASE_URL}/dashboard")
 
-    def test_navigation_links_exist(self, instructor_authenticated_page: Page):
+    def test_navigation_links_exist(self, instructor_authenticated_page: Page) -> None:
         page = instructor_authenticated_page
-        page.goto("http://localhost:3002/dashboard")
+        page.goto(f"{BASE_URL}/dashboard")
         page.wait_for_load_state("networkidle")
 
         navigator = HeaderNavigator(page)

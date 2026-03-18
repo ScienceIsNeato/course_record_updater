@@ -7,7 +7,7 @@ Site admin only.
 
 from datetime import datetime
 from io import BytesIO
-from typing import Any, Union
+from typing import Any, Union, cast
 
 from flask import Blueprint, jsonify, request, send_file
 from werkzeug.wrappers import Response
@@ -25,6 +25,12 @@ audit_bp = Blueprint("audit", __name__, url_prefix="/api/audit")
 
 # Initialize logger
 logger = get_logger(__name__)
+
+
+def _get_request_json() -> dict[str, Any]:
+    """Return a typed JSON object body or an empty dict."""
+    payload = request.get_json(silent=True)
+    return cast(dict[str, Any], payload) if isinstance(payload, dict) else {}
 
 
 @audit_bp.route("/recent", methods=["GET"])
@@ -244,8 +250,8 @@ def export_logs() -> Union[Response, tuple[Any, int]]:
         500: Server error
     """
     try:
-        data = request.get_json() or {}
-        export_format = data.get("format", "csv").lower()
+        data = _get_request_json()
+        export_format = str(data.get("format", "csv")).lower()
 
         if export_format not in ["csv", "json"]:
             return (
@@ -259,8 +265,8 @@ def export_logs() -> Union[Response, tuple[Any, int]]:
             )
 
         # Parse required date parameters
-        start_date_str = data.get("start_date")
-        end_date_str = data.get("end_date")
+        start_date_str = str(data.get("start_date", "")).strip()
+        end_date_str = str(data.get("end_date", "")).strip()
 
         if not start_date_str or not end_date_str:
             return (
@@ -287,7 +293,8 @@ def export_logs() -> Union[Response, tuple[Any, int]]:
 
         # Parse optional filters
         entity_type = None
-        if entity_type_str := data.get("entity_type"):
+        entity_type_str = str(data.get("entity_type", "")).strip()
+        if entity_type_str:
             try:
                 entity_type = EntityType[entity_type_str.upper()]
             except KeyError:
@@ -301,8 +308,10 @@ def export_logs() -> Union[Response, tuple[Any, int]]:
                     400,
                 )
 
-        user_id = data.get("user_id")
-        institution_id = data.get("institution_id")
+        user_id_raw = data.get("user_id")
+        institution_id_raw = data.get("institution_id")
+        user_id = str(user_id_raw) if user_id_raw else None
+        institution_id = str(institution_id_raw) if institution_id_raw else None
 
         # Export logs using AuditService (returns bytes)
         export_bytes = AuditService.export_audit_log(

@@ -5,6 +5,8 @@ This test suite includes:
 - SQLAlchemy-specific integration tests
 """
 
+from typing import Any, cast
+
 import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine
 from sqlalchemy.orm import declarative_base
@@ -21,7 +23,7 @@ from src.database.database_validator import (
 class TestColumnExtraction:
     """Test helper functions for extracting column information (generic)."""
 
-    def test_get_model_columns(self):
+    def test_get_model_columns(self) -> None:
         """Should extract column names from SQLAlchemy model."""
         TestBase = declarative_base()
 
@@ -31,10 +33,10 @@ class TestColumnExtraction:
             name = Column(String)
             email = Column(String)
 
-        columns = _get_model_columns(TestModel)
+        columns = _get_model_columns(cast(Any, TestModel))
         assert columns == {"id", "name", "email"}
 
-    def test_get_table_columns_from_inspector(self):
+    def test_get_table_columns_from_inspector(self) -> None:
         """Should extract column names from database table via inspector (SQLAlchemy-specific)."""
         # Create in-memory database with a test table
         engine = create_engine("sqlite:///:memory:")
@@ -59,17 +61,17 @@ class TestColumnExtraction:
 class TestSQLAlchemySchemaValidation:
     """SQLAlchemy-specific schema validation tests."""
 
-    def _create_db_service_with_engine(self, engine):
+    def _create_db_service_with_engine(self, engine: Any) -> Any:
         """Create a db_service-like object with SQLAlchemy engine."""
 
         # Simple object that mimics SQLiteDatabase structure
         class Service:
-            def __init__(self, engine):
+            def __init__(self, engine: Any) -> None:
                 self.sql = type("SQL", (), {"engine": engine})()
 
         return Service(engine)
 
-    def test_validate_schema_success(self):
+    def test_validate_schema_success(self) -> None:
         """Should pass validation when schema matches."""
         # Create in-memory database
         engine = create_engine("sqlite:///:memory:")
@@ -99,7 +101,7 @@ class TestSQLAlchemySchemaValidation:
         finally:
             database_validator.Base = original_base
 
-    def test_validate_schema_column_in_model_not_db(self):
+    def test_validate_schema_column_in_model_not_db(self) -> None:
         """Should detect column defined in model but missing in database."""
         # Create in-memory database
         engine = create_engine("sqlite:///:memory:")
@@ -146,7 +148,7 @@ class TestSQLAlchemySchemaValidation:
         finally:
             database_validator.Base = original_base
 
-    def test_validate_schema_column_in_db_not_model(self):
+    def test_validate_schema_column_in_db_not_model(self) -> None:
         """Should warn about column in database but not in model."""
         # Create in-memory database with extra column
         engine = create_engine("sqlite:///:memory:")
@@ -188,7 +190,7 @@ class TestSQLAlchemySchemaValidation:
         finally:
             database_validator.Base = original_base
 
-    def test_validate_schema_table_missing_in_db(self):
+    def test_validate_schema_table_missing_in_db(self) -> None:
         """Should detect when table is defined in model but missing in database."""
         # Create empty in-memory database
         engine = create_engine("sqlite:///:memory:")
@@ -218,7 +220,7 @@ class TestSQLAlchemySchemaValidation:
         finally:
             database_validator.Base = original_base
 
-    def test_validate_schema_or_exit_success(self):
+    def test_validate_schema_or_exit_success(self) -> None:
         """Should succeed without raising when schema is valid."""
         # Create valid schema
         engine = create_engine("sqlite:///:memory:")
@@ -244,7 +246,7 @@ class TestSQLAlchemySchemaValidation:
         finally:
             database_validator.Base = original_base
 
-    def test_validate_schema_or_exit_failure(self):
+    def test_validate_schema_or_exit_failure(self) -> None:
         """Should raise SchemaValidationError when schema is invalid."""
         # Create invalid schema (model has column DB doesn't)
         engine = create_engine("sqlite:///:memory:")
@@ -274,7 +276,7 @@ class TestSQLAlchemySchemaValidation:
         finally:
             database_validator.Base = original_base
 
-    def test_validate_schema_non_sqlalchemy_backend(self):
+    def test_validate_schema_non_sqlalchemy_backend(self) -> None:
         """Should handle non-SQLAlchemy database services gracefully."""
 
         # Create service without SQLAlchemy engine
@@ -292,13 +294,13 @@ class TestSQLAlchemySchemaValidation:
         with pytest.raises(AttributeError):
             validate_schema(db_service, strict=True)
 
-    def test_get_sqlalchemy_engine_direct_engine_attribute(self):
+    def test_get_sqlalchemy_engine_direct_engine_attribute(self) -> None:
         """Should handle db_service with direct engine attribute."""
         engine = create_engine("sqlite:///:memory:")
 
         # Create service with direct engine attribute
         class DirectEngineService:
-            def __init__(self, engine):
+            def __init__(self, engine: Any) -> None:
                 self.engine = engine
 
         db_service = DirectEngineService(engine)
@@ -308,7 +310,7 @@ class TestSQLAlchemySchemaValidation:
         result_engine = _get_sqlalchemy_engine(db_service)
         assert result_engine is engine
 
-    def test_get_all_models_fallback_to_metadata(self):
+    def test_get_all_models_fallback_to_metadata(self) -> None:
         """Should fallback to metadata approach when registry access fails."""
         from src.database import database_validator
         from src.database.database_validator import _get_all_models
@@ -331,7 +333,7 @@ class TestSQLAlchemySchemaValidation:
         finally:
             database_validator.Base = original_base
 
-    def test_validate_table_exists_table_missing(self):
+    def test_validate_table_exists_table_missing(self) -> None:
         """Should return issues and should_continue=False when table missing."""
         from sqlalchemy import inspect
 
@@ -353,7 +355,7 @@ class TestSQLAlchemySchemaValidation:
         assert "nonexistent_table" in issues[0]
         assert should_continue is False
 
-    def test_validate_model_columns_db_columns_not_in_model(self):
+    def test_validate_model_columns_db_columns_not_in_model(self) -> None:
         """Should return warnings for columns in DB but not in model."""
         from sqlalchemy import inspect
 
@@ -391,7 +393,7 @@ class TestSQLAlchemySchemaValidation:
         assert any("extra_column" in issue for issue in issues)
         assert any("⚠️" in issue for issue in issues)  # Should be warnings, not errors
 
-    def test_validate_schema_or_exit_unexpected_error(self):
+    def test_validate_schema_or_exit_unexpected_error(self) -> None:
         """Should raise SchemaValidationError for unexpected errors."""
         from src.database.database_validator import (
             SchemaValidationError,
@@ -400,7 +402,7 @@ class TestSQLAlchemySchemaValidation:
 
         # Create service that will cause unexpected error
         class BrokenService:
-            def __getattr__(self, name):
+            def __getattr__(self, name: Any) -> None:
                 raise RuntimeError("Unexpected error")
 
         db_service = BrokenService()

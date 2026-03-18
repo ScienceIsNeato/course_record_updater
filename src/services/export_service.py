@@ -154,7 +154,7 @@ class ExportService:
                 )
 
             # Use the adapter's export method
-            export_options = {
+            export_options: Dict[str, Any] = {
                 "institution_id": config.institution_id,
                 "export_view": config.export_view,
                 "include_metadata": config.include_metadata,

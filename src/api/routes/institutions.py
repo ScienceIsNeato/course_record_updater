@@ -5,6 +5,8 @@ Provides endpoints for creating, reading, updating, and deleting institutions.
 Includes both admin-only management endpoints and public registration.
 """
 
+from typing import Any, Dict, cast
+
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 
@@ -32,6 +34,12 @@ institutions_bp = Blueprint("institutions", __name__, url_prefix="/api")
 
 # Initialize logger
 logger = get_logger(__name__)
+
+
+def _get_request_json() -> Dict[str, Any]:
+    """Return a typed JSON object body or an empty dict."""
+    payload = request.get_json(silent=True)
+    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
 
 
 @institutions_bp.route("/institutions", methods=["GET"])
@@ -62,7 +70,7 @@ def list_institutions() -> ResponseReturnValue:
 def create_institution_admin() -> ResponseReturnValue:
     """Site admin creates a new institution (without initial user)"""
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -84,8 +92,8 @@ def create_institution_admin() -> ResponseReturnValue:
         from src.database.database_service import create_new_institution_simple
 
         institution_id = create_new_institution_simple(
-            name=data["name"],
-            short_name=data["short_name"],
+            name=str(data["name"]),
+            short_name=str(data["short_name"]),
             active=data.get("active", True),
         )
 
@@ -116,14 +124,22 @@ def create_institution_admin() -> ResponseReturnValue:
 def create_institution_public() -> ResponseReturnValue:
     """Create a new institution with its first admin user (public endpoint for registration)"""
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
 
         # Validate required fields
         required_institution_fields = ["name", "short_name", "domain"]
         required_user_fields = ["email", "first_name", "last_name", "password"]
 
-        institution_data = data.get("institution", {})
-        user_data = data.get("admin_user", {})
+        institution_value = data.get("institution")
+        user_value = data.get("admin_user")
+        institution_data: Dict[str, Any] = (
+            cast(Dict[str, Any], institution_value)
+            if isinstance(institution_value, dict)
+            else {}
+        )
+        user_data: Dict[str, Any] = (
+            cast(Dict[str, Any], user_value) if isinstance(user_value, dict) else {}
+        )
 
         # Validate institution data
         for field in required_institution_fields:
@@ -220,7 +236,7 @@ def update_institution_endpoint(institution_id: str) -> ResponseReturnValue:
         ):
             return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
 
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 

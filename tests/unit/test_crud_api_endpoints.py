@@ -1,5 +1,7 @@
 """Unit tests for CRUD API endpoints."""
 
+from collections.abc import Generator
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -9,14 +11,15 @@ from tests.test_utils import create_test_session
 
 
 @pytest.fixture
-def client():
+def client() -> Generator[Any, None, None]:
     """Create test client."""
+
     app.config["TESTING"] = True
     with app.test_client() as client:
         yield client
 
 
-def create_site_admin_session(client):
+def create_site_admin_session(client: Any) -> None:
     """Create session for site admin user."""
     user_data = {
         "user_id": "site-admin-123",
@@ -27,7 +30,7 @@ def create_site_admin_session(client):
     create_test_session(client, user_data)
 
 
-def create_institution_admin_session(client):
+def create_institution_admin_session(client: Any) -> None:
     """Create session for institution admin user."""
     user_data = {
         "user_id": "inst-admin-123",
@@ -38,7 +41,7 @@ def create_institution_admin_session(client):
     create_test_session(client, user_data)
 
 
-def create_instructor_session(client):
+def create_instructor_session(client: Any) -> None:
     """Create session for instructor user."""
     user_data = {
         "user_id": "instructor-123",
@@ -49,7 +52,7 @@ def create_instructor_session(client):
     create_test_session(client, user_data)
 
 
-def get_csrf_token(client):
+def get_csrf_token(client: Any) -> Any:
     """Get CSRF token using Flask-WTF's generate_csrf."""
     from flask import session as flask_session
     from flask_wtf.csrf import generate_csrf
@@ -74,7 +77,7 @@ class TestUsersCRUD:
     """Tests for Users CRUD endpoints."""
 
     @patch("src.api.routes.users.get_user_by_id")
-    def test_get_user_by_id_success(self, mock_get_user, client):
+    def test_get_user_by_id_success(self, mock_get_user: Any, client: Any) -> None:
         """Test GET /api/users/<id> - success"""
         create_site_admin_session(client)
         mock_get_user.return_value = {
@@ -93,7 +96,7 @@ class TestUsersCRUD:
         assert data["user"]["email"] == "test@example.com"
 
     @patch("src.api.routes.users.get_user_by_id")
-    def test_get_user_not_found(self, mock_get_user, client):
+    def test_get_user_not_found(self, mock_get_user: Any, client: Any) -> None:
         """Test GET /api/users/<id> - user not found"""
         create_site_admin_session(client)
         mock_get_user.return_value = None
@@ -106,7 +109,9 @@ class TestUsersCRUD:
 
     @patch("src.api.routes.users.update_user_profile")
     @patch("src.api.routes.users.get_user_by_id")
-    def test_update_own_profile_success(self, mock_get_user, mock_update, client):
+    def test_update_own_profile_success(
+        self, mock_get_user: Any, mock_update: Any, client: Any
+    ) -> None:
         """Test PATCH /api/users/<id>/profile - user updates own profile"""
         create_instructor_session(client)
         csrf_token = get_csrf_token(client)
@@ -130,7 +135,9 @@ class TestUsersCRUD:
         assert "Profile updated successfully" in data["message"]
 
     @patch("src.api.routes.users.has_permission")
-    def test_update_profile_permission_denied(self, mock_has_perm, client):
+    def test_update_profile_permission_denied(
+        self, mock_has_perm: Any, client: Any
+    ) -> None:
         """Test PATCH /api/users/<id>/profile - permission denied for other user"""
         create_instructor_session(client)
         csrf_token = get_csrf_token(client)
@@ -149,7 +156,9 @@ class TestUsersCRUD:
 
     @patch("src.api.routes.users.deactivate_user")
     @patch("src.api.routes.users.get_user_by_id")
-    def test_deactivate_user_success(self, mock_get_user, mock_deactivate, client):
+    def test_deactivate_user_success(
+        self, mock_get_user: Any, mock_deactivate: Any, client: Any
+    ) -> None:
         """Test POST /api/users/<id>/deactivate - success"""
         create_site_admin_session(client)
         mock_get_user.return_value = {"user_id": "user-123"}
@@ -166,7 +175,7 @@ class TestUsersCRUD:
         assert "deactivated successfully" in data["message"]
 
     @patch("src.api.routes.users.get_user_by_id")
-    def test_deactivate_user_not_found(self, mock_get_user, client):
+    def test_deactivate_user_not_found(self, mock_get_user: Any, client: Any) -> None:
         """Test POST /api/users/<id>/deactivate - user not found"""
         create_site_admin_session(client)
         mock_get_user.return_value = None
@@ -180,7 +189,9 @@ class TestUsersCRUD:
 
     @patch("src.api.routes.users.delete_user")
     @patch("src.api.routes.users.get_user_by_id")
-    def test_delete_user_success(self, mock_get_user, mock_delete, client):
+    def test_delete_user_success(
+        self, mock_get_user: Any, mock_delete: Any, client: Any
+    ) -> None:
         """Test DELETE /api/users/<id> - success"""
         create_site_admin_session(client)
         mock_get_user.return_value = {"user_id": "user-123"}
@@ -194,7 +205,7 @@ class TestUsersCRUD:
         data = response.get_json()
         assert data["success"] is True
 
-    def test_delete_self_forbidden(self, client):
+    def test_delete_self_forbidden(self, client: Any) -> None:
         """Test DELETE /api/users/<id> - cannot delete own account"""
         create_site_admin_session(client)
         response = client.delete(
@@ -216,7 +227,9 @@ class TestInstitutionsCRUD:
 
     @patch("src.api.routes.institutions.update_institution")
     @patch("src.api.routes.institutions.get_institution_by_id")
-    def test_update_institution_success(self, mock_get_inst, mock_update, client):
+    def test_update_institution_success(
+        self, mock_get_inst: Any, mock_update: Any, client: Any
+    ) -> None:
         """Test PUT /api/institutions/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst.side_effect = [
@@ -237,7 +250,9 @@ class TestInstitutionsCRUD:
         assert data["institution"]["name"] == "New Name"
 
     @patch("src.api.routes.institutions.get_institution_by_id")
-    def test_update_institution_not_found(self, mock_get_inst, client):
+    def test_update_institution_not_found(
+        self, mock_get_inst: Any, client: Any
+    ) -> None:
         """Test PUT /api/institutions/<id> - not found"""
         create_site_admin_session(client)
         mock_get_inst.return_value = None
@@ -252,7 +267,9 @@ class TestInstitutionsCRUD:
 
     @patch("src.api.routes.institutions.delete_institution")
     @patch("src.api.routes.institutions.get_institution_by_id")
-    def test_delete_institution_success(self, mock_get_inst, mock_delete, client):
+    def test_delete_institution_success(
+        self, mock_get_inst: Any, mock_delete: Any, client: Any
+    ) -> None:
         """Test DELETE /api/institutions/<id> - success with confirmation"""
         create_site_admin_session(client)
         mock_get_inst.return_value = {"institution_id": "inst-1", "name": "Test Inst"}
@@ -267,7 +284,7 @@ class TestInstitutionsCRUD:
         data = response.get_json()
         assert data["success"] is True
 
-    def test_delete_institution_no_confirmation(self, client):
+    def test_delete_institution_no_confirmation(self, client: Any) -> None:
         """Test DELETE /api/institutions/<id> - requires confirmation"""
         create_site_admin_session(client)
         response = client.delete(
@@ -280,8 +297,8 @@ class TestInstitutionsCRUD:
 
     @patch("src.api.routes.institutions.get_institution_by_id")
     def test_delete_institution_permission_denied_non_site_admin(
-        self, mock_get_inst, client
-    ):
+        self, mock_get_inst: Any, client: Any
+    ) -> None:
         """Test DELETE /api/institutions/<id> - only site admin can delete"""
         create_institution_admin_session(client)
         mock_get_inst.return_value = {"institution_id": "inst-1"}
@@ -303,7 +320,7 @@ class TestCoursesCRUD:
     """Tests for Courses CRUD endpoints."""
 
     @patch("src.api.routes.courses.get_course_by_id")
-    def test_get_course_by_id_success(self, mock_get_course, client):
+    def test_get_course_by_id_success(self, mock_get_course: Any, client: Any) -> None:
         """Test GET /api/courses/by-id/<id> - success"""
         create_site_admin_session(client)
         mock_get_course.return_value = {
@@ -320,7 +337,7 @@ class TestCoursesCRUD:
         assert data["course"]["course_number"] == "CS101"
 
     @patch("src.api.routes.courses.get_course_by_id")
-    def test_get_course_not_found(self, mock_get_course, client):
+    def test_get_course_not_found(self, mock_get_course: Any, client: Any) -> None:
         """Test GET /api/courses/by-id/<id> - not found"""
         create_site_admin_session(client)
         mock_get_course.return_value = None
@@ -331,7 +348,9 @@ class TestCoursesCRUD:
 
     @patch("src.api.routes.courses.update_course")
     @patch("src.api.routes.courses.get_course_by_id")
-    def test_update_course_success(self, mock_get_course, mock_update, client):
+    def test_update_course_success(
+        self, mock_get_course: Any, mock_update: Any, client: Any
+    ) -> None:
         """Test PUT /api/courses/<id> - success"""
         create_site_admin_session(client)
         mock_get_course.side_effect = [
@@ -360,7 +379,9 @@ class TestCoursesCRUD:
 
     @patch("src.api.routes.courses.delete_course")
     @patch("src.api.routes.courses.get_course_by_id")
-    def test_delete_course_success(self, mock_get_course, mock_delete, client):
+    def test_delete_course_success(
+        self, mock_get_course: Any, mock_delete: Any, client: Any
+    ) -> None:
         """Test DELETE /api/courses/<id> - success"""
         create_site_admin_session(client)
         mock_get_course.return_value = {
@@ -390,7 +411,9 @@ class TestTermsCRUD:
 
     @patch("src.api.routes.terms.get_current_institution_id_safe")
     @patch("src.api.routes.terms.get_term_by_id")
-    def test_get_term_by_id_success(self, mock_get_term, mock_get_inst_id, client):
+    def test_get_term_by_id_success(
+        self, mock_get_term: Any, mock_get_inst_id: Any, client: Any
+    ) -> None:
         """Test GET /api/terms/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
@@ -411,8 +434,8 @@ class TestTermsCRUD:
     @patch("src.api.routes.terms.get_current_institution_id_safe")
     @patch("src.api.routes.terms.get_term_by_id")
     def test_update_term_success(
-        self, mock_get_term, mock_get_inst_id, mock_update, client
-    ):
+        self, mock_get_term: Any, mock_get_inst_id: Any, mock_update: Any, client: Any
+    ) -> None:
         """Test PUT /api/terms/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
@@ -440,8 +463,8 @@ class TestTermsCRUD:
     @patch("src.api.routes.terms.get_current_institution_id_safe")
     @patch("src.api.routes.terms.get_term_by_id")
     def test_delete_term_success(
-        self, mock_get_term, mock_get_inst_id, mock_delete, client
-    ):
+        self, mock_get_term: Any, mock_get_inst_id: Any, mock_delete: Any, client: Any
+    ) -> None:
         """Test DELETE /api/terms/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
@@ -471,7 +494,9 @@ class TestOfferingsCRUD:
 
     @patch("src.api.routes.offerings.database_service")
     @patch("src.api.routes.offerings.get_current_institution_id")
-    def test_create_offering_success(self, mock_get_inst_id, mock_db_service, client):
+    def test_create_offering_success(
+        self, mock_get_inst_id: Any, mock_db_service: Any, client: Any
+    ) -> None:
         """Test POST /api/offerings - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
@@ -488,7 +513,7 @@ class TestOfferingsCRUD:
         assert data["success"] is True
         assert data["offering_id"] == "offering-123"
 
-    def test_create_offering_missing_fields(self, client):
+    def test_create_offering_missing_fields(self, client: Any) -> None:
         """Test POST /api/offerings - missing required fields"""
         create_site_admin_session(client)
         response = client.post(
@@ -502,7 +527,7 @@ class TestOfferingsCRUD:
         assert "Missing required fields" in data["error"]
 
     @patch("src.api.routes.offerings.get_course_offering")
-    def test_get_offering_success(self, mock_get_offering, client):
+    def test_get_offering_success(self, mock_get_offering: Any, client: Any) -> None:
         """Test GET /api/offerings/<id> - success"""
         create_site_admin_session(client)
         mock_get_offering.return_value = {
@@ -520,7 +545,9 @@ class TestOfferingsCRUD:
 
     @patch("src.api.routes.offerings.update_course_offering")
     @patch("src.api.routes.offerings.get_course_offering")
-    def test_update_offering_success(self, mock_get_offering, mock_update, client):
+    def test_update_offering_success(
+        self, mock_get_offering: Any, mock_update: Any, client: Any
+    ) -> None:
         """Test PUT /api/offerings/<id> - success"""
         create_site_admin_session(client)
         mock_get_offering.side_effect = [
@@ -541,7 +568,9 @@ class TestOfferingsCRUD:
 
     @patch("src.api.routes.offerings.delete_course_offering")
     @patch("src.api.routes.offerings.get_course_offering")
-    def test_delete_offering_success(self, mock_get_offering, mock_delete, client):
+    def test_delete_offering_success(
+        self, mock_get_offering: Any, mock_delete: Any, client: Any
+    ) -> None:
         """Test DELETE /api/offerings/<id> - success"""
         create_site_admin_session(client)
         mock_get_offering.return_value = {"offering_id": "offering-123"}
@@ -569,8 +598,12 @@ class TestSectionsCRUD:
     @patch("src.api.routes.sections.get_current_institution_id_safe")
     @patch("src.api.routes.sections.get_section_by_id")
     def test_get_section_by_id_success(
-        self, mock_get_section, mock_get_inst_id, mock_get_offering, client
-    ):
+        self,
+        mock_get_section: Any,
+        mock_get_inst_id: Any,
+        mock_get_offering: Any,
+        client: Any,
+    ) -> None:
         """Test GET /api/sections/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
@@ -596,8 +629,13 @@ class TestSectionsCRUD:
     @patch("src.api.routes.sections.get_current_institution_id_safe")
     @patch("src.api.routes.sections.get_section_by_id")
     def test_update_section_success(
-        self, mock_get_section, mock_get_inst_id, mock_get_offering, mock_update, client
-    ):
+        self,
+        mock_get_section: Any,
+        mock_get_inst_id: Any,
+        mock_get_offering: Any,
+        mock_update: Any,
+        client: Any,
+    ) -> None:
         """Test PUT /api/sections/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
@@ -636,13 +674,13 @@ class TestSectionsCRUD:
     @patch("src.api.routes.sections.get_section_by_id")
     def test_assign_instructor_success(
         self,
-        mock_get_section,
-        mock_get_inst_id,
-        mock_get_offering,
-        mock_get_user,
-        mock_assign,
-        client,
-    ):
+        mock_get_section: Any,
+        mock_get_inst_id: Any,
+        mock_get_offering: Any,
+        mock_get_user: Any,
+        mock_assign: Any,
+        client: Any,
+    ) -> None:
         """Test PATCH /api/sections/<id>/instructor - success"""
         create_site_admin_session(client)
         csrf_token = get_csrf_token(client)
@@ -676,7 +714,7 @@ class TestSectionsCRUD:
         assert "assigned successfully" in data["message"]
         mock_mark_assigned.assert_called_once_with("section-123")
 
-    def test_assign_instructor_missing_id(self, client):
+    def test_assign_instructor_missing_id(self, client: Any) -> None:
         """Test PATCH /api/sections/<id>/instructor - missing instructor_id"""
         create_site_admin_session(client)
         csrf_token = get_csrf_token(client)
@@ -696,8 +734,13 @@ class TestSectionsCRUD:
     @patch("src.api.routes.sections.get_current_institution_id_safe")
     @patch("src.api.routes.sections.get_section_by_id")
     def test_delete_section_success(
-        self, mock_get_section, mock_get_inst_id, mock_get_offering, mock_delete, client
-    ):
+        self,
+        mock_get_section: Any,
+        mock_get_inst_id: Any,
+        mock_get_offering: Any,
+        mock_delete: Any,
+        client: Any,
+    ) -> None:
         """Test DELETE /api/sections/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
@@ -730,7 +773,9 @@ class TestOutcomesCRUD:
 
     @patch("src.api.routes.outcomes.database_service")
     @patch("src.api.routes.outcomes.get_course_by_id")
-    def test_create_outcome_success(self, mock_get_course, mock_db_service, client):
+    def test_create_outcome_success(
+        self, mock_get_course: Any, mock_db_service: Any, client: Any
+    ) -> None:
         """Test POST /api/courses/<id>/outcomes - success"""
         create_site_admin_session(client)
         mock_get_course.return_value = {"course_id": "course-123"}
@@ -748,7 +793,9 @@ class TestOutcomesCRUD:
         assert data["outcome_id"] == "outcome-123"
 
     @patch("src.api.routes.outcomes.get_course_by_id")
-    def test_create_outcome_missing_description(self, mock_get_course, client):
+    def test_create_outcome_missing_description(
+        self, mock_get_course: Any, client: Any
+    ) -> None:
         """Test POST /api/courses/<id>/outcomes - missing description"""
         create_site_admin_session(client)
         mock_get_course.return_value = {"course_id": "course-123"}
@@ -769,12 +816,12 @@ class TestOutcomesCRUD:
     @patch("src.api.routes.outcomes.get_current_user")
     def test_list_course_outcomes_instructor_view(
         self,
-        mock_get_user,
-        mock_get_sections,
-        mock_get_outcomes,
-        mock_get_course,
-        client,
-    ):
+        mock_get_user: Any,
+        mock_get_sections: Any,
+        mock_get_outcomes: Any,
+        mock_get_course: Any,
+        client: Any,
+    ) -> None:
         """Test GET /api/courses/<id>/outcomes - returns instructor sections outcomes."""
         create_site_admin_session(client)
         mock_get_user.return_value = {"user_id": "user-123", "institution_id": 1}
@@ -811,8 +858,12 @@ class TestOutcomesCRUD:
     @patch("src.api.routes.outcomes.get_current_institution_id_safe")
     @patch("src.api.routes.outcomes.get_course_outcome")
     def test_get_outcome_success(
-        self, mock_get_outcome, mock_get_inst_id, mock_get_course, client
-    ):
+        self,
+        mock_get_outcome: Any,
+        mock_get_inst_id: Any,
+        mock_get_course: Any,
+        client: Any,
+    ) -> None:
         """Test GET /api/outcomes/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
@@ -838,8 +889,13 @@ class TestOutcomesCRUD:
     @patch("src.api.routes.outcomes.get_current_institution_id_safe")
     @patch("src.api.routes.outcomes.get_course_outcome")
     def test_update_outcome_success(
-        self, mock_get_outcome, mock_get_inst_id, mock_get_course, mock_update, client
-    ):
+        self,
+        mock_get_outcome: Any,
+        mock_get_inst_id: Any,
+        mock_get_course: Any,
+        mock_update: Any,
+        client: Any,
+    ) -> None:
         """Test PUT /api/outcomes/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
@@ -869,12 +925,12 @@ class TestOutcomesCRUD:
     @patch("src.api.routes.outcomes.get_section_outcome")
     def test_update_outcome_assessment_success(
         self,
-        mock_get_outcome,
-        mock_update_assessment,
-        mock_get_user,
-        mock_get_section,
-        client,
-    ):
+        mock_get_outcome: Any,
+        mock_update_assessment: Any,
+        mock_get_user: Any,
+        mock_get_section: Any,
+        client: Any,
+    ) -> None:
         """Test PUT /api/outcomes/<id>/assessment - success"""
         create_site_admin_session(client)
         mock_get_outcome.return_value = {
@@ -914,12 +970,12 @@ class TestOutcomesCRUD:
     @patch("src.api.routes.outcomes.get_section_outcome")
     def test_update_outcome_assessment_tool_too_long(
         self,
-        mock_get_outcome,
-        mock_update_assessment,
-        mock_get_user,
-        mock_get_section,
-        client,
-    ):
+        mock_get_outcome: Any,
+        mock_update_assessment: Any,
+        mock_get_user: Any,
+        mock_get_section: Any,
+        client: Any,
+    ) -> None:
         """Test PUT /api/outcomes/<id>/assessment - assessment_tool > 50 chars (CEI demo fix)"""
         create_site_admin_session(client)
         mock_get_outcome.return_value = {
@@ -953,8 +1009,13 @@ class TestOutcomesCRUD:
     @patch("src.api.routes.outcomes.get_current_institution_id_safe")
     @patch("src.api.routes.outcomes.get_course_outcome")
     def test_delete_outcome_success(
-        self, mock_get_outcome, mock_get_inst_id, mock_get_course, mock_delete, client
-    ):
+        self,
+        mock_get_outcome: Any,
+        mock_get_inst_id: Any,
+        mock_get_course: Any,
+        mock_delete: Any,
+        client: Any,
+    ) -> None:
         """Test DELETE /api/outcomes/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"

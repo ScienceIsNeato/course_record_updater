@@ -26,6 +26,9 @@ User Personas:
 # Tests will be skipped automatically if credentials are not configured
 
 
+from typing import Any
+
+
 class TestAdminInstructorReminderSingleRecipient:
     """
     E2E: Program admin sends reminder to single instructor
@@ -33,7 +36,9 @@ class TestAdminInstructorReminderSingleRecipient:
     Feature: Admin can send "please submit your course data" emails
     """
 
-    def test_program_admin_sends_reminder_to_single_instructor(self, browser, base_url):
+    def test_program_admin_sends_reminder_to_single_instructor(
+        self, browser: Any, base_url: Any
+    ) -> None:
         """
         FULL E2E: Admin selects instructor → sends reminder → instructor receives email
 
@@ -144,8 +149,8 @@ class TestAdminInstructorReminderBulkSend:
     """
 
     def test_program_admin_sends_bulk_reminders_to_multiple_instructors(
-        self, browser, base_url
-    ):
+        self, browser: Any, base_url: Any
+    ) -> None:
         """
         FULL E2E: Admin selects multiple instructors → sends bulk reminder → all receive emails
 

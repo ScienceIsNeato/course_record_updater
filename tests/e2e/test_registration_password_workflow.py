@@ -14,6 +14,8 @@ Uses Ethereal Email (IMAP) for automated email verification in E2E tests.
 Estimated Duration: 3-4 minutes
 """
 
+from collections.abc import Generator
+
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -27,9 +29,9 @@ from tests.e2e.email_utils import (
     wait_for_email_via_imap,
 )
 
+pytestmark = [pytest.mark.e2e, pytest.mark.slow, pytest.mark.xdist_group("email")]
 
-@pytest.mark.e2e
-@pytest.mark.slow
+
 class TestRegistrationAndPasswordManagement:
     """
     E2E: Complete User Registration & Password Management Workflow
@@ -46,7 +48,7 @@ class TestRegistrationAndPasswordManagement:
     TEST_LAST_NAME = "Smith"
 
     @pytest.fixture(autouse=True)
-    def setup_and_teardown(self):
+    def setup_and_teardown(self) -> Generator[None, None, None]:
         """Setup and teardown for E2E test: test."""
         # Clear any stale emails from previous test runs
         if not SKIP_EMAIL_VERIFICATION:
@@ -65,7 +67,7 @@ class TestRegistrationAndPasswordManagement:
         # Note: Ethereal emails are temporary and auto-expire
         # No cleanup needed
 
-    def test_complete_registration_and_password_workflow(self, page: Page):
+    def test_complete_registration_and_password_workflow(self, page: Page) -> None:
         """
         Test complete user journey from registration through password reset.
 

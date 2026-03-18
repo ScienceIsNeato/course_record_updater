@@ -27,7 +27,7 @@ from src.utils.constants import GENERIC_PASSWORD
 class TestEnhancedUserModel:
     """Test enhanced User model with authentication fields"""
 
-    def test_user_model_creation_with_all_required_fields(self):
+    def test_user_model_creation_with_all_required_fields(self) -> None:
         """Test User model creation with all required fields"""
         user_data = User.create_schema(
             email="test@example.com",
@@ -59,7 +59,7 @@ class TestEnhancedUserModel:
         assert user_data["email_verification_token"] is None
         assert user_data["last_login_at"] is None
 
-    def test_user_model_with_optional_fields(self):
+    def test_user_model_with_optional_fields(self) -> None:
         """Test User model creation with optional fields"""
         user_data = User.create_schema(
             email="admin@mocku.test",
@@ -78,7 +78,7 @@ class TestEnhancedUserModel:
         assert user_data["program_ids"] == ["program1", "program2"]
         assert user_data["display_name"] == "Dr. Admin"
 
-    def test_user_model_role_validation(self):
+    def test_user_model_role_validation(self) -> None:
         """Test User model validates role against new UserRole enum"""
         with pytest.raises(ValueError, match="Invalid role"):
             User.create_schema(
@@ -89,7 +89,7 @@ class TestEnhancedUserModel:
                 institution_id="test-institution",
             )
 
-    def test_user_model_account_status_validation(self):
+    def test_user_model_account_status_validation(self) -> None:
         """Test User model validates account_status"""
         with pytest.raises(ValueError, match="Invalid account_status"):
             User.create_schema(
@@ -101,7 +101,7 @@ class TestEnhancedUserModel:
                 account_status="invalid_status",
             )
 
-    def test_user_model_institution_id_required(self):
+    def test_user_model_institution_id_required(self) -> None:
         """Test User model requires institution_id for non-site_admin roles"""
         with pytest.raises(ValueError, match="institution_id is required"):
             User.create_schema(
@@ -112,7 +112,7 @@ class TestEnhancedUserModel:
                 # institution_id not provided
             )
 
-    def test_user_model_site_admin_no_institution_required(self):
+    def test_user_model_site_admin_no_institution_required(self) -> None:
         """Test site_admin role doesn't require institution_id"""
         user_data = User.create_schema(
             email="siteadmin@system.com",
@@ -125,7 +125,7 @@ class TestEnhancedUserModel:
         assert user_data["role"] == "site_admin"
         assert user_data["institution_id"] is None
 
-    def test_user_utility_functions(self):
+    def test_user_utility_functions(self) -> None:
         """Test User utility functions"""
         # Test full_name
         full_name = User.full_name("John", "Doe")
@@ -143,7 +143,7 @@ class TestEnhancedUserModel:
         past_time = datetime.now(timezone.utc) - timedelta(hours=1)
         assert User.is_active("active", past_time) is True
 
-    def test_user_token_generation(self):
+    def test_user_token_generation(self) -> None:
         """Test User token generation methods"""
         verification_token = User.generate_verification_token()
         reset_token = User.generate_reset_token()
@@ -158,7 +158,7 @@ class TestEnhancedUserModel:
 class TestUserInvitationModel:
     """Test UserInvitation model for invitation system"""
 
-    def test_user_invitation_creation_and_expiry_logic(self):
+    def test_user_invitation_creation_and_expiry_logic(self) -> None:
         """Test UserInvitation model creation and expiry logic"""
         invitation_data = UserInvitation.create_schema(
             email="invited@example.com",
@@ -190,7 +190,7 @@ class TestUserInvitationModel:
         # Allow for small time differences in test execution
         assert abs((expires_at - expected_expiry).total_seconds()) < 5
 
-    def test_user_invitation_expiry_checking(self):
+    def test_user_invitation_expiry_checking(self) -> None:
         """Test UserInvitation expiry checking methods"""
         # Test non-expired invitation
         future_time = datetime.now(timezone.utc) + timedelta(days=1)
@@ -206,7 +206,7 @@ class TestUserInvitationModel:
         assert UserInvitation.can_accept("accepted", future_time) is False
         assert UserInvitation.can_accept("pending", past_time) is False
 
-    def test_user_invitation_role_validation(self):
+    def test_user_invitation_role_validation(self) -> None:
         """Test UserInvitation validates role"""
         with pytest.raises(ValueError, match="Invalid role"):
             UserInvitation.create_schema(
@@ -216,7 +216,7 @@ class TestUserInvitationModel:
                 invited_by="admin-user-id",
             )
 
-    def test_user_invitation_token_generation(self):
+    def test_user_invitation_token_generation(self) -> None:
         """Test invitation token generation is unique"""
         token1 = UserInvitation.generate_invitation_token()
         token2 = UserInvitation.generate_invitation_token()
@@ -229,7 +229,7 @@ class TestUserInvitationModel:
 class TestProgramModel:
     """Test Program model for program management"""
 
-    def test_program_model_creation_with_institution_association(self):
+    def test_program_model_creation_with_institution_association(self) -> None:
         """Test Program model creation with institution association"""
         program_data = Program.create_schema(
             name="Computer Science Department",
@@ -258,7 +258,7 @@ class TestProgramModel:
         assert program_data["created_at"] is not None
         assert program_data["updated_at"] is not None
 
-    def test_program_model_default_program(self):
+    def test_program_model_default_program(self) -> None:
         """Test Program model creation for default program"""
         program_data = Program.create_schema(
             name="Unclassified",
@@ -272,7 +272,7 @@ class TestProgramModel:
         assert program_data["is_default"] is True
         assert program_data["description"] is None
 
-    def test_program_model_with_admins(self):
+    def test_program_model_with_admins(self) -> None:
         """Test Program model with program administrators"""
         admin_ids = ["admin1", "admin2", "admin3"]
         program_data = Program.create_schema(
@@ -286,7 +286,7 @@ class TestProgramModel:
         assert program_data["program_admins"] == admin_ids
         assert Program.admin_count(program_data["program_admins"]) == 3
 
-    def test_program_admin_count_utility(self):
+    def test_program_admin_count_utility(self) -> None:
         """Test Program admin count utility function"""
         assert Program.admin_count([]) == 0
         assert Program.admin_count(["admin1"]) == 1
@@ -296,7 +296,7 @@ class TestProgramModel:
 class TestEnhancedInstitutionModel:
     """Test enhanced Institution model with auth fields"""
 
-    def test_enhanced_institution_model_with_auth_fields(self):
+    def test_enhanced_institution_model_with_auth_fields(self) -> None:
         """Test enhanced Institution model with auth fields"""
         institution_data = Institution.create_schema(
             name="College of Eastern Idaho",
@@ -322,7 +322,7 @@ class TestEnhancedInstitutionModel:
         assert institution_data["created_at"] is not None
         assert institution_data["updated_at"] is not None
 
-    def test_institution_model_optional_website(self):
+    def test_institution_model_optional_website(self) -> None:
         """Test Institution model with optional website URL"""
         institution_data = Institution.create_schema(
             name="Test University",
@@ -334,7 +334,7 @@ class TestEnhancedInstitutionModel:
 
         assert institution_data["website_url"] is None
 
-    def test_institution_model_email_normalization(self):
+    def test_institution_model_email_normalization(self) -> None:
         """Test Institution model normalizes email addresses"""
         institution_data = Institution.create_schema(
             name="Test University",
@@ -349,7 +349,7 @@ class TestEnhancedInstitutionModel:
 class TestEnhancedCourseModel:
     """Test Course model with program associations"""
 
-    def test_course_model_with_program_associations(self):
+    def test_course_model_with_program_associations(self) -> None:
         """Test Course model with program associations"""
         program_ids = ["program1", "program2"]
         course_data = Course.create_schema(
@@ -370,7 +370,7 @@ class TestEnhancedCourseModel:
         assert course_data["department"] == "Computer Science"
         assert course_data["credit_hours"] == 3  # Default
 
-    def test_course_model_without_program_associations(self):
+    def test_course_model_without_program_associations(self) -> None:
         """Test Course model defaults to empty program list"""
         course_data = Course.create_schema(
             course_number="MATH-101",
@@ -385,7 +385,7 @@ class TestEnhancedCourseModel:
 class TestUserPasswordMethods:
     """Test User model password-related methods"""
 
-    def test_create_password_hash(self):
+    def test_create_password_hash(self) -> None:
         """Test password hashing through User model"""
         password = GENERIC_PASSWORD
         hashed = User.create_password_hash(password)
@@ -394,25 +394,25 @@ class TestUserPasswordMethods:
         assert hashed != password
         assert hashed.startswith("$2b$")
 
-    def test_validate_password_valid(self):
+    def test_validate_password_valid(self) -> None:
         """Test password validation with valid password"""
         assert User.validate_password("ValidPass123!") is None
 
-    def test_validate_password_invalid(self):
+    def test_validate_password_invalid(self) -> None:
         """Test password validation with invalid password"""
         from src.services.password_service import PasswordValidationError
 
         with pytest.raises(PasswordValidationError):
             User.validate_password("weak")
 
-    def test_generate_password_reset_token(self):
+    def test_generate_password_reset_token(self) -> None:
         """Test password reset token generation"""
         token = User.generate_password_reset_token()
 
         assert isinstance(token, str)
         assert len(token) > 0
 
-    def test_create_password_reset_data(self):
+    def test_create_password_reset_data(self) -> None:
         """Test password reset data creation"""
         user_id = "user123"
         email = "test@example.com"
@@ -429,7 +429,7 @@ class TestUserPasswordMethods:
 class TestModelIntegration:
     """Test integration between enhanced models"""
 
-    def test_complete_user_invitation_flow(self):
+    def test_complete_user_invitation_flow(self) -> None:
         """Test complete user invitation to registration flow"""
         # 1. Create institution
         institution_data = Institution.create_schema(
@@ -463,7 +463,7 @@ class TestModelIntegration:
         assert user_data["institution_id"] == invitation_data["institution_id"]
         assert user_data["account_status"] == "active"
 
-    def test_institution_program_course_hierarchy(self):
+    def test_institution_program_course_hierarchy(self) -> None:
         """Test institution → program → course hierarchy"""
         # 1. Create institution
         institution_data = Institution.create_schema(
@@ -495,7 +495,7 @@ class TestModelIntegration:
         assert program_data["program_id"] in course_data["program_ids"]
         assert program_data["institution_id"] == institution_data["institution_id"]
 
-    def test_program_admin_assignment(self):
+    def test_program_admin_assignment(self) -> None:
         """Test program admin assignment to programs"""
         # Create institution and program
         institution_data = Institution.create_schema(

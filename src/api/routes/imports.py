@@ -12,7 +12,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
@@ -129,7 +129,7 @@ def validate_import_file() -> ResponseReturnValue:
             )
 
             # Create validation response
-            validation_result = {
+            validation_result: Dict[str, Any] = {
                 "valid": result.success and len(result.errors) == 0,
                 "records_found": result.records_processed,
                 "potential_conflicts": result.conflicts_detected,
@@ -362,7 +362,7 @@ def _determine_target_institution(user_institution_id: Optional[str]) -> str:
 
 def _validate_import_permissions(user_role: str, import_data_type: str) -> None:
     """Validate that the user role can import the specified data type."""
-    allowed_data_types = {
+    allowed_data_types: Dict[str, List[str]] = {
         UserRole.SITE_ADMIN.value: ["institutions", "programs", "courses", "users"],
         UserRole.INSTITUTION_ADMIN.value: [
             "programs",

@@ -7,7 +7,7 @@ that supports multi-institutional enterprise requirements.
 
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 # Import password service for secure password handling
@@ -19,7 +19,7 @@ from src.utils.term_utils import get_term_status
 # and ROLE_PERMISSIONS mapping.
 
 # DEPRECATED: Old ROLES dictionary - kept for backward compatibility during transition
-ROLES = {
+ROLES: Dict[str, Dict[str, Any]] = {
     "instructor": {
         "name": "Instructor",
         "permissions": [
@@ -167,7 +167,7 @@ class DataModel:
         return generate_reset_token()
 
     @staticmethod
-    def create_password_reset_data(user_id: str, email: str) -> Dict:
+    def create_password_reset_data(user_id: str, email: str) -> Dict[str, Any]:
         """
         Create password reset token data with expiry
 
@@ -511,7 +511,7 @@ class Term(DataModel):
     def get_status(
         start_date: str,
         end_date: str,
-        reference_date: Optional[datetime] = None,
+        reference_date: Optional[date | datetime] = None,
     ) -> str:
         """
         Compute the status for a term using its start/end dates.

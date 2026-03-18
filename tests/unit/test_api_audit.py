@@ -5,12 +5,14 @@ Unit tests for Audit API routes.
 # Patch permission_required BEFORE importing audit routes
 import sys
 from datetime import datetime
+
+# Save original module so the reimport doesn't break patches in other test files
+from typing import Any
 from unittest.mock import patch
 
 import pytest
 from flask import Flask
 
-# Save original module so the reimport doesn't break patches in other test files
 _original_audit_module = sys.modules.get("src.api.routes.audit")
 
 with patch("src.services.auth_service.permission_required", lambda perm: lambda f: f):
@@ -28,7 +30,7 @@ from src.services.audit_service import EntityType
 
 
 @pytest.fixture
-def app():
+def app() -> Any:
     """Create test Flask app with audit blueprint."""
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -37,13 +39,13 @@ def app():
 
 
 @pytest.fixture
-def client(app):
+def client(app: Any) -> Any:
     """Create test client."""
     return app.test_client()
 
 
 @pytest.fixture
-def mock_site_admin():
+def mock_site_admin() -> Any:
     """Mock site admin user."""
     return {
         "user_id": "admin-123",
@@ -57,7 +59,7 @@ class TestGetRecentLogs:
     """Tests for GET /api/audit/recent endpoint."""
 
     @patch("src.api.routes.audit.AuditService.get_recent_activity")
-    def test_get_recent_logs_success(self, mock_get_activity, client):
+    def test_get_recent_logs_success(self, mock_get_activity: Any, client: Any) -> None:
         """Test successful retrieval of recent logs."""
         mock_logs = [
             {"log_id": "1", "operation": "CREATE", "entity_type": "user"},
@@ -76,7 +78,9 @@ class TestGetRecentLogs:
         assert data["offset"] == 0
 
     @patch("src.api.routes.audit.AuditService.get_recent_activity")
-    def test_get_recent_logs_with_limit_and_offset(self, mock_get_activity, client):
+    def test_get_recent_logs_with_limit_and_offset(
+        self, mock_get_activity: Any, client: Any
+    ) -> None:
         """Test recent logs with custom limit and offset."""
         mock_get_activity.return_value = []
 
@@ -89,7 +93,9 @@ class TestGetRecentLogs:
         mock_get_activity.assert_called_once_with(institution_id=None, limit=100)
 
     @patch("src.api.routes.audit.AuditService.get_recent_activity")
-    def test_get_recent_logs_with_institution_filter(self, mock_get_activity, client):
+    def test_get_recent_logs_with_institution_filter(
+        self, mock_get_activity: Any, client: Any
+    ) -> None:
         """Test recent logs filtered by institution."""
         mock_get_activity.return_value = []
 
@@ -99,7 +105,9 @@ class TestGetRecentLogs:
         mock_get_activity.assert_called_once_with(institution_id="inst-123", limit=50)
 
     @patch("src.api.routes.audit.AuditService.get_recent_activity")
-    def test_get_recent_logs_limit_capped_at_500(self, mock_get_activity, client):
+    def test_get_recent_logs_limit_capped_at_500(
+        self, mock_get_activity: Any, client: Any
+    ) -> None:
         """Test that limit is capped at 500."""
         mock_get_activity.return_value = []
 
@@ -111,7 +119,9 @@ class TestGetRecentLogs:
         mock_get_activity.assert_called_once_with(institution_id=None, limit=500)
 
     @patch("src.api.routes.audit.AuditService.get_recent_activity")
-    def test_get_recent_logs_invalid_limit(self, mock_get_activity, client):
+    def test_get_recent_logs_invalid_limit(
+        self, mock_get_activity: Any, client: Any
+    ) -> None:
         """Test error handling for invalid limit parameter."""
         response = client.get("/api/audit/recent?limit=invalid")
 
@@ -121,7 +131,9 @@ class TestGetRecentLogs:
         assert "Invalid parameter" in data["error"]
 
     @patch("src.api.routes.audit.AuditService.get_recent_activity")
-    def test_get_recent_logs_service_error(self, mock_get_activity, client):
+    def test_get_recent_logs_service_error(
+        self, mock_get_activity: Any, client: Any
+    ) -> None:
         """Test error handling when service raises exception."""
         mock_get_activity.side_effect = Exception("Database error")
 
@@ -137,7 +149,9 @@ class TestGetEntityHistory:
     """Tests for GET /api/audit/entity/<entity_type>/<entity_id> endpoint."""
 
     @patch("src.api.routes.audit.AuditService.get_entity_history")
-    def test_get_entity_history_success(self, mock_get_history, client):
+    def test_get_entity_history_success(
+        self, mock_get_history: Any, client: Any
+    ) -> None:
         """Test successful retrieval of entity history."""
         mock_history = [
             {"log_id": "1", "operation": "CREATE", "timestamp": "2025-01-01T00:00:00Z"},
@@ -159,7 +173,9 @@ class TestGetEntityHistory:
         )
 
     @patch("src.api.routes.audit.AuditService.get_entity_history")
-    def test_get_entity_history_with_limit(self, mock_get_history, client):
+    def test_get_entity_history_with_limit(
+        self, mock_get_history: Any, client: Any
+    ) -> None:
         """Test entity history with custom limit."""
         mock_get_history.return_value = []
 
@@ -171,7 +187,9 @@ class TestGetEntityHistory:
         )
 
     @patch("src.api.routes.audit.AuditService.get_entity_history")
-    def test_get_entity_history_limit_capped_at_1000(self, mock_get_history, client):
+    def test_get_entity_history_limit_capped_at_1000(
+        self, mock_get_history: Any, client: Any
+    ) -> None:
         """Test that limit is capped at 1000."""
         mock_get_history.return_value = []
 
@@ -182,7 +200,7 @@ class TestGetEntityHistory:
             entity_type=EntityType.USER, entity_id="user-123", limit=1000
         )
 
-    def test_get_entity_history_invalid_entity_type(self, client):
+    def test_get_entity_history_invalid_entity_type(self, client: Any) -> None:
         """Test error handling for invalid entity type."""
         response = client.get("/api/audit/entity/invalid_type/entity-123")
 
@@ -192,7 +210,9 @@ class TestGetEntityHistory:
         assert "Invalid entity type" in data["error"]
 
     @patch("src.api.routes.audit.AuditService.get_entity_history")
-    def test_get_entity_history_service_error(self, mock_get_history, client):
+    def test_get_entity_history_service_error(
+        self, mock_get_history: Any, client: Any
+    ) -> None:
         """Test error handling when service raises exception."""
         mock_get_history.side_effect = Exception("Database error")
 
@@ -208,7 +228,9 @@ class TestGetUserActivity:
     """Tests for GET /api/audit/user/<user_id> endpoint."""
 
     @patch("src.api.routes.audit.AuditService.get_user_activity")
-    def test_get_user_activity_success(self, mock_get_activity, client):
+    def test_get_user_activity_success(
+        self, mock_get_activity: Any, client: Any
+    ) -> None:
         """Test successful retrieval of user activity."""
         mock_activity = [
             {"log_id": "1", "operation": "CREATE", "entity_type": "user"},
@@ -229,7 +251,9 @@ class TestGetUserActivity:
         )
 
     @patch("src.api.routes.audit.AuditService.get_user_activity")
-    def test_get_user_activity_with_date_range(self, mock_get_activity, client):
+    def test_get_user_activity_with_date_range(
+        self, mock_get_activity: Any, client: Any
+    ) -> None:
         """Test user activity with date range filter."""
         mock_get_activity.return_value = []
 
@@ -245,7 +269,9 @@ class TestGetUserActivity:
         assert isinstance(call_args.kwargs["end_date"], datetime)
 
     @patch("src.api.routes.audit.AuditService.get_user_activity")
-    def test_get_user_activity_with_limit(self, mock_get_activity, client):
+    def test_get_user_activity_with_limit(
+        self, mock_get_activity: Any, client: Any
+    ) -> None:
         """Test user activity with custom limit."""
         mock_get_activity.return_value = []
 
@@ -256,7 +282,7 @@ class TestGetUserActivity:
             user_id="user-123", limit=50, start_date=None, end_date=None
         )
 
-    def test_get_user_activity_invalid_start_date(self, client):
+    def test_get_user_activity_invalid_start_date(self, client: Any) -> None:
         """Test error handling for invalid start_date format."""
         response = client.get("/api/audit/user/user-123?start_date=invalid-date")
 
@@ -265,7 +291,7 @@ class TestGetUserActivity:
         assert data["success"] is False
         assert "Invalid start_date format" in data["error"]
 
-    def test_get_user_activity_invalid_end_date(self, client):
+    def test_get_user_activity_invalid_end_date(self, client: Any) -> None:
         """Test error handling for invalid end_date format."""
         response = client.get("/api/audit/user/user-123?end_date=invalid-date")
 
@@ -275,7 +301,9 @@ class TestGetUserActivity:
         assert "Invalid end_date format" in data["error"]
 
     @patch("src.api.routes.audit.AuditService.get_user_activity")
-    def test_get_user_activity_service_error(self, mock_get_activity, client):
+    def test_get_user_activity_service_error(
+        self, mock_get_activity: Any, client: Any
+    ) -> None:
         """Test error handling when service raises exception."""
         mock_get_activity.side_effect = Exception("Database error")
 
@@ -291,7 +319,7 @@ class TestExportLogs:
     """Tests for POST /api/audit/export endpoint."""
 
     @patch("src.api.routes.audit.AuditService.export_audit_log")
-    def test_export_logs_csv_success(self, mock_export, client):
+    def test_export_logs_csv_success(self, mock_export: Any, client: Any) -> None:
         """Test successful CSV export."""
         mock_export.return_value = b"log_id,operation,entity_type\n1,CREATE,users\n"
 
@@ -310,7 +338,7 @@ class TestExportLogs:
         assert ".csv" in response.headers["Content-Disposition"]
 
     @patch("src.api.routes.audit.AuditService.export_audit_log")
-    def test_export_logs_json_success(self, mock_export, client):
+    def test_export_logs_json_success(self, mock_export: Any, client: Any) -> None:
         """Test successful JSON export."""
         mock_export.return_value = b'[{"log_id": "1", "operation": "CREATE"}]'
 
@@ -329,7 +357,7 @@ class TestExportLogs:
         assert ".json" in response.headers["Content-Disposition"]
 
     @patch("src.api.routes.audit.AuditService.export_audit_log")
-    def test_export_logs_with_filters(self, mock_export, client):
+    def test_export_logs_with_filters(self, mock_export: Any, client: Any) -> None:
         """Test export with optional filters."""
         mock_export.return_value = b"csv_data"
 
@@ -351,7 +379,7 @@ class TestExportLogs:
         assert call_args.kwargs["user_id"] == "user-123"
         assert call_args.kwargs["institution_id"] == "inst-456"
 
-    def test_export_logs_invalid_format(self, client):
+    def test_export_logs_invalid_format(self, client: Any) -> None:
         """Test error handling for invalid export format."""
         response = client.post(
             "/api/audit/export",
@@ -367,7 +395,7 @@ class TestExportLogs:
         assert data["success"] is False
         assert "Invalid format" in data["error"]
 
-    def test_export_logs_missing_start_date(self, client):
+    def test_export_logs_missing_start_date(self, client: Any) -> None:
         """Test error handling for missing start_date."""
         response = client.post(
             "/api/audit/export",
@@ -379,7 +407,7 @@ class TestExportLogs:
         assert data["success"] is False
         assert "start_date and end_date are required" in data["error"]
 
-    def test_export_logs_missing_end_date(self, client):
+    def test_export_logs_missing_end_date(self, client: Any) -> None:
         """Test error handling for missing end_date."""
         response = client.post(
             "/api/audit/export",
@@ -391,7 +419,7 @@ class TestExportLogs:
         assert data["success"] is False
         assert "start_date and end_date are required" in data["error"]
 
-    def test_export_logs_invalid_date_format(self, client):
+    def test_export_logs_invalid_date_format(self, client: Any) -> None:
         """Test error handling for invalid date format."""
         response = client.post(
             "/api/audit/export",
@@ -407,7 +435,7 @@ class TestExportLogs:
         assert data["success"] is False
         assert "Invalid date format" in data["error"]
 
-    def test_export_logs_invalid_entity_type(self, client):
+    def test_export_logs_invalid_entity_type(self, client: Any) -> None:
         """Test error handling for invalid entity type."""
         response = client.post(
             "/api/audit/export",
@@ -425,7 +453,7 @@ class TestExportLogs:
         assert "Invalid entity type" in data["error"]
 
     @patch("src.api.routes.audit.AuditService.export_audit_log")
-    def test_export_logs_service_error(self, mock_export, client):
+    def test_export_logs_service_error(self, mock_export: Any, client: Any) -> None:
         """Test error handling when service raises exception."""
         mock_export.side_effect = Exception("Export failed")
 

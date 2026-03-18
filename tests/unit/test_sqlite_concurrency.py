@@ -14,13 +14,13 @@ from src.database.database_factory import get_database_service
 class TestSQLiteConcurrency:
     """Test SQLite handles concurrent access properly."""
 
-    def test_concurrent_reads_simple(self):
+    def test_concurrent_reads_simple(self) -> None:
         """Test that multiple threads can read from database simultaneously."""
         db = get_database_service()
         results: List[bool] = []
         errors: List[Exception] = []
 
-        def read_operation(thread_id: int):
+        def read_operation(thread_id: int) -> None:
             """Perform a simple read operation."""
             try:
                 # Simple read operation - get all institutions
@@ -51,13 +51,13 @@ class TestSQLiteConcurrency:
         assert len(errors) == 0, f"Got {len(errors)} errors: {errors}"
         assert len(results) == 10, f"Only {len(results)}/10 threads completed"
 
-    def test_concurrent_reads_heavy(self):
+    def test_concurrent_reads_heavy(self) -> None:
         """Test heavy concurrent read load."""
         db = get_database_service()
         results: List[bool] = []
         errors: List[Exception] = []
 
-        def heavy_read_operation(thread_id: int):
+        def heavy_read_operation(thread_id: int) -> None:
             """Perform multiple read operations."""
             try:
                 for _ in range(5):
@@ -83,13 +83,13 @@ class TestSQLiteConcurrency:
         assert len(errors) == 0, f"Got {len(errors)} errors: {errors}"
         assert len(results) == 20, f"Only {len(results)}/20 threads completed"
 
-    def test_concurrent_writes_simple(self):
+    def test_concurrent_writes_simple(self) -> None:
         """Test that multiple threads can write to database with proper locking."""
         db = get_database_service()
         results: List[str] = []
         errors: List[Exception] = []
 
-        def write_operation(thread_id: int):
+        def write_operation(thread_id: int) -> None:
             """Perform a simple write operation."""
             try:
                 # Create a test user
@@ -135,14 +135,14 @@ class TestSQLiteConcurrency:
             user = db.get_user_by_id(user_id)
             assert user is not None, f"User {user_id} not found after creation"
 
-    def test_concurrent_mixed_operations(self):
+    def test_concurrent_mixed_operations(self) -> None:
         """Test mix of concurrent reads and writes."""
         db = get_database_service()
         read_results: List[bool] = []
         write_results: List[str] = []
         errors: List[Exception] = []
 
-        def read_operation(thread_id: int):
+        def read_operation(thread_id: int) -> None:
             try:
                 for _ in range(3):
                     db.get_all_institutions()
@@ -151,7 +151,7 @@ class TestSQLiteConcurrency:
                 errors.append(e)
                 print(f"Reader {thread_id}: ERROR - {e}")
 
-        def write_operation(thread_id: int):
+        def write_operation(thread_id: int) -> None:
             try:
                 user_data = {
                     "email": f"mixed_test_{thread_id}@example.com",

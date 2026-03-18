@@ -1,6 +1,7 @@
 """Unit tests for course API routes (migrated from test_api_routes.py)."""
 
 import json
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -14,7 +15,7 @@ TEST_PASSWORD = GENERIC_PASSWORD  # Test password for unit tests
 class TestCourseEndpoints:
     """Test course management endpoints."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.app = app
         self.app.config["TESTING"] = True
@@ -27,7 +28,7 @@ class TestCourseEndpoints:
             "institution_id": "inst-123",
         }
 
-    def _login_site_admin(self, overrides=None):
+    def _login_site_admin(self, overrides: Any = None) -> Any:
         from tests.test_utils import create_test_session
 
         user_data = {**self.site_admin_user}
@@ -36,11 +37,11 @@ class TestCourseEndpoints:
         create_test_session(self.client, user_data)
         return user_data
 
-    def _login_user(self, overrides=None):
+    def _login_user(self, overrides: Any = None) -> Any:
         return self._login_site_admin(overrides)
 
     @patch("src.api.routes.courses.get_all_courses")
-    def test_get_courses_endpoint_exists(self, mock_get_all_courses):
+    def test_get_courses_endpoint_exists(self, mock_get_all_courses: Any) -> None:
         """Test that GET /api/courses endpoint exists and returns valid JSON."""
         self._login_site_admin({"institution_id": "riverside-tech-institute"})
         mock_get_all_courses.return_value = []
@@ -53,7 +54,7 @@ class TestCourseEndpoints:
         assert isinstance(data["courses"], list)
 
     @patch("src.api.routes.courses.get_courses_by_department")
-    def test_get_courses_with_department_filter(self, mock_get_courses):
+    def test_get_courses_with_department_filter(self, mock_get_courses: Any) -> None:
         """Test GET /api/courses with department filter."""
         self._login_site_admin({"institution_id": "riverside-tech-institute"})
         mock_get_courses.return_value = [
@@ -70,7 +71,7 @@ class TestCourseEndpoints:
         mock_get_courses.assert_called_with("riverside-tech-institute", "MATH")
 
     @patch("src.api.routes.courses.create_course")
-    def test_create_course_success(self, mock_create_course):
+    def test_create_course_success(self, mock_create_course: Any) -> None:
         """Test POST /api/courses with valid data."""
         self._login_site_admin()
         mock_create_course.return_value = "course-123"
@@ -92,7 +93,9 @@ class TestCourseEndpoints:
         assert "course_id" in data
 
     @patch("src.api.utils.get_current_institution_id")
-    def test_create_course_requires_institution_context(self, mock_get_institution_id):
+    def test_create_course_requires_institution_context(
+        self, mock_get_institution_id: Any
+    ) -> None:
         """Test POST /api/courses fails when no institution context is available."""
         self._login_site_admin()
         mock_get_institution_id.return_value = None  # No institution context
@@ -115,8 +118,8 @@ class TestCourseEndpoints:
     @patch("src.api.routes.courses.create_course")
     @patch("src.api.utils.get_current_institution_id")
     def test_create_course_adds_institution_context(
-        self, mock_get_institution_id, mock_create_course
-    ):
+        self, mock_get_institution_id: Any, mock_create_course: Any
+    ) -> None:
         """Test POST /api/courses automatically adds institution_id from context."""
         self._login_site_admin()
         mock_get_institution_id.return_value = "test-institution-123"
@@ -146,7 +149,7 @@ class TestCourseEndpoints:
         assert call_args["department"] == "TEST"
 
     @patch("src.api.routes.courses.get_course_by_number", return_value=None)
-    def test_get_course_by_number_endpoint_exists(self, mock_get_course):
+    def test_get_course_by_number_endpoint_exists(self, mock_get_course: Any) -> None:
         """Test that GET /api/courses/<course_number> endpoint exists."""
         self._login_site_admin()
 
@@ -158,7 +161,7 @@ class TestCourseEndpoints:
         mock_get_course.assert_called_once_with("MATH-101")
 
     @patch("src.api.routes.courses.get_course_by_number")
-    def test_get_course_by_number_not_found(self, mock_get_course):
+    def test_get_course_by_number_not_found(self, mock_get_course: Any) -> None:
         """Test GET /api/courses/<course_number> when course doesn't exist."""
         self._login_site_admin()
         mock_get_course.return_value = None
@@ -173,8 +176,8 @@ class TestCourseEndpoints:
     @patch("src.api.routes.courses.duplicate_course_record")
     @patch("src.api.routes.courses.get_course_by_id")
     def test_duplicate_course_success(
-        self, mock_get_course_by_id, mock_duplicate_course
-    ):
+        self, mock_get_course_by_id: Any, mock_duplicate_course: Any
+    ) -> None:
         """Test POST /api/courses/<course_id>/duplicate succeeds."""
         self._login_site_admin()
         source_course = {
@@ -207,8 +210,8 @@ class TestCourseEndpoints:
 
     @patch("src.api.routes.courses.get_course_by_id")
     def test_duplicate_course_forbidden_for_other_institution(
-        self, mock_get_course_by_id
-    ):
+        self, mock_get_course_by_id: Any
+    ) -> None:
         """Test duplication blocked when user lacks institution access."""
         self._login_site_admin(
             {"role": "institution_admin", "institution_id": "inst-999"}
@@ -225,7 +228,7 @@ class TestCourseEndpoints:
         assert data["success"] is False
 
     @patch("src.api.routes.courses.get_course_by_id")
-    def test_duplicate_course_not_found(self, mock_get_course_by_id):
+    def test_duplicate_course_not_found(self, mock_get_course_by_id: Any) -> None:
         """Test duplication returns 404 when course missing."""
         self._login_site_admin()
         mock_get_course_by_id.return_value = None
@@ -239,7 +242,7 @@ class TestCourseEndpoints:
 class TestCourseManagementOperations:
     """Test advanced course management functionality."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test client."""
         from src.app import app
 
@@ -251,8 +254,8 @@ class TestCourseManagementOperations:
     @patch("src.api.routes.courses.create_course")
     @patch("src.services.auth_service.has_permission")
     def test_create_course_comprehensive_validation(
-        self, mock_has_permission, mock_create_course
-    ):
+        self, mock_has_permission: Any, mock_create_course: Any
+    ) -> None:
         """Test comprehensive course creation validation."""
         from tests.test_utils import create_test_session
 
@@ -285,7 +288,7 @@ class TestCourseManagementOperations:
         mock_create_course.assert_called_once()
 
     @patch("src.services.auth_service.has_permission")
-    def test_create_course_missing_fields(self, mock_has_permission):
+    def test_create_course_missing_fields(self, mock_has_permission: Any) -> None:
         """Test course creation with missing required fields."""
         from tests.test_utils import create_test_session
 
@@ -311,7 +314,9 @@ class TestCourseManagementOperations:
 
     @patch("src.api.routes.terms.create_term")
     @patch("src.services.auth_service.has_permission")
-    def test_create_term_comprehensive(self, mock_has_permission, mock_create_term):
+    def test_create_term_comprehensive(
+        self, mock_has_permission: Any, mock_create_term: Any
+    ) -> None:
         """Test comprehensive term creation."""
         from tests.test_utils import create_test_session
 
@@ -342,7 +347,9 @@ class TestCourseManagementOperations:
         assert data["term_id"] == "term123"
 
     @patch("src.api.routes.sections.get_sections_by_instructor")
-    def test_get_sections_by_instructor_comprehensive(self, mock_get_sections):
+    def test_get_sections_by_instructor_comprehensive(
+        self, mock_get_sections: Any
+    ) -> None:
         """Test getting sections by instructor comprehensively."""
         from tests.test_utils import create_test_session
 
@@ -377,7 +384,7 @@ class TestCourseManagementOperations:
         mock_get_sections.assert_called_once_with("instructor1")
 
     @patch("src.api.routes.sections.get_sections_by_term")
-    def test_get_sections_by_term_comprehensive(self, mock_get_sections):
+    def test_get_sections_by_term_comprehensive(self, mock_get_sections: Any) -> None:
         """Test getting sections by term comprehensively."""
         from tests.test_utils import create_test_session
 
@@ -403,7 +410,7 @@ class TestCourseManagementOperations:
         assert len(data["sections"]) == 2
         mock_get_sections.assert_called_once_with("term1")
 
-    def test_get_import_progress_comprehensive(self):
+    def test_get_import_progress_comprehensive(self) -> None:
         """Test import progress endpoint comprehensively."""
         # Test with valid progress ID
         response = self.client.get("/api/import/progress/progress123")
@@ -412,7 +419,7 @@ class TestCourseManagementOperations:
         assert response.status_code in [200, 404]  # May not be implemented yet
 
     @patch("src.services.auth_service.has_permission")
-    def test_import_excel_file_validation(self, mock_has_permission):
+    def test_import_excel_file_validation(self, mock_has_permission: Any) -> None:
         """Test Excel import file validation."""
         from tests.test_utils import create_test_session
 
@@ -437,8 +444,8 @@ class TestCourseManagementOperations:
     @patch("src.api.routes.programs.remove_course_from_program")
     @patch("src.services.auth_service.has_permission")
     def test_remove_course_from_program_success(
-        self, mock_has_permission, mock_remove, mock_get_program
-    ):
+        self, mock_has_permission: Any, mock_remove: Any, mock_get_program: Any
+    ) -> None:
         """Test successful course removal from program."""
         from tests.test_utils import create_test_session
 
@@ -470,8 +477,8 @@ class TestCourseManagementOperations:
     @patch("src.api.routes.programs.get_program_by_id")
     @patch("src.services.auth_service.has_permission")
     def test_remove_course_from_program_not_found(
-        self, mock_has_permission, mock_get_program
-    ):
+        self, mock_has_permission: Any, mock_get_program: Any
+    ) -> None:
         """Test course removal when program not found."""
         from tests.test_utils import create_test_session
 
@@ -498,8 +505,8 @@ class TestCourseManagementOperations:
     @patch("src.api.routes.programs.bulk_add_courses_to_program")
     @patch("src.services.auth_service.has_permission")
     def test_bulk_manage_courses_add_action(
-        self, mock_has_permission, mock_bulk_add, mock_get_program
-    ):
+        self, mock_has_permission: Any, mock_bulk_add: Any, mock_get_program: Any
+    ) -> None:
         """Test bulk add courses to program."""
         from tests.test_utils import create_test_session
 
@@ -530,8 +537,8 @@ class TestCourseManagementOperations:
     @patch("src.api.routes.programs.bulk_remove_courses_from_program")
     @patch("src.services.auth_service.has_permission")
     def test_bulk_manage_courses_remove_action(
-        self, mock_has_permission, mock_bulk_remove, mock_get_program
-    ):
+        self, mock_has_permission: Any, mock_bulk_remove: Any, mock_get_program: Any
+    ) -> None:
         """Test bulk remove courses from program."""
         from tests.test_utils import create_test_session
 
@@ -559,7 +566,7 @@ class TestCourseManagementOperations:
         mock_bulk_remove.assert_called_once_with(["c1", "c2"], "prog1")
 
     @patch("src.services.auth_service.has_permission")
-    def test_bulk_manage_courses_invalid_action(self, mock_has_permission):
+    def test_bulk_manage_courses_invalid_action(self, mock_has_permission: Any) -> None:
         """Test bulk manage with invalid action."""
         from tests.test_utils import create_test_session
 
@@ -583,7 +590,9 @@ class TestCourseManagementOperations:
         assert "Invalid or missing action" in data["error"]
 
     @patch("src.services.auth_service.has_permission")
-    def test_bulk_manage_courses_missing_course_ids(self, mock_has_permission):
+    def test_bulk_manage_courses_missing_course_ids(
+        self, mock_has_permission: Any
+    ) -> None:
         """Test bulk manage with missing course_ids."""
         from tests.test_utils import create_test_session
 
@@ -610,7 +619,7 @@ class TestCourseManagementOperations:
 class TestDuplicateCourseEndpoint:
     """Test /api/courses/<course_id>/duplicate endpoint."""
 
-    def get_csrf_token(self, client):
+    def get_csrf_token(self, client: Any) -> Any:
         """Get CSRF token using Flask-WTF's generate_csrf."""
         from flask import session as flask_session
         from flask_wtf.csrf import generate_csrf
@@ -624,7 +633,7 @@ class TestDuplicateCourseEndpoint:
             return generate_csrf()
 
     @pytest.fixture
-    def institution_admin_client(self, client):
+    def institution_admin_client(self, client: Any) -> Any:
         from tests.test_utils import create_test_session
 
         user_data = {
@@ -640,8 +649,8 @@ class TestDuplicateCourseEndpoint:
 
     @patch("src.api.routes.courses.get_course_by_id")
     def test_source_course_missing_returns_404(
-        self, mock_get_course, institution_admin_client
-    ):
+        self, mock_get_course: Any, institution_admin_client: Any
+    ) -> None:
         mock_get_course.return_value = None
         response = institution_admin_client.post(
             "/api/courses/c1/duplicate",
@@ -654,8 +663,8 @@ class TestDuplicateCourseEndpoint:
     @patch("src.api.routes.courses.get_course_by_id")
     @patch("src.api.utils.get_current_user")
     def test_permission_denied_returns_403(
-        self, mock_get_user, mock_get_course, institution_admin_client
-    ):
+        self, mock_get_user: Any, mock_get_course: Any, institution_admin_client: Any
+    ) -> None:
         mock_get_course.return_value = {"course_id": "c1", "institution_id": "inst-999"}
         mock_get_user.return_value = {
             "role": "institution_admin",
@@ -673,8 +682,12 @@ class TestDuplicateCourseEndpoint:
     @patch("src.api.routes.courses.get_course_by_id")
     @patch("src.api.utils.get_current_user")
     def test_duplicate_failure_returns_500(
-        self, mock_get_user, mock_get_course, mock_duplicate, institution_admin_client
-    ):
+        self,
+        mock_get_user: Any,
+        mock_get_course: Any,
+        mock_duplicate: Any,
+        institution_admin_client: Any,
+    ) -> None:
         mock_get_course.return_value = {"course_id": "c1", "institution_id": "inst-123"}
         mock_get_user.return_value = {
             "role": "institution_admin",
@@ -693,8 +706,12 @@ class TestDuplicateCourseEndpoint:
     @patch("src.api.routes.courses.get_course_by_id")
     @patch("src.api.utils.get_current_user")
     def test_duplicate_success_returns_201(
-        self, mock_get_user, mock_get_course, mock_duplicate, institution_admin_client
-    ):
+        self,
+        mock_get_user: Any,
+        mock_get_course: Any,
+        mock_duplicate: Any,
+        institution_admin_client: Any,
+    ) -> None:
         mock_get_user.return_value = {
             "role": "institution_admin",
             "institution_id": "inst-123",

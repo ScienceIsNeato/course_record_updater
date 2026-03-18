@@ -8,6 +8,7 @@ to achieve complete coverage of all code paths.
 import tempfile
 import zipfile
 from pathlib import Path
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -26,8 +27,8 @@ class TestSiteAdminExport:
     @patch("src.api.routes.exports.get_all_institutions")
     @patch("src.api.routes.exports.create_export_service")
     def test_site_admin_export_adapter_not_found(
-        self, mock_create_service, mock_get_institutions, client
-    ):
+        self, mock_create_service: Any, mock_get_institutions: Any, client: Any
+    ) -> None:
         """Test Site Admin export when adapter is not found"""
         # Create site admin session
         with client.session_transaction() as sess:
@@ -66,8 +67,8 @@ class TestSiteAdminExport:
     @patch("src.api.routes.exports.get_all_institutions")
     @patch("src.api.routes.exports.create_export_service")
     def test_site_admin_export_adapter_info_exception(
-        self, mock_create_service, mock_get_institutions, client
-    ):
+        self, mock_create_service: Any, mock_get_institutions: Any, client: Any
+    ) -> None:
         """Test Site Admin export when get_adapter_info raises exception"""
         # Create site admin session
         with client.session_transaction() as sess:
@@ -91,7 +92,7 @@ class TestSiteAdminExport:
         mock_registry = Mock()
         mock_registry.get_adapter_by_id.return_value = mock_adapter
 
-        def mock_export(config, output_path):
+        def mock_export(config: Any, output_path: Any) -> Any:
             # Create fake export file
             with open(output_path, "wb") as f:
                 f.write(b"fake export data")
@@ -118,8 +119,8 @@ class TestSiteAdminExport:
     @patch("src.api.routes.exports.get_all_institutions")
     @patch("src.api.routes.exports.create_export_service")
     def test_site_admin_export_partial_failure(
-        self, mock_create_service, mock_get_institutions, client
-    ):
+        self, mock_create_service: Any, mock_get_institutions: Any, client: Any
+    ) -> None:
         """Test Site Admin export when one institution export fails"""
         # Create site admin session
         with client.session_transaction() as sess:
@@ -150,7 +151,7 @@ class TestSiteAdminExport:
         # Mock export - first succeeds, second fails
         call_count = [0]
 
-        def mock_export(config, output_path):
+        def mock_export(config: Any, output_path: Any) -> Any:
             call_count[0] += 1
             # Create fake export file
             with open(output_path, "wb") as f:
@@ -201,8 +202,8 @@ class TestSiteAdminExport:
     @patch("src.api.routes.exports.get_all_institutions")
     @patch("src.api.routes.exports.create_export_service")
     def test_site_admin_export_default_adapter(
-        self, mock_create_service, mock_get_institutions, client
-    ):
+        self, mock_create_service: Any, mock_get_institutions: Any, client: Any
+    ) -> None:
         """Test Site Admin export uses default adapter when needed"""
         # Create site admin session
         with client.session_transaction() as sess:
@@ -229,7 +230,7 @@ class TestSiteAdminExport:
         mock_registry = Mock()
         mock_registry.get_adapter_by_id.return_value = mock_adapter
 
-        def mock_export(config, output_path):
+        def mock_export(config: Any, output_path: Any) -> Any:
             # Create fake export file
             with open(output_path, "wb") as f:
                 f.write(b"fake export data")
@@ -254,8 +255,8 @@ class TestSiteAdminExport:
     @patch("src.api.routes.exports.get_all_institutions")
     @patch("src.api.routes.exports.create_export_service")
     def test_site_admin_export_general_exception(
-        self, mock_create_service, mock_get_institutions, client
-    ):
+        self, mock_create_service: Any, mock_get_institutions: Any, client: Any
+    ) -> None:
         """Test Site Admin export handles general exceptions gracefully"""
         # Create site admin session
         with client.session_transaction() as sess:

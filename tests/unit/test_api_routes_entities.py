@@ -1,4 +1,5 @@
 import json
+from typing import Any
 from unittest.mock import patch
 
 from src.app import app
@@ -8,7 +9,7 @@ from tests.test_utils import create_test_session
 class TestTermRoutes:
     """Test Term management API routes."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         self.app = app
         self.app.config["TESTING"] = True
         self.app.config["SECRET_KEY"] = "test-secret"
@@ -24,7 +25,7 @@ class TestTermRoutes:
         }
 
     @patch("src.api.routes.terms.get_active_terms")
-    def test_list_terms_success(self, mock_get_terms):
+    def test_list_terms_success(self, mock_get_terms: Any) -> None:
         """Test listing terms for an institution."""
         create_test_session(self.client, self.admin_user)
         mock_get_terms.return_value = [{"term_id": "t1", "name": "Fall 2024"}]
@@ -38,7 +39,7 @@ class TestTermRoutes:
         assert data["terms"][0]["name"] == "Fall 2024"
 
     @patch("src.api.routes.terms.create_term")
-    def test_create_term_success(self, mock_create):
+    def test_create_term_success(self, mock_create: Any) -> None:
         """Test creating a new term."""
         create_test_session(self.client, self.admin_user)
         mock_create.return_value = "term-123"
@@ -58,7 +59,7 @@ class TestTermRoutes:
         assert data["term_id"] == "term-123"
 
     @patch("src.api.routes.terms.get_term_by_id")
-    def test_get_term_success(self, mock_get_term):
+    def test_get_term_success(self, mock_get_term: Any) -> None:
         """Test getting a term by ID."""
         create_test_session(self.client, self.admin_user)
         mock_get_term.return_value = {
@@ -75,7 +76,7 @@ class TestTermRoutes:
         assert data["term"]["name"] == "Fall 2024"
 
     @patch("src.api.routes.terms.get_term_by_id")
-    def test_get_term_not_found_or_access_denied(self, mock_get_term):
+    def test_get_term_not_found_or_access_denied(self, mock_get_term: Any) -> None:
         """Test getting term that doesn't exist or wrong institution."""
         create_test_session(self.client, self.admin_user)
 
@@ -91,7 +92,7 @@ class TestTermRoutes:
 
     @patch("src.api.routes.terms.get_term_by_id")
     @patch("src.api.routes.terms.update_term")
-    def test_update_term_success(self, mock_update, mock_get_term):
+    def test_update_term_success(self, mock_update: Any, mock_get_term: Any) -> None:
         """Test updating a term."""
         create_test_session(self.client, self.admin_user)
         mock_get_term.return_value = {"term_id": "t1", "institution_id": "inst-1"}
@@ -106,7 +107,7 @@ class TestTermRoutes:
 
     @patch("src.api.routes.terms.get_term_by_id")
     @patch("src.api.routes.terms.delete_term")
-    def test_delete_term_success(self, mock_delete, mock_get_term):
+    def test_delete_term_success(self, mock_delete: Any, mock_get_term: Any) -> None:
         """Test deleting a term."""
         create_test_session(self.client, self.admin_user)
         mock_get_term.return_value = {
@@ -125,7 +126,7 @@ class TestTermRoutes:
 class TestProgramRoutes:
     """Test Program management API routes."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         self.app = app
         self.app.config["TESTING"] = True
         self.app.config["SECRET_KEY"] = "test-secret"
@@ -141,7 +142,7 @@ class TestProgramRoutes:
         }
 
     @patch("src.api.routes.programs.get_programs_by_institution")
-    def test_list_programs_success(self, mock_get_programs):
+    def test_list_programs_success(self, mock_get_programs: Any) -> None:
         """Test listing programs."""
         create_test_session(self.client, self.admin_user)
         mock_get_programs.return_value = [
@@ -156,7 +157,7 @@ class TestProgramRoutes:
         assert len(data["programs"]) == 1
 
     @patch("src.api.routes.programs.create_program")
-    def test_create_program_success(self, mock_create):
+    def test_create_program_success(self, mock_create: Any) -> None:
         """Test creating a program."""
         create_test_session(self.client, self.admin_user)
         mock_create.return_value = "prog-123"
@@ -170,11 +171,11 @@ class TestProgramRoutes:
         assert data["program_id"] == "prog-123"
 
     @patch("src.api.routes.programs.get_program_by_id")
-    def test_get_program_success(self, mock_get_program):
+    def test_get_program_success(self, mock_get_program: Any) -> None:
         """Test getting a program."""
-        user = self.admin_user.copy()
-        user["program_ids"] = ["p1"]
-        create_test_session(self.client, user)
+        admin_user: dict[str, Any] = self.admin_user.copy()
+        admin_user["program_ids"] = ["p1"]
+        create_test_session(self.client, admin_user)
         mock_get_program.return_value = {"program_id": "p1", "name": "Physics"}
 
         response = self.client.get("/api/programs/p1")
@@ -184,7 +185,9 @@ class TestProgramRoutes:
 
     @patch("src.api.routes.programs.get_program_by_id")
     @patch("src.api.routes.programs.update_program")
-    def test_update_program_success(self, mock_update, mock_get_program):
+    def test_update_program_success(
+        self, mock_update: Any, mock_get_program: Any
+    ) -> None:
         """Test updating a program."""
         create_test_session(self.client, self.admin_user)
         mock_get_program.return_value = {"program_id": "p1"}
@@ -201,8 +204,8 @@ class TestProgramRoutes:
     @patch("src.api.routes.programs.delete_program")
     @patch("src.api.routes.programs.get_programs_by_institution")
     def test_delete_program_success(
-        self, mock_get_programs, mock_delete, mock_get_prog
-    ):
+        self, mock_get_programs: Any, mock_delete: Any, mock_get_prog: Any
+    ) -> None:
         """Test deleting a program."""
         create_test_session(self.client, self.admin_user)
 

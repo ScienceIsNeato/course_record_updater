@@ -37,16 +37,22 @@ stop_test_server() {
 
 trap stop_test_server EXIT
 
-if [[ -z "${VIRTUAL_ENV:-}" ]]; then
-  echo -e "${YELLOW}⚠️  Virtual environment not active, activating...${NC}"
-  if [[ -f "venv/bin/activate" ]]; then
-    # shellcheck disable=SC1091
-    source venv/bin/activate
-  else
-    echo -e "${RED}❌ Virtual environment not found at venv/bin/activate${NC}"
-    exit 1
-  fi
+EXPECTED_VENV="${PROJECT_ROOT}/venv"
+EXPECTED_PYTHON="${EXPECTED_VENV}/bin/python"
+
+if [[ ! -x "${EXPECTED_PYTHON}" ]]; then
+  echo -e "${RED}❌ Virtual environment not found at ${EXPECTED_PYTHON}${NC}"
+  exit 1
 fi
+
+if [[ "${VIRTUAL_ENV:-}" != "${EXPECTED_VENV}" ]] || [[ "$(command -v python 2>/dev/null || true)" != "${EXPECTED_PYTHON}" ]]; then
+  echo -e "${YELLOW}⚠️  Activating repository virtual environment...${NC}"
+  # shellcheck disable=SC1091
+  source "${EXPECTED_VENV}/bin/activate"
+fi
+
+export PATH="${EXPECTED_VENV}/bin:${PATH}"
+hash -r
 
 if [[ -f ".envrc" ]]; then
   # shellcheck disable=SC1091

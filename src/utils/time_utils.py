@@ -5,6 +5,7 @@ This allows admins to "time travel" for demos and testing.
 """
 
 from datetime import datetime, timezone
+from typing import Any, cast
 
 from flask import g
 
@@ -23,22 +24,24 @@ def get_current_time() -> datetime:
     # Check if we have a logged-in user with an override
     try:
         # 1. Check direct global override (set by middleware or tests)
-        if hasattr(g, "system_date_override") and g.system_date_override:
-            return g.system_date_override
+        override_obj: object | None = getattr(g, "system_date_override", None)
+        if isinstance(override_obj, datetime):
+            return override_obj
 
         # 2. Check logged-in user (fallback to support legacy object access or direct dict access)
         current_user = getattr(g, "current_user", None)
         if current_user is not None:
             # Handle object-style access
-            override = getattr(current_user, "system_date_override", None)
-            if override:
-                return override
+            override_obj = getattr(current_user, "system_date_override", None)
+            if isinstance(override_obj, datetime):
+                return override_obj
 
             # Handle dict-style access (production auth_service returns dict)
             if isinstance(current_user, dict):
-                override = current_user.get("system_date_override")
-                if override:
-                    return override
+                user_data = cast(dict[str, Any], current_user)
+                override_value: Any = user_data.get("system_date_override")
+                if isinstance(override_value, datetime):
+                    return override_value
     except RuntimeError:
         # Outside of request context - use real time
         pass

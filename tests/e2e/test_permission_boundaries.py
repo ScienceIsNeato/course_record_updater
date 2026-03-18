@@ -36,7 +36,7 @@ class TestPermissionBoundaries:
         self,
         program_admin_authenticated_page: Page,
         authenticated_institution_admin_page: Page,
-    ):
+    ) -> None:
         """
         STEP 1: Setup - Create multi-program environment
         STEP 2: CS Program Admin - Sees only CS instructors

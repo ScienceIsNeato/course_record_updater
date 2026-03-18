@@ -4,7 +4,9 @@ Unit tests for Session Management Service
 Tests secure session creation, validation, timeout, and security features.
 """
 
+from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -23,7 +25,7 @@ from data.session import (
 
 
 @pytest.fixture
-def app():
+def app() -> Any:
     """Create Flask app for testing"""
     app = Flask(__name__)
     app.config["SECRET_KEY"] = "test-secret-key"
@@ -36,27 +38,27 @@ def app():
 
 
 @pytest.fixture
-def client(app):
+def client(app: Any) -> Any:
     """Create test client"""
     return app.test_client()
 
 
 @pytest.fixture
-def app_context(app):
+def app_context(app: Any) -> Generator[Any, None, None]:
     """Create app context for testing"""
     with app.app_context():
         yield app
 
 
 @pytest.fixture
-def request_context(app):
+def request_context(app: Any) -> Generator[None, None, None]:
     """Create request context for testing"""
     with app.test_request_context():
         yield
 
 
 @pytest.fixture
-def sample_user_data():
+def sample_user_data() -> Any:
     """Sample user data for testing"""
     return {
         "user_id": "user123",
@@ -73,7 +75,7 @@ def sample_user_data():
 class TestSessionConfiguration:
     """Test session configuration and setup"""
 
-    def test_configure_app_sets_correct_config(self, app):
+    def test_configure_app_sets_correct_config(self, app: Any) -> None:
         """Test that app configuration is set correctly"""
         assert app.config["SESSION_TYPE"] == "filesystem"
         assert app.config["SESSION_PERMANENT"] is False
@@ -83,7 +85,7 @@ class TestSessionConfiguration:
         assert app.config["SESSION_COOKIE_SAMESITE"] == "Lax"
         assert app.config["SESSION_COOKIE_NAME"] == "course_session"
 
-    def test_configure_app_sets_session_lifetime(self, app):
+    def test_configure_app_sets_session_lifetime(self, app: Any) -> None:
         """Test that session lifetime is configured correctly"""
         expected_lifetime = timedelta(hours=8)
         assert app.config["PERMANENT_SESSION_LIFETIME"] == expected_lifetime
@@ -92,7 +94,9 @@ class TestSessionConfiguration:
 class TestSessionCreation:
     """Test session creation functionality"""
 
-    def test_create_user_session_basic(self, request_context, sample_user_data):
+    def test_create_user_session_basic(
+        self, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test basic user session creation"""
         create_user_session(sample_user_data)
 
@@ -107,15 +111,17 @@ class TestSessionCreation:
         assert current_user["display_name"] == "John Doe"
 
     def test_create_user_session_with_remember_me(
-        self, request_context, sample_user_data
-    ):
+        self, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test session creation with remember me enabled"""
         create_user_session(sample_user_data, remember_me=True)
 
         current_user = get_current_user()
         assert current_user["remember_me"] is True
 
-    def test_create_user_session_without_display_name(self, request_context):
+    def test_create_user_session_without_display_name(
+        self, request_context: Any
+    ) -> None:
         """Test session creation without explicit display name"""
         user_data = {
             "user_id": "user123",
@@ -132,8 +138,8 @@ class TestSessionCreation:
         assert current_user["display_name"] == "Jane Smith"
 
     def test_create_user_session_generates_csrf_token(
-        self, request_context, sample_user_data
-    ):
+        self, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test that CSRF token is generated"""
         create_user_session(sample_user_data)
 
@@ -144,8 +150,12 @@ class TestSessionCreation:
     @patch("data.session.security.SessionSecurity.get_client_ip")
     @patch("data.session.security.SessionSecurity.hash_user_agent")
     def test_create_user_session_stores_security_data(
-        self, mock_hash_ua, mock_get_ip, request_context, sample_user_data
-    ):
+        self,
+        mock_hash_ua: Any,
+        mock_get_ip: Any,
+        request_context: Any,
+        sample_user_data: Any,
+    ) -> None:
         """Test that security data is stored in session"""
         mock_get_ip.return_value = "192.168.1.1"
         mock_hash_ua.return_value = "hash123"
@@ -158,8 +168,8 @@ class TestSessionCreation:
         assert session["user_agent_hash"] == "hash123"
 
     def test_create_user_session_regenerates_session_id(
-        self, request_context, sample_user_data
-    ):
+        self, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test that session ID is regenerated for security"""
 
         # Create a mock session with regenerate method
@@ -176,20 +186,22 @@ class TestSessionCreation:
 class TestSessionValidation:
     """Test session validation functionality"""
 
-    def test_validate_session_when_logged_in(self, request_context, sample_user_data):
+    def test_validate_session_when_logged_in(
+        self, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test session validation for logged in user"""
         create_user_session(sample_user_data)
 
         assert validate_session() is True
 
-    def test_validate_session_when_not_logged_in(self, request_context):
+    def test_validate_session_when_not_logged_in(self, request_context: Any) -> None:
         """Test session validation when not logged in"""
         assert validate_session() is False
 
     @patch("data.session.security.SessionSecurity.is_session_expired")
     def test_validate_session_when_expired(
-        self, mock_is_expired, request_context, sample_user_data
-    ):
+        self, mock_is_expired: Any, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test session validation when session is expired"""
         create_user_session(sample_user_data)
         mock_is_expired.return_value = True
@@ -199,8 +211,8 @@ class TestSessionValidation:
 
     @patch("data.session.security.SessionSecurity.validate_ip_consistency")
     def test_validate_session_ip_mismatch(
-        self, mock_validate_ip, request_context, sample_user_data
-    ):
+        self, mock_validate_ip: Any, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test session validation with IP address mismatch"""
         create_user_session(sample_user_data)
         mock_validate_ip.return_value = False
@@ -210,8 +222,8 @@ class TestSessionValidation:
 
     @patch("data.session.security.SessionSecurity.validate_user_agent_consistency")
     def test_validate_session_user_agent_mismatch(
-        self, mock_validate_ua, request_context, sample_user_data
-    ):
+        self, mock_validate_ua: Any, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test session validation with user agent mismatch"""
         create_user_session(sample_user_data)
         mock_validate_ua.return_value = False
@@ -223,7 +235,9 @@ class TestSessionValidation:
 class TestSessionTimeout:
     """Test session timeout functionality"""
 
-    def test_session_expiry_regular_session(self, request_context, sample_user_data):
+    def test_session_expiry_regular_session(
+        self, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test session expiry for regular session"""
         create_user_session(sample_user_data)
 
@@ -238,8 +252,8 @@ class TestSessionTimeout:
         assert SessionSecurity.is_session_expired() is True
 
     def test_session_expiry_remember_me_session(
-        self, request_context, sample_user_data
-    ):
+        self, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test session expiry for remember me session"""
         create_user_session(sample_user_data, remember_me=True)
 
@@ -261,7 +275,9 @@ class TestSessionTimeout:
 
         assert SessionSecurity.is_session_expired() is True
 
-    def test_session_expiry_invalid_timestamp(self, request_context, sample_user_data):
+    def test_session_expiry_invalid_timestamp(
+        self, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test session expiry with invalid timestamp"""
         create_user_session(sample_user_data)
 
@@ -277,7 +293,9 @@ class TestSessionTimeout:
 class TestCSRFProtection:
     """Test CSRF token functionality"""
 
-    def test_csrf_token_generation(self, request_context, sample_user_data):
+    def test_csrf_token_generation(
+        self, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test CSRF token generation"""
         create_user_session(sample_user_data)
 
@@ -285,26 +303,32 @@ class TestCSRFProtection:
         assert token is not None
         assert len(token) > 20  # Should be a reasonable length
 
-    def test_csrf_token_validation_valid(self, request_context, sample_user_data):
+    def test_csrf_token_validation_valid(
+        self, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test CSRF token validation with valid token"""
         create_user_session(sample_user_data)
 
         token = get_csrf_token()
         assert validate_csrf_token(token) is True
 
-    def test_csrf_token_validation_invalid(self, request_context, sample_user_data):
+    def test_csrf_token_validation_invalid(
+        self, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test CSRF token validation with invalid token"""
         create_user_session(sample_user_data)
 
         invalid_token = "invalid-token"
         assert validate_csrf_token(invalid_token) is False
 
-    def test_csrf_token_validation_no_session(self, request_context):
+    def test_csrf_token_validation_no_session(self, request_context: Any) -> None:
         """Test CSRF token validation without session"""
         token = "some-token"
         assert validate_csrf_token(token) is False
 
-    def test_csrf_token_validation_empty_token(self, request_context, sample_user_data):
+    def test_csrf_token_validation_empty_token(
+        self, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test CSRF token validation with empty token"""
         create_user_session(sample_user_data)
 
@@ -315,7 +339,9 @@ class TestCSRFProtection:
 class TestSessionDestruction:
     """Test session destruction functionality"""
 
-    def test_destroy_session_clears_data(self, request_context, sample_user_data):
+    def test_destroy_session_clears_data(
+        self, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test that session destruction clears all data"""
         create_user_session(sample_user_data)
 
@@ -327,7 +353,7 @@ class TestSessionDestruction:
         assert get_current_user() is None
         assert get_csrf_token() is None
 
-    def test_destroy_session_when_not_logged_in(self, request_context):
+    def test_destroy_session_when_not_logged_in(self, request_context: Any) -> None:
         """Test destroying session when not logged in"""
         # Should not raise exception
         destroy_session()
@@ -338,7 +364,9 @@ class TestSessionDestruction:
 class TestSessionInfo:
     """Test session information functionality"""
 
-    def test_get_session_info_when_logged_in(self, request_context, sample_user_data):
+    def test_get_session_info_when_logged_in(
+        self, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test getting session info when logged in"""
         create_user_session(sample_user_data)
 
@@ -352,14 +380,16 @@ class TestSessionInfo:
         assert "last_activity" in info
         assert info["remember_me"] is False
 
-    def test_get_session_info_when_not_logged_in(self, request_context):
+    def test_get_session_info_when_not_logged_in(self, request_context: Any) -> None:
         """Test getting session info when not logged in"""
         info = SessionService.get_session_info()
 
         assert info["logged_in"] is False
         assert len(info) == 1  # Only logged_in field
 
-    def test_get_session_info_with_remember_me(self, request_context, sample_user_data):
+    def test_get_session_info_with_remember_me(
+        self, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test getting session info with remember me enabled"""
         create_user_session(sample_user_data, remember_me=True)
 
@@ -373,8 +403,8 @@ class TestSessionRefresh:
 
     @patch("data.session.security.datetime")
     def test_refresh_session_updates_activity(
-        self, mock_datetime, request_context, sample_user_data
-    ):
+        self, mock_datetime: Any, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test that session refresh updates last activity"""
         # Set initial time
         initial_time = datetime.now(timezone.utc)
@@ -395,7 +425,7 @@ class TestSessionRefresh:
 
         assert updated_activity != initial_activity
 
-    def test_refresh_session_when_not_logged_in(self, request_context):
+    def test_refresh_session_when_not_logged_in(self, request_context: Any) -> None:
         """Test refreshing session when not logged in"""
         assert is_user_logged_in() is False
         assert get_current_user() is None
@@ -407,7 +437,7 @@ class TestSessionRefresh:
 class TestSecurityHelpers:
     """Test security helper functions"""
 
-    def test_get_client_ip_direct(self, request_context):
+    def test_get_client_ip_direct(self, request_context: Any) -> None:
         """Test getting client IP from direct connection"""
         with patch("data.session.security.request") as mock_request:
             # Create a proper mock for headers
@@ -421,7 +451,7 @@ class TestSecurityHelpers:
             ip = SessionSecurity.get_client_ip()
             assert ip == "192.168.1.1"
 
-    def test_get_client_ip_forwarded(self, request_context):
+    def test_get_client_ip_forwarded(self, request_context: Any) -> None:
         """Test getting client IP from forwarded header"""
         with patch("data.session.security.request") as mock_request:
             # Create a proper mock for headers
@@ -440,7 +470,7 @@ class TestSecurityHelpers:
             ip = SessionSecurity.get_client_ip()
             assert ip == "10.0.0.1"
 
-    def test_hash_user_agent(self, request_context):
+    def test_hash_user_agent(self, request_context: Any) -> None:
         """Test user agent hashing"""
         with patch("data.session.security.request") as mock_request:
             mock_request.headers = {"User-Agent": "Mozilla/5.0 Test Browser"}
@@ -457,7 +487,9 @@ class TestSecurityHelpers:
 class TestConvenienceFunctions:
     """Test convenience functions"""
 
-    def test_convenience_functions_work(self, request_context, sample_user_data):
+    def test_convenience_functions_work(
+        self, request_context: Any, sample_user_data: Any
+    ) -> None:
         """Test that all convenience functions work correctly"""
         # Test session creation
         create_user_session(sample_user_data)

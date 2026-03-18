@@ -1,15 +1,14 @@
 import time
+from typing import Any
 
 import pytest
 from playwright.sync_api import Page, expect
 
-from src.utils.constants import E2E_TEST_PORT
-
-BASE_URL = f"http://localhost:{E2E_TEST_PORT}"
+from tests.e2e.conftest import BASE_URL
 
 
 @pytest.fixture
-def test_course_data(authenticated_program_admin_page: Page):
+def test_course_data(authenticated_program_admin_page: Page) -> Any:
     """
     Creates a unique course for testing offering creation.
     Returns dict with course details.
@@ -51,8 +50,8 @@ def test_course_data(authenticated_program_admin_page: Page):
 
 @pytest.mark.e2e
 def test_create_offering_with_dynamic_sections(
-    authenticated_program_admin_page: Page, test_course_data
-):
+    authenticated_program_admin_page: Page, test_course_data: Any
+) -> None:
     """
     TDD Test for "Zoology Department Expansion" and Course Offering UX.
     """

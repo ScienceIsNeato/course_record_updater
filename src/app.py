@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
-from typing import Any, Optional, Union
+from typing import Any, Callable, Optional, Union, cast
 
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 from flask_wtf.csrf import CSRFProtect
@@ -86,9 +86,14 @@ def handle_csrf_error(e: CSRFError) -> tuple[Any, int]:
 # Make CSRF token available in templates
 @app.context_processor
 def inject_csrf_token() -> dict[str, Any]:
-    from flask_wtf.csrf import generate_csrf
+    import flask_wtf.csrf as flask_wtf_csrf
 
-    return dict(csrf_token=generate_csrf)
+    generate_csrf_fn = cast(Callable[[], str], getattr(flask_wtf_csrf, "generate_csrf"))
+
+    def csrf_token_factory() -> str:
+        return str(generate_csrf_fn())
+
+    return {"csrf_token": csrf_token_factory}
 
 
 @app.context_processor
@@ -438,7 +443,7 @@ def _find_matching_term(
 ) -> Optional[str]:
     """Find term where effective_date falls within start/end dates OR the most recent started term."""
     # 1. First pass: Check for strictly active term (current date within start-end)
-    started_terms = []
+    started_terms: list[tuple[datetime, dict[str, Any]]] = []
 
     for term in terms:
         start_date = term.get("start_date")
@@ -463,7 +468,7 @@ def _find_matching_term(
     # should effectively remain active until Spring starts.
     if started_terms:
         # Sort by start date descending (newest first)
-        started_terms.sort(key=lambda x: x[0], reverse=True)
+        started_terms.sort(key=lambda term_entry: term_entry[0], reverse=True)
         most_recent_term = started_terms[0][1]
         return (
             most_recent_term.get("name")
@@ -563,7 +568,7 @@ def dashboard() -> Union[str, Response]:
 
     role = user["role"]
     header_context = get_header_context(user)
-    template_kwargs = {
+    template_kwargs: dict[str, Any] = {
         "user": user,
         "header_context": header_context,
         "DATE_OVERRIDE_BANNER_PREFIX": DATE_OVERRIDE_BANNER_PREFIX,

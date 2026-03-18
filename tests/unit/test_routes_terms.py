@@ -1,6 +1,7 @@
 """Unit tests for term API routes (migrated from test_api_routes.py)."""
 
 import json
+from typing import Any
 from unittest.mock import patch
 
 from src.app import app
@@ -9,7 +10,7 @@ from src.app import app
 class TestTermEndpoints:
     """Test term management endpoints."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.app = app
         self.app.config["TESTING"] = True
@@ -22,7 +23,7 @@ class TestTermEndpoints:
             "institution_id": "riverside-tech-institute",
         }
 
-    def _login_user(self, overrides=None):
+    def _login_user(self, overrides: Any = None) -> Any:
         from tests.test_utils import create_test_session
 
         user_data = {**self.site_admin_user}
@@ -33,7 +34,9 @@ class TestTermEndpoints:
 
     @patch("src.api.utils.get_current_institution_id")
     @patch("src.api.routes.terms.get_active_terms")
-    def test_get_terms_success(self, mock_get_terms, mock_get_current_institution_id):
+    def test_get_terms_success(
+        self, mock_get_terms: Any, mock_get_current_institution_id: Any
+    ) -> None:
         """Test GET /api/terms."""
         self._login_user()
 
@@ -59,7 +62,7 @@ class TestTermEndpoints:
         assert "terms" in data
         assert len(data["terms"]) == 2
 
-    def test_create_term_endpoint_exists(self):
+    def test_create_term_endpoint_exists(self) -> None:
         """Test that POST /api/terms endpoint exists."""
         self._login_user()
 

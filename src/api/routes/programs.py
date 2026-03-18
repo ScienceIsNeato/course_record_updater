@@ -1,6 +1,6 @@
 """Programs API routes for CRUD and course-program association management."""
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
@@ -41,6 +41,16 @@ programs_bp = Blueprint("programs", __name__, url_prefix="/api")
 logger = get_logger(__name__)
 
 
+def _get_request_json() -> Dict[str, Any]:
+    """Return a typed JSON object body or an empty dict."""
+    payload = request.get_json(silent=True)
+    return (
+        cast(Dict[str, Any], payload)
+        if isinstance(payload, dict)
+        else cast(Dict[str, Any], {})
+    )
+
+
 @programs_bp.route("/programs", methods=["GET"])
 @permission_required("view_program_data")
 def list_programs() -> ResponseReturnValue:
@@ -73,7 +83,7 @@ def list_programs() -> ResponseReturnValue:
 def create_program_api() -> ResponseReturnValue:
     """Create a new program."""
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -115,14 +125,30 @@ def create_program_api() -> ResponseReturnValue:
         if not user_id:
             return jsonify({"success": False, "error": "Authentication required"}), 401
 
+        name = str(data.get("name", "")).strip()
+        short_name = str(data.get("short_name", "")).strip()
+        description = data.get("description")
+        is_default = bool(data.get("is_default", False))
+        raw_program_admins = data.get("program_admins")
+        program_admin_values: List[Any] = (
+            cast(List[Any], raw_program_admins)
+            if isinstance(raw_program_admins, list)
+            else []
+        )
+        program_admins = [
+            str(admin_id_value)
+            for admin_id_value in program_admin_values
+            if admin_id_value
+        ]
+
         program_data = Program.create_schema(
-            name=data["name"],
-            short_name=data["short_name"],
+            name=name,
+            short_name=short_name,
             institution_id=institution_id,
             created_by=user_id,
-            description=data.get("description"),
-            is_default=data.get("is_default", False),
-            program_admins=data.get("program_admins", []),
+            description=str(description) if description else None,
+            is_default=is_default,
+            program_admins=program_admins,
         )
 
         program_id = create_program(program_data)
@@ -166,7 +192,7 @@ def get_program(program_id: str) -> ResponseReturnValue:
 def update_program_api(program_id: str) -> ResponseReturnValue:
     """Update an existing program."""
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -200,6 +226,7 @@ def delete_program_api(program_id: str) -> ResponseReturnValue:
                 400,
             )
 
+        courses_for_program: List[Dict[str, Any]]
         try:
             courses_for_program = get_courses_by_program(program_id)  # type: ignore[name-defined]
         except Exception:
@@ -304,11 +331,11 @@ def get_program_courses(program_id: str) -> ResponseReturnValue:
 def add_course_to_program_api(program_id: str) -> ResponseReturnValue:
     """Add a course to a program."""
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
-        course_id = data.get("course_id")
+        course_id = str(data.get("course_id", "")).strip()
         if not course_id:
             return (
                 jsonify(
@@ -430,9 +457,17 @@ def bulk_manage_program_courses(program_id: str) -> ResponseReturnValue:
         if validation_response:
             return validation_response
 
-        data = request.get_json(silent=True) or {}
-        action = data.get("action")
-        course_ids = data.get("course_ids", [])
+        data = _get_request_json()
+        action = str(data.get("action", "")).strip()
+        raw_course_ids = data.get("course_ids")
+        course_id_values: List[Any] = (
+            cast(List[Any], raw_course_ids) if isinstance(raw_course_ids, list) else []
+        )
+        course_ids = [
+            str(course_id_value)
+            for course_id_value in course_id_values
+            if course_id_value
+        ]
 
         program = get_program_by_id(program_id)
         if not program:
@@ -453,11 +488,11 @@ def bulk_manage_program_courses(program_id: str) -> ResponseReturnValue:
 
 def _validate_bulk_manage_request() -> Optional[ResponseReturnValue]:
     """Validate bulk manage request data and return error response if invalid."""
-    data = request.get_json(silent=True) or {}
+    data = _get_request_json()
     if not data:
         return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
-    action = data.get("action")
-    course_ids = data.get("course_ids", [])
+    action = str(data.get("action", "")).strip()
+    course_ids = data.get("course_ids")
     if not action or action not in ["add", "remove"]:
         return (
             jsonify(
@@ -476,7 +511,9 @@ def _validate_bulk_manage_request() -> Optional[ResponseReturnValue]:
     return None
 
 
-def _execute_bulk_add(course_ids: list, program_id: str) -> Tuple[Dict[str, Any], str]:
+def _execute_bulk_add(
+    course_ids: list[str], program_id: str
+) -> Tuple[Dict[str, Any], str]:
     """Execute bulk add operation."""
     result = bulk_add_courses_to_program(course_ids, program_id)
     message = f"Bulk add operation completed: {result['success_count']} added"
@@ -484,7 +521,7 @@ def _execute_bulk_add(course_ids: list, program_id: str) -> Tuple[Dict[str, Any]
 
 
 def _execute_bulk_remove(
-    course_ids: list, program_id: str
+    course_ids: list[str], program_id: str
 ) -> Tuple[Dict[str, Any], str]:
     """Execute bulk remove operation with orphan handling."""
     institution_id = get_current_institution_id_safe()
@@ -506,8 +543,18 @@ def get_course_programs(course_id: str) -> ResponseReturnValue:
         if not course:
             return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
 
-        program_ids = course.get("program_ids", [])
-        programs = []
+        raw_program_ids = course.get("program_ids")
+        program_id_values: List[Any] = (
+            cast(List[Any], raw_program_ids)
+            if isinstance(raw_program_ids, list)
+            else []
+        )
+        program_ids = [
+            str(program_id_value)
+            for program_id_value in program_id_values
+            if program_id_value
+        ]
+        programs: List[Dict[str, Any]] = []
         for program_id in program_ids:
             program = get_program_by_id(program_id)
             if program:

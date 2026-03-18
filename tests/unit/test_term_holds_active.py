@@ -25,7 +25,7 @@ from src.utils.term_utils import (
 class TestTermStatusHoldsActive:
     """Tests for the 'holds active until successor starts' behavior."""
 
-    def test_term_stays_active_after_end_date_when_no_successor_started(self):
+    def test_term_stays_active_after_end_date_when_no_successor_started(self) -> None:
         """
         Fall 2025 ends Dec 14, 2025. On Dec 23, 2025, it should still be ACTIVE
         because Spring 2026 (the next term) hasn't started yet.
@@ -50,7 +50,7 @@ class TestTermStatusHoldsActive:
         assert statuses["fall-2025"] == TERM_STATUS_ACTIVE
         assert statuses["spring-2026"] == TERM_STATUS_SCHEDULED
 
-    def test_term_becomes_passed_when_successor_starts(self):
+    def test_term_becomes_passed_when_successor_starts(self) -> None:
         """
         Fall 2025 ends Dec 14, 2025. On Jan 15, 2026 (after Spring 2026 starts),
         Fall 2025 should be PASSED and Spring 2026 should be ACTIVE.
@@ -75,7 +75,7 @@ class TestTermStatusHoldsActive:
         assert statuses["fall-2025"] == TERM_STATUS_PASSED
         assert statuses["spring-2026"] == TERM_STATUS_ACTIVE
 
-    def test_older_term_is_passed_when_newer_term_has_started(self):
+    def test_older_term_is_passed_when_newer_term_has_started(self) -> None:
         """
         Spring 2025 should be PASSED on Dec 23, 2025 because Fall 2025 already started.
         """
@@ -99,7 +99,7 @@ class TestTermStatusHoldsActive:
         assert statuses["spring-2025"] == TERM_STATUS_PASSED
         assert statuses["fall-2025"] == TERM_STATUS_ACTIVE
 
-    def test_multiple_past_terms_only_most_recent_is_active(self):
+    def test_multiple_past_terms_only_most_recent_is_active(self) -> None:
         """
         With multiple past terms, only the most recently ended (without successor)
         should be ACTIVE.
@@ -138,7 +138,7 @@ class TestTermStatusHoldsActive:
         )  # Most recent, no successor started
         assert statuses["spring-2026"] == TERM_STATUS_SCHEDULED
 
-    def test_term_within_dates_is_always_active(self):
+    def test_term_within_dates_is_always_active(self) -> None:
         """
         A term is ACTIVE if the reference date is within its start/end dates,
         regardless of other terms.
@@ -157,7 +157,7 @@ class TestTermStatusHoldsActive:
 
         assert statuses["fall-2025"] == TERM_STATUS_ACTIVE
 
-    def test_future_term_is_scheduled(self):
+    def test_future_term_is_scheduled(self) -> None:
         """A term that hasn't started yet is SCHEDULED."""
         reference_date = date(2025, 12, 23)
 
@@ -173,7 +173,7 @@ class TestTermStatusHoldsActive:
 
         assert statuses["spring-2026"] == TERM_STATUS_SCHEDULED
 
-    def test_single_term_status_with_context(self):
+    def test_single_term_status_with_context(self) -> None:
         """Test getting a single term's status with context of all terms."""
         reference_date = date(2025, 12, 23)
 
@@ -200,7 +200,7 @@ class TestTermStatusHoldsActive:
 
         assert status == TERM_STATUS_ACTIVE
 
-    def test_overlapping_terms_both_active(self):
+    def test_overlapping_terms_both_active(self) -> None:
         """
         If two terms overlap (e.g., short session within a semester),
         both can be ACTIVE at the same time.
@@ -225,7 +225,7 @@ class TestTermStatusHoldsActive:
         assert statuses["fall-2025"] == TERM_STATUS_ACTIVE
         assert statuses["fall-2025-short"] == TERM_STATUS_ACTIVE
 
-    def test_handles_missing_dates_gracefully(self):
+    def test_handles_missing_dates_gracefully(self) -> None:
         """Terms with missing dates should have UNKNOWN status handled appropriately."""
         reference_date = date(2025, 12, 23)
 
@@ -245,7 +245,7 @@ class TestTermStatusHoldsActive:
         # Missing dates term gets UNKNOWN
         assert statuses["missing-dates"] == "UNKNOWN"
 
-    def test_uses_get_current_time_when_no_reference_date(self):
+    def test_uses_get_current_time_when_no_reference_date(self) -> None:
         """When no reference date is provided, should use get_current_time()."""
         terms = [
             {

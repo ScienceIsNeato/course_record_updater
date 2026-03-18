@@ -6,7 +6,7 @@ listing, creating, updating, and deleting terms.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
@@ -39,6 +39,12 @@ terms_bp = Blueprint("terms", __name__, url_prefix="/api")
 
 # Initialize logger
 logger = get_logger(__name__)
+
+
+def _get_request_json() -> Dict[str, Any]:
+    """Return a typed JSON object body or an empty dict."""
+    payload = request.get_json(silent=True)
+    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
 
 
 def _strip_term_status_fields(payload: Dict[str, Any]) -> None:
@@ -95,7 +101,7 @@ def create_term_api() -> ResponseReturnValue:
     - assessment_due_date: Assessment due date (YYYY-MM-DD)
     """
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
@@ -124,14 +130,15 @@ def create_term_api() -> ResponseReturnValue:
             )
 
         # Map conventional 'name' to legacy 'term_name' for storage compatibility
-        if data.get("name") and not data.get("term_name"):
-            data["term_name"] = data["name"]
+        term_payload = dict(data)
+        if term_payload.get("name") and not term_payload.get("term_name"):
+            term_payload["term_name"] = term_payload["name"]
 
         # Attach institution_id to payload
-        data["institution_id"] = institution_id
-        _strip_term_status_fields(data)
+        term_payload["institution_id"] = institution_id
+        _strip_term_status_fields(term_payload)
 
-        term_id = create_term(data)
+        term_id = create_term(term_payload)
 
         if term_id:
             return (
@@ -181,7 +188,7 @@ def update_term_endpoint(term_id: str) -> ResponseReturnValue:
     Allows updating name, dates, active status, etc.
     """
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -195,11 +202,14 @@ def update_term_endpoint(term_id: str) -> ResponseReturnValue:
         if term.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
 
+        update_payload = dict(data)
+
         # Validate assessment_due_date format if present
-        if data.get("assessment_due_date"):
+        assessment_due_date = update_payload.get("assessment_due_date")
+        if assessment_due_date:
             try:
                 # Simple format check YYYY-MM-DD
-                datetime.strptime(data["assessment_due_date"], "%Y-%m-%d")
+                datetime.strptime(str(assessment_due_date), "%Y-%m-%d")
             except ValueError:
                 return (
                     jsonify(
@@ -210,9 +220,8 @@ def update_term_endpoint(term_id: str) -> ResponseReturnValue:
                     ),
                     400,
                 )
-
-        _strip_term_status_fields(data)
-        success = update_term(term_id, data)
+        _strip_term_status_fields(update_payload)
+        success: bool = update_term(term_id, update_payload)
 
         if success:
             # Fetch updated term

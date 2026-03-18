@@ -23,7 +23,7 @@ from tests.e2e.conftest import BASE_URL
 
 
 @pytest.mark.e2e
-def test_tc_crud_pa_001_create_course(program_admin_authenticated_page: Page):
+def test_tc_crud_pa_001_create_course(program_admin_authenticated_page: Page) -> None:
     """
     TC-CRUD-PA-001: Program Admin creates new course via UI
 
@@ -84,7 +84,7 @@ def test_tc_crud_pa_001_create_course(program_admin_authenticated_page: Page):
 @pytest.mark.e2e
 def test_tc_crud_pa_002_update_section_instructor(
     program_admin_authenticated_page: Page,
-):
+) -> None:
     """
     TC-CRUD-PA-002: Program Admin reassigns instructor to section via UI
 
@@ -146,7 +146,9 @@ def test_tc_crud_pa_002_update_section_instructor(
 
 
 @pytest.mark.e2e
-def test_tc_crud_pa_004_manage_program_courses(program_admin_authenticated_page: Page):
+def test_tc_crud_pa_004_manage_program_courses(
+    program_admin_authenticated_page: Page,
+) -> None:
     """
     TC-CRUD-PA-004: Program Admin can update courses in their programs via UI
 
@@ -266,7 +268,7 @@ def test_tc_crud_pa_004_manage_program_courses(program_admin_authenticated_page:
 
 
 @pytest.mark.e2e
-def test_tc_crud_pa_005_create_sections(program_admin_authenticated_page: Page):
+def test_tc_crud_pa_005_create_sections(program_admin_authenticated_page: Page) -> None:
     """
     TC-CRUD-PA-005: Program Admin creates course sections via UI
 
@@ -322,7 +324,7 @@ def test_tc_crud_pa_005_create_sections(program_admin_authenticated_page: Page):
 @pytest.mark.e2e
 def test_tc_crud_pa_006_cannot_access_other_programs(
     program_admin_authenticated_page: Page,
-):
+) -> None:
     """
     TC-CRUD-PA-006: Program Admin can only see courses in their assigned programs
 

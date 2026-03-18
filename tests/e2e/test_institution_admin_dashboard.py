@@ -8,6 +8,8 @@ panel filtering, and institution-wide functionality.
 import pytest
 from playwright.sync_api import Page, expect
 
+from tests.e2e.conftest import BASE_URL
+
 
 @pytest.mark.e2e
 class TestInstitutionAdminDashboardWorkflow:
@@ -15,9 +17,9 @@ class TestInstitutionAdminDashboardWorkflow:
 
     def test_logo_link_navigates_to_dashboard(
         self, authenticated_institution_admin_page: Page
-    ):
+    ) -> None:
         page = authenticated_institution_admin_page
-        page.goto("http://localhost:3002/dashboard")
+        page.goto(f"{BASE_URL}/dashboard")
         page.wait_for_load_state("networkidle")
 
         logo_link = page.locator("a.navbar-brand")
@@ -26,13 +28,13 @@ class TestInstitutionAdminDashboardWorkflow:
 
         logo_link.click()
         page.wait_for_load_state("networkidle")
-        expect(page).to_have_url("http://localhost:3002/dashboard")
+        expect(page).to_have_url(f"{BASE_URL}/dashboard")
 
     def test_nav_items_reflect_dashboard_navigation(
         self, authenticated_institution_admin_page: Page
-    ):
+    ) -> None:
         page = authenticated_institution_admin_page
-        page.goto("http://localhost:3002/dashboard")
+        page.goto(f"{BASE_URL}/dashboard")
         page.wait_for_load_state("networkidle")
 
         # Get nav items

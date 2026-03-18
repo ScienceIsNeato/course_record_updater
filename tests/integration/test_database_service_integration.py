@@ -1,6 +1,7 @@
 """Integration tests exercising SQLite-backed database interactions."""
 
 import os
+from typing import Any
 
 import pytest
 
@@ -9,14 +10,15 @@ import src.database.database_service as database_service
 pytestmark = pytest.mark.integration
 
 
-def test_database_file_created(isolated_integration_db):
+def test_database_file_created(isolated_integration_db: Any) -> None:
     """Ensure the configured SQLite database file exists on disk."""
+
     # isolated_integration_db fixture returns the database path
     db_path = isolated_integration_db
     assert os.path.exists(db_path)
 
 
-def test_full_institution_user_flow():
+def test_full_institution_user_flow() -> None:
     """Exercise institution + user creation end-to-end."""
     institution_id = database_service.create_institution(
         {
@@ -48,7 +50,7 @@ def test_full_institution_user_flow():
     assert users[0]["email"] == "admin@ic.edu"
 
 
-def test_program_course_assignment_flow():
+def test_program_course_assignment_flow() -> None:
     """Assign courses to programs and verify aggregation functions."""
     inst_id = database_service.create_institution(
         {

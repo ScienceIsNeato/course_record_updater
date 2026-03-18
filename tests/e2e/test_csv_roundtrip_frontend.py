@@ -16,6 +16,7 @@ import tempfile
 import time
 import zipfile
 from pathlib import Path
+from typing import Any
 
 import pytest
 from playwright.sync_api import Page
@@ -71,7 +72,7 @@ def _step_export_data(page: Page, save_dir: Path) -> Path:
     return download_path
 
 
-def _step_verify_zip(download_path: Path):
+def _step_verify_zip(download_path: Path) -> Any:
     """Step 2: Verify ZIP structure and content."""
     print("\n🔍 STEP 2: Verify ZIP structure...")
 
@@ -104,7 +105,7 @@ def _step_verify_zip(download_path: Path):
         return original_user_count, original_course_count
 
 
-def _step_import_data(page: Page, file_path: Path):
+def _step_import_data(page: Page, file_path: Path) -> None:
     """Step 3: Re-import the exported CSV."""
     print("\n📤 STEP 3: Re-import the exported CSV...")
 
@@ -167,7 +168,7 @@ def _step_import_data(page: Page, file_path: Path):
     time.sleep(2)
 
 
-def _step_verify_integrity(page: Page, original_course_count: int):
+def _step_verify_integrity(page: Page, original_course_count: int) -> None:
     """Step 4: Verify data integrity after roundtrip."""
     print("\n✅ STEP 4: Verify data integrity...")
 
@@ -197,7 +198,7 @@ def _step_verify_integrity(page: Page, original_course_count: int):
 def test_tc_ie_104_csv_roundtrip_validation(
     authenticated_page: Page,
     server_running: bool,
-):
+) -> None:
     """
     TC-IE-104: Generic CSV Adapter Roundtrip Validation
 

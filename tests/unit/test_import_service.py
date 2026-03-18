@@ -7,6 +7,7 @@ Tests the ImportService with the new adapter registry system.
 import os
 import tempfile
 from datetime import datetime, timezone
+from typing import Any
 from unittest.mock import Mock, patch
 
 from src.services.import_service import (
@@ -23,7 +24,7 @@ from src.services.import_service import (
 class TestDatetimeConversion:
     """Test datetime field conversion helper function."""
 
-    def test_convert_datetime_fields_with_string_timestamps(self):
+    def test_convert_datetime_fields_with_string_timestamps(self) -> None:
         """Test conversion of string timestamps to datetime objects."""
         data = {
             "name": "Test User",
@@ -39,7 +40,7 @@ class TestDatetimeConversion:
         assert result["name"] == "Test User"
         assert result["other_field"] == "not a datetime"
 
-    def test_convert_datetime_fields_with_existing_datetime_objects(self):
+    def test_convert_datetime_fields_with_existing_datetime_objects(self) -> None:
         """Test that existing datetime objects are left unchanged."""
         now = datetime.now(timezone.utc)
         data = {
@@ -52,7 +53,7 @@ class TestDatetimeConversion:
         assert result["created_at"] is now  # Same object
         assert isinstance(result["updated_at"], datetime)
 
-    def test_convert_datetime_fields_with_invalid_strings(self):
+    def test_convert_datetime_fields_with_invalid_strings(self) -> None:
         """Test that invalid datetime strings are left unchanged."""
         data = {
             "created_at": "not a valid datetime",
@@ -64,7 +65,7 @@ class TestDatetimeConversion:
         assert result["created_at"] == "not a valid datetime"  # Unchanged
         assert isinstance(result["updated_at"], datetime)
 
-    def test_convert_datetime_fields_with_none_values(self):
+    def test_convert_datetime_fields_with_none_values(self) -> None:
         """Test that None values are left unchanged."""
         data = {
             "created_at": None,
@@ -76,7 +77,7 @@ class TestDatetimeConversion:
         assert result["created_at"] is None
         assert isinstance(result["updated_at"], datetime)
 
-    def test_convert_datetime_fields_with_z_format(self):
+    def test_convert_datetime_fields_with_z_format(self) -> None:
         """Test datetime with Z suffix (UTC indicator)."""
         from src.services.import_service import _normalize_datetime_string
 
@@ -84,7 +85,7 @@ class TestDatetimeConversion:
         result = _normalize_datetime_string("2025-09-28T17:41:27.935901Z")
         assert result == "2025-09-28T17:41:27.935901+00:00"
 
-    def test_convert_datetime_fields_already_normalized(self):
+    def test_convert_datetime_fields_already_normalized(self) -> None:
         """Test datetime that already has UTC offset."""
         from src.services.import_service import _normalize_datetime_string
 
@@ -96,12 +97,12 @@ class TestDatetimeConversion:
 class TestImportService:
     """Test the ImportService class with adapter registry integration."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.institution_id = "test-institution-id"
         self.service = ImportService(self.institution_id)
 
-    def test_process_course_import_conflict_detection(self):
+    def test_process_course_import_conflict_detection(self) -> None:
         """Test that process_course_import detects conflicts correctly."""
         # Test data with conflicts
         course_data = {
@@ -132,7 +133,7 @@ class TestImportService:
             assert len(conflicts) > 0  # Should have conflicts detected
 
     @patch("src.services.import_service.get_adapter_registry")
-    def test_import_excel_file_adapter_not_found(self, mock_get_registry):
+    def test_import_excel_file_adapter_not_found(self, mock_get_registry: Any) -> None:
         """Test import_excel_file with adapter not found."""
         # Mock registry that returns None for adapter
         mock_registry = Mock()
@@ -156,7 +157,7 @@ class TestImportService:
                 os.unlink(tmp_file.name)
 
     @patch("src.services.import_service.get_adapter_registry")
-    def test_import_excel_file_file_not_found(self, mock_get_registry):
+    def test_import_excel_file_file_not_found(self, mock_get_registry: Any) -> None:
         """Test import_excel_file with non-existent file."""
         result = self.service.import_excel_file("/nonexistent/file.xlsx")
 
@@ -166,7 +167,9 @@ class TestImportService:
 
     @patch("src.services.import_service.get_adapter_registry")
     @patch("src.services.import_service.os.path.exists")
-    def test_import_excel_file_file_incompatible(self, mock_exists, mock_get_registry):
+    def test_import_excel_file_file_incompatible(
+        self, mock_exists: Any, mock_get_registry: Any
+    ) -> None:
         """Test import_excel_file with incompatible file."""
         mock_exists.return_value = True
 
@@ -189,7 +192,9 @@ class TestImportService:
 
     @patch("src.services.import_service.get_adapter_registry")
     @patch("src.services.import_service.os.path.exists")
-    def test_import_excel_file_successful_import(self, mock_exists, mock_get_registry):
+    def test_import_excel_file_successful_import(
+        self, mock_exists: Any, mock_get_registry: Any
+    ) -> None:
         """Test successful import with mock adapter."""
         mock_exists.return_value = True
 
@@ -233,7 +238,9 @@ class TestImportService:
 
     @patch("src.services.import_service.get_adapter_registry")
     @patch("src.services.import_service.os.path.exists")
-    def test_import_excel_file_dry_run(self, mock_exists, mock_get_registry):
+    def test_import_excel_file_dry_run(
+        self, mock_exists: Any, mock_get_registry: Any
+    ) -> None:
         """Test dry run mode."""
         mock_exists.return_value = True
 
@@ -266,7 +273,9 @@ class TestImportService:
 
     @patch("src.services.import_service.get_adapter_registry")
     @patch("src.services.import_service.os.path.exists")
-    def test_import_excel_file_with_conflicts(self, mock_exists, mock_get_registry):
+    def test_import_excel_file_with_conflicts(
+        self, mock_exists: Any, mock_get_registry: Any
+    ) -> None:
         """Test import with conflict resolution."""
         mock_exists.return_value = True
 
@@ -310,7 +319,7 @@ class TestImportService:
             assert result.conflicts_detected >= 1
             mock_update_user.assert_called()
 
-    def test_process_course_import_new_course(self):
+    def test_process_course_import_new_course(self) -> None:
         """Test processing a new course import."""
         course_data = {
             "course_number": "NEW-101",
@@ -333,7 +342,7 @@ class TestImportService:
             assert len(conflicts) == 0
             mock_create.assert_called_once()
 
-    def test_process_course_import_dry_run(self):
+    def test_process_course_import_dry_run(self) -> None:
         """Test processing course import in dry run mode."""
         course_data = {
             "course_number": "DRY-101",
@@ -356,7 +365,7 @@ class TestImportService:
             mock_create.assert_not_called()
             assert self.service.stats["records_skipped"] == 1
 
-    def test_process_user_import_new_user(self):
+    def test_process_user_import_new_user(self) -> None:
         """Test processing a new user import."""
         user_data = {
             "email": "new@example.com",
@@ -382,19 +391,19 @@ class TestImportService:
 class TestEnumsAndDataClasses:
     """Test enums and data classes."""
 
-    def test_conflict_strategy_enum(self):
+    def test_conflict_strategy_enum(self) -> None:
         """Test ConflictStrategy enum values."""
         assert ConflictStrategy.USE_MINE.value == "use_mine"
         assert ConflictStrategy.USE_THEIRS.value == "use_theirs"
         assert ConflictStrategy.MERGE.value == "merge"
         assert ConflictStrategy.MANUAL_REVIEW.value == "manual_review"
 
-    def test_import_mode_enum(self):
+    def test_import_mode_enum(self) -> None:
         """Test ImportMode enum values."""
         assert ImportMode.DRY_RUN.value == "dry_run"
         assert ImportMode.EXECUTE.value == "execute"
 
-    def test_import_result_creation(self):
+    def test_import_result_creation(self) -> None:
         """Test ImportResult creation."""
         result = ImportResult(
             success=True,
@@ -415,7 +424,7 @@ class TestEnumsAndDataClasses:
         assert result.records_processed == 10
         assert result.execution_time == 2.5
 
-    def test_conflict_record_creation(self):
+    def test_conflict_record_creation(self) -> None:
         """Test ConflictRecord creation."""
         conflict = ConflictRecord(
             entity_type="user",
@@ -434,7 +443,7 @@ class TestEnumsAndDataClasses:
 class TestReportGeneration:
     """Test import report generation."""
 
-    def test_create_import_report_success(self):
+    def test_create_import_report_success(self) -> None:
         """Test creating report for successful import."""
         result = ImportResult(
             success=True,
@@ -458,7 +467,7 @@ class TestReportGeneration:
         assert "Records Created: 5" in report
         assert "Execution Time: 1.23s" in report
 
-    def test_create_import_report_with_errors(self):
+    def test_create_import_report_with_errors(self) -> None:
         """Test creating report with errors and warnings."""
         result = ImportResult(
             success=False,
@@ -484,7 +493,7 @@ class TestReportGeneration:
         assert "WARNINGS:" in report
         assert "Missing optional field" in report
 
-    def test_process_course_import_update_existing(self):
+    def test_process_course_import_update_existing(self) -> None:
         """Test updating existing course with USE_THEIRS strategy."""
         course_data = {
             "course_number": "CS101",
@@ -520,7 +529,7 @@ class TestReportGeneration:
             assert service.stats["conflicts_resolved"] > 0
             mock_create_course.assert_not_called()  # Should not create new course
 
-    def test_process_user_import_update_existing(self):
+    def test_process_user_import_update_existing(self) -> None:
         """Test updating existing user with USE_THEIRS strategy."""
         user_data = {
             "email": "test@example.com",
@@ -565,7 +574,7 @@ class TestReportGeneration:
 class TestImportServiceHelpers:
     """Test ImportService helper methods."""
 
-    def test_prepare_import_file_not_found(self):
+    def test_prepare_import_file_not_found(self) -> None:
         """Test _prepare_import with non-existent file."""
         service = ImportService("test_inst")
         service.reset_stats()
@@ -576,7 +585,7 @@ class TestImportServiceHelpers:
         assert len(service.stats["errors"]) > 0
         assert "File not found" in service.stats["errors"][0]
 
-    def test_prepare_import_adapter_not_found(self):
+    def test_prepare_import_adapter_not_found(self) -> None:
         """Test _prepare_import with invalid adapter."""
         with tempfile.NamedTemporaryFile(suffix=".xlsx") as temp_file:
             service = ImportService("test_inst")
@@ -595,7 +604,7 @@ class TestImportServiceHelpers:
                 assert len(service.stats["errors"]) > 0
                 assert "Adapter not found" in service.stats["errors"][0]
 
-    def test_prepare_import_file_incompatible(self):
+    def test_prepare_import_file_incompatible(self) -> None:
         """Test _prepare_import with incompatible file."""
         with tempfile.NamedTemporaryFile(suffix=".xlsx") as temp_file:
             service = ImportService("test_inst")
@@ -620,7 +629,7 @@ class TestImportServiceHelpers:
                 assert len(service.stats["errors"]) > 0
                 assert "File incompatible" in service.stats["errors"][0]
 
-    def test_prepare_import_success(self):
+    def test_prepare_import_success(self) -> None:
         """Test _prepare_import with valid inputs."""
         with tempfile.NamedTemporaryFile(suffix=".xlsx") as temp_file:
             service = ImportService("test_inst")
@@ -644,7 +653,7 @@ class TestImportServiceHelpers:
                 assert result is mock_adapter
                 assert len(service.stats["errors"]) == 0
 
-    def test_parse_file_data_success(self):
+    def test_parse_file_data_success(self) -> None:
         """Test _parse_file_data with successful parsing."""
         service = ImportService("test_inst")
         service.reset_stats()
@@ -663,7 +672,7 @@ class TestImportServiceHelpers:
         assert "courses" in result
         mock_adapter.parse_file.assert_called_once()
 
-    def test_parse_file_data_parse_error(self):
+    def test_parse_file_data_parse_error(self) -> None:
         """Test _parse_file_data with parsing error."""
         service = ImportService("test_inst")
         service.reset_stats()
@@ -679,7 +688,7 @@ class TestImportServiceHelpers:
         assert len(service.stats["errors"]) > 0
         assert "Failed to parse file" in service.stats["errors"][0]
 
-    def test_parse_file_data_empty_result(self):
+    def test_parse_file_data_empty_result(self) -> None:
         """Test _parse_file_data with empty parsing result."""
         service = ImportService("test_inst")
         service.reset_stats()
@@ -699,7 +708,7 @@ class TestImportServiceHelpers:
 class TestImportServiceErrorHandling:
     """Test error handling in ImportService."""
 
-    def test_prepare_import_adapter_registry_error(self):
+    def test_prepare_import_adapter_registry_error(self) -> None:
         """Test _prepare_import handles AdapterRegistryError."""
         from unittest.mock import patch
 
@@ -733,7 +742,7 @@ class TestImportServiceErrorHandling:
             finally:
                 os.unlink(tmp_path)
 
-    def test_prepare_import_file_validation_exception(self):
+    def test_prepare_import_file_validation_exception(self) -> None:
         """Test _prepare_import handles file validation exception."""
         from unittest.mock import Mock, patch
 
@@ -767,7 +776,7 @@ class TestImportServiceErrorHandling:
             finally:
                 os.unlink(tmp_path)
 
-    def test_update_progress_with_callback(self):
+    def test_update_progress_with_callback(self) -> None:
         """Test _update_progress calls progress_callback when set."""
         from unittest.mock import Mock
 
@@ -789,7 +798,7 @@ class TestImportServiceErrorHandling:
         assert call_args["total_records"] == 100
         assert "courses" in call_args["message"]
 
-    def test_process_single_record_offerings(self):
+    def test_process_single_record_offerings(self) -> None:
         """Test _process_single_record handles offerings."""
         from unittest.mock import patch
 
@@ -807,7 +816,7 @@ class TestImportServiceErrorHandling:
             assert conflicts == []
             assert mock_process.called
 
-    def test_process_single_record_sections(self):
+    def test_process_single_record_sections(self) -> None:
         """Test _process_single_record handles sections."""
         from unittest.mock import patch
 
@@ -825,7 +834,7 @@ class TestImportServiceErrorHandling:
             assert conflicts == []
             assert mock_process.called
 
-    def test_process_single_record_terms(self):
+    def test_process_single_record_terms(self) -> None:
         """Test _process_single_record handles terms."""
         from unittest.mock import patch
 
@@ -840,7 +849,7 @@ class TestImportServiceErrorHandling:
             assert conflicts == []
             assert mock_process.called
 
-    def test_resolve_user_conflicts_use_theirs_dry_run(self):
+    def test_resolve_user_conflicts_use_theirs_dry_run(self) -> None:
         """Test _resolve_user_conflicts with USE_THEIRS strategy in dry run."""
         from unittest.mock import patch
 
@@ -849,7 +858,7 @@ class TestImportServiceErrorHandling:
 
         user_data = {"email": "test@example.com", "first_name": "Test"}
         existing_user = {"email": "test@example.com", "first_name": "Old"}
-        detected_conflicts = []
+        detected_conflicts: list[Any] = []
 
         with patch("src.services.import_service.update_user") as mock_update:
             service._resolve_user_conflicts(
@@ -867,7 +876,7 @@ class TestImportServiceErrorHandling:
             # Should have logged dry run message (check stats)
             assert service.stats["records_updated"] == 0
 
-    def test_import_excel_file_top_level_exception(self):
+    def test_import_excel_file_top_level_exception(self) -> None:
         """Test import_excel_file handles unexpected top-level exception."""
         from unittest.mock import patch
 
@@ -893,7 +902,7 @@ class TestImportServiceErrorHandling:
             finally:
                 os.unlink(tmp_path)
 
-    def test_process_data_records_exception_handling(self):
+    def test_process_data_records_exception_handling(self) -> None:
         """Test exception handling when processing individual records in a batch."""
         from unittest.mock import patch
 
@@ -921,7 +930,7 @@ class TestImportServiceErrorHandling:
             assert "Error processing courses record" in service.stats["errors"][0]
             assert "Record processing failed" in service.stats["errors"][0]
 
-    def test_process_single_record_unknown_type(self):
+    def test_process_single_record_unknown_type(self) -> None:
         """Test _process_single_record with unknown data type returns empty list."""
         service = ImportService("test_inst")
         service.reset_stats()
@@ -932,7 +941,7 @@ class TestImportServiceErrorHandling:
 
         assert conflicts == []
 
-    def test_resolve_user_conflicts_use_mine_with_conflicts(self):
+    def test_resolve_user_conflicts_use_mine_with_conflicts(self) -> None:
         """Test _resolve_user_conflicts with USE_MINE and detected conflicts."""
         service = ImportService("test_inst")
         service.reset_stats()
@@ -968,7 +977,7 @@ class TestImportServiceErrorHandling:
         assert service.stats["conflicts_resolved"] == 1
         assert detected_conflicts[0].resolution == "use_mine"
 
-    def test_resolve_course_conflicts_use_theirs_dry_run(self):
+    def test_resolve_course_conflicts_use_theirs_dry_run(self) -> None:
         """Test _resolve_course_conflicts with USE_THEIRS in dry run mode."""
         service = ImportService("test_inst")
         service.reset_stats()
@@ -1013,39 +1022,39 @@ class TestImportServiceErrorHandling:
 class TestImportServiceRolePreservation:
     """Test role preservation logic added for demo."""
 
-    def test_should_preserve_role_site_admin_over_instructor(self):
+    def test_should_preserve_role_site_admin_over_instructor(self) -> None:
         """Test that site_admin role is preserved over instructor."""
         service = ImportService("inst-123")
         assert service._should_preserve_role("site_admin", "instructor") is True
 
-    def test_should_preserve_role_institution_admin_over_instructor(self):
+    def test_should_preserve_role_institution_admin_over_instructor(self) -> None:
         """Test that institution_admin role is preserved over instructor."""
         service = ImportService("inst-123")
         assert service._should_preserve_role("institution_admin", "instructor") is True
 
-    def test_should_preserve_role_program_admin_over_instructor(self):
+    def test_should_preserve_role_program_admin_over_instructor(self) -> None:
         """Test that program_admin role is preserved over instructor."""
         service = ImportService("inst-123")
         assert service._should_preserve_role("program_admin", "instructor") is True
 
-    def test_should_preserve_role_same_roles(self):
+    def test_should_preserve_role_same_roles(self) -> None:
         """Test that same roles don't trigger preservation."""
         service = ImportService("inst-123")
         assert service._should_preserve_role("instructor", "instructor") is False
 
-    def test_should_preserve_role_lower_to_higher(self):
+    def test_should_preserve_role_lower_to_higher(self) -> None:
         """Test that lower roles don't override higher roles."""
         service = ImportService("inst-123")
         assert service._should_preserve_role("instructor", "site_admin") is False
 
-    def test_should_preserve_role_institution_admin_over_program_admin(self):
+    def test_should_preserve_role_institution_admin_over_program_admin(self) -> None:
         """Test role hierarchy between admin types."""
         service = ImportService("inst-123")
         assert (
             service._should_preserve_role("institution_admin", "program_admin") is True
         )
 
-    def test_should_preserve_role_unknown_roles(self):
+    def test_should_preserve_role_unknown_roles(self) -> None:
         """Test handling of unknown roles."""
         service = ImportService("inst-123")
         # Unknown roles get level 0, so neither is preserved
@@ -1060,8 +1069,8 @@ class TestCLOImportFeature:
     @patch("src.services.import_service.get_course_outcomes")
     @patch("src.services.import_service.get_course_by_number")
     def test_process_clo_import_success(
-        self, mock_get_course, mock_get_outcomes, mock_create_outcome
-    ):
+        self, mock_get_course: Any, mock_get_outcomes: Any, mock_create_outcome: Any
+    ) -> None:
         """Test successful CLO import for new CLO"""
         mock_get_course.return_value = {
             "course_id": "course-123",
@@ -1090,7 +1099,7 @@ class TestCLOImportFeature:
         assert created_schema["description"] == "Understand cellular biology"
 
     @patch("src.services.import_service.get_course_by_number")
-    def test_process_clo_import_missing_fields(self, mock_get_course):
+    def test_process_clo_import_missing_fields(self, mock_get_course: Any) -> None:
         """Test CLO import fails gracefully with missing required fields"""
         service = ImportService("inst-123")
 
@@ -1103,7 +1112,7 @@ class TestCLOImportFeature:
         assert "Missing required fields" in service.stats["errors"][0]
 
     @patch("src.services.import_service.get_course_by_number")
-    def test_process_clo_import_course_not_found(self, mock_get_course):
+    def test_process_clo_import_course_not_found(self, mock_get_course: Any) -> None:
         """Test CLO import when course doesn't exist"""
         mock_get_course.return_value = None
 
@@ -1124,8 +1133,8 @@ class TestCLOImportFeature:
     @patch("src.services.import_service.get_course_outcomes")
     @patch("src.services.import_service.get_course_by_number")
     def test_process_clo_import_conflict_use_mine(
-        self, mock_get_course, mock_get_outcomes
-    ):
+        self, mock_get_course: Any, mock_get_outcomes: Any
+    ) -> None:
         """Test CLO import skips existing CLO with USE_MINE strategy"""
         mock_get_course.return_value = {
             "course_id": "course-123",
@@ -1150,8 +1159,8 @@ class TestCLOImportFeature:
     @patch("src.services.import_service.get_course_outcomes")
     @patch("src.services.import_service.get_course_by_number")
     def test_process_clo_import_conflict_use_theirs(
-        self, mock_get_course, mock_get_outcomes
-    ):
+        self, mock_get_course: Any, mock_get_outcomes: Any
+    ) -> None:
         """Test CLO import updates existing CLO with USE_THEIRS strategy"""
         mock_get_course.return_value = {
             "course_id": "course-123",
@@ -1175,7 +1184,7 @@ class TestCLOImportFeature:
         assert service.stats["records_updated"] == 1
 
     @patch("src.services.import_service.get_course_by_number")
-    def test_process_clo_import_dry_run(self, mock_get_course):
+    def test_process_clo_import_dry_run(self, mock_get_course: Any) -> None:
         """Test CLO import in dry run mode doesn't create records"""
         mock_get_course.return_value = {
             "course_id": "course-123",
@@ -1199,8 +1208,8 @@ class TestCLOImportFeature:
     @patch("src.services.import_service.get_course_outcomes")
     @patch("src.services.import_service.get_course_by_number")
     def test_process_clo_import_create_fails(
-        self, mock_get_course, mock_get_outcomes, mock_create_outcome
-    ):
+        self, mock_get_course: Any, mock_get_outcomes: Any, mock_create_outcome: Any
+    ) -> None:
         """Test CLO import handles creation failure"""
         mock_get_course.return_value = {
             "course_id": "course-123",
@@ -1224,7 +1233,7 @@ class TestCLOImportFeature:
         assert "Failed to create CLO" in service.stats["errors"][0]
 
     @patch("src.services.import_service.get_course_by_number")
-    def test_process_clo_import_exception_handling(self, mock_get_course):
+    def test_process_clo_import_exception_handling(self, mock_get_course: Any) -> None:
         """Test CLO import handles unexpected exceptions"""
         mock_get_course.side_effect = Exception("Database error")
 
@@ -1250,8 +1259,8 @@ class TestCourseProgramLinkingFeature:
     @patch("src.database.database_service.get_programs_by_institution")
     @patch("src.database.database_service.get_all_courses")
     def test_link_courses_to_programs_success(
-        self, mock_get_courses, mock_get_programs, mock_add_course
-    ):
+        self, mock_get_courses: Any, mock_get_programs: Any, mock_add_course: Any
+    ) -> None:
         """Test successful course-program linking based on prefix"""
         # Use correct primary keys: course_id for courses, program_id for programs
         mock_get_courses.return_value = [
@@ -1276,7 +1285,9 @@ class TestCourseProgramLinkingFeature:
 
     @patch("src.database.database_service.get_programs_by_institution")
     @patch("src.database.database_service.get_all_courses")
-    def test_link_courses_no_courses(self, mock_get_courses, mock_get_programs):
+    def test_link_courses_no_courses(
+        self, mock_get_courses: Any, mock_get_programs: Any
+    ) -> None:
         """Test linking handles no courses gracefully"""
         mock_get_courses.return_value = []
         mock_get_programs.return_value = [{"program_id": "p1", "name": "Test"}]
@@ -1286,7 +1297,9 @@ class TestCourseProgramLinkingFeature:
 
     @patch("src.database.database_service.get_programs_by_institution")
     @patch("src.database.database_service.get_all_courses")
-    def test_link_courses_no_programs(self, mock_get_courses, mock_get_programs):
+    def test_link_courses_no_programs(
+        self, mock_get_courses: Any, mock_get_programs: Any
+    ) -> None:
         """Test linking handles no programs gracefully"""
         mock_get_courses.return_value = [
             {"course_id": "c1", "course_number": "BIOL-101"}
@@ -1300,8 +1313,8 @@ class TestCourseProgramLinkingFeature:
     @patch("src.database.database_service.get_programs_by_institution")
     @patch("src.database.database_service.get_all_courses")
     def test_link_courses_unmapped_prefix(
-        self, mock_get_courses, mock_get_programs, mock_add_course
-    ):
+        self, mock_get_courses: Any, mock_get_programs: Any, mock_add_course: Any
+    ) -> None:
         """Test courses with unmapped prefixes are not linked"""
         mock_get_courses.return_value = [
             {"id": "c1", "course_number": "CHEM-101"},  # CHEM not in mappings
@@ -1321,8 +1334,8 @@ class TestCourseProgramLinkingFeature:
     @patch("src.database.database_service.get_programs_by_institution")
     @patch("src.database.database_service.get_all_courses")
     def test_link_courses_program_not_found(
-        self, mock_get_courses, mock_get_programs, mock_add_course
-    ):
+        self, mock_get_courses: Any, mock_get_programs: Any, mock_add_course: Any
+    ) -> None:
         """Test courses skip linking if target program doesn't exist"""
         mock_get_courses.return_value = [
             {"id": "c1", "course_number": "BIOL-101"},
@@ -1342,8 +1355,8 @@ class TestCourseProgramLinkingFeature:
     @patch("src.database.database_service.get_programs_by_institution")
     @patch("src.database.database_service.get_all_courses")
     def test_link_courses_already_linked(
-        self, mock_get_courses, mock_get_programs, mock_add_course
-    ):
+        self, mock_get_courses: Any, mock_get_programs: Any, mock_add_course: Any
+    ) -> None:
         """Test linking handles already-linked courses gracefully"""
         mock_get_courses.return_value = [
             {"id": "c1", "course_number": "BIOL-101"},
@@ -1358,7 +1371,9 @@ class TestCourseProgramLinkingFeature:
         service._link_courses_to_programs()  # Should not crash
 
     @patch("src.database.database_service.get_all_courses")
-    def test_link_courses_exception_doesnt_fail_import(self, mock_get_courses):
+    def test_link_courses_exception_doesnt_fail_import(
+        self, mock_get_courses: Any
+    ) -> None:
         """Test linking failure doesn't break the import"""
         mock_get_courses.side_effect = Exception("Database error")
 
@@ -1372,8 +1387,8 @@ class TestOfferingImportErrorPaths:
     @patch("src.services.import_service.get_course_by_number")
     @patch("src.services.import_service.get_term_by_name")
     def test_offering_import_missing_course_number(
-        self, mock_get_term, mock_get_course
-    ):
+        self, mock_get_term: Any, mock_get_course: Any
+    ) -> None:
         """Test offering import fails gracefully when course_number is missing"""
         service = ImportService("inst-123")
         service._process_offering_import(
@@ -1384,7 +1399,9 @@ class TestOfferingImportErrorPaths:
 
     @patch("src.services.import_service.get_course_by_number")
     @patch("src.services.import_service.get_term_by_name")
-    def test_offering_import_missing_term_name(self, mock_get_term, mock_get_course):
+    def test_offering_import_missing_term_name(
+        self, mock_get_term: Any, mock_get_course: Any
+    ) -> None:
         """Test offering import fails gracefully when term_name is missing"""
         service = ImportService("inst-123")
         service._process_offering_import(
@@ -1395,7 +1412,9 @@ class TestOfferingImportErrorPaths:
 
     @patch("src.services.import_service.get_term_by_name")
     @patch("src.services.import_service.get_course_by_number")
-    def test_offering_import_course_not_found(self, mock_get_course, mock_get_term):
+    def test_offering_import_course_not_found(
+        self, mock_get_course: Any, mock_get_term: Any
+    ) -> None:
         """Test offering import when course doesn't exist"""
         mock_get_course.return_value = None
         mock_get_term.return_value = {"term_id": "term-123"}
@@ -1411,7 +1430,9 @@ class TestOfferingImportErrorPaths:
 
     @patch("src.services.import_service.get_term_by_name")
     @patch("src.services.import_service.get_course_by_number")
-    def test_offering_import_term_not_found(self, mock_get_course, mock_get_term):
+    def test_offering_import_term_not_found(
+        self, mock_get_course: Any, mock_get_term: Any
+    ) -> None:
         """Test offering import when term doesn't exist"""
         mock_get_course.return_value = {"course_id": "course-123"}
         mock_get_term.return_value = None
@@ -1429,8 +1450,8 @@ class TestOfferingImportErrorPaths:
     @patch("src.services.import_service.get_term_by_name")
     @patch("src.services.import_service.get_course_by_number")
     def test_offering_import_dry_run(
-        self, mock_get_course, mock_get_term, mock_get_offering
-    ):
+        self, mock_get_course: Any, mock_get_term: Any, mock_get_offering: Any
+    ) -> None:
         """Test offering import in dry run mode"""
         mock_get_course.return_value = {"course_id": "course-123"}
         mock_get_term.return_value = {"term_id": "term-123"}
@@ -1450,11 +1471,11 @@ class TestOfferingImportErrorPaths:
     @patch("src.services.import_service.get_course_by_number")
     def test_offering_import_creation_fails(
         self,
-        mock_get_course,
-        mock_get_term,
-        mock_get_offering,
-        mock_create_offering,
-    ):
+        mock_get_course: Any,
+        mock_get_term: Any,
+        mock_get_offering: Any,
+        mock_create_offering: Any,
+    ) -> None:
         """Test offering import handles creation failure"""
         mock_get_course.return_value = {"course_id": "course-123"}
         mock_get_term.return_value = {"term_id": "term-123"}
@@ -1472,7 +1493,9 @@ class TestOfferingImportErrorPaths:
 
     @patch("src.services.import_service.get_term_by_name")
     @patch("src.services.import_service.get_course_by_number")
-    def test_offering_import_exception_handling(self, mock_get_course, mock_get_term):
+    def test_offering_import_exception_handling(
+        self, mock_get_course: Any, mock_get_term: Any
+    ) -> None:
         """Test offering import handles unexpected exceptions"""
         mock_get_course.side_effect = Exception("Database error")
 
@@ -1491,7 +1514,9 @@ class TestSectionImportErrorPaths:
 
     @patch("src.services.import_service.get_course_by_number")
     @patch("src.services.import_service.get_term_by_name")
-    def test_section_import_missing_course_number(self, mock_get_term, mock_get_course):
+    def test_section_import_missing_course_number(
+        self, mock_get_term: Any, mock_get_course: Any
+    ) -> None:
         """Test section import fails gracefully when course_number is missing"""
         service = ImportService("inst-123")
         service._process_section_import(
@@ -1503,7 +1528,9 @@ class TestSectionImportErrorPaths:
 
     @patch("src.services.import_service.get_term_by_name")
     @patch("src.services.import_service.get_course_by_number")
-    def test_section_import_course_not_found(self, mock_get_course, mock_get_term):
+    def test_section_import_course_not_found(
+        self, mock_get_course: Any, mock_get_term: Any
+    ) -> None:
         """Test section import when course doesn't exist"""
         mock_get_course.return_value = None
         # Term lookup happens after course lookup, so return valid term
@@ -1528,7 +1555,9 @@ class TestSectionImportErrorPaths:
 
     @patch("src.services.import_service.get_term_by_name")
     @patch("src.services.import_service.get_course_by_number")
-    def test_section_import_term_not_found(self, mock_get_course, mock_get_term):
+    def test_section_import_term_not_found(
+        self, mock_get_course: Any, mock_get_term: Any
+    ) -> None:
         """Test section import when term doesn't exist"""
         mock_get_course.return_value = {"course_id": "course-123"}
         mock_get_term.return_value = None
@@ -1549,8 +1578,8 @@ class TestSectionImportErrorPaths:
     @patch("src.services.import_service.get_term_by_name")
     @patch("src.services.import_service.get_course_by_number")
     def test_section_import_dry_run(
-        self, mock_get_course, mock_get_term, mock_get_offering
-    ):
+        self, mock_get_course: Any, mock_get_term: Any, mock_get_offering: Any
+    ) -> None:
         """Test section import in dry run mode"""
         mock_get_course.return_value = {"course_id": "course-123"}
         mock_get_term.return_value = {"term_id": "term-123"}
@@ -1575,12 +1604,12 @@ class TestSectionImportErrorPaths:
     @patch("src.services.import_service.get_course_by_number")
     def test_section_import_creation_fails(
         self,
-        mock_get_course,
-        mock_get_term,
-        mock_get_offering,
-        mock_get_user,
-        mock_create_section,
-    ):
+        mock_get_course: Any,
+        mock_get_term: Any,
+        mock_get_offering: Any,
+        mock_get_user: Any,
+        mock_create_section: Any,
+    ) -> None:
         """Test section import handles creation failure"""
         mock_get_course.return_value = {"course_id": "course-123"}
         mock_get_term.return_value = {"term_id": "term-123"}
@@ -1601,7 +1630,9 @@ class TestSectionImportErrorPaths:
 
     @patch("src.services.import_service.get_term_by_name")
     @patch("src.services.import_service.get_course_by_number")
-    def test_section_import_exception_handling(self, mock_get_course, mock_get_term):
+    def test_section_import_exception_handling(
+        self, mock_get_course: Any, mock_get_term: Any
+    ) -> None:
         """Test section import handles unexpected exceptions"""
         mock_get_course.side_effect = Exception("Database error")
 

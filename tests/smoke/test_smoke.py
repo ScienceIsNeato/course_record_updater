@@ -11,6 +11,7 @@ Scope:
 """
 
 import os
+from typing import Any
 
 import pytest
 import requests
@@ -18,6 +19,7 @@ import requests
 from src.utils.constants import SITE_ADMIN_EMAIL
 
 # Default configuration (can be overridden by environment)
+
 
 DEFAULT_PORT = os.getenv("TEST_PORT", "3003")  # Smoke tests run on port 3003
 DEFAULT_BASE_URL = f"http://localhost:{DEFAULT_PORT}"
@@ -29,11 +31,11 @@ class TestSystemSmoke:
     """Critical path system verification"""
 
     @pytest.fixture(scope="class")
-    def smoke_target_url(self):
+    def smoke_target_url(self) -> Any:
         """Get the target base URL"""
         return os.getenv("BASE_URL", DEFAULT_BASE_URL).rstrip("/")
 
-    def test_api_health(self, smoke_target_url):
+    def test_api_health(self, smoke_target_url: Any) -> None:
         """Verify API health endpoint is accessible and healthy"""
         try:
             resp = requests.get(f"{smoke_target_url}/api/health", timeout=5)
@@ -47,7 +49,7 @@ class TestSystemSmoke:
         except requests.exceptions.ConnectionError:
             pytest.fail(f"Could not connect to server at {smoke_target_url}")
 
-    def test_basic_authentication_flow(self, smoke_target_url):
+    def test_basic_authentication_flow(self, smoke_target_url: Any) -> None:
         """Verify strict authentication boundaries"""
         # 1. Verify protected endpoint rejects unauthenticated access
         resp = requests.get(f"{smoke_target_url}/dashboard", allow_redirects=False)

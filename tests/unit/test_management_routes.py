@@ -1,5 +1,7 @@
 """Unit tests for api/routes/management.py blueprint routes."""
 
+from collections.abc import Generator
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -9,14 +11,15 @@ from tests.test_utils import create_test_session
 
 
 @pytest.fixture
-def client():
+def client() -> Generator[Any, None, None]:
     """Create test client."""
+
     app.config["TESTING"] = True
     with app.test_client() as client:
         yield client
 
 
-def create_site_admin_session(client):
+def create_site_admin_session(client: Any) -> None:
     """Create session for site admin user (has all permissions)."""
     user_data = {
         "user_id": "site-admin-123",
@@ -27,7 +30,7 @@ def create_site_admin_session(client):
     create_test_session(client, user_data)
 
 
-def get_csrf_token(client):
+def get_csrf_token(client: Any) -> Any:
     """Get CSRF token using Flask-WTF's generate_csrf."""
     from flask import session as flask_session
     from flask_wtf.csrf import generate_csrf
@@ -46,7 +49,7 @@ def get_csrf_token(client):
 class TestManagementUpdateProgram:
     """Tests for PUT /api/management/programs/<program_id>."""
 
-    def test_update_program_no_data(self, client):
+    def test_update_program_no_data(self, client: Any) -> None:
         create_site_admin_session(client)
         response = client.put(
             "/api/management/programs/prog-1",
@@ -58,7 +61,7 @@ class TestManagementUpdateProgram:
         assert data["success"] is False
 
     @patch("src.api.routes.management.db.get_program_by_id")
-    def test_update_program_not_found(self, mock_get_program, client):
+    def test_update_program_not_found(self, mock_get_program: Any, client: Any) -> None:
         create_site_admin_session(client)
         mock_get_program.return_value = None
 
@@ -72,7 +75,9 @@ class TestManagementUpdateProgram:
         assert data["success"] is False
 
     @patch("src.api.routes.management.db.get_program_by_id")
-    def test_update_program_no_fields_to_update(self, mock_get_program, client):
+    def test_update_program_no_fields_to_update(
+        self, mock_get_program: Any, client: Any
+    ) -> None:
         create_site_admin_session(client)
         mock_get_program.return_value = {"id": "prog-1", "name": "Old"}
 
@@ -87,7 +92,9 @@ class TestManagementUpdateProgram:
 
     @patch("src.api.routes.management.db.update_program")
     @patch("src.api.routes.management.db.get_program_by_id")
-    def test_update_program_success(self, mock_get_program, mock_update, client):
+    def test_update_program_success(
+        self, mock_get_program: Any, mock_update: Any, client: Any
+    ) -> None:
         create_site_admin_session(client)
         mock_get_program.return_value = {"id": "prog-1", "name": "Old"}
         mock_update.return_value = True
@@ -105,8 +112,8 @@ class TestManagementUpdateProgram:
     @patch("src.api.routes.management.db.update_program")
     @patch("src.api.routes.management.db.get_program_by_id")
     def test_update_program_success_multiple_fields(
-        self, mock_get_program, mock_update, client
-    ):
+        self, mock_get_program: Any, mock_update: Any, client: Any
+    ) -> None:
         """Covers update dict building for short_name/description branches."""
         create_site_admin_session(client)
         mock_get_program.return_value = {"id": "prog-1", "name": "Old"}
@@ -125,7 +132,9 @@ class TestManagementUpdateProgram:
 
     @patch("src.api.routes.management.db.update_program")
     @patch("src.api.routes.management.db.get_program_by_id")
-    def test_update_program_update_failed(self, mock_get_program, mock_update, client):
+    def test_update_program_update_failed(
+        self, mock_get_program: Any, mock_update: Any, client: Any
+    ) -> None:
         create_site_admin_session(client)
         mock_get_program.return_value = {"id": "prog-1", "name": "Old"}
         mock_update.return_value = False
@@ -140,7 +149,9 @@ class TestManagementUpdateProgram:
         assert data["success"] is False
 
     @patch("src.api.routes.management.db.get_program_by_id")
-    def test_update_program_exception_handled(self, mock_get_program, client):
+    def test_update_program_exception_handled(
+        self, mock_get_program: Any, client: Any
+    ) -> None:
         """Covers exception handler branch."""
         create_site_admin_session(client)
         mock_get_program.side_effect = RuntimeError("boom")
@@ -158,7 +169,7 @@ class TestManagementUpdateProgram:
 class TestManagementDuplicateCourse:
     """Tests for POST /api/management/courses/<course_id>/duplicate."""
 
-    def test_duplicate_course_missing_course_number(self, client):
+    def test_duplicate_course_missing_course_number(self, client: Any) -> None:
         create_site_admin_session(client)
         response = client.post(
             "/api/management/courses/course-1/duplicate",
@@ -170,7 +181,9 @@ class TestManagementDuplicateCourse:
         assert data["success"] is False
 
     @patch("src.api.routes.management.db.get_course_by_id")
-    def test_duplicate_course_source_not_found(self, mock_get_course, client):
+    def test_duplicate_course_source_not_found(
+        self, mock_get_course: Any, client: Any
+    ) -> None:
         create_site_admin_session(client)
         mock_get_course.return_value = None
 
@@ -186,8 +199,8 @@ class TestManagementDuplicateCourse:
     @patch("src.api.routes.management.db.get_course_by_number")
     @patch("src.api.routes.management.db.get_course_by_id")
     def test_duplicate_course_number_exists(
-        self, mock_get_course, mock_get_by_number, client
-    ):
+        self, mock_get_course: Any, mock_get_by_number: Any, client: Any
+    ) -> None:
         create_site_admin_session(client)
         mock_get_course.return_value = {
             "course_id": "course-1",
@@ -209,8 +222,12 @@ class TestManagementDuplicateCourse:
     @patch("src.api.routes.management.db.get_course_by_number")
     @patch("src.api.routes.management.db.get_course_by_id")
     def test_duplicate_course_create_failed(
-        self, mock_get_course, mock_get_by_number, mock_create, client
-    ):
+        self,
+        mock_get_course: Any,
+        mock_get_by_number: Any,
+        mock_create: Any,
+        client: Any,
+    ) -> None:
         create_site_admin_session(client)
         mock_get_course.return_value = {
             "course_id": "course-1",
@@ -234,8 +251,13 @@ class TestManagementDuplicateCourse:
     @patch("src.api.routes.management.db.get_course_by_number")
     @patch("src.api.routes.management.db.get_course_by_id")
     def test_duplicate_course_success_with_program_ids(
-        self, mock_get_course, mock_get_by_number, mock_create, mock_add, client
-    ):
+        self,
+        mock_get_course: Any,
+        mock_get_by_number: Any,
+        mock_create: Any,
+        mock_add: Any,
+        client: Any,
+    ) -> None:
         create_site_admin_session(client)
         mock_get_course.return_value = {
             "course_id": "course-1",
@@ -264,13 +286,13 @@ class TestManagementDuplicateCourse:
     @patch("src.api.routes.management.db.get_course_by_id")
     def test_duplicate_course_success_copies_programs_from_source(
         self,
-        mock_get_course,
-        mock_get_by_number,
-        mock_create,
-        mock_add,
-        mock_get_programs,
-        client,
-    ):
+        mock_get_course: Any,
+        mock_get_by_number: Any,
+        mock_create: Any,
+        mock_add: Any,
+        mock_get_programs: Any,
+        client: Any,
+    ) -> None:
         create_site_admin_session(client)
         mock_get_course.return_value = {
             "course_id": "course-1",
@@ -293,7 +315,9 @@ class TestManagementDuplicateCourse:
         mock_add.assert_any_call("course-2", "p2")
 
     @patch("src.api.routes.management.db.get_course_by_id")
-    def test_duplicate_course_exception_handled(self, mock_get_course, client):
+    def test_duplicate_course_exception_handled(
+        self, mock_get_course: Any, client: Any
+    ) -> None:
         """Covers exception handler branch."""
         create_site_admin_session(client)
         mock_get_course.side_effect = RuntimeError("boom")
@@ -311,7 +335,7 @@ class TestManagementDuplicateCourse:
 class TestManagementUpdateSection:
     """Tests for PUT /api/management/sections/<section_id>."""
 
-    def test_update_section_no_data(self, client):
+    def test_update_section_no_data(self, client: Any) -> None:
         create_site_admin_session(client)
         response = client.put(
             "/api/management/sections/sec-1",
@@ -323,7 +347,7 @@ class TestManagementUpdateSection:
         assert data["success"] is False
 
     @patch("src.api.routes.management.db.get_section_by_id")
-    def test_update_section_not_found(self, mock_get_section, client):
+    def test_update_section_not_found(self, mock_get_section: Any, client: Any) -> None:
         create_site_admin_session(client)
         mock_get_section.return_value = None
 
@@ -337,7 +361,9 @@ class TestManagementUpdateSection:
         assert data["success"] is False
 
     @patch("src.api.routes.management.db.get_section_by_id")
-    def test_update_section_no_fields_to_update(self, mock_get_section, client):
+    def test_update_section_no_fields_to_update(
+        self, mock_get_section: Any, client: Any
+    ) -> None:
         create_site_admin_session(client)
         mock_get_section.return_value = {"id": "sec-1"}
 
@@ -352,7 +378,9 @@ class TestManagementUpdateSection:
 
     @patch("src.api.routes.management.db.update_course_section")
     @patch("src.api.routes.management.db.get_section_by_id")
-    def test_update_section_success(self, mock_get_section, mock_update, client):
+    def test_update_section_success(
+        self, mock_get_section: Any, mock_update: Any, client: Any
+    ) -> None:
         create_site_admin_session(client)
         mock_get_section.return_value = {"id": "sec-1"}
         mock_update.return_value = True
@@ -374,8 +402,8 @@ class TestManagementUpdateSection:
     @patch("src.api.routes.management.db.update_course_section")
     @patch("src.api.routes.management.db.get_section_by_id")
     def test_update_section_success_narratives(
-        self, mock_get_section, mock_update, client
-    ):
+        self, mock_get_section: Any, mock_update: Any, client: Any
+    ) -> None:
         """Covers narrative_* update branches."""
         create_site_admin_session(client)
         mock_get_section.return_value = {"id": "sec-1"}
@@ -398,7 +426,9 @@ class TestManagementUpdateSection:
 
     @patch("src.api.routes.management.db.update_course_section")
     @patch("src.api.routes.management.db.get_section_by_id")
-    def test_update_section_update_failed(self, mock_get_section, mock_update, client):
+    def test_update_section_update_failed(
+        self, mock_get_section: Any, mock_update: Any, client: Any
+    ) -> None:
         create_site_admin_session(client)
         mock_get_section.return_value = {"id": "sec-1"}
         mock_update.return_value = False
@@ -413,7 +443,9 @@ class TestManagementUpdateSection:
         assert data["success"] is False
 
     @patch("src.api.routes.management.db.get_section_by_id")
-    def test_update_section_exception_handled(self, mock_get_section, client):
+    def test_update_section_exception_handled(
+        self, mock_get_section: Any, client: Any
+    ) -> None:
         """Covers exception handler branch."""
         create_site_admin_session(client)
         mock_get_section.side_effect = RuntimeError("boom")

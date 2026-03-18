@@ -10,7 +10,7 @@ and validate adapters based on user permissions and institution context.
 import importlib
 import inspect
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type, cast
 
 from src.utils.logging_config import get_logger
 
@@ -172,7 +172,7 @@ class AdapterRegistry:
         """
         self.discover_adapters()
 
-        all_adapters = []
+        all_adapters: List[Dict[str, Any]] = []
         for registration in self._adapters.values():
             if not registration["active"]:
                 continue
@@ -216,7 +216,7 @@ class AdapterRegistry:
         """
         self.discover_adapters()
 
-        institution_adapters = []
+        institution_adapters: List[Dict[str, Any]] = []
 
         for registration in self._adapters.values():
             if not registration["active"]:
@@ -246,7 +246,7 @@ class AdapterRegistry:
                         and institution.get("institution_id") == institution_id
                     ):
                         # Add the resolved institution_id to the adapter info
-                        adapter_info_with_id = {
+                        adapter_info_with_id: Dict[str, Any] = {
                             **adapter_info,
                             "institution_id": institution_id,
                         }
@@ -271,7 +271,7 @@ class AdapterRegistry:
         """
         self.discover_adapters()
 
-        public_adapters = []
+        public_adapters: List[Dict[str, Any]] = []
         for registration in self._adapters.values():
             if not registration["active"]:
                 continue
@@ -316,7 +316,7 @@ class AdapterRegistry:
 
         # Build a map keyed by adapter ID
         # Start with public adapters
-        adapter_map = {a["id"]: a for a in public_adapters}
+        adapter_map: Dict[str, Dict[str, Any]] = {a["id"]: a for a in public_adapters}
 
         # Override/add institution-specific adapters (they take precedence)
         for adapter in institution_adapters:
@@ -519,11 +519,19 @@ class AdapterRegistry:
         """
         self.discover_adapters()
 
-        formats = {}
+        formats: Dict[str, List[str]] = {}
         for adapter_id, registration in self._adapters.items():
             if registration["active"]:
                 adapter_info = registration["info"]
-                formats[adapter_id] = adapter_info.get("supported_formats", [])
+                supported_formats = adapter_info.get("supported_formats")
+                format_values: list[object] = (
+                    cast(list[object], supported_formats)
+                    if isinstance(supported_formats, list)
+                    else []
+                )
+                formats[adapter_id] = [
+                    str(format_value) for format_value in format_values
+                ]
 
         return formats
 
@@ -539,16 +547,22 @@ class AdapterRegistry:
         """
         self.discover_adapters()
 
-        matching_adapters = []
+        matching_adapters: List[Dict[str, Any]] = []
 
         for registration in self._adapters.values():
             if not registration["active"]:
                 continue
 
             adapter_info = registration["info"]
-            supported_formats = adapter_info.get("supported_formats", [])
+            supported_formats = adapter_info.get("supported_formats")
+            format_values: list[object] = (
+                cast(list[object], supported_formats)
+                if isinstance(supported_formats, list)
+                else []
+            )
+            typed_formats = [str(format_value) for format_value in format_values]
 
-            if file_extension.lower() in [fmt.lower() for fmt in supported_formats]:
+            if file_extension.lower() in [fmt.lower() for fmt in typed_formats]:
                 matching_adapters.append(
                     {**adapter_info, "active": registration["active"]}
                 )

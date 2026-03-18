@@ -6,7 +6,7 @@ from src.services.dashboard_service import DashboardService
 class TestDashboardProgramMetrics:
     """Test program metrics calculation in isolation."""
 
-    def test_build_program_metrics_with_courses_and_sections(self):
+    def test_build_program_metrics_with_courses_and_sections(self) -> None:
         """
         Test: _build_program_metrics correctly counts courses, faculty, sections per program
 

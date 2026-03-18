@@ -389,7 +389,7 @@ class GenericCSVAdapter(FileBaseAdapter):
         Returns:
             List of parsed record dictionaries
         """
-        records = []
+        records: List[Dict[str, Any]] = []
 
         try:
             # Parse CSV
@@ -488,11 +488,11 @@ class GenericCSVAdapter(FileBaseAdapter):
             with tempfile.TemporaryDirectory() as temp_dir:
                 temp_path = Path(temp_dir)
                 total_records = 0
-                entity_counts = {}
+                entity_counts: Dict[str, int] = {}
 
                 # Export each entity type to separate CSV
                 for entity_type in EXPORT_ORDER:
-                    records = data.get(entity_type, [])
+                    records: List[Dict[str, Any]] = data.get(entity_type, [])
                     csv_file = temp_path / f"{entity_type}.csv"
 
                     # Write CSV (even if empty)
@@ -504,7 +504,7 @@ class GenericCSVAdapter(FileBaseAdapter):
                     total_records += record_count
 
                 # Create manifest
-                manifest = self._create_manifest(entity_counts)
+                manifest: Dict[str, Any] = self._create_manifest(entity_counts)
                 manifest_file = temp_path / MANIFEST_FILENAME
                 manifest_file.write_text(json.dumps(manifest, indent=2))
 
@@ -568,7 +568,7 @@ class GenericCSVAdapter(FileBaseAdapter):
         Returns:
             Filtered and serialized record
         """
-        filtered = {}
+        filtered: Dict[str, Any] = {}
 
         for col in columns:
             value = record.get(col)
@@ -599,13 +599,14 @@ class GenericCSVAdapter(FileBaseAdapter):
         Returns:
             Manifest dictionary
         """
-        return {
+        manifest: Dict[str, Any] = {
             "format_version": FORMAT_VERSION,
             "exported_at": datetime.now(timezone.utc).isoformat(),
             "entity_counts": entity_counts,
             "import_order": EXPORT_ORDER,
             "security_note": "Passwords and active tokens excluded. Imported users must complete registration.",
         }
+        return manifest
 
     def _create_zip_archive(self, source_dir: Path, output_path: str) -> None:
         """

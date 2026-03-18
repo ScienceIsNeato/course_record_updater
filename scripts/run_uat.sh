@@ -111,8 +111,9 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Smart worker allocation: disable parallel for filtered tests
-# When running a specific test filter, serial execution is clearer and faster
+# Keep full-suite execution serial for reliability.
+PARALLEL_WORKERS=""
+
 if [[ -n "$TEST_FILTER" ]]; then
     # For single/filtered tests: disable parallel execution
     # This makes output clearer and is faster for small test counts
@@ -126,18 +127,21 @@ echo -e "${BLUE}  LoopCloser - UAT Runner${NC}"
 echo -e "${BLUE}============================================${NC}"
 echo ""
 
-# Check if virtual environment is activated (skip in CI where it's already set up)
-if [[ -z "$VIRTUAL_ENV" ]] && [[ "${CI:-false}" != "true" ]]; then
-    echo -e "${YELLOW}⚠️  Virtual environment not active, activating...${NC}"
-    if [[ -f "venv/bin/activate" ]]; then
-        source venv/bin/activate
-    else
-        echo -e "${RED}❌ Virtual environment not found at venv/bin/activate${NC}"
-        echo -e "${YELLOW}💡 Run: python -m venv venv && source venv/bin/activate && pip install -r requirements-dev.txt${NC}"
-        exit 1
+# Ensure Python dependencies are available for seeding and test startup.
+# Always prefer the repository venv when present, even if another environment
+# was inherited from the parent process.
+if [[ -f "venv/bin/activate" ]]; then
+    if [[ "$VIRTUAL_ENV" != *"/course_record_updater/venv" ]]; then
+        echo -e "${YELLOW}⚠️  Activating repository virtual environment...${NC}"
     fi
+    # shellcheck disable=SC1091
+    source venv/bin/activate
 elif [[ "${CI:-false}" = "true" ]]; then
     echo -e "${BLUE}🔵 CI environment detected, using pre-configured Python environment${NC}"
+else
+    echo -e "${RED}❌ Virtual environment not found at venv/bin/activate${NC}"
+    echo -e "${YELLOW}💡 Run: python -m venv venv && source venv/bin/activate && pip install -r requirements-dev.txt${NC}"
+    exit 1
 fi
 
 # Load environment variables from .envrc (skip in CI if credentials already set)
@@ -182,14 +186,10 @@ echo ""
 echo -e "${BLUE}ℹ️  Tests will create their own users/sections programmatically via API${NC}"
 echo ""
 
-# Start server in E2E mode (restart_server.sh determines port from LOOPCLOSER_DEFAULT_PORT_E2E)
-E2E_PORT="${LOOPCLOSER_DEFAULT_PORT_E2E:-3002}"
-echo -e "${YELLOW}🚀 Starting E2E server on port $E2E_PORT...${NC}"
-if ! ./scripts/restart_server.sh e2e; then
-    echo -e "${RED}❌ E2E server failed to start${NC}"
-    echo -e "${YELLOW}Check logs/test_server.log for details${NC}"
-    exit 1
-fi
+# Note: pytest fixtures in tests/e2e/conftest.py own E2E server lifecycle.
+# We intentionally do not start a separate external server here; this avoids
+# duplicate server ownership and supports worker-specific ports in parallel runs.
+echo -e "${BLUE}ℹ️  E2E server lifecycle managed by pytest fixtures${NC}"
 echo ""
 
 # Set video recording flag
@@ -210,6 +210,9 @@ fi
 
 # Set DATABASE_URL for pytest so it doesn't create a temp database
 export DATABASE_URL="${DATABASE_URL_E2E:-sqlite:///course_records_e2e.db}"
+
+# Ensure pytest fixtures manage server/database setup.
+unset E2E_EXTERNAL_SERVER
 
 # Build pytest command
 PYTEST_CMD="pytest tests/e2e/"

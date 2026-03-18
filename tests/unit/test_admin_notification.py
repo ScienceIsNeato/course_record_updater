@@ -4,6 +4,7 @@ Unit tests for admin notification feature.
 Tests the email alert when instructors submit assessments.
 """
 
+from typing import Any
 from unittest.mock import patch
 
 from src.services.clo_workflow_service import CLOWorkflowService
@@ -16,8 +17,8 @@ class TestAdminNotificationOnSubmission:
     @patch("src.services.clo_workflow_service.EmailService.send_admin_submission_alert")
     @patch("src.services.clo_workflow_service.db")
     def test_submit_with_admin_notification_sends_emails(
-        self, mock_db, mock_send_alert
-    ):
+        self, mock_db: Any, mock_send_alert: Any
+    ) -> None:
         """Test submission with notify_admins=True sends emails to program admins."""
         # Setup
         section_outcome_id = "outcome-123"
@@ -64,7 +65,9 @@ class TestAdminNotificationOnSubmission:
 
     @patch("src.services.clo_workflow_service.EmailService.send_admin_submission_alert")
     @patch("src.services.clo_workflow_service.db")
-    def test_submit_without_notification_skips_emails(self, mock_db, mock_send_alert):
+    def test_submit_without_notification_skips_emails(
+        self, mock_db: Any, mock_send_alert: Any
+    ) -> None:
         """Test submission with notify_admins=False doesn't send emails."""
         # Setup
         mock_db.get_section_outcome.return_value = {
@@ -84,7 +87,9 @@ class TestAdminNotificationOnSubmission:
 
     @patch("src.services.clo_workflow_service.EmailService.send_admin_submission_alert")
     @patch("src.services.clo_workflow_service.db")
-    def test_submit_default_notification_skips_emails(self, mock_db, mock_send_alert):
+    def test_submit_default_notification_skips_emails(
+        self, mock_db: Any, mock_send_alert: Any
+    ) -> None:
         """Test submission with default (no parameter) doesn't send emails."""
         # Setup
         mock_db.get_section_outcome.return_value = {
@@ -102,7 +107,9 @@ class TestAdminNotificationOnSubmission:
 
     @patch("src.services.clo_workflow_service.EmailService.send_admin_submission_alert")
     @patch("src.services.clo_workflow_service.db")
-    def test_notify_program_admins_for_course(self, mock_db, mock_send_alert):
+    def test_notify_program_admins_for_course(
+        self, mock_db: Any, mock_send_alert: Any
+    ) -> None:
         """Test aggregated admin notification after course submission."""
         mock_db.get_course_by_id.return_value = {
             "id": "course-789",

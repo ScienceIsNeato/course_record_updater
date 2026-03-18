@@ -11,13 +11,14 @@ Tests the complete CRUD workflows for all entities including:
 - Outcomes: CRUD operations with assessment tracking
 """
 
+from typing import Any
 from unittest.mock import patch
 
 from src.app import app
 from tests.test_utils import CommonAuthMixin
 
 
-def get_csrf_token(client):
+def get_csrf_token(client: Any) -> Any:
     """Get CSRF token using Flask-WTF's generate_csrf."""
     from flask import session as flask_session
     from flask_wtf.csrf import generate_csrf
@@ -36,7 +37,7 @@ def get_csrf_token(client):
 class TestUsersCRUDIntegration(CommonAuthMixin):
     """Integration tests for Users CRUD endpoints"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.app = app
         self.app.config["TESTING"] = True
@@ -44,7 +45,7 @@ class TestUsersCRUDIntegration(CommonAuthMixin):
         self._login_site_admin()
 
     @patch("src.api.routes.users.get_user_by_id")
-    def test_get_user_by_id_integration(self, mock_get_user):
+    def test_get_user_by_id_integration(self, mock_get_user: Any) -> None:
         """Test GET /api/users/<id> full integration"""
         mock_get_user.return_value = {
             "user_id": "user-123",
@@ -64,7 +65,9 @@ class TestUsersCRUDIntegration(CommonAuthMixin):
 
     @patch("src.api.routes.users.update_user_profile")
     @patch("src.api.routes.users.get_user_by_id")
-    def test_update_profile_integration(self, mock_get_user, mock_update):
+    def test_update_profile_integration(
+        self, mock_get_user: Any, mock_update: Any
+    ) -> None:
         """Test PATCH /api/users/<id>/profile full integration"""
         mock_update.return_value = True
         mock_get_user.return_value = {
@@ -88,7 +91,9 @@ class TestUsersCRUDIntegration(CommonAuthMixin):
 
     @patch("src.api.routes.users.deactivate_user")
     @patch("src.api.routes.users.get_user_by_id")
-    def test_deactivate_user_integration(self, mock_get_user, mock_deactivate):
+    def test_deactivate_user_integration(
+        self, mock_get_user: Any, mock_deactivate: Any
+    ) -> None:
         """Test POST /api/users/<id>/deactivate full integration"""
         mock_get_user.return_value = {
             "user_id": "user-123",
@@ -108,7 +113,9 @@ class TestUsersCRUDIntegration(CommonAuthMixin):
 
     @patch("src.api.routes.users.delete_user")
     @patch("src.api.routes.users.get_user_by_id")
-    def test_delete_user_integration(self, mock_get_user, mock_delete):
+    def test_delete_user_integration(
+        self, mock_get_user: Any, mock_delete: Any
+    ) -> None:
         """Test DELETE /api/users/<id> full integration"""
         mock_get_user.return_value = {
             "user_id": "user-456",
@@ -130,7 +137,7 @@ class TestUsersCRUDIntegration(CommonAuthMixin):
 class TestInstitutionsCRUDIntegration(CommonAuthMixin):
     """Integration tests for Institutions CRUD endpoints"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.app = app
         self.app.config["TESTING"] = True
@@ -139,7 +146,9 @@ class TestInstitutionsCRUDIntegration(CommonAuthMixin):
 
     @patch("src.api.routes.institutions.update_institution")
     @patch("src.api.routes.institutions.get_institution_by_id")
-    def test_update_institution_integration(self, mock_get_inst, mock_update):
+    def test_update_institution_integration(
+        self, mock_get_inst: Any, mock_update: Any
+    ) -> None:
         """Test PUT /institutions/<id> full integration"""
         mock_get_inst.return_value = {
             "institution_id": "inst-1",
@@ -166,8 +175,8 @@ class TestInstitutionsCRUDIntegration(CommonAuthMixin):
     @patch("src.api.routes.institutions.delete_institution")
     @patch("src.api.routes.institutions.get_institution_by_id")
     def test_delete_institution_with_confirmation_integration(
-        self, mock_get_inst, mock_delete
-    ):
+        self, mock_get_inst: Any, mock_delete: Any
+    ) -> None:
         """Test DELETE /institutions/<id> with confirmation"""
         mock_get_inst.return_value = {
             "institution_id": "inst-1",
@@ -185,7 +194,9 @@ class TestInstitutionsCRUDIntegration(CommonAuthMixin):
         assert data["success"] is True
 
     @patch("src.api.routes.institutions.delete_institution")
-    def test_delete_institution_without_confirmation_fails(self, mock_delete):
+    def test_delete_institution_without_confirmation_fails(
+        self, mock_delete: Any
+    ) -> None:
         """Test DELETE /institutions/<id> requires confirmation"""
         response = self.client.delete(
             "/api/institutions/inst-1",
@@ -201,7 +212,7 @@ class TestInstitutionsCRUDIntegration(CommonAuthMixin):
 class TestCoursesCRUDIntegration(CommonAuthMixin):
     """Integration tests for Courses CRUD endpoints"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.app = app
         self.app.config["TESTING"] = True
@@ -209,7 +220,7 @@ class TestCoursesCRUDIntegration(CommonAuthMixin):
         self._login_site_admin()
 
     @patch("src.api.routes.courses.get_course_by_id")
-    def test_get_course_by_id_integration(self, mock_get_course):
+    def test_get_course_by_id_integration(self, mock_get_course: Any) -> None:
         """Test GET /api/courses/by-id/<id> full integration"""
         mock_get_course.return_value = {
             "course_id": "course-123",
@@ -229,8 +240,8 @@ class TestCoursesCRUDIntegration(CommonAuthMixin):
     @patch("src.api.routes.courses.update_course_programs")
     @patch("src.api.routes.courses.get_course_by_id")
     def test_update_course_integration(
-        self, mock_get_course, mock_update_programs, mock_update
-    ):
+        self, mock_get_course: Any, mock_update_programs: Any, mock_update: Any
+    ) -> None:
         """Test PUT /api/courses/<id> full integration"""
         mock_get_course.return_value = {
             "course_id": "course-123",
@@ -259,7 +270,9 @@ class TestCoursesCRUDIntegration(CommonAuthMixin):
 
     @patch("src.api.routes.courses.delete_course")
     @patch("src.api.routes.courses.get_course_by_id")
-    def test_delete_course_integration(self, mock_get_course, mock_delete):
+    def test_delete_course_integration(
+        self, mock_get_course: Any, mock_delete: Any
+    ) -> None:
         """Test DELETE /api/courses/<id> CASCADE delete"""
         mock_get_course.return_value = {
             "course_id": "course-123",
@@ -281,7 +294,7 @@ class TestCoursesCRUDIntegration(CommonAuthMixin):
 class TestTermsCRUDIntegration(CommonAuthMixin):
     """Integration tests for Terms CRUD endpoints"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.app = app
         self.app.config["TESTING"] = True
@@ -292,8 +305,8 @@ class TestTermsCRUDIntegration(CommonAuthMixin):
     @patch("src.api.routes.terms.get_current_institution_id_safe")
     @patch("src.api.routes.terms.get_term_by_id")
     def test_update_term_integration(
-        self, mock_get_term, mock_get_inst_id, mock_update
-    ):
+        self, mock_get_term: Any, mock_get_inst_id: Any, mock_update: Any
+    ) -> None:
         """Test PUT /api/terms/<id> full integration"""
         mock_get_term.side_effect = [
             {
@@ -326,8 +339,8 @@ class TestTermsCRUDIntegration(CommonAuthMixin):
     @patch("src.api.routes.terms.get_current_institution_id_safe")
     @patch("src.api.routes.terms.get_term_by_id")
     def test_delete_term_integration(
-        self, mock_get_term, mock_get_inst_id, mock_delete
-    ):
+        self, mock_get_term: Any, mock_get_inst_id: Any, mock_delete: Any
+    ) -> None:
         """Test DELETE /api/terms/<id> CASCADE delete"""
         mock_get_term.return_value = {
             "term_id": "term-123",
@@ -352,7 +365,7 @@ class TestTermsCRUDIntegration(CommonAuthMixin):
 class TestOfferingsCRUDIntegration(CommonAuthMixin):
     """Integration tests for Course Offerings CRUD endpoints"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.app = app
         self.app.config["TESTING"] = True
@@ -360,7 +373,7 @@ class TestOfferingsCRUDIntegration(CommonAuthMixin):
         self._login_site_admin()
 
     @patch("src.database.database_service.create_course_offering")
-    def test_create_offering_integration(self, mock_create):
+    def test_create_offering_integration(self, mock_create: Any) -> None:
         """Test POST /api/offerings create"""
         # Mock returns offering_id (as per database_service.create_course_offering signature)
         mock_create.return_value = "offering-123"
@@ -384,7 +397,7 @@ class TestOfferingsCRUDIntegration(CommonAuthMixin):
         assert data["offering_id"] == "offering-123"
 
     @patch("src.api.routes.offerings.get_course_offering")
-    def test_get_offering_by_id_integration(self, mock_get):
+    def test_get_offering_by_id_integration(self, mock_get: Any) -> None:
         """Test GET /api/offerings/<id> retrieve"""
         mock_get.return_value = {
             "offering_id": "offering-123",
@@ -400,7 +413,7 @@ class TestOfferingsCRUDIntegration(CommonAuthMixin):
 
     @patch("src.api.routes.offerings.update_course_offering")
     @patch("src.api.routes.offerings.get_course_offering")
-    def test_update_offering_integration(self, mock_get, mock_update):
+    def test_update_offering_integration(self, mock_get: Any, mock_update: Any) -> None:
         """Test PUT /api/offerings/<id> update"""
         mock_get.return_value = {"offering_id": "offering-123", "capacity": 30}
         mock_update.return_value = True
@@ -419,7 +432,7 @@ class TestOfferingsCRUDIntegration(CommonAuthMixin):
 
     @patch("src.api.routes.offerings.delete_course_offering")
     @patch("src.api.routes.offerings.get_course_offering")
-    def test_delete_offering_integration(self, mock_get, mock_delete):
+    def test_delete_offering_integration(self, mock_get: Any, mock_delete: Any) -> None:
         """Test DELETE /api/offerings/<id> CASCADE delete"""
         mock_get.return_value = {"offering_id": "offering-123", "capacity": 30}
         mock_delete.return_value = True
@@ -437,7 +450,7 @@ class TestOfferingsCRUDIntegration(CommonAuthMixin):
 class TestSectionsCRUDIntegration(CommonAuthMixin):
     """Integration tests for Course Sections CRUD endpoints"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.app = app
         self.app.config["TESTING"] = True
@@ -449,8 +462,12 @@ class TestSectionsCRUDIntegration(CommonAuthMixin):
     @patch("src.api.routes.sections.get_current_institution_id_safe")
     @patch("src.api.routes.sections.get_section_by_id")
     def test_update_section_integration(
-        self, mock_get_section, mock_get_inst_id, mock_get_offering, mock_update
-    ):
+        self,
+        mock_get_section: Any,
+        mock_get_inst_id: Any,
+        mock_get_offering: Any,
+        mock_update: Any,
+    ) -> None:
         """Test PUT /api/sections/<id> update"""
         mock_get_section.side_effect = [
             {
@@ -491,12 +508,12 @@ class TestSectionsCRUDIntegration(CommonAuthMixin):
     @patch("src.api.routes.sections.get_section_by_id")
     def test_assign_instructor_integration(
         self,
-        mock_get_section,
-        mock_get_inst_id,
-        mock_get_offering,
-        mock_get_user,
-        mock_assign,
-    ):
+        mock_get_section: Any,
+        mock_get_inst_id: Any,
+        mock_get_offering: Any,
+        mock_get_user: Any,
+        mock_assign: Any,
+    ) -> None:
         """Test PATCH /api/sections/<id>/instructor assign instructor"""
         mock_get_section.return_value = {
             "section_id": "section-123",
@@ -533,8 +550,12 @@ class TestSectionsCRUDIntegration(CommonAuthMixin):
     @patch("src.api.routes.sections.get_current_institution_id_safe")
     @patch("src.api.routes.sections.get_section_by_id")
     def test_delete_section_integration(
-        self, mock_get_section, mock_get_inst_id, mock_get_offering, mock_delete
-    ):
+        self,
+        mock_get_section: Any,
+        mock_get_inst_id: Any,
+        mock_get_offering: Any,
+        mock_delete: Any,
+    ) -> None:
         """Test DELETE /api/sections/<id> delete"""
         mock_get_section.return_value = {
             "section_id": "section-123",
@@ -561,7 +582,7 @@ class TestSectionsCRUDIntegration(CommonAuthMixin):
 class TestOutcomesCRUDIntegration(CommonAuthMixin):
     """Integration tests for Course Outcomes CRUD endpoints"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.app = app
         self.app.config["TESTING"] = True
@@ -570,7 +591,9 @@ class TestOutcomesCRUDIntegration(CommonAuthMixin):
 
     @patch("src.database.database_service.create_course_outcome")
     @patch("src.api.routes.outcomes.get_course_by_id")
-    def test_create_outcome_integration(self, mock_get_course, mock_create):
+    def test_create_outcome_integration(
+        self, mock_get_course: Any, mock_create: Any
+    ) -> None:
         """Test POST /api/courses/<id>/outcomes create"""
         mock_get_course.return_value = {
             "course_id": "course-123",
@@ -599,8 +622,12 @@ class TestOutcomesCRUDIntegration(CommonAuthMixin):
     @patch("src.api.routes.outcomes.get_current_institution_id_safe")
     @patch("src.api.routes.outcomes.get_course_outcome")
     def test_update_outcome_integration(
-        self, mock_get_outcome, mock_get_inst_id, mock_get_course, mock_update
-    ):
+        self,
+        mock_get_outcome: Any,
+        mock_get_inst_id: Any,
+        mock_get_course: Any,
+        mock_update: Any,
+    ) -> None:
         """Test PUT /api/outcomes/<id> update description"""
         mock_get_outcome.return_value = {
             "outcome_id": "outcome-123",
@@ -631,8 +658,12 @@ class TestOutcomesCRUDIntegration(CommonAuthMixin):
     @patch("src.api.routes.outcomes.update_section_outcome")
     @patch("src.api.routes.outcomes.get_section_outcome")
     def test_update_outcome_assessment_integration(
-        self, mock_get_section_outcome, mock_update, mock_get_user, mock_get_section
-    ):
+        self,
+        mock_get_section_outcome: Any,
+        mock_update: Any,
+        mock_get_user: Any,
+        mock_get_section: Any,
+    ) -> None:
         """Test PUT /api/outcomes/<id>/assessment update assessment (section-level)"""
         mock_get_section_outcome.return_value = {
             "section_outcome_id": "section-outcome-123",
@@ -669,8 +700,12 @@ class TestOutcomesCRUDIntegration(CommonAuthMixin):
     @patch("src.api.routes.outcomes.get_current_institution_id_safe")
     @patch("src.api.routes.outcomes.get_course_outcome")
     def test_delete_outcome_integration(
-        self, mock_get_outcome, mock_get_inst_id, mock_get_course, mock_delete
-    ):
+        self,
+        mock_get_outcome: Any,
+        mock_get_inst_id: Any,
+        mock_get_course: Any,
+        mock_delete: Any,
+    ) -> None:
         """Test DELETE /api/outcomes/<id> delete"""
         mock_get_outcome.return_value = {
             "outcome_id": "outcome-123",
@@ -697,7 +732,7 @@ class TestOutcomesCRUDIntegration(CommonAuthMixin):
 class TestCRUDWorkflows(CommonAuthMixin):
     """Test complete end-to-end CRUD workflows"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.app = app
         self.app.config["TESTING"] = True
@@ -709,8 +744,8 @@ class TestCRUDWorkflows(CommonAuthMixin):
     @patch("src.api.routes.offerings.delete_course_offering")
     @patch("src.api.routes.offerings.get_course_offering")
     def test_offering_complete_lifecycle(
-        self, mock_get, mock_delete, mock_update, mock_create
-    ):
+        self, mock_get: Any, mock_delete: Any, mock_update: Any, mock_create: Any
+    ) -> None:
         """Test complete offering lifecycle: create → update → delete"""
         # Create
         mock_create.return_value = "offering-123"
@@ -756,8 +791,8 @@ class TestCRUDWorkflows(CommonAuthMixin):
     @patch("src.api.routes.courses.delete_course")
     @patch("src.api.routes.courses.get_course_by_id")
     def test_course_update_and_cascade_delete(
-        self, mock_get_course, mock_delete, mock_update
-    ):
+        self, mock_get_course: Any, mock_delete: Any, mock_update: Any
+    ) -> None:
         """Test course update followed by CASCADE delete"""
         mock_get_course.return_value = {
             "course_id": "course-123",

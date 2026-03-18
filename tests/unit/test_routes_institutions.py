@@ -1,6 +1,7 @@
 """Unit tests for institution API routes (migrated from test_api_routes.py)."""
 
 import json
+from typing import Any
 from unittest.mock import patch
 
 from src.app import app
@@ -10,7 +11,7 @@ from src.utils.constants import INVALID_PASSWORD
 class TestInstitutionEndpoints:
     """Test institution management endpoints."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.app = app
         self.app.config["TESTING"] = True
@@ -23,7 +24,7 @@ class TestInstitutionEndpoints:
             "institution_id": "riverside-tech-institute",
         }
 
-    def _login_site_admin(self, overrides=None):
+    def _login_site_admin(self, overrides: Any = None) -> Any:
         from tests.test_utils import create_test_session
 
         user_data = {**self.site_admin_user}
@@ -32,13 +33,15 @@ class TestInstitutionEndpoints:
         create_test_session(self.client, user_data)
         return user_data
 
-    def _login_user(self, overrides=None):
+    def _login_user(self, overrides: Any = None) -> Any:
         """Alias for _login_site_admin for backward compatibility"""
         return self._login_site_admin(overrides)
 
     @patch("src.api.routes.institutions.get_all_institutions")
     @patch("src.api.routes.institutions.get_institution_instructor_count")
-    def test_list_institutions_success(self, mock_get_count, mock_get_institutions):
+    def test_list_institutions_success(
+        self, mock_get_count: Any, mock_get_institutions: Any
+    ) -> None:
         """Test GET /api/institutions endpoint."""
         self._login_site_admin()
 
@@ -56,7 +59,7 @@ class TestInstitutionEndpoints:
         assert len(data["institutions"]) == 2
 
     @patch("src.api.routes.institutions.create_new_institution")
-    def test_create_institution_success(self, mock_create_institution):
+    def test_create_institution_success(self, mock_create_institution: Any) -> None:
         """Test POST /api/institutions/register endpoint success (public registration)."""
         # No login needed - this is a public registration endpoint
         mock_create_institution.return_value = ("institution123", "user123")
@@ -84,7 +87,9 @@ class TestInstitutionEndpoints:
 
     @patch("src.api.utils.get_current_user")
     @patch("src.api.routes.institutions.get_institution_by_id")
-    def test_get_institution_details_success(self, mock_get_institution, mock_get_user):
+    def test_get_institution_details_success(
+        self, mock_get_institution: Any, mock_get_user: Any
+    ) -> None:
         """Test GET /api/institutions/<id> endpoint success."""
         self._login_site_admin()
 
@@ -108,7 +113,9 @@ class TestInstitutionEndpoints:
 
     @patch("src.api.utils.get_current_institution_id")
     @patch("src.api.routes.users.get_all_instructors")
-    def test_list_instructors_success(self, mock_get_instructors, mock_get_mocku):
+    def test_list_instructors_success(
+        self, mock_get_instructors: Any, mock_get_mocku: Any
+    ) -> None:
         """Test GET /api/instructors endpoint success."""
         self._login_site_admin()
 
@@ -126,7 +133,9 @@ class TestInstitutionEndpoints:
         assert len(data["instructors"]) == 2
 
     @patch("src.api.routes.institutions.create_new_institution")
-    def test_create_institution_missing_data(self, mock_create_institution):
+    def test_create_institution_missing_data(
+        self, mock_create_institution: Any
+    ) -> None:
         """Test POST /api/institutions/register with missing data."""
         with app.test_client() as client:
             response = client.post("/api/institutions/register", json={})
@@ -136,7 +145,9 @@ class TestInstitutionEndpoints:
             assert data["success"] is False
 
     @patch("src.api.routes.institutions.create_new_institution")
-    def test_create_institution_missing_admin_user_field(self, mock_create_institution):
+    def test_create_institution_missing_admin_user_field(
+        self, mock_create_institution: Any
+    ) -> None:
         """Test POST /api/institutions/register with missing admin user field."""
         with app.test_client() as client:
             # Send institution data but missing admin user email
@@ -162,7 +173,9 @@ class TestInstitutionEndpoints:
             assert "Admin user email is required" in data["error"]
 
     @patch("src.api.routes.institutions.create_new_institution")
-    def test_create_institution_creation_failure(self, mock_create_institution):
+    def test_create_institution_creation_failure(
+        self, mock_create_institution: Any
+    ) -> None:
         """Test POST /api/institutions/register when institution creation fails."""
         # Setup - make create_new_institution return None (failure)
         mock_create_institution.return_value = None
@@ -191,7 +204,9 @@ class TestInstitutionEndpoints:
             assert "Failed to create institution" in data["error"]
 
     @patch("src.api.routes.institutions.create_new_institution")
-    def test_create_institution_exception_handling(self, mock_create_institution):
+    def test_create_institution_exception_handling(
+        self, mock_create_institution: Any
+    ) -> None:
         """Test POST /api/institutions/register exception handling."""
         # Setup - make create_new_institution raise an exception
         mock_create_institution.side_effect = Exception("Database connection failed")
@@ -220,7 +235,7 @@ class TestInstitutionEndpoints:
             assert "Failed to create institution" in data["error"]
 
     @patch("src.api.routes.institutions.get_all_institutions")
-    def test_list_institutions_exception(self, mock_get_institutions):
+    def test_list_institutions_exception(self, mock_get_institutions: Any) -> None:
         """Test GET /api/institutions exception handling."""
         self._login_user()
 
@@ -235,8 +250,8 @@ class TestInstitutionEndpoints:
     @patch("src.api.utils.get_current_user")
     @patch("src.api.routes.institutions.get_institution_by_id")
     def test_get_institution_details_access_denied(
-        self, mock_get_institution, mock_get_user
-    ):
+        self, mock_get_institution: Any, mock_get_user: Any
+    ) -> None:
         """Test GET /api/institutions/<id> access denied."""
         self._login_user(
             {
@@ -261,7 +276,7 @@ class TestInstitutionEndpoints:
         assert "permission denied" in data["error"].lower()
 
     @patch("src.api.routes.courses.create_course")
-    def test_create_course_data_validation(self, mock_create_course):
+    def test_create_course_data_validation(self, mock_create_course: Any) -> None:
         """Test course creation with comprehensive data validation."""
         self._login_user({"institution_id": "test-institution"})
 
@@ -291,7 +306,7 @@ class TestInstitutionEndpoints:
         assert call_args["credit_hours"] == 3
 
     @patch("src.api.routes.terms.create_term")
-    def test_create_term_data_validation(self, mock_create_term):
+    def test_create_term_data_validation(self, mock_create_term: Any) -> None:
         """Test term creation with proper data validation."""
         self._login_user({"institution_id": "test-institution"})
 
@@ -312,7 +327,7 @@ class TestInstitutionEndpoints:
         data = json.loads(response.data)
         assert "success" in data  # Response should have success field
 
-    def test_api_error_handling_comprehensive(self):
+    def test_api_error_handling_comprehensive(self) -> None:
         """Test comprehensive API error handling scenarios."""
         self._login_user({"institution_id": "test-institution"})
 
@@ -328,7 +343,7 @@ class TestInstitutionEndpoints:
         # Should handle gracefully - exact behavior varies
         assert response.status_code is not None
 
-    def test_api_endpoints_comprehensive_error_handling(self):
+    def test_api_endpoints_comprehensive_error_handling(self) -> None:
         """Test comprehensive error handling across different API endpoints."""
         with app.test_client() as client:
             # Test various endpoints for proper error responses
@@ -352,8 +367,8 @@ class TestInstitutionEndpoints:
     @patch("src.api.utils.get_current_user")
     @patch("src.api.routes.users.has_permission")
     def test_get_user_endpoint_comprehensive(
-        self, mock_has_permission, mock_get_current_user
-    ):
+        self, mock_has_permission: Any, mock_get_current_user: Any
+    ) -> None:
         """Test user retrieval endpoint with permission checking."""
         self._login_user({"institution_id": "test-institution"})
 
@@ -371,8 +386,8 @@ class TestInstitutionEndpoints:
     @patch("src.api.routes.imports.create_progress_tracker")
     @patch("src.api.routes.imports.update_progress")
     def test_import_excel_api_validation(
-        self, mock_update_progress, mock_create_progress
-    ):
+        self, mock_update_progress: Any, mock_create_progress: Any
+    ) -> None:
         """Test Excel import API validation and error handling."""
         self._login_user({"institution_id": "test-institution"})
 
@@ -386,7 +401,7 @@ class TestInstitutionEndpoints:
         assert data["success"] is False
         assert "no excel file" in data["error"].lower()
 
-    def test_import_progress_endpoint(self):
+    def test_import_progress_endpoint(self) -> None:
         """Test import progress tracking endpoint."""
         with app.test_client() as client:
             response = client.get("/api/import/progress/nonexistent")
@@ -395,7 +410,7 @@ class TestInstitutionEndpoints:
             assert response.status_code in [200, 404, 500]
 
     @patch("src.api.utils.handle_api_error")
-    def test_api_error_handler_functionality(self, mock_handle_error):
+    def test_api_error_handler_functionality(self, mock_handle_error: Any) -> None:
         """Test API error handler functionality."""
         mock_handle_error.return_value = (
             {"success": False, "error": "Test error"},
@@ -410,7 +425,7 @@ class TestInstitutionEndpoints:
         assert result[1] == 500
 
     @patch("src.api.utils.get_current_institution_id")
-    def test_institution_context_handling(self, mock_get_institution_id):
+    def test_institution_context_handling(self, mock_get_institution_id: Any) -> None:
         """Test institution context handling across endpoints."""
         self._login_user({"institution_id": "test-institution"})
 

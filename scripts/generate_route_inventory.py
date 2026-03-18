@@ -84,7 +84,7 @@ class RouteExtractor(ast.NodeVisitor):
         self.generic_visit(node)
 
 
-def extract_routes_from_file(file_path: Path) -> List[Dict]:
+def extract_routes_from_file(file_path: Path) -> List[Dict[str, Any]]:
     """Extract routes from a Python file using AST parsing."""
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -104,7 +104,7 @@ def extract_routes_from_file(file_path: Path) -> List[Dict]:
         return []
 
 
-def extract_routes_regex(file_path: Path) -> List[Dict]:
+def extract_routes_regex(file_path: Path) -> List[Dict[str, Any]]:
     """Extract route decorators using regex."""
     routes = []
     seen_routes = set()  # Track unique routes to avoid duplicates
@@ -323,7 +323,7 @@ def _determine_page_role_access(
 
 
 def determine_role_access(
-    route_path: str, auth_info: Dict, _source_file: str
+    route_path: str, auth_info: Dict[str, Any], _source_file: str
 ) -> List[str]:
     """Determine which roles can access this route."""
     # API routes are typically accessible based on permissions

@@ -4,8 +4,9 @@ CLO Workflow Service
 Manages the submission, review, and approval workflow for Course Learning Outcomes (CLOs).
 """
 
+from collections.abc import Mapping
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from src.database.database_service import db
 from src.utils.constants import CLOApprovalStatus, CLOStatus
@@ -19,6 +20,28 @@ logger = get_logger(__name__)
 
 class CLOWorkflowService:
     """Service for managing CLO submission and approval workflows."""
+
+    @staticmethod
+    def _course_program_ids(course: Optional[Dict[str, Any]]) -> List[str]:
+        """Normalize program identifiers attached to a course."""
+        if not course:
+            return []
+
+        raw_program_ids = course.get("program_ids")
+        if isinstance(raw_program_ids, list):
+            program_id_values: List[Any] = cast(List[Any], raw_program_ids)
+            program_ids = [
+                str(program_id_value)
+                for program_id_value in program_id_values
+                if program_id_value
+            ]
+            if program_ids:
+                return program_ids
+        elif isinstance(raw_program_ids, str):
+            return [raw_program_ids]
+
+        program_id = course.get("program_id")
+        return [str(program_id)] if program_id else []
 
     @staticmethod
     def submit_clo_for_approval(
@@ -49,7 +72,7 @@ class CLOWorkflowService:
                 return False
 
             # Update status and submission metadata
-            update_data = {
+            update_data: Dict[str, Any] = {
                 "status": CLOStatus.AWAITING_APPROVAL,
                 "submitted_at": datetime.now(timezone.utc),
                 "submitted_by": user_id,
@@ -109,7 +132,7 @@ class CLOWorkflowService:
 
             # Update status and review metadata
             # Note: Preserve feedback_comments and feedback_provided_at for audit trail
-            update_data = {
+            update_data: Dict[str, Any] = {
                 "status": CLOStatus.APPROVED,
                 "approval_status": CLOApprovalStatus.APPROVED,
                 "reviewed_at": datetime.now(timezone.utc),
@@ -136,7 +159,7 @@ class CLOWorkflowService:
         reviewer_id: str,
         comments: str,
         send_email: bool = False,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Request rework on a submitted section-level CLO with feedback comments.
 
@@ -170,7 +193,7 @@ class CLOWorkflowService:
             # NOTE: Using "approval_pending" string because the UI expects this for
             # displaying the "Needs Rework" badge. CLOStatus.AWAITING_APPROVAL would
             # display as "Awaiting Approval" which is incorrect after rework is requested.
-            update_data = {
+            update_data: Dict[str, Any] = {
                 "status": "approval_pending",  # UI badge for "Needs Rework"
                 "approval_status": CLOApprovalStatus.NEEDS_REWORK,
                 "reviewed_at": datetime.now(timezone.utc),
@@ -281,7 +304,7 @@ class CLOWorkflowService:
                 return False
 
             # Update status to NCI
-            update_data = {
+            update_data: Dict[str, Any] = {
                 "status": CLOStatus.NEVER_COMING_IN,
                 "approval_status": CLOApprovalStatus.NEVER_COMING_IN,
                 "reviewed_at": datetime.now(timezone.utc),
@@ -323,15 +346,16 @@ class CLOWorkflowService:
             if not outcome_details:
                 logger.error(f"Could not load outcome details for {outcome_id}")
                 return False
+            outcome_data = cast(Dict[str, Any], outcome_details)
 
-            instructor_email = outcome_details.get("instructor_email")
+            instructor_email = outcome_data.get("instructor_email")
             if not instructor_email:
                 logger.error(f"No instructor email found for outcome {outcome_id}")
                 return False
 
-            course_number = outcome_details.get("course_number", "Unknown Course")
-            clo_number = outcome_details.get("clo_number", "Unknown CLO")
-            instructor_name = outcome_details.get("instructor_name", "Instructor")
+            course_number = outcome_data.get("course_number", "Unknown Course")
+            clo_number = outcome_data.get("clo_number", "Unknown CLO")
+            instructor_name = outcome_data.get("instructor_name", "Instructor")
 
             # Compose email using templates
             from urllib.parse import urljoin
@@ -341,15 +365,16 @@ class CLOWorkflowService:
             subject = f"Feedback on CLO {clo_number} for {course_number}"
 
             # Build assessment URL
-            base_url = current_app.config.get("BASE_URL", "http://localhost:3001")
-            course_id = outcome_details.get("course_id")
+            app_config = cast(Mapping[str, Any], current_app.config)
+            base_url = str(app_config.get("BASE_URL", "http://localhost:3001"))
+            course_id = outcome_data.get("course_id")
             if course_id:
                 assessment_url = urljoin(base_url, f"/assessments?course={course_id}")
             else:
                 # Fallback to general assessments page if no course_id
                 assessment_url = urljoin(base_url, "/assessments")
 
-            template_context = {
+            template_context: Dict[str, Any] = {
                 "clo_number": clo_number,
                 "course_number": course_number,
                 "course_code": course_number,
@@ -413,7 +438,7 @@ class CLOWorkflowService:
                 # Already in progress or submitted, don't change status
                 return True
 
-            update_data = {"status": CLOStatus.IN_PROGRESS}
+            update_data: Dict[str, Any] = {"status": CLOStatus.IN_PROGRESS}
             success = db.update_section_outcome(section_outcome_id, update_data)
 
             if success:
@@ -463,7 +488,7 @@ class CLOWorkflowService:
     @staticmethod
     def _validate_clo_fields(outcome: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Validate required fields for a single CLO."""
-        errors = []
+        errors: List[Dict[str, Any]] = []
         outcome_id = outcome.get("outcome_id") or outcome.get("id")
         clo_number = outcome.get("clo_number", "?")
 
@@ -518,7 +543,7 @@ class CLOWorkflowService:
     @staticmethod
     def _validate_section_data(section_id: str) -> List[Dict[str, Any]]:
         """Validate course-level section data."""
-        errors = []
+        errors: List[Dict[str, Any]] = []
         section = db.get_section_by_id(section_id)
 
         if section:
@@ -559,6 +584,7 @@ class CLOWorkflowService:
         try:
             # If section_id provided, validate ONLY that section
             # This supports per-section submission workflow
+            section_outcomes: List[Dict[str, Any]]
             if section_id:
                 logger.info(
                     f"DEBUG: Validating ONLY section {section_id} for course {course_id}"
@@ -615,7 +641,7 @@ class CLOWorkflowService:
                     ],
                 }
 
-            errors = []
+            errors: List[Dict[str, Any]] = []
 
             # Validate each section outcome
             for section_outcome in section_outcomes:
@@ -755,6 +781,7 @@ class CLOWorkflowService:
         try:
             # If section_id provided, only submit outcomes for that section
             # Otherwise, submit all sections (legacy behavior)
+            section_outcomes: List[Dict[str, Any]]
             if section_id:
                 logger.info(
                     f"DEBUG: Submitting ONLY section {section_id} for course {course_id}"
@@ -858,7 +885,7 @@ class CLOWorkflowService:
             )
 
             # Enrich with course and instructor details
-            enriched_outcomes = []
+            enriched_outcomes: List[Dict[str, Any]] = []
             for outcome in outcomes:
                 details = CLOWorkflowService.get_outcome_with_details(
                     outcome["outcome_id"]
@@ -953,7 +980,7 @@ class CLOWorkflowService:
                     # Merge essential fields from course_outcome since section_outcome
                     # only has section-specific data (it links via outcome_id)
                     # Fields like course_id, clo_number, description are on course_outcome
-                    enriched_section_outcome = {
+                    enriched_section_outcome: Dict[str, Any] = {
                         **section_outcome,
                         "course_id": course_id,
                         "clo_number": outcome.get("clo_number"),
@@ -1257,7 +1284,7 @@ class CLOWorkflowService:
         # Use eager-loaded template if available (avoids N+1 query)
         if "_template" in outcome:
             template = outcome["_template"]
-            enriched_outcome = {
+            enriched_outcome: Dict[str, Any] = {
                 **template,  # Base: Template fields (clo_number, description, course_id)
                 **outcome,  # Override: Section outcome fields (status, specific assessment)
                 "id": outcome["id"],  # Ensure we keep the section outcome ID
@@ -1344,7 +1371,7 @@ class CLOWorkflowService:
             return None
 
         # Use eager-loaded programs if available (avoids N+1 query)
-        program_ids = course.get("program_ids", [])
+        program_ids = CLOWorkflowService._course_program_ids(course)
         if program_ids and len(program_ids) > 0:
             # Programs might be eager loaded as _programs
             if "_programs" in course:
@@ -1449,8 +1476,8 @@ class CLOWorkflowService:
                 return
 
             # Get program_id (courses have program_ids array, use first one)
-            program_ids = course.get("program_ids") or []
-            program_id = program_ids[0] if program_ids else course.get("program_id")
+            program_ids = CLOWorkflowService._course_program_ids(course)
+            program_id = program_ids[0] if program_ids else None
             if not program_id:
                 logger.warning(f"No program ID for course {course['id']}")
                 return
@@ -1513,10 +1540,10 @@ class CLOWorkflowService:
                 return False, error_msg
 
             # Get program_id (courses have program_ids array, use first one)
-            program_ids = course.get("program_ids") or []
-            program_id = program_ids[0] if program_ids else course.get("program_id")
+            program_ids = CLOWorkflowService._course_program_ids(course)
+            program_id = program_ids[0] if program_ids else None
 
-            admins = []
+            admins: List[Dict[str, Any]] = []
             if program_id:
                 # Try to get program admins first
                 admins = db.get_program_admins(program_id)

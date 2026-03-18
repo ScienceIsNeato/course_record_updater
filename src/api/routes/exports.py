@@ -64,7 +64,7 @@ def get_available_adapters() -> ResponseReturnValue:
         adapters = registry.get_adapters_for_user(user_role, user_institution_id)
 
         # Format adapters for frontend consumption
-        adapter_list = []
+        adapter_list: List[Dict[str, Any]] = []
         for adapter_info in adapters:
             adapter_list.append(
                 {

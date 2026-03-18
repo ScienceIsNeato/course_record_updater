@@ -4,6 +4,7 @@ Unit tests for clo_workflow_service.py
 Tests the CLO submission and approval workflow service methods.
 """
 
+from typing import Any
 from unittest.mock import patch
 
 from src.services.clo_workflow_service import CLOWorkflowService
@@ -14,7 +15,7 @@ class TestSubmitCLOForApproval:
     """Test CLOWorkflowService.submit_clo_for_approval method"""
 
     @patch("src.services.clo_workflow_service.db")
-    def test_submit_clo_success(self, mock_db):
+    def test_submit_clo_success(self, mock_db: Any) -> None:
         """Test successful CLO submission"""
         # Setup
         section_outcome_id = "section-outcome-123"
@@ -43,7 +44,7 @@ class TestSubmitCLOForApproval:
         assert "submitted_at" in update_data
 
     @patch("src.services.clo_workflow_service.db")
-    def test_submit_clo_not_found(self, mock_db):
+    def test_submit_clo_not_found(self, mock_db: Any) -> None:
         """Test submission when CLO doesn't exist"""
         mock_db.get_section_outcome.return_value = None
 
@@ -53,7 +54,7 @@ class TestSubmitCLOForApproval:
         mock_db.update_section_outcome.assert_not_called()
 
     @patch("src.services.clo_workflow_service.db")
-    def test_submit_clo_update_fails(self, mock_db):
+    def test_submit_clo_update_fails(self, mock_db: Any) -> None:
         """Test submission when database update returns False"""
         mock_db.get_section_outcome.return_value = {
             "id": "outcome-123",
@@ -66,7 +67,7 @@ class TestSubmitCLOForApproval:
         assert result is False
 
     @patch("src.services.clo_workflow_service.db")
-    def test_submit_clo_skips_approved(self, mock_db):
+    def test_submit_clo_skips_approved(self, mock_db: Any) -> None:
         """Test submission skips already approved CLOs."""
         mock_db.get_section_outcome.return_value = {
             "id": "outcome-123",
@@ -79,7 +80,7 @@ class TestSubmitCLOForApproval:
         mock_db.update_section_outcome.assert_not_called()
 
     @patch("src.services.clo_workflow_service.db")
-    def test_submit_clo_database_error(self, mock_db):
+    def test_submit_clo_database_error(self, mock_db: Any) -> None:
         """Test submission with database error"""
         mock_db.get_section_outcome.return_value = {"id": "outcome-123"}
         mock_db.update_section_outcome.side_effect = Exception("Database error")
@@ -93,7 +94,7 @@ class TestApproveCLO:
     """Test CLOWorkflowService.approve_clo method"""
 
     @patch("src.services.clo_workflow_service.db")
-    def test_approve_clo_from_awaiting_approval(self, mock_db):
+    def test_approve_clo_from_awaiting_approval(self, mock_db: Any) -> None:
         """Test approving CLO from awaiting_approval status"""
         outcome_id = "outcome-123"
         reviewer_id = "admin-456"
@@ -115,7 +116,7 @@ class TestApproveCLO:
         # Note: feedback_comments preserved for audit trail (not cleared)
 
     @patch("src.services.clo_workflow_service.db")
-    def test_approve_clo_from_approval_pending(self, mock_db):
+    def test_approve_clo_from_approval_pending(self, mock_db: Any) -> None:
         """Test approving CLO from approval_pending status (after rework)"""
         outcome_id = "outcome-123"
         reviewer_id = "admin-456"
@@ -135,7 +136,7 @@ class TestApproveCLO:
         # Note: feedback_comments preserved for audit trail (not cleared)
 
     @patch("src.services.clo_workflow_service.db")
-    def test_approve_clo_wrong_status(self, mock_db):
+    def test_approve_clo_wrong_status(self, mock_db: Any) -> None:
         """Test approval fails for CLO not ready for approval"""
         mock_db.get_section_outcome.return_value = {
             "id": "outcome-123",
@@ -148,7 +149,7 @@ class TestApproveCLO:
         mock_db.update_section_outcome.assert_not_called()
 
     @patch("src.services.clo_workflow_service.db")
-    def test_approve_clo_not_found(self, mock_db):
+    def test_approve_clo_not_found(self, mock_db: Any) -> None:
         """Test approval when CLO doesn't exist"""
         mock_db.get_section_outcome.return_value = None
 
@@ -157,7 +158,7 @@ class TestApproveCLO:
         assert result is False
 
     @patch("src.services.clo_workflow_service.db")
-    def test_approve_clo_update_fails(self, mock_db):
+    def test_approve_clo_update_fails(self, mock_db: Any) -> None:
         """Test approval when database update returns False"""
         mock_db.get_section_outcome.return_value = {
             "id": "outcome-123",
@@ -170,7 +171,7 @@ class TestApproveCLO:
         assert result is False
 
     @patch("src.services.clo_workflow_service.db")
-    def test_approve_clo_database_error(self, mock_db):
+    def test_approve_clo_database_error(self, mock_db: Any) -> None:
         """Test approval with database exception"""
         mock_db.get_section_outcome.return_value = {
             "id": "outcome-123",
@@ -190,7 +191,9 @@ class TestRequestRework:
         "src.services.clo_workflow_service.CLOWorkflowService._send_rework_notification"
     )
     @patch("src.services.clo_workflow_service.db")
-    def test_request_rework_without_email(self, mock_db, mock_send_email):
+    def test_request_rework_without_email(
+        self, mock_db: Any, mock_send_email: Any
+    ) -> None:
         """Test requesting rework without sending email"""
         outcome_id = "outcome-123"
         reviewer_id = "admin-456"
@@ -223,7 +226,9 @@ class TestRequestRework:
         "src.services.clo_workflow_service.CLOWorkflowService._send_rework_notification"
     )
     @patch("src.services.clo_workflow_service.db")
-    def test_request_rework_with_email(self, mock_db, mock_send_email):
+    def test_request_rework_with_email(
+        self, mock_db: Any, mock_send_email: Any
+    ) -> None:
         """Test requesting rework with email notification"""
         outcome_id = "outcome-123"
         reviewer_id = "admin-456"
@@ -244,7 +249,7 @@ class TestRequestRework:
         mock_send_email.assert_called_once_with(outcome_id, comments)
 
     @patch("src.services.clo_workflow_service.db")
-    def test_request_rework_wrong_status(self, mock_db):
+    def test_request_rework_wrong_status(self, mock_db: Any) -> None:
         """Test rework request fails for wrong status"""
         mock_db.get_section_outcome.return_value = {
             "id": "outcome-123",
@@ -259,7 +264,7 @@ class TestRequestRework:
         mock_db.update_section_outcome.assert_not_called()
 
     @patch("src.services.clo_workflow_service.db")
-    def test_request_rework_not_found(self, mock_db):
+    def test_request_rework_not_found(self, mock_db: Any) -> None:
         """Test rework request when CLO doesn't exist"""
         mock_db.get_section_outcome.return_value = None
 
@@ -270,7 +275,7 @@ class TestRequestRework:
         assert result == {"success": False, "email_sent": False}
 
     @patch("src.services.clo_workflow_service.db")
-    def test_request_rework_update_fails(self, mock_db):
+    def test_request_rework_update_fails(self, mock_db: Any) -> None:
         """Test rework request when database update returns False"""
         mock_db.get_section_outcome.return_value = {
             "id": "outcome-123",
@@ -285,7 +290,7 @@ class TestRequestRework:
         assert result == {"success": False, "email_sent": False}
 
     @patch("src.services.clo_workflow_service.db")
-    def test_request_rework_database_error(self, mock_db):
+    def test_request_rework_database_error(self, mock_db: Any) -> None:
         """Test rework request with database exception"""
         mock_db.get_section_outcome.return_value = {
             "id": "outcome-123",
@@ -304,7 +309,7 @@ class TestMarkAsNCI:
     """Test CLOWorkflowService.mark_as_nci method (CEI demo follow-up)"""
 
     @patch("src.services.clo_workflow_service.db")
-    def test_mark_as_nci_success_with_reason(self, mock_db):
+    def test_mark_as_nci_success_with_reason(self, mock_db: Any) -> None:
         """Test marking CLO as Never Coming In with reason"""
         outcome_id = "outcome-123"
         reviewer_id = "admin-456"
@@ -328,7 +333,7 @@ class TestMarkAsNCI:
         assert update_data["reviewed_by"] == reviewer_id
 
     @patch("src.services.clo_workflow_service.db")
-    def test_mark_as_nci_success_without_reason(self, mock_db):
+    def test_mark_as_nci_success_without_reason(self, mock_db: Any) -> None:
         """Test marking CLO as NCI without specific reason"""
         outcome_id = "outcome-123"
         reviewer_id = "admin-456"
@@ -349,7 +354,7 @@ class TestMarkAsNCI:
         assert update_data["reviewed_by"] == reviewer_id
 
     @patch("src.services.clo_workflow_service.db")
-    def test_mark_as_nci_not_found(self, mock_db):
+    def test_mark_as_nci_not_found(self, mock_db: Any) -> None:
         """Test NCI marking when CLO doesn't exist"""
         mock_db.get_section_outcome.return_value = None
 
@@ -358,7 +363,7 @@ class TestMarkAsNCI:
         assert result is False
 
     @patch("src.services.clo_workflow_service.db")
-    def test_mark_as_nci_update_fails(self, mock_db):
+    def test_mark_as_nci_update_fails(self, mock_db: Any) -> None:
         """Test NCI marking when database update returns False"""
         mock_db.get_section_outcome.return_value = {
             "id": "outcome-123",
@@ -371,7 +376,7 @@ class TestMarkAsNCI:
         assert result is False
 
     @patch("src.services.clo_workflow_service.db")
-    def test_mark_as_nci_database_error(self, mock_db):
+    def test_mark_as_nci_database_error(self, mock_db: Any) -> None:
         """Test NCI marking with database exception"""
         mock_db.get_section_outcome.return_value = {
             "id": "outcome-123",
@@ -388,7 +393,7 @@ class TestAutoMarkInProgress:
     """Test CLOWorkflowService.auto_mark_in_progress method"""
 
     @patch("src.services.clo_workflow_service.db")
-    def test_auto_mark_from_assigned(self, mock_db):
+    def test_auto_mark_from_assigned(self, mock_db: Any) -> None:
         """Test auto-marking from assigned status"""
         outcome_id = "outcome-123"
         user_id = "user-456"
@@ -407,7 +412,7 @@ class TestAutoMarkInProgress:
         assert update_call[1]["status"] == CLOStatus.IN_PROGRESS
 
     @patch("src.services.clo_workflow_service.db")
-    def test_auto_mark_from_approval_pending(self, mock_db):
+    def test_auto_mark_from_approval_pending(self, mock_db: Any) -> None:
         """Test auto-marking from approval_pending status"""
         mock_db.get_section_outcome.return_value = {
             "id": "outcome-123",
@@ -421,7 +426,7 @@ class TestAutoMarkInProgress:
         mock_db.update_section_outcome.assert_called_once()
 
     @patch("src.services.clo_workflow_service.db")
-    def test_auto_mark_already_in_progress(self, mock_db):
+    def test_auto_mark_already_in_progress(self, mock_db: Any) -> None:
         """Test auto-mark does nothing if already in progress"""
         mock_db.get_section_outcome.return_value = {
             "id": "outcome-123",
@@ -434,7 +439,7 @@ class TestAutoMarkInProgress:
         mock_db.update_section_outcome.assert_not_called()
 
     @patch("src.services.clo_workflow_service.db")
-    def test_auto_mark_not_found(self, mock_db):
+    def test_auto_mark_not_found(self, mock_db: Any) -> None:
         """Test auto-mark fails if CLO not found"""
         mock_db.get_section_outcome.return_value = None
 
@@ -443,7 +448,7 @@ class TestAutoMarkInProgress:
         assert result is False
 
     @patch("src.services.clo_workflow_service.db")
-    def test_auto_mark_database_error(self, mock_db):
+    def test_auto_mark_database_error(self, mock_db: Any) -> None:
         """Test auto-mark handles database errors"""
         mock_db.get_section_outcome.return_value = {
             "id": "outcome-123",
@@ -463,7 +468,9 @@ class TestGetCLOsByStatus:
         "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
     )
     @patch("src.services.clo_workflow_service.db")
-    def test_get_clos_by_status_success(self, mock_db, mock_get_details):
+    def test_get_clos_by_status_success(
+        self, mock_db: Any, mock_get_details: Any
+    ) -> None:
         """Test getting CLOs by status"""
         institution_id = "inst-123"
         status = CLOStatus.AWAITING_APPROVAL
@@ -498,7 +505,9 @@ class TestGetCLOsByStatus:
         "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
     )
     @patch("src.services.clo_workflow_service.db")
-    def test_get_clos_by_status_with_program_filter(self, mock_db, mock_get_details):
+    def test_get_clos_by_status_with_program_filter(
+        self, mock_db: Any, mock_get_details: Any
+    ) -> None:
         """Test getting CLOs by status with program filter"""
         institution_id = "inst-123"
         program_id = "prog-456"
@@ -523,7 +532,7 @@ class TestGetCLOsByStatus:
         mock_get_details.assert_called_once()
 
     @patch("src.services.clo_workflow_service.db")
-    def test_get_clos_by_status_empty_result(self, mock_db):
+    def test_get_clos_by_status_empty_result(self, mock_db: Any) -> None:
         """Test getting CLOs when none match"""
         mock_db.get_section_outcomes_by_criteria.return_value = []
 
@@ -535,7 +544,7 @@ class TestGetCLOsByStatus:
         assert result == []
 
     @patch("src.services.clo_workflow_service.db")
-    def test_get_clos_by_status_exception_handling(self, mock_db):
+    def test_get_clos_by_status_exception_handling(self, mock_db: Any) -> None:
         """Test exception handling in get_clos_by_status"""
         mock_db.get_section_outcomes_by_criteria.side_effect = Exception(
             "Database error"
@@ -556,7 +565,9 @@ class TestExpandOutcomeForSections:
         "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
     )
     @patch("src.services.clo_workflow_service.db")
-    def test_expand_with_realistic_section_dict_format(self, mock_db, mock_get_details):
+    def test_expand_with_realistic_section_dict_format(
+        self, mock_db: Any, mock_get_details: Any
+    ) -> None:
         """Test with ACTUAL dict format from _course_section_to_dict (uses section_id, not id).
 
         Regression test: The database model returns 'section_id' as the key,
@@ -610,8 +621,8 @@ class TestExpandOutcomeForSections:
     )
     @patch("src.services.clo_workflow_service.db")
     def test_expand_merges_course_outcome_fields_into_section_outcome(
-        self, mock_db, mock_get_details
-    ):
+        self, mock_db: Any, mock_get_details: Any
+    ) -> None:
         """Regression test: section_outcome doesn't have course_id, clo_number, description.
 
         These fields must be merged from the original course_outcome into the
@@ -660,7 +671,7 @@ class TestExpandOutcomeForSections:
         "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
     )
     @patch("src.services.clo_workflow_service.db")
-    def test_expand_with_sections(self, mock_db, mock_get_details):
+    def test_expand_with_sections(self, mock_db: Any, mock_get_details: Any) -> None:
         """Test with legacy mock format (id key) - kept for backwards compatibility."""
         mock_db.get_sections_by_course.return_value = [
             {
@@ -697,7 +708,7 @@ class TestExpandOutcomeForSections:
         "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
     )
     @patch("src.services.clo_workflow_service.db")
-    def test_expand_without_sections(self, mock_db, mock_get_details):
+    def test_expand_without_sections(self, mock_db: Any, mock_get_details: Any) -> None:
         mock_db.get_sections_by_course.return_value = []
         mock_get_details.return_value = {"outcome_id": "outcome-1"}
 
@@ -711,7 +722,7 @@ class TestExpandOutcomeForSections:
         "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
     )
     @patch("src.services.clo_workflow_service.db")
-    def test_expand_filters_out_none(self, mock_db, mock_get_details):
+    def test_expand_filters_out_none(self, mock_db: Any, mock_get_details: Any) -> None:
         mock_db.get_sections_by_course.return_value = [
             {"id": "sec-1", "offering_id": "off-1", "section_number": "001"}
         ]
@@ -731,8 +742,8 @@ class TestExpandOutcomeForSections:
     )
     @patch("src.services.clo_workflow_service.db")
     def test_expand_with_sections_without_section_outcomes(
-        self, mock_db, mock_get_details
-    ):
+        self, mock_db: Any, mock_get_details: Any
+    ) -> None:
         """When sections exist but no section outcomes, result is empty (sections skipped)."""
         mock_db.get_sections_by_course.return_value = [
             {"id": "sec-1", "section_number": "001"},
@@ -753,7 +764,7 @@ class TestGetOutcomeWithDetails:
     """Test CLOWorkflowService.get_outcome_with_details method"""
 
     @patch("src.services.clo_workflow_service.db")
-    def test_get_outcome_with_details_success(self, mock_db):
+    def test_get_outcome_with_details_success(self, mock_db: Any) -> None:
         """Test getting outcome with enriched details"""
         outcome_id = "outcome-123"
 
@@ -795,7 +806,7 @@ class TestGetOutcomeWithDetails:
         mock_db.get_user.assert_called_with("instructor-111")
 
     @patch("src.services.clo_workflow_service.db")
-    def test_get_outcome_with_details_not_found(self, mock_db):
+    def test_get_outcome_with_details_not_found(self, mock_db: Any) -> None:
         """Test getting details when outcome doesn't exist"""
         mock_db.get_section_outcome.return_value = None
 
@@ -804,7 +815,7 @@ class TestGetOutcomeWithDetails:
         assert result is None
 
     @patch("src.services.clo_workflow_service.db")
-    def test_get_outcome_with_details_no_instructor(self, mock_db):
+    def test_get_outcome_with_details_no_instructor(self, mock_db: Any) -> None:
         """Test getting details when course has no instructor"""
         mock_db.get_section_outcome.return_value = {
             "id": "outcome-123",
@@ -824,7 +835,9 @@ class TestGetOutcomeWithDetails:
         assert result.get("instructor_email") is None
 
     @patch("src.services.clo_workflow_service.db")
-    def test_get_outcome_with_details_instructor_no_display_name(self, mock_db):
+    def test_get_outcome_with_details_instructor_no_display_name(
+        self, mock_db: Any
+    ) -> None:
         """Test getting details when instructor has no display_name"""
         mock_db.get_section_outcome.return_value = {
             "id": "outcome-123",
@@ -852,7 +865,7 @@ class TestGetOutcomeWithDetails:
         mock_db.get_user.assert_called_with("instructor-111")
 
     @patch("src.services.clo_workflow_service.db")
-    def test_get_outcome_with_details_uses_section_id(self, mock_db):
+    def test_get_outcome_with_details_uses_section_id(self, mock_db: Any) -> None:
         """Section outcomes should resolve section_number from section_id."""
         mock_db.get_section_outcome.return_value = {
             "id": "outcome-123",
@@ -885,7 +898,7 @@ class TestGetOutcomeWithDetails:
         assert result.get("instructor_name") == "Jane Doe"
 
     @patch("src.services.clo_workflow_service.db")
-    def test_get_outcome_with_details_exception(self, mock_db):
+    def test_get_outcome_with_details_exception(self, mock_db: Any) -> None:
         """Test getting details with database exception"""
         mock_db.get_section_outcome.side_effect = Exception("Database error")
 
@@ -895,8 +908,8 @@ class TestGetOutcomeWithDetails:
 
     @patch("src.services.clo_workflow_service.db")
     def test_get_outcome_with_details_no_course_does_not_raise_unbound_error(
-        self, mock_db
-    ):
+        self, mock_db: Any
+    ) -> None:
         """Regression test: section_id/instructor_id must be initialized to None.
 
         When course lookup fails, the code should not raise UnboundLocalError
@@ -941,8 +954,8 @@ class TestSendReworkNotification:
         "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
     )
     def test_send_rework_notification_success(
-        self, mock_get_details, mock_email_service
-    ):
+        self, mock_get_details: Any, mock_email_service: Any
+    ) -> None:
         """Test sending rework notification email"""
         from src.app import app  # Import Flask app for context
 
@@ -974,7 +987,7 @@ class TestSendReworkNotification:
     @patch(
         "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
     )
-    def test_send_rework_notification_no_outcome(self, mock_get_details):
+    def test_send_rework_notification_no_outcome(self, mock_get_details: Any) -> None:
         """Test notification fails when outcome not found"""
         mock_get_details.return_value = None
 
@@ -985,7 +998,7 @@ class TestSendReworkNotification:
     @patch(
         "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
     )
-    def test_send_rework_notification_no_email(self, mock_get_details):
+    def test_send_rework_notification_no_email(self, mock_get_details: Any) -> None:
         """Test notification fails when no instructor email"""
         mock_get_details.return_value = {
             "id": "outcome-123",
@@ -1001,8 +1014,8 @@ class TestSendReworkNotification:
         "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
     )
     def test_send_rework_notification_email_fails(
-        self, mock_get_details, mock_email_service
-    ):
+        self, mock_get_details: Any, mock_email_service: Any
+    ) -> None:
         """Test notification when email sending fails"""
         from src.app import app
 
@@ -1026,8 +1039,8 @@ class TestSendReworkNotification:
         "src.services.clo_workflow_service.CLOWorkflowService.get_outcome_with_details"
     )
     def test_send_rework_notification_exception(
-        self, mock_get_details, mock_email_service
-    ):
+        self, mock_get_details: Any, mock_email_service: Any
+    ) -> None:
         """Test notification when exception occurs"""
         mock_get_details.return_value = {
             "id": "outcome-123",
@@ -1046,7 +1059,7 @@ class TestGetInstructorFromOutcome:
     """Test CLOWorkflowService._get_instructor_from_outcome method"""
 
     @patch("src.services.clo_workflow_service.db")
-    def test_get_instructor_from_submitted_by_user_id(self, mock_db):
+    def test_get_instructor_from_submitted_by_user_id(self, mock_db: Any) -> None:
         """Test getting instructor from submitted_by_user_id"""
         outcome = {
             "outcome_id": "outcome-123",
@@ -1064,7 +1077,7 @@ class TestGetInstructorFromOutcome:
         mock_db.get_user.assert_called_once_with("user-789")
 
     @patch("src.services.clo_workflow_service.db")
-    def test_get_instructor_no_course_id(self, mock_db):
+    def test_get_instructor_no_course_id(self, mock_db: Any) -> None:
         """Test returns None when outcome has no course_id"""
         outcome = {
             "outcome_id": "outcome-123",
@@ -1077,7 +1090,7 @@ class TestGetInstructorFromOutcome:
         assert result is None
 
     @patch("src.services.clo_workflow_service.db")
-    def test_get_instructor_no_instructor_id_in_section(self, mock_db):
+    def test_get_instructor_no_instructor_id_in_section(self, mock_db: Any) -> None:
         """Test returns None when section has no instructor_id"""
         outcome = {
             "outcome_id": "outcome-123",

@@ -7,6 +7,7 @@ toward 80% total coverage.
 
 import os
 import tempfile
+from typing import Any
 from unittest.mock import patch
 
 from src.app import app
@@ -17,13 +18,13 @@ from tests.test_utils import CommonAuthMixin
 class TestAPIErrorHandling(CommonAuthMixin):
     """Test error handling paths in API routes."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test client."""
         self.app = app
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
 
-    def test_create_user_no_json_data(self):
+    def test_create_user_no_json_data(self) -> None:
         """Test user creation with no JSON data."""
         # Test no data provided (unauthenticated request)
         response = self.client.post("/api/users", content_type="application/json")
@@ -31,7 +32,7 @@ class TestAPIErrorHandling(CommonAuthMixin):
         # Real auth returns 401 for unauthenticated requests
         assert response.status_code == 401
 
-    def test_create_user_database_failure(self):
+    def test_create_user_database_failure(self) -> None:
         """Test user creation when database returns None."""
         self._login_site_admin()
 
@@ -54,7 +55,7 @@ class TestAPIErrorHandling(CommonAuthMixin):
             assert data["success"] is False
             assert "error" in data
 
-    def test_get_users_exception_handling(self):
+    def test_get_users_exception_handling(self) -> None:
         """Test get users with exception."""
         self._login_site_admin()
 
@@ -69,7 +70,7 @@ class TestAPIErrorHandling(CommonAuthMixin):
             data = response.get_json()
             assert data["success"] is True  # API gracefully handles exceptions
 
-    def test_create_course_no_json_data(self):
+    def test_create_course_no_json_data(self) -> None:
         """Test course creation with no JSON data."""
         # Test unauthenticated request
         response = self.client.post("/api/courses", content_type="application/json")
@@ -77,7 +78,7 @@ class TestAPIErrorHandling(CommonAuthMixin):
         # Real auth returns 401 for unauthenticated requests
         assert response.status_code == 401
 
-    def test_create_course_database_failure(self):
+    def test_create_course_database_failure(self) -> None:
         """Test course creation when database fails."""
         # Test unauthenticated request
         with patch("src.api.routes.courses.create_course", return_value=None):
@@ -92,7 +93,7 @@ class TestAPIErrorHandling(CommonAuthMixin):
             # Real auth returns 401 for unauthenticated requests
             assert response.status_code == 401
 
-    def test_get_course_by_number_not_found(self):
+    def test_get_course_by_number_not_found(self) -> None:
         """Test getting course by number when not found."""
         # Test unauthenticated request
         with patch(
@@ -103,7 +104,7 @@ class TestAPIErrorHandling(CommonAuthMixin):
             # Real auth returns 401 for unauthenticated requests
             assert response.status_code == 401
 
-    def test_get_courses_exception_handling(self):
+    def test_get_courses_exception_handling(self) -> None:
         """Test get courses with exception."""
         # Test unauthenticated request
         with (
@@ -125,13 +126,13 @@ class TestAPIErrorHandling(CommonAuthMixin):
 class TestTermEndpoints(CommonAuthMixin):
     """Test term endpoint error handling."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test client."""
         self.app = app
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
 
-    def test_create_term_no_json_data(self):
+    def test_create_term_no_json_data(self) -> None:
         """Test term creation with no JSON data."""
         # Test unauthenticated request
         response = self.client.post("/api/terms", content_type="application/json")
@@ -139,7 +140,7 @@ class TestTermEndpoints(CommonAuthMixin):
         # Real auth returns 401 for unauthenticated requests
         assert response.status_code == 401
 
-    def test_create_term_missing_fields(self):
+    def test_create_term_missing_fields(self) -> None:
         """Test term creation with missing required fields."""
         # Test unauthenticated request
         term_data = {
@@ -152,7 +153,7 @@ class TestTermEndpoints(CommonAuthMixin):
         # Real auth returns 401 for unauthenticated requests
         assert response.status_code == 401
 
-    def test_create_term_database_failure(self):
+    def test_create_term_database_failure(self) -> None:
         """Test term creation when database fails."""
         # Test unauthenticated request
         with patch("src.database.database_service.create_term", return_value=None):
@@ -172,13 +173,13 @@ class TestTermEndpoints(CommonAuthMixin):
 class TestImportEndpoints(CommonAuthMixin):
     """Test import endpoint error handling - major coverage opportunity."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test client."""
         self.app = app
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
 
-    def test_import_excel_no_file(self):
+    def test_import_excel_no_file(self) -> None:
         """Test Excel import with no file."""
         # Test unauthenticated request
         response = self.client.post("/api/import/excel")
@@ -186,7 +187,7 @@ class TestImportEndpoints(CommonAuthMixin):
         # Real auth returns 401 for unauthenticated requests
         assert response.status_code == 401
 
-    def test_import_excel_empty_filename(self):
+    def test_import_excel_empty_filename(self) -> None:
         """Test Excel import with empty filename."""
         # Test unauthenticated request
         response = self.client.post(
@@ -196,7 +197,7 @@ class TestImportEndpoints(CommonAuthMixin):
         # Real auth returns 401 for unauthenticated requests
         assert response.status_code == 401
 
-    def test_import_excel_invalid_file_type(self):
+    def test_import_excel_invalid_file_type(self) -> None:
         """Test Excel import with invalid file type."""
         # Test unauthenticated request
         with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tmp:
@@ -214,7 +215,7 @@ class TestImportEndpoints(CommonAuthMixin):
         finally:
             os.unlink(tmp_path)
 
-    def test_import_excel_service_exception(self):
+    def test_import_excel_service_exception(self) -> None:
         """Test Excel import when service raises exception."""
         with patch(
             "src.services.import_service.import_excel",
@@ -239,7 +240,7 @@ class TestImportEndpoints(CommonAuthMixin):
             finally:
                 os.unlink(tmp_path)
 
-    def test_import_progress_endpoints(self):
+    def test_import_progress_endpoints(self) -> None:
         """Exercise import progress helper endpoints."""
         from src.api.routes.imports import (
             cleanup_progress,
@@ -270,7 +271,7 @@ class TestImportEndpoints(CommonAuthMixin):
 
         cleanup_progress(progress_id)
 
-    def test_validate_import_file_no_file(self):
+    def test_validate_import_file_no_file(self) -> None:
         """Validate import file endpoint without providing a file."""
         self._login_site_admin()
         response = self.client.post("/api/import/validate")
@@ -284,13 +285,13 @@ class TestImportEndpoints(CommonAuthMixin):
 class TestSectionEndpoints(CommonAuthMixin):
     """Test section endpoint error handling - huge coverage opportunity."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test client."""
         self.app = app
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
 
-    def test_get_sections_exception_handling(self):
+    def test_get_sections_exception_handling(self) -> None:
         """Test get sections with exception."""
         # Test unauthenticated request
         with (
@@ -308,7 +309,7 @@ class TestSectionEndpoints(CommonAuthMixin):
             # Real auth returns 401 for unauthenticated requests
             assert response.status_code == 401
 
-    def test_create_section_no_json_data(self):
+    def test_create_section_no_json_data(self) -> None:
         """Test section creation with no JSON data."""
         # Test unauthenticated request
         response = self.client.post("/api/sections", content_type="application/json")
@@ -316,7 +317,7 @@ class TestSectionEndpoints(CommonAuthMixin):
         # Real auth returns 401 for unauthenticated requests
         assert response.status_code == 401
 
-    def test_create_section_missing_fields(self):
+    def test_create_section_missing_fields(self) -> None:
         """Test section creation with missing required fields."""
         # Test unauthenticated request
         section_data = {
@@ -329,7 +330,7 @@ class TestSectionEndpoints(CommonAuthMixin):
         # Real auth returns 401 for unauthenticated requests
         assert response.status_code == 401
 
-    def test_create_section_database_failure(self):
+    def test_create_section_database_failure(self) -> None:
         """Test section creation when database fails."""
         # Test unauthenticated request
         with patch(
@@ -348,7 +349,7 @@ class TestSectionEndpoints(CommonAuthMixin):
             # Real auth returns 401 for unauthenticated requests
             assert response.status_code == 401
 
-    def test_get_sections_by_instructor_exception(self):
+    def test_get_sections_by_instructor_exception(self) -> None:
         """Test get sections by instructor with exception."""
         # Test unauthenticated request
         with patch(
@@ -366,14 +367,14 @@ class TestSectionEndpoints(CommonAuthMixin):
 class TestDashboardErrorHandling:
     """Test dashboard error handling."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test client."""
         self.app = app
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
 
     @patch("src.app.get_current_user")
-    def test_dashboard_no_user(self, mock_get_user):
+    def test_dashboard_no_user(self, mock_get_user: Any) -> None:
         """Test dashboard with no current user."""
         # Test dashboard error paths
         mock_get_user.return_value = None
@@ -388,7 +389,7 @@ class TestDashboardErrorHandling:
             pass
 
     @patch("src.app.get_current_user")
-    def test_dashboard_unknown_role(self, mock_get_user):
+    def test_dashboard_unknown_role(self, mock_get_user: Any) -> None:
         """Test dashboard with unknown role."""
         mock_get_user.return_value = {
             "role": "unknown_role",
@@ -408,13 +409,13 @@ class TestDashboardErrorHandling:
 class TestAdditionalErrorPaths(CommonAuthMixin):
     """Test additional error paths and edge cases."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test client."""
         self.app = app
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
 
-    def test_malformed_json_requests(self):
+    def test_malformed_json_requests(self) -> None:
         """Test various endpoints with malformed JSON."""
         endpoints = ["/api/users", "/api/courses", "/api/terms", "/api/sections"]
 
@@ -427,7 +428,7 @@ class TestAdditionalErrorPaths(CommonAuthMixin):
             # Real auth returns 401 for unauthenticated requests
             assert response.status_code == 401
 
-    def test_missing_content_type(self):
+    def test_missing_content_type(self) -> None:
         """Test endpoints with missing content type."""
         endpoints = ["/api/users", "/api/courses", "/api/terms", "/api/sections"]
 
@@ -438,7 +439,7 @@ class TestAdditionalErrorPaths(CommonAuthMixin):
             assert response.status_code in [400, 415, 500]
             assert response.status_code != 401
 
-    def test_empty_string_fields(self):
+    def test_empty_string_fields(self) -> None:
         """Test endpoints with empty string fields."""
         # Test user creation with empty strings
         user_data = {"email": "", "first_name": "", "last_name": "", "role": ""}

@@ -20,6 +20,7 @@ Workflow:
 """
 
 import json
+from typing import Any
 
 import pytest
 from playwright.sync_api import Page, expect
@@ -33,7 +34,7 @@ from tests.e2e.test_helpers import (
 )
 
 
-def _setup_rework_test_data(admin_page, institution_id):
+def _setup_rework_test_data(admin_page: Any, institution_id: Any) -> Any:
     """Create all necessary test data via API."""
     # Get CSRF token
     csrf_token = admin_page.evaluate(
@@ -192,7 +193,9 @@ def _setup_rework_test_data(admin_page, institution_id):
     }
 
 
-def _step_admin_requests_rework(admin_page, clo_id, section_outcome_id):
+def _step_admin_requests_rework(
+    admin_page: Any, clo_id: Any, section_outcome_id: Any
+) -> None:
     """Admin navigates to audit and requests rework."""
     admin_page.goto(f"{BASE_URL}/audit-clo")
     expect(admin_page).to_have_url(f"{BASE_URL}/audit-clo")
@@ -233,7 +236,9 @@ def _step_admin_requests_rework(admin_page, clo_id, section_outcome_id):
     expect(detail_modal).not_to_be_visible()
 
 
-def _step_verify_rework_status(admin_page, clo_id, section_outcome_id, csrf_token):
+def _step_verify_rework_status(
+    admin_page: Any, clo_id: Any, section_outcome_id: Any, csrf_token: Any
+) -> None:
     """Verify status updated to approval_pending/needs_rework."""
     # First verify via API that rework request actually succeeded
     outcome_response = admin_page.request.get(
@@ -274,7 +279,9 @@ def _step_verify_rework_status(admin_page, clo_id, section_outcome_id, csrf_toke
     expect(clo_row.locator("td").nth(0)).to_contain_text("Needs Rework")
 
 
-def _step_instructor_resubmits(page, course_id, section_outcome_id):
+def _step_instructor_resubmits(
+    page: Any, course_id: Any, section_outcome_id: Any
+) -> None:
     """Instructor sees feedback, edits, and resubmits."""
     page.goto(f"{BASE_URL}/assessments")
     page.wait_for_selector(
@@ -314,7 +321,9 @@ def _step_instructor_resubmits(page, course_id, section_outcome_id):
 
 
 @pytest.mark.e2e
-def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page):
+def test_clo_rework_feedback_workflow(
+    authenticated_institution_admin_page: Page,
+) -> None:
     """
     Test admin rework request workflow with feedback and email notification.
 

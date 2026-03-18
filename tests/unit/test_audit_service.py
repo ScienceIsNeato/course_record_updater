@@ -2,6 +2,7 @@
 
 import json
 from datetime import datetime, timezone
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 from src.services.audit_service import (
@@ -19,13 +20,13 @@ from src.services.audit_service import (
 class TestEnums:
     """Test enum definitions"""
 
-    def test_operation_type_enum(self):
+    def test_operation_type_enum(self) -> None:
         """Test OperationType enum values"""
         assert OperationType.CREATE.value == "CREATE"
         assert OperationType.UPDATE.value == "UPDATE"
         assert OperationType.DELETE.value == "DELETE"
 
-    def test_entity_type_enum(self):
+    def test_entity_type_enum(self) -> None:
         """Test EntityType enum values"""
         assert EntityType.USER.value == "users"
         assert EntityType.INSTITUTION.value == "institutions"
@@ -36,7 +37,7 @@ class TestEnums:
         assert EntityType.SECTION.value == "course_sections"
         assert EntityType.OUTCOME.value == "course_outcomes"
 
-    def test_source_type_enum(self):
+    def test_source_type_enum(self) -> None:
         """Test SourceType enum values"""
         assert SourceType.API.value == "API"
         assert SourceType.IMPORT.value == "IMPORT"
@@ -47,24 +48,24 @@ class TestEnums:
 class TestSanitizeForAudit:
     """Test sanitize_for_audit function"""
 
-    def test_sanitize_empty_dict(self):
+    def test_sanitize_empty_dict(self) -> None:
         """Test sanitizing empty dict returns empty dict"""
         result = sanitize_for_audit({})
         assert result == {}
 
-    def test_sanitize_none_returns_empty(self):
+    def test_sanitize_none_returns_empty(self) -> None:
         """Test sanitizing None returns empty dict"""
         result = sanitize_for_audit(None)
         assert result == {}
 
-    def test_sanitize_password_field(self):
+    def test_sanitize_password_field(self) -> None:
         """Test password field is redacted"""
         data = {"email": "test@example.com", "password": "secret123"}
         result = sanitize_for_audit(data)
         assert result["email"] == "test@example.com"
         assert result["password"] == "[REDACTED]"
 
-    def test_sanitize_multiple_sensitive_fields(self):
+    def test_sanitize_multiple_sensitive_fields(self) -> None:
         """Test multiple sensitive fields are redacted"""
         data = {
             "email": "test@example.com",
@@ -80,7 +81,7 @@ class TestSanitizeForAudit:
         assert result["api_key"] == "[REDACTED]"
         assert result["oauth_token"] == "[REDACTED]"
 
-    def test_sanitize_preserves_normal_fields(self):
+    def test_sanitize_preserves_normal_fields(self) -> None:
         """Test normal fields are not modified"""
         data = {
             "user_id": "user-123",
@@ -95,28 +96,28 @@ class TestSanitizeForAudit:
 class TestGetChangedFields:
     """Test get_changed_fields function"""
 
-    def test_empty_dicts_returns_empty_list(self):
+    def test_empty_dicts_returns_empty_list(self) -> None:
         """Test empty dicts return empty list"""
         result = get_changed_fields({}, {})
         assert result == []
 
-    def test_none_old_values_returns_empty(self):
+    def test_none_old_values_returns_empty(self) -> None:
         """Test None old values returns empty list"""
         result = get_changed_fields(None, {"name": "New"})
         assert result == []
 
-    def test_none_new_values_returns_empty(self):
+    def test_none_new_values_returns_empty(self) -> None:
         """Test None new values returns empty list"""
         result = get_changed_fields({"name": "Old"}, None)
         assert result == []
 
-    def test_no_changes_returns_empty_list(self):
+    def test_no_changes_returns_empty_list(self) -> None:
         """Test identical dicts return empty list"""
         data = {"name": "John", "email": "john@example.com"}
         result = get_changed_fields(data, data)
         assert result == []
 
-    def test_single_field_changed(self):
+    def test_single_field_changed(self) -> None:
         """Test single field change is detected"""
         old = {"name": "John", "email": "john@example.com"}
         new = {"name": "Jane", "email": "john@example.com"}
@@ -124,7 +125,7 @@ class TestGetChangedFields:
         assert "name" in result
         assert "email" not in result
 
-    def test_multiple_fields_changed(self):
+    def test_multiple_fields_changed(self) -> None:
         """Test multiple field changes are detected"""
         old = {"name": "John", "email": "john@example.com", "role": "instructor"}
         new = {"name": "Jane", "email": "jane@example.com", "role": "instructor"}
@@ -133,21 +134,21 @@ class TestGetChangedFields:
         assert "email" in result
         assert "role" not in result
 
-    def test_new_field_added(self):
+    def test_new_field_added(self) -> None:
         """Test new field is detected as change"""
         old = {"name": "John"}
         new = {"name": "John", "email": "john@example.com"}
         result = get_changed_fields(old, new)
         assert "email" in result
 
-    def test_field_removed(self):
+    def test_field_removed(self) -> None:
         """Test removed field is detected as change"""
         old = {"name": "John", "email": "john@example.com"}
         new = {"name": "John"}
         result = get_changed_fields(old, new)
         assert "email" in result
 
-    def test_datetime_comparison_ignores_microseconds(self):
+    def test_datetime_comparison_ignores_microseconds(self) -> None:
         """Test datetime comparison ignores microseconds"""
         dt1 = datetime(2025, 1, 1, 12, 0, 0, 123456, tzinfo=timezone.utc)
         dt2 = datetime(2025, 1, 1, 12, 0, 0, 654321, tzinfo=timezone.utc)
@@ -157,7 +158,7 @@ class TestGetChangedFields:
         # Should be empty because we ignore microseconds
         assert result == []
 
-    def test_datetime_different_seconds_detected(self):
+    def test_datetime_different_seconds_detected(self) -> None:
         """Test datetime with different seconds is detected"""
         dt1 = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         dt2 = datetime(2025, 1, 1, 12, 0, 5, tzinfo=timezone.utc)
@@ -172,7 +173,7 @@ class TestAuditServiceLogCreate:
 
     @patch("src.services.audit_service.db")
     @patch("src.services.audit_service.uuid.uuid4")
-    def test_log_create_success(self, mock_uuid, mock_db):
+    def test_log_create_success(self, mock_uuid: Any, mock_db: Any) -> None:
         """Test successful create log"""
         mock_uuid.return_value = MagicMock(hex="audit-123")
         mock_db.create_audit_log.return_value = True
@@ -199,7 +200,9 @@ class TestAuditServiceLogCreate:
 
     @patch("src.services.audit_service.db")
     @patch("src.services.audit_service.uuid.uuid4")
-    def test_log_create_sanitizes_sensitive_data(self, mock_uuid, mock_db):
+    def test_log_create_sanitizes_sensitive_data(
+        self, mock_uuid: Any, mock_db: Any
+    ) -> None:
         """Test create log sanitizes sensitive fields"""
         mock_uuid.return_value = MagicMock(hex="audit-123")
         mock_db.create_audit_log.return_value = True
@@ -217,7 +220,9 @@ class TestAuditServiceLogCreate:
 
     @patch("src.services.audit_service.db")
     @patch("src.services.audit_service.uuid.uuid4")
-    def test_log_create_with_request_context(self, mock_uuid, mock_db):
+    def test_log_create_with_request_context(
+        self, mock_uuid: Any, mock_db: Any
+    ) -> None:
         """Test create log includes request context"""
         mock_uuid.return_value = MagicMock(hex="audit-123")
         mock_db.create_audit_log.return_value = True
@@ -243,7 +248,7 @@ class TestAuditServiceLogCreate:
         assert call_args["session_id"] == "sess-123"
 
     @patch("src.services.audit_service.db")
-    def test_log_create_db_failure_returns_none(self, mock_db):
+    def test_log_create_db_failure_returns_none(self, mock_db: Any) -> None:
         """Test create log returns None on database failure"""
         mock_db.create_audit_log.return_value = False
 
@@ -256,7 +261,7 @@ class TestAuditServiceLogCreate:
         assert result is None
 
     @patch("src.services.audit_service.db")
-    def test_log_create_exception_returns_none(self, mock_db):
+    def test_log_create_exception_returns_none(self, mock_db: Any) -> None:
         """Test create log returns None on exception"""
         mock_db.create_audit_log.side_effect = Exception("Database error")
 
@@ -274,7 +279,7 @@ class TestAuditServiceLogUpdate:
 
     @patch("src.services.audit_service.db")
     @patch("src.services.audit_service.uuid.uuid4")
-    def test_log_update_success(self, mock_uuid, mock_db):
+    def test_log_update_success(self, mock_uuid: Any, mock_db: Any) -> None:
         """Test successful update log"""
         mock_uuid.return_value = MagicMock(hex="audit-123")
         mock_db.create_audit_log.return_value = True
@@ -302,7 +307,9 @@ class TestAuditServiceLogUpdate:
 
     @patch("src.services.audit_service.db")
     @patch("src.services.audit_service.uuid.uuid4")
-    def test_log_update_sanitizes_both_states(self, mock_uuid, mock_db):
+    def test_log_update_sanitizes_both_states(
+        self, mock_uuid: Any, mock_db: Any
+    ) -> None:
         """Test update log sanitizes both old and new values"""
         mock_uuid.return_value = MagicMock(hex="audit-123")
         mock_db.create_audit_log.return_value = True
@@ -324,7 +331,7 @@ class TestAuditServiceLogUpdate:
         assert new["password"] == "[REDACTED]"
 
     @patch("src.services.audit_service.db")
-    def test_log_update_exception_returns_none(self, mock_db):
+    def test_log_update_exception_returns_none(self, mock_db: Any) -> None:
         """Test update log returns None on exception"""
         mock_db.create_audit_log.side_effect = Exception("Database error")
 
@@ -343,7 +350,7 @@ class TestAuditServiceLogDelete:
 
     @patch("src.services.audit_service.db")
     @patch("src.services.audit_service.uuid.uuid4")
-    def test_log_delete_success(self, mock_uuid, mock_db):
+    def test_log_delete_success(self, mock_uuid: Any, mock_db: Any) -> None:
         """Test successful delete log"""
         mock_uuid.return_value = MagicMock(hex="audit-123")
         mock_db.create_audit_log.return_value = True
@@ -369,7 +376,9 @@ class TestAuditServiceLogDelete:
 
     @patch("src.services.audit_service.db")
     @patch("src.services.audit_service.uuid.uuid4")
-    def test_log_delete_sanitizes_old_values(self, mock_uuid, mock_db):
+    def test_log_delete_sanitizes_old_values(
+        self, mock_uuid: Any, mock_db: Any
+    ) -> None:
         """Test delete log sanitizes old values"""
         mock_uuid.return_value = MagicMock(hex="audit-123")
         mock_db.create_audit_log.return_value = True
@@ -385,7 +394,7 @@ class TestAuditServiceLogDelete:
         assert old["password"] == "[REDACTED]"
 
     @patch("src.services.audit_service.db")
-    def test_log_delete_exception_returns_none(self, mock_db):
+    def test_log_delete_exception_returns_none(self, mock_db: Any) -> None:
         """Test delete log returns None on exception"""
         mock_db.create_audit_log.side_effect = Exception("Database error")
 
@@ -402,7 +411,7 @@ class TestAuditServiceQueryMethods:
     """Test AuditService query methods"""
 
     @patch("src.services.audit_service.db")
-    def test_get_entity_history_success(self, mock_db):
+    def test_get_entity_history_success(self, mock_db: Any) -> None:
         """Test get_entity_history returns logs"""
         mock_logs = [
             {"audit_id": "1", "operation_type": "CREATE"},
@@ -418,7 +427,7 @@ class TestAuditServiceQueryMethods:
         )
 
     @patch("src.services.audit_service.db")
-    def test_get_entity_history_exception_returns_empty(self, mock_db):
+    def test_get_entity_history_exception_returns_empty(self, mock_db: Any) -> None:
         """Test get_entity_history returns empty list on exception"""
         mock_db.get_audit_logs_by_entity.side_effect = Exception("Database error")
 
@@ -427,7 +436,7 @@ class TestAuditServiceQueryMethods:
         assert result == []
 
     @patch("src.services.audit_service.db")
-    def test_get_user_activity_success(self, mock_db):
+    def test_get_user_activity_success(self, mock_db: Any) -> None:
         """Test get_user_activity returns logs"""
         mock_logs = [{"audit_id": "1", "entity_type": "users"}]
         mock_db.get_audit_logs_by_user.return_value = mock_logs
@@ -445,7 +454,7 @@ class TestAuditServiceQueryMethods:
         )
 
     @patch("src.services.audit_service.db")
-    def test_get_user_activity_exception_returns_empty(self, mock_db):
+    def test_get_user_activity_exception_returns_empty(self, mock_db: Any) -> None:
         """Test get_user_activity returns empty list on exception"""
         mock_db.get_audit_logs_by_user.side_effect = Exception("Database error")
 
@@ -454,7 +463,7 @@ class TestAuditServiceQueryMethods:
         assert result == []
 
     @patch("src.services.audit_service.db")
-    def test_get_recent_activity_success(self, mock_db):
+    def test_get_recent_activity_success(self, mock_db: Any) -> None:
         """Test get_recent_activity returns logs"""
         mock_logs = [{"audit_id": "1"}, {"audit_id": "2"}]
         mock_db.get_recent_audit_logs.return_value = mock_logs
@@ -465,7 +474,7 @@ class TestAuditServiceQueryMethods:
         mock_db.get_recent_audit_logs.assert_called_once_with("inst-1", 25)
 
     @patch("src.services.audit_service.db")
-    def test_get_recent_activity_exception_returns_empty(self, mock_db):
+    def test_get_recent_activity_exception_returns_empty(self, mock_db: Any) -> None:
         """Test get_recent_activity returns empty list on exception"""
         mock_db.get_recent_audit_logs.side_effect = Exception("Database error")
 
@@ -478,7 +487,7 @@ class TestAuditServiceExport:
     """Test AuditService.export_audit_log method"""
 
     @patch("src.services.audit_service.db")
-    def test_export_as_csv_success(self, mock_db):
+    def test_export_as_csv_success(self, mock_db: Any) -> None:
         """Test export as CSV"""
         mock_logs = [
             {
@@ -509,7 +518,7 @@ class TestAuditServiceExport:
         assert "CREATE" in decoded
 
     @patch("src.services.audit_service.db")
-    def test_export_as_json_success(self, mock_db):
+    def test_export_as_json_success(self, mock_db: Any) -> None:
         """Test export as JSON"""
         mock_logs = [
             {
@@ -533,7 +542,7 @@ class TestAuditServiceExport:
         assert decoded[0]["audit_id"] == "audit-123"
 
     @patch("src.services.audit_service.db")
-    def test_export_with_filters(self, mock_db):
+    def test_export_with_filters(self, mock_db: Any) -> None:
         """Test export with entity and user filters"""
         mock_db.get_audit_logs_filtered.return_value = []
 
@@ -558,7 +567,7 @@ class TestAuditServiceExport:
         )
 
     @patch("src.services.audit_service.db")
-    def test_export_unsupported_format_returns_empty(self, mock_db):
+    def test_export_unsupported_format_returns_empty(self, mock_db: Any) -> None:
         """Test export with unsupported format returns empty bytes"""
         mock_db.get_audit_logs_filtered.return_value = []
 
@@ -572,7 +581,7 @@ class TestAuditServiceExport:
         assert result == b""
 
     @patch("src.services.audit_service.db")
-    def test_export_exception_returns_empty(self, mock_db):
+    def test_export_exception_returns_empty(self, mock_db: Any) -> None:
         """Test export returns empty bytes on exception"""
         mock_db.get_audit_logs_filtered.side_effect = Exception("Database error")
 
@@ -589,7 +598,7 @@ class TestAuditServiceExport:
 class TestExportHelpers:
     """Test export helper functions"""
 
-    def test_export_as_csv_format(self):
+    def test_export_as_csv_format(self) -> None:
         """Test CSV export format"""
         logs = [
             {
@@ -613,7 +622,7 @@ class TestExportHelpers:
         assert "Timestamp" in lines[0]
         assert "admin@example.com" in lines[1]
 
-    def test_export_as_csv_system_user(self):
+    def test_export_as_csv_system_user(self) -> None:
         """Test CSV export shows 'System' for null user email"""
         logs = [
             {
@@ -634,7 +643,7 @@ class TestExportHelpers:
 
         assert "System" in decoded
 
-    def test_export_as_json_format(self):
+    def test_export_as_json_format(self) -> None:
         """Test JSON export format"""
         logs = [
             {"audit_id": "audit-123", "operation_type": "CREATE"},
@@ -648,7 +657,7 @@ class TestExportHelpers:
         assert decoded[0]["audit_id"] == "audit-123"
         assert decoded[1]["audit_id"] == "audit-456"
 
-    def test_export_as_json_empty_list(self):
+    def test_export_as_json_empty_list(self) -> None:
         """Test JSON export with empty list"""
         result = _export_as_json([])
         decoded = json.loads(result.decode("utf-8"))

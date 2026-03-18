@@ -1,3 +1,6 @@
+from collections.abc import Generator
+from typing import Any
+
 import pytest
 
 import src.database.database_service as database_service
@@ -7,7 +10,7 @@ from src.utils.constants import GENERIC_PASSWORD
 
 
 @pytest.fixture
-def client():
+def client() -> Generator[Any, None, None]:
     """Create test client"""
     app.config["TESTING"] = True
     app.config["SECRET_KEY"] = "test-secret-key"
@@ -19,14 +22,16 @@ def client():
 
 
 @pytest.fixture
-def auth(client):
+def auth(client: Any) -> Any:
     """Authentication helper fixture"""
 
     class AuthActions:
-        def __init__(self, client):
+        def __init__(self, client: Any) -> None:
             self._client = client
 
-        def login(self, email="test@example.com", password=GENERIC_PASSWORD):
+        def login(
+            self, email: Any = "test@example.com", password: Any = GENERIC_PASSWORD
+        ) -> Any:
             # First mark email as verified
             user = database_service.get_user_by_email(email)
             if user:
@@ -43,7 +48,7 @@ def auth(client):
 
 
 @pytest.fixture(autouse=True)
-def setup_data():
+def setup_data() -> None:
     """Seed database with test user"""
     # Create institution
     inst_data = Institution.create_schema(
@@ -67,7 +72,7 @@ def setup_data():
     database_service.create_user(user_data)
 
 
-def test_programs_route_exists(client, auth):
+def test_programs_route_exists(client: Any, auth: Any) -> None:
     """Test that the /programs route exists and returns 200."""
     auth.login()
     response = client.get("/programs")
@@ -75,21 +80,21 @@ def test_programs_route_exists(client, auth):
     assert b"Programs" in response.data
 
 
-def test_faculty_route_exists(client, auth):
+def test_faculty_route_exists(client: Any, auth: Any) -> None:
     """Test that the /faculty route exists (or redirects) and returns 200."""
     auth.login()
     response = client.get("/faculty", follow_redirects=True)
     assert response.status_code == 200
 
 
-def test_outcomes_route_exists(client, auth):
+def test_outcomes_route_exists(client: Any, auth: Any) -> None:
     """Test that the /outcomes route exists (or redirects) and returns 200."""
     auth.login()
     response = client.get("/outcomes", follow_redirects=True)
     assert response.status_code == 200
 
 
-def test_dashboard_navigation_links(client, auth):
+def test_dashboard_navigation_links(client: Any, auth: Any) -> None:
     """Test that the dashboard loads successfully."""
     auth.login()
     response = client.get("/dashboard")
@@ -98,7 +103,7 @@ def test_dashboard_navigation_links(client, auth):
     assert b"Dashboard" in response.data
 
 
-def test_programs_page_content(client, auth):
+def test_programs_page_content(client: Any, auth: Any) -> None:
     """Test that the programs page loads correctly."""
     auth.login()
     response = client.get("/programs")

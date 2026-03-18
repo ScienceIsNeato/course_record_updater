@@ -13,17 +13,20 @@ import json
 import os
 import shutil
 import sys
+from collections.abc import Generator
 from pathlib import Path
+
+# Add project root to path for imports
+from typing import Any
 
 import pytest
 
-# Add project root to path for imports
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 
 @pytest.fixture(scope="session")
-def seeded_integration_db(tmp_path_factory):
+def seeded_integration_db(tmp_path_factory: Any) -> Generator[Any, None, None]:
     """
     Seed database ONCE for entire integration test session.
 
@@ -65,7 +68,9 @@ def seeded_integration_db(tmp_path_factory):
 
 
 @pytest.fixture(autouse=True)
-def isolated_integration_db(seeded_integration_db, tmp_path):
+def isolated_integration_db(
+    seeded_integration_db: Any, tmp_path: Any
+) -> Generator[Any, None, None]:
     """
     Fork database for each test (true isolation).
 
@@ -88,7 +93,7 @@ def isolated_integration_db(seeded_integration_db, tmp_path):
 
 
 @pytest.fixture
-def client(isolated_integration_db):
+def client(isolated_integration_db: Any) -> Generator[Any, None, None]:
     """Create a Flask test client for integration tests."""
     import src.app as app
 
@@ -100,7 +105,7 @@ def client(isolated_integration_db):
 
 
 @pytest.fixture
-def site_admin(isolated_integration_db):
+def site_admin(isolated_integration_db: Any) -> Any:
     """Get the seeded site admin user."""
     import src.database.database_service as db
     from src.utils.constants import SITE_ADMIN_EMAIL
@@ -111,7 +116,7 @@ def site_admin(isolated_integration_db):
 
 
 @pytest.fixture
-def institution_admin(isolated_integration_db):
+def institution_admin(isolated_integration_db: Any) -> Any:
     """Get the seeded institution admin (Sarah)."""
     import src.database.database_service as db
     from src.utils.constants import INSTITUTION_ADMIN_EMAIL
@@ -122,7 +127,7 @@ def institution_admin(isolated_integration_db):
 
 
 @pytest.fixture
-def program_admin(isolated_integration_db):
+def program_admin(isolated_integration_db: Any) -> Any:
     """Get the seeded program admin (Bob)."""
     import src.database.database_service as db
     from src.utils.constants import PROGRAM_ADMIN_EMAIL
@@ -133,7 +138,7 @@ def program_admin(isolated_integration_db):
 
 
 @pytest.fixture
-def instructor(isolated_integration_db):
+def instructor(isolated_integration_db: Any) -> Any:
     """Get the seeded instructor (John)."""
     import src.database.database_service as db
     from src.utils.constants import INSTRUCTOR_EMAIL
@@ -144,7 +149,7 @@ def instructor(isolated_integration_db):
 
 
 @pytest.fixture
-def mocku_institution(isolated_integration_db):
+def mocku_institution(isolated_integration_db: Any) -> Any:
     """Get Mock University institution."""
     import src.database.database_service as db
 

@@ -17,7 +17,7 @@ from tests.e2e.conftest import BASE_URL
 class TestFrontendBasics:
     """E2E tests for basic frontend functionality"""
 
-    def test_public_pages_and_assets(self, page: Page):
+    def test_public_pages_and_assets(self, page: Page) -> None:
         """
         Test public pages load correctly and static assets are serving.
         Also checks that the server is running and API is healthy.
@@ -52,7 +52,9 @@ class TestFrontendBasics:
 
         # Check console for errors (handled by page fixture automatically)
 
-    def test_dashboard_structure(self, authenticated_institution_admin_page: Page):
+    def test_dashboard_structure(
+        self, authenticated_institution_admin_page: Page
+    ) -> None:
         """
         Test that the dashboard loads with expected structure and elements.
         Uses an authenticated session (Institution Admin).
@@ -96,7 +98,9 @@ class TestFrontendBasics:
         # Check Import Button (Select by text as it lacks ID)
         expect(page.locator("button:has-text('Excel Import')")).to_be_visible()
 
-    def test_import_form_validation(self, authenticated_institution_admin_page: Page):
+    def test_import_form_validation(
+        self, authenticated_institution_admin_page: Page
+    ) -> None:
         """
         Test HTML5 form validation for the import feature.
         """

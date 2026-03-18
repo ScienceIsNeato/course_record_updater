@@ -5,6 +5,7 @@ Tests the security validation of demo_file_path parameter in the Excel import en
 """
 
 import os
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -14,7 +15,7 @@ class TestDemoFilePathSecurity:
     """Test path traversal protection for demo file imports."""
 
     @pytest.fixture
-    def mock_app_context(self):
+    def mock_app_context(self) -> Any:
         """Create a Flask app context for testing."""
         from src.app import app
 
@@ -24,7 +25,7 @@ class TestDemoFilePathSecurity:
         return app.test_client()
 
     @pytest.fixture
-    def auth_session(self, mock_app_context):
+    def auth_session(self, mock_app_context: Any) -> Any:
         """Create an authenticated session."""
         # Login to get authenticated session
         with mock_app_context.session_transaction() as sess:
@@ -32,7 +33,7 @@ class TestDemoFilePathSecurity:
             sess["institution_id"] = "test-institution-id"
         return mock_app_context
 
-    def test_path_traversal_with_double_dots_blocked(self, auth_session):
+    def test_path_traversal_with_double_dots_blocked(self, auth_session: Any) -> None:
         """Path with .. should be rejected."""
         with (
             patch("src.api.routes.imports.get_current_user_safe") as mock_user,
@@ -52,7 +53,7 @@ class TestDemoFilePathSecurity:
             assert response.status_code in [400, 500]
             # Check that the path traversal was blocked (not actually tried to read)
 
-    def test_path_traversal_with_absolute_path_blocked(self, auth_session):
+    def test_path_traversal_with_absolute_path_blocked(self, auth_session: Any) -> None:
         """Absolute paths should be rejected."""
         with (
             patch("src.api.routes.imports.get_current_user_safe") as mock_user,
@@ -71,7 +72,7 @@ class TestDemoFilePathSecurity:
             # Should fail with error
             assert response.status_code in [400, 500]
 
-    def test_path_outside_allowed_directories_blocked(self, auth_session):
+    def test_path_outside_allowed_directories_blocked(self, auth_session: Any) -> None:
         """Paths not in allowed directories should be rejected."""
         with (
             patch("src.api.routes.imports.get_current_user_safe") as mock_user,
@@ -93,7 +94,7 @@ class TestDemoFilePathSecurity:
             # Should fail with error
             assert response.status_code in [400, 500]
 
-    def test_valid_demo_path_allowed(self, auth_session):
+    def test_valid_demo_path_allowed(self, auth_session: Any) -> None:
         """Valid paths within allowed directories should be accepted."""
         # Create a test file in demos directory
         test_file = "demos/test_import_file.xlsx"

@@ -1,7 +1,10 @@
 # tests/test_file_adapter_dispatcher.py
 # Unused imports removed
-import os
 import re
+
+# Create dummy adapter files for discovery tests
+# Use pytest fixtures to manage temporary files/directories if preferred
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import docx
@@ -15,21 +18,20 @@ from src.adapters.file_adapter_dispatcher import DispatcherError, FileAdapterDis
 
 # --- Test Setup ---
 
-# Create dummy adapter files for discovery tests
-# Use pytest fixtures to manage temporary files/directories if preferred
+
 ADAPTERS_DIR = "src/adapters"
 
 
 # Mock the docx.Document object
 @pytest.fixture
-def mock_docx_document():
+def mock_docx_document() -> Any:
     return MagicMock(spec=docx.document.Document)
 
 
 # --- Tests for discover_adapters ---
 
 
-def test_discover_adapters_success(mocker):
+def test_discover_adapters_success(mocker: Any) -> None:
     """Test finding adapter files in the directory."""
     # Mock os.listdir to simulate finding files
     mock_files = [
@@ -39,7 +41,7 @@ def test_discover_adapters_success(mocker):
         "adapter_v1.py",
         "invalid.txt",
     ]
-    mocker.patch("os.listdir", return_value=mock_files)
+    listdir_mock = mocker.patch("os.listdir", return_value=mock_files)
     mocker.patch("os.path.isfile", return_value=True)  # Assume they are all files
 
     dispatcher = FileAdapterDispatcher()
@@ -47,10 +49,10 @@ def test_discover_adapters_success(mocker):
 
     # Expect only .py files, excluding __init__ and base_adapter
     assert sorted(adapters) == sorted(["dummy_adapter", "adapter_v1"])
-    os.listdir.assert_called_once_with(ADAPTERS_DIR)
+    listdir_mock.assert_called_once_with(ADAPTERS_DIR)
 
 
-def test_discover_adapters_no_adapters(mocker):
+def test_discover_adapters_no_adapters(mocker: Any) -> None:
     """Test when only non-adapter files are present."""
     mock_files = ["__init__.py", "base_adapter.py", "notes.txt"]
     mocker.patch("os.listdir", return_value=mock_files)
@@ -61,7 +63,7 @@ def test_discover_adapters_no_adapters(mocker):
     assert adapters == []
 
 
-def test_discover_adapters_directory_not_found(mocker):
+def test_discover_adapters_directory_not_found(mocker: Any) -> None:
     """Test when the adapters directory doesn't exist."""
     mocker.patch("os.listdir", side_effect=FileNotFoundError)
 
@@ -73,7 +75,7 @@ def test_discover_adapters_directory_not_found(mocker):
 # --- Tests for process_file ---
 
 
-def test_process_file_success(mocker, mock_docx_document):
+def test_process_file_success(mocker: Any, mock_docx_document: Any) -> None:
     """Test successfully dispatching to a valid adapter."""
     adapter_name = "dummy_adapter"
     module_to_import = f"src.adapters.{adapter_name}"
@@ -149,7 +151,7 @@ def test_process_file_success(mocker, mock_docx_document):
     mock_validation_method.assert_called_once_with(mock_parsed_data_from_adapter[0])
 
 
-def test_process_file_adapter_not_found(mocker, mock_docx_document):
+def test_process_file_adapter_not_found(mocker: Any, mock_docx_document: Any) -> None:
     """Test when the requested adapter module cannot be imported."""
     adapter_name = "non_existent"
     module_path = f"src.adapters.{adapter_name}"
@@ -167,7 +169,9 @@ def test_process_file_adapter_not_found(mocker, mock_docx_document):
         dispatcher.process_file(mock_docx_document, adapter_name)
 
 
-def test_process_file_adapter_missing_parse_function(mocker, mock_docx_document):
+def test_process_file_adapter_missing_parse_function(
+    mocker: Any, mock_docx_document: Any
+) -> None:
     """Test when the adapter module exists but lacks a callable parse function."""
     adapter_name = "missing_parse"
     class_name = "MissingParse"  # Calculate class name
@@ -199,7 +203,7 @@ def test_process_file_adapter_missing_parse_function(mocker, mock_docx_document)
         dispatcher.process_file(mock_docx_document, adapter_name)
 
 
-def test_process_file_adapter_parse_error(mocker, mock_docx_document):
+def test_process_file_adapter_parse_error(mocker: Any, mock_docx_document: Any) -> None:
     """Test when the adapter's parse function raises an error."""
     adapter_name = "parse_error_adapter"
     class_name = "ParseErrorAdapter"  # Calculate class name
@@ -233,7 +237,9 @@ def test_process_file_adapter_parse_error(mocker, mock_docx_document):
 
 
 # Add test for post-parse validation failure if implemented
-def test_process_file_base_validation_error(mocker, mock_docx_document):
+def test_process_file_base_validation_error(
+    mocker: Any, mock_docx_document: Any
+) -> None:
     """Test when base validation fails after successful parsing."""
     adapter_name = "valid_parse_adapter"
     class_name = "ValidParseAdapter"
@@ -284,21 +290,21 @@ def test_process_file_base_validation_error(mocker, mock_docx_document):
 class TestFileAdapterDispatcherInitialization:
     """Test FileAdapterDispatcher initialization and configuration."""
 
-    def test_init_without_base_validation(self):
+    def test_init_without_base_validation(self) -> None:
         """Test initialization without base validation."""
         dispatcher = FileAdapterDispatcher(use_base_validation=False)
 
         assert dispatcher._base_validator is None
         assert dispatcher._use_base_validation is False
 
-    def test_init_with_base_validation(self):
+    def test_init_with_base_validation(self) -> None:
         """Test initialization with base validation."""
         dispatcher = FileAdapterDispatcher(use_base_validation=True)
 
         assert dispatcher._base_validator is not None
         assert dispatcher._use_base_validation is True
 
-    def test_discover_adapters_directory_not_found(self):
+    def test_discover_adapters_directory_not_found(self) -> None:
         """Test discover_adapters when adapters directory doesn't exist."""
         dispatcher = FileAdapterDispatcher()
 
@@ -307,7 +313,7 @@ class TestFileAdapterDispatcherInitialization:
             # Should return empty list gracefully
             assert adapters == []
 
-    def test_discover_adapters_file_not_directory(self):
+    def test_discover_adapters_file_not_directory(self) -> None:
         """Test discover_adapters when adapters path is a file, not directory."""
         dispatcher = FileAdapterDispatcher()
 
@@ -316,7 +322,7 @@ class TestFileAdapterDispatcherInitialization:
             # Should return empty list gracefully
             assert adapters == []
 
-    def test_discover_adapters_general_exception(self):
+    def test_discover_adapters_general_exception(self) -> None:
         """Test discover_adapters with general exception."""
         dispatcher = FileAdapterDispatcher()
 
@@ -328,7 +334,7 @@ class TestFileAdapterDispatcherInitialization:
             # Should return empty list gracefully
             assert adapters == []
 
-    def test_discover_adapters_with_various_file_types(self):
+    def test_discover_adapters_with_various_file_types(self) -> None:
         """Test discover_adapters with various file types in directory."""
         dispatcher = FileAdapterDispatcher()
 
@@ -356,7 +362,7 @@ class TestFileAdapterDispatcherInitialization:
 class TestFileAdapterDispatcherValidation:
     """Test validation-related functionality."""
 
-    def test_apply_validation_disabled(self):
+    def test_apply_validation_disabled(self) -> None:
         """Test _apply_validation returns raw data when validation disabled."""
         from src.adapters.file_adapter_dispatcher import FileAdapterDispatcher
 
@@ -368,7 +374,7 @@ class TestFileAdapterDispatcherValidation:
 
         assert result == test_data  # Should return raw data
 
-    def test_load_adapter_class_not_found(self):
+    def test_load_adapter_class_not_found(self) -> None:
         """Test _load_adapter raises DispatcherError when class not found in module."""
         from unittest.mock import MagicMock, patch
 

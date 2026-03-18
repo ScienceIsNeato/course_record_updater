@@ -6,6 +6,7 @@ email sending, and status tracking.
 """
 
 import json
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -18,7 +19,7 @@ from tests.test_utils import CommonAuthMixin
 class TestBulkEmailIntegration(CommonAuthMixin):
     """Integration tests for bulk email system with real database"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.app = app
         self.app.config["TESTING"] = True
@@ -26,7 +27,7 @@ class TestBulkEmailIntegration(CommonAuthMixin):
         self._login_site_admin()
 
     @patch("src.database.database_service.get_all_instructors")
-    def test_api_endpoint_creates_job(self, mock_get_instructors):
+    def test_api_endpoint_creates_job(self, mock_get_instructors: Any) -> None:
         """Test that POST /api/bulk-email/send-instructor-reminders creates job"""
         # Mock instructors
         mock_get_instructors.return_value = [
@@ -70,7 +71,7 @@ class TestBulkEmailIntegration(CommonAuthMixin):
             assert data["success"] is True
             assert "job_id" in data
 
-    def test_empty_recipient_list(self):
+    def test_empty_recipient_list(self) -> None:
         """Test that empty instructor list returns error"""
         response = self.client.post(
             "/api/bulk-email/send-instructor-reminders",
@@ -83,7 +84,7 @@ class TestBulkEmailIntegration(CommonAuthMixin):
         assert data["success"] is False
         assert "instructor_ids" in data["error"]
 
-    def test_missing_body(self):
+    def test_missing_body(self) -> None:
         """Test that missing request body returns error"""
         response = self.client.post(
             "/api/bulk-email/send-instructor-reminders",
@@ -96,7 +97,7 @@ class TestBulkEmailIntegration(CommonAuthMixin):
         assert data["success"] is False
 
     @patch("src.database.database_service.get_all_instructors")
-    def test_job_status_endpoint(self, mock_get_instructors):
+    def test_job_status_endpoint(self, mock_get_instructors: Any) -> None:
         """Test GET /api/bulk-email/job-status/{job_id}"""
         mock_get_instructors.return_value = [
             {
@@ -132,7 +133,7 @@ class TestBulkEmailIntegration(CommonAuthMixin):
             assert data["success"] is True
             assert "job" in data
 
-    def test_job_status_not_found(self):
+    def test_job_status_not_found(self) -> None:
         """Test GET /api/bulk-email/job-status with invalid ID"""
         response = self.client.get("/api/bulk-email/job-status/invalid-job-id")
 
@@ -142,7 +143,7 @@ class TestBulkEmailIntegration(CommonAuthMixin):
         assert "not found" in data["error"].lower()
 
     @patch("src.database.database_service.get_all_instructors")
-    def test_recent_jobs_endpoint(self, mock_get_instructors):
+    def test_recent_jobs_endpoint(self, mock_get_instructors: Any) -> None:
         """Test GET /api/bulk-email/recent-jobs"""
         mock_get_instructors.return_value = [
             {

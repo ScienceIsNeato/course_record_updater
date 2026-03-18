@@ -32,13 +32,13 @@ class TestDashboardAuthRoleDataAccess:
     @pytest.fixture(autouse=True)
     def setup_test_context(
         self,
-        isolated_integration_db,
-        site_admin,
-        institution_admin,
-        program_admin,
-        instructor,
-        mocku_institution,
-    ):
+        isolated_integration_db: Any,
+        site_admin: Any,
+        institution_admin: Any,
+        program_admin: Any,
+        instructor: Any,
+        mocku_institution: Any,
+    ) -> None:
         """Set up test context using conftest fixtures"""
         import src.database.database_service as db
         from src.app import app
@@ -84,7 +84,7 @@ class TestDashboardAuthRoleDataAccess:
         assert result.get("success") is True, f"API call failed: {result}"
         return result.get("data", {})
 
-    def test_site_admin_dashboard_data_access(self):
+    def test_site_admin_dashboard_data_access(self) -> None:
         """
         Test: Site Admin sees aggregated data across ALL institutions
         Expected: All institutions, programs, courses, users across MockU + RCC + PTU
@@ -129,7 +129,7 @@ class TestDashboardAuthRoleDataAccess:
             institution_names
         ), f"Missing institutions. Found: {institution_names}"
 
-    def test_institution_admin_dashboard_data_access(self):
+    def test_institution_admin_dashboard_data_access(self) -> None:
         """
         Test: Institution Admin sees only THEIR institution's data
         Expected: MockU data only (not RCC or PTU data)
@@ -155,7 +155,7 @@ class TestDashboardAuthRoleDataAccess:
             prog.get("institution_id") == self.mocku_id for prog in programs
         ), "Institution admin should only see their institution's programs"
 
-    def test_program_admin_dashboard_data_access(self):
+    def test_program_admin_dashboard_data_access(self) -> None:
         """
         Test: Program Admin sees only THEIR program's data
         Expected: Bob (CS program only) should see only CS program data
@@ -200,7 +200,7 @@ class TestDashboardAuthRoleDataAccess:
             if allowed_program_ids and pid:
                 assert pid in allowed_program_ids, f"Unexpected section program {pid}"
 
-    def test_instructor_dashboard_data_access(self):
+    def test_instructor_dashboard_data_access(self) -> None:
         """
         Test: Instructor sees only sections THEY are assigned to teach
         Expected: John should see only his assigned sections, not all sections
@@ -234,7 +234,7 @@ class TestDashboardAuthRoleDataAccess:
                 self.john_instructor["user_id"],
             ]
 
-    def test_unauthenticated_dashboard_access_denied(self):
+    def test_unauthenticated_dashboard_access_denied(self) -> None:
         """
         Test: Unauthenticated users cannot access dashboard data
         Expected: 401 or redirect to login
@@ -248,7 +248,7 @@ class TestDashboardAuthRoleDataAccess:
             302,
         ], "Unauthenticated access should be denied"
 
-    def test_cross_role_data_isolation(self):
+    def test_cross_role_data_isolation(self) -> None:
         """
         Test: Users cannot access data outside their role permissions
         Expected: Each role sees only their authorized data scope
@@ -291,7 +291,7 @@ class TestDashboardDataConsistency:
     Additional tests for dashboard data consistency and integrity.
     """
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test client"""
         from src.app import app
 
@@ -303,7 +303,7 @@ class TestDashboardDataConsistency:
         # Load seeded test data for consistency tests too
         self._load_seeded_test_data()
 
-    def _load_seeded_test_data(self):
+    def _load_seeded_test_data(self) -> None:
         """Load actual seeded user data from database to avoid hardcoded IDs"""
         import src.database.database_service as db
 
@@ -312,8 +312,9 @@ class TestDashboardDataConsistency:
             from src.database.database_factory import get_database_service
 
             db_service = get_database_service()
-            if hasattr(db_service.sqlite, "remove_session"):
-                db_service.sqlite.remove_session()
+            sqlite_backend = getattr(db_service, "sqlite", None)
+            if sqlite_backend and hasattr(sqlite_backend, "remove_session"):
+                sqlite_backend.remove_session()
         except Exception:
             pass  # Ignore database connection refresh errors
 
@@ -352,7 +353,7 @@ class TestDashboardDataConsistency:
 
         assert self.site_admin, f"Site admin {site_admin_email} not found"
 
-    def test_dashboard_data_structure_validation(self):
+    def test_dashboard_data_structure_validation(self) -> None:
         """
         Test: Dashboard API returns consistent data structure
         Expected: All required fields present in response
@@ -403,7 +404,7 @@ class TestDashboardDataConsistency:
             assert isinstance(summary[field], int), f"Summary {field} should be integer"
             assert summary[field] >= 0, f"Summary {field} should be non-negative"
 
-    def test_dashboard_performance_reasonable(self):
+    def test_dashboard_performance_reasonable(self) -> None:
         """
         Test: Dashboard data loads within reasonable time
         Expected: Response time < 2 seconds for typical dataset

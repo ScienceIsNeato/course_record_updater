@@ -25,7 +25,7 @@ from tests.e2e.conftest import BASE_URL
 
 
 @pytest.mark.e2e
-def test_tc_crud_ia_001_create_program(authenticated_page: Page):
+def test_tc_crud_ia_001_create_program(authenticated_page: Page) -> None:
     """
     TC-CRUD-IA-001: Institution Admin creates new program via UI
 
@@ -97,7 +97,7 @@ def test_tc_crud_ia_001_create_program(authenticated_page: Page):
 
 
 @pytest.mark.e2e
-def test_tc_crud_ia_002_update_course_details(authenticated_page: Page):
+def test_tc_crud_ia_002_update_course_details(authenticated_page: Page) -> None:
     """TC-CRUD-IA-002: Institution Admin updates course details via UI"""
     # Navigate to courses page
     authenticated_page.goto(f"{BASE_URL}/courses")
@@ -149,7 +149,7 @@ def test_tc_crud_ia_002_update_course_details(authenticated_page: Page):
 
 
 @pytest.mark.e2e
-def test_tc_crud_ia_003_delete_empty_program(authenticated_page: Page):
+def test_tc_crud_ia_003_delete_empty_program(authenticated_page: Page) -> None:
     """TC-CRUD-IA-003: Institution Admin deletes program with no courses"""
     # Derive institution context from the authenticated page
     user_ctx = authenticated_page.evaluate("window.userContext")
@@ -193,7 +193,9 @@ def test_tc_crud_ia_003_delete_empty_program(authenticated_page: Page):
 
 
 @pytest.mark.e2e
-def test_tc_crud_ia_004_cannot_delete_program_with_courses(authenticated_page: Page):
+def test_tc_crud_ia_004_cannot_delete_program_with_courses(
+    authenticated_page: Page,
+) -> None:
     """TC-CRUD-IA-004: Institution Admin cannot delete program with courses"""
     # Get institutions programs via API and find one with courses
     progs_resp = authenticated_page.request.get(f"{BASE_URL}/api/programs")
@@ -238,7 +240,7 @@ def test_tc_crud_ia_004_cannot_delete_program_with_courses(authenticated_page: P
 
 
 @pytest.mark.e2e
-def test_tc_crud_ia_005_invite_instructor(authenticated_page: Page):
+def test_tc_crud_ia_005_invite_instructor(authenticated_page: Page) -> None:
     """TC-CRUD-IA-005: Institution Admin invites new instructor"""
     # Derive institution context from the authenticated session (no direct DB)
     user_ctx = authenticated_page.evaluate("window.userContext")
@@ -278,7 +280,7 @@ def test_tc_crud_ia_005_invite_instructor(authenticated_page: Page):
 
 
 @pytest.mark.e2e
-def test_tc_crud_ia_006_manage_institution_users(authenticated_page: Page):
+def test_tc_crud_ia_006_manage_institution_users(authenticated_page: Page) -> None:
     """TC-CRUD-IA-006: Institution Admin can manage users within institution"""
     # Derive institution context
     user_ctx = authenticated_page.evaluate("window.userContext")
@@ -344,7 +346,7 @@ def test_tc_crud_ia_006_manage_institution_users(authenticated_page: Page):
 
 
 @pytest.mark.e2e
-def test_tc_crud_ia_007_create_term(authenticated_page: Page):
+def test_tc_crud_ia_007_create_term(authenticated_page: Page) -> None:
     """TC-CRUD-IA-007: Institution Admin creates new term via UI"""
     # Navigate to institution admin dashboard
     authenticated_page.goto(f"{BASE_URL}/dashboard")
@@ -372,7 +374,7 @@ def test_tc_crud_ia_007_create_term(authenticated_page: Page):
 
 
 @pytest.mark.e2e
-def test_tc_crud_ia_008_create_course_offerings(authenticated_page: Page):
+def test_tc_crud_ia_008_create_course_offerings(authenticated_page: Page) -> None:
     """TC-CRUD-IA-008: Institution Admin creates course offerings via UI"""
     # Navigate to institution admin dashboard
     authenticated_page.goto(f"{BASE_URL}/dashboard")
@@ -416,7 +418,9 @@ def test_tc_crud_ia_008_create_course_offerings(authenticated_page: Page):
 
 
 @pytest.mark.e2e
-def test_tc_crud_ia_009_assign_instructors_to_sections(authenticated_page: Page):
+def test_tc_crud_ia_009_assign_instructors_to_sections(
+    authenticated_page: Page,
+) -> None:
     """TC-CRUD-IA-009: Institution Admin assigns instructors to sections via UI"""
     # Navigate to sections page
     authenticated_page.goto(f"{BASE_URL}/sections")
@@ -465,7 +469,9 @@ def test_tc_crud_ia_009_assign_instructors_to_sections(authenticated_page: Page)
 
 
 @pytest.mark.e2e
-def test_tc_crud_ia_010_cannot_access_other_institutions(authenticated_page: Page):
+def test_tc_crud_ia_010_cannot_access_other_institutions(
+    authenticated_page: Page,
+) -> None:
     """TC-CRUD-IA-010: Institution Admin can only see their own institution's data (multi-tenant isolation)"""
     # Navigate to dashboard and wait for it to load
     authenticated_page.goto(f"{BASE_URL}/dashboard")

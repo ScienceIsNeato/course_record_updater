@@ -7,19 +7,21 @@ Tests the refactored export record building methods:
 - _build_synthesized_records
 """
 
+from typing import Any
+
 import pytest
 
 from src.adapters.cei_excel_adapter import CEIExcelAdapter
 
 
 @pytest.fixture
-def adapter():
+def adapter() -> Any:
     """Create CEI Excel adapter instance"""
     return CEIExcelAdapter()
 
 
 @pytest.fixture
-def sample_courses():
+def sample_courses() -> Any:
     """Sample course data"""
     return [
         {
@@ -38,7 +40,7 @@ def sample_courses():
 
 
 @pytest.fixture
-def sample_users():
+def sample_users() -> Any:
     """Sample user data"""
     return [
         {
@@ -59,7 +61,7 @@ def sample_users():
 
 
 @pytest.fixture
-def sample_terms():
+def sample_terms() -> Any:
     """Sample term data"""
     return [
         {"term_id": "term-1", "term_code": "FA2024", "term_name": "Fall 2024"},
@@ -68,7 +70,7 @@ def sample_terms():
 
 
 @pytest.fixture
-def sample_offerings():
+def sample_offerings() -> Any:
     """Sample course offering data"""
     return [
         {
@@ -89,7 +91,7 @@ def sample_offerings():
 
 
 @pytest.fixture
-def sample_sections():
+def sample_sections() -> Any:
     """Sample section data"""
     return [
         {
@@ -114,13 +116,13 @@ class TestCEIAdapterExportBuilders:
 
     def test_build_records_from_sections(
         self,
-        adapter,
-        sample_courses,
-        sample_users,
-        sample_terms,
-        sample_offerings,
-        sample_sections,
-    ):
+        adapter: Any,
+        sample_courses: Any,
+        sample_users: Any,
+        sample_terms: Any,
+        sample_offerings: Any,
+        sample_sections: Any,
+    ) -> None:
         """Test building export records from sections (preferred path)"""
         data = {
             "courses": sample_courses,
@@ -152,8 +154,13 @@ class TestCEIAdapterExportBuilders:
         assert "Doe" in first_record["Faculty Name"]
 
     def test_build_records_from_sections_handles_missing_offering(
-        self, adapter, sample_courses, sample_users, sample_terms, sample_offerings
-    ):
+        self,
+        adapter: Any,
+        sample_courses: Any,
+        sample_users: Any,
+        sample_terms: Any,
+        sample_offerings: Any,
+    ) -> None:
         """Test that sections with missing offerings are skipped"""
         sections_with_bad_offering = [
             {
@@ -179,8 +186,8 @@ class TestCEIAdapterExportBuilders:
         assert len(records) == 0
 
     def test_build_records_from_offerings(
-        self, adapter, sample_courses, sample_users, sample_terms
-    ):
+        self, adapter: Any, sample_courses: Any, sample_users: Any, sample_terms: Any
+    ) -> None:
         """Test building export records from offerings (fallback path)"""
         offerings = [
             {
@@ -213,8 +220,8 @@ class TestCEIAdapterExportBuilders:
         assert "John" in record["Faculty Name"]
 
     def test_build_synthesized_records(
-        self, adapter, sample_courses, sample_users, sample_terms
-    ):
+        self, adapter: Any, sample_courses: Any, sample_users: Any, sample_terms: Any
+    ) -> None:
         """Test building synthesized export records (last resort)"""
         data = {
             "courses": sample_courses,
@@ -241,8 +248,8 @@ class TestCEIAdapterExportBuilders:
         assert record["students"] == 25  # Default enrollment
 
     def test_build_synthesized_records_with_empty_terms(
-        self, adapter, sample_courses, sample_users
-    ):
+        self, adapter: Any, sample_courses: Any, sample_users: Any
+    ) -> None:
         """Test synthesized records with no terms available"""
         data = {
             "courses": sample_courses,
@@ -261,13 +268,13 @@ class TestCEIAdapterExportBuilders:
 
     def test_build_cei_export_records_delegates_correctly(
         self,
-        adapter,
-        sample_courses,
-        sample_users,
-        sample_terms,
-        sample_offerings,
-        sample_sections,
-    ):
+        adapter: Any,
+        sample_courses: Any,
+        sample_users: Any,
+        sample_terms: Any,
+        sample_offerings: Any,
+        sample_sections: Any,
+    ) -> None:
         """Test that main method delegates to correct builder"""
         # Test sections path
         data_with_sections = {

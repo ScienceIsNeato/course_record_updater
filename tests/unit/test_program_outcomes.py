@@ -10,6 +10,8 @@ Tests cover:
 - Edge cases (nonexistent IDs, empty programs, duplicate entries)
 """
 
+from typing import Any
+
 import src.database.database_service as database_service
 
 # ---------------------------------------------------------------------------
@@ -17,7 +19,7 @@ import src.database.database_service as database_service
 # ---------------------------------------------------------------------------
 
 
-def _create_institution(suffix=""):
+def _create_institution(suffix: Any = "") -> Any:
     """Create a test institution with unique name."""
     label = f"PLO Test University{suffix}"
     short = f"PLOU{suffix}"
@@ -31,7 +33,9 @@ def _create_institution(suffix=""):
     )
 
 
-def _create_program(inst_id, name="Computer Science", short="CS"):
+def _create_program(
+    inst_id: Any, name: Any = "Computer Science", short: Any = "CS"
+) -> Any:
     """Create a test program."""
     return database_service.create_program(
         {
@@ -42,7 +46,7 @@ def _create_program(inst_id, name="Computer Science", short="CS"):
     )
 
 
-def _create_user(inst_id, email="admin@test.edu"):
+def _create_user(inst_id: Any, email: Any = "admin@test.edu") -> Any:
     """Create a test user."""
     return database_service.create_user(
         {
@@ -56,7 +60,9 @@ def _create_user(inst_id, email="admin@test.edu"):
     )
 
 
-def _create_course(inst_id, number="CS101", title="Intro to CS"):
+def _create_course(
+    inst_id: Any, number: Any = "CS101", title: Any = "Intro to CS"
+) -> Any:
     """Create a test course."""
     return database_service.create_course(
         {
@@ -68,7 +74,9 @@ def _create_course(inst_id, number="CS101", title="Intro to CS"):
     )
 
 
-def _create_clo(course_id, clo_number=1, description="Test CLO"):
+def _create_clo(
+    course_id: Any, clo_number: Any = 1, description: Any = "Test CLO"
+) -> Any:
     """Create a CLO (CourseOutcome) and return its ID."""
     return database_service.create_course_outcome(
         {
@@ -81,7 +89,9 @@ def _create_clo(course_id, clo_number=1, description="Test CLO"):
     )
 
 
-def _create_plo(program_id, inst_id, plo_number=1, description="Test PLO"):
+def _create_plo(
+    program_id: Any, inst_id: Any, plo_number: Any = 1, description: Any = "Test PLO"
+) -> Any:
     """Create a PLO template and return its ID."""
     return database_service.create_program_outcome(
         {
@@ -98,7 +108,7 @@ def _create_plo(program_id, inst_id, plo_number=1, description="Test PLO"):
 # ---------------------------------------------------------------------------
 
 
-def test_create_program_outcome():
+def test_create_program_outcome() -> None:
     """Create a PLO template and verify it exists."""
     inst_id = _create_institution("C1")
     program_id = _create_program(inst_id)
@@ -121,7 +131,7 @@ def test_create_program_outcome():
     assert plo["is_active"] is True
 
 
-def test_create_multiple_plos_ordered():
+def test_create_multiple_plos_ordered() -> None:
     """Multiple PLOs are returned ordered by plo_number."""
     inst_id = _create_institution("C2")
     program_id = _create_program(inst_id)
@@ -136,7 +146,7 @@ def test_create_multiple_plos_ordered():
     assert [p["description"] for p in plos] == ["First", "Second", "Third"]
 
 
-def test_get_program_outcomes_filters_inactive():
+def test_get_program_outcomes_filters_inactive() -> None:
     """get_program_outcomes excludes inactive PLOs by default."""
     inst_id = _create_institution("R1")
     program_id = _create_program(inst_id)
@@ -153,19 +163,19 @@ def test_get_program_outcomes_filters_inactive():
     assert len(all_plos) == 2
 
 
-def test_get_program_outcome_nonexistent():
+def test_get_program_outcome_nonexistent() -> None:
     """get_program_outcome returns None for nonexistent ID."""
     assert database_service.get_program_outcome("nonexistent-id") is None
 
 
-def test_get_program_outcomes_empty_program():
+def test_get_program_outcomes_empty_program() -> None:
     """get_program_outcomes returns empty list for a program with no PLOs."""
     inst_id = _create_institution("R3")
     program_id = _create_program(inst_id)
     assert database_service.get_program_outcomes(program_id) == []
 
 
-def test_update_program_outcome():
+def test_update_program_outcome() -> None:
     """Update a PLO description and verify the change."""
     inst_id = _create_institution("U1")
     program_id = _create_program(inst_id)
@@ -181,7 +191,7 @@ def test_update_program_outcome():
     assert plo["description"] == "Updated description"
 
 
-def test_update_program_outcome_nonexistent():
+def test_update_program_outcome_nonexistent() -> None:
     """update_program_outcome returns False for nonexistent ID."""
     assert (
         database_service.update_program_outcome(
@@ -191,7 +201,7 @@ def test_update_program_outcome_nonexistent():
     )
 
 
-def test_delete_program_outcome_soft():
+def test_delete_program_outcome_soft() -> None:
     """delete_program_outcome sets is_active=False, not hard delete."""
     inst_id = _create_institution("D1")
     program_id = _create_program(inst_id)
@@ -207,7 +217,7 @@ def test_delete_program_outcome_soft():
     assert all_plos[0]["is_active"] is False
 
 
-def test_delete_program_outcome_nonexistent():
+def test_delete_program_outcome_nonexistent() -> None:
     """delete_program_outcome returns False for nonexistent ID."""
     assert database_service.delete_program_outcome("nonexistent-id") is False
 
@@ -217,7 +227,7 @@ def test_delete_program_outcome_nonexistent():
 # ---------------------------------------------------------------------------
 
 
-def test_create_draft_mapping():
+def test_create_draft_mapping() -> None:
     """get_or_create_plo_mapping_draft creates a new draft for a program."""
     inst_id = _create_institution("M1")
     program_id = _create_program(inst_id)
@@ -233,7 +243,7 @@ def test_create_draft_mapping():
     assert draft["entries"] == []
 
 
-def test_get_or_create_draft_idempotent():
+def test_get_or_create_draft_idempotent() -> None:
     """Calling get_or_create twice returns the same draft."""
     inst_id = _create_institution("M2")
     program_id = _create_program(inst_id)
@@ -244,7 +254,7 @@ def test_get_or_create_draft_idempotent():
     assert draft1["id"] == draft2["id"]
 
 
-def test_get_draft_none_when_absent():
+def test_get_draft_none_when_absent() -> None:
     """get_plo_mapping_draft returns None when no draft exists."""
     inst_id = _create_institution("M3")
     program_id = _create_program(inst_id)
@@ -252,7 +262,7 @@ def test_get_draft_none_when_absent():
     assert database_service.get_plo_mapping_draft(program_id) is None
 
 
-def test_add_and_remove_mapping_entries():
+def test_add_and_remove_mapping_entries() -> None:
     """Add and remove PLO↔CLO links in a draft mapping."""
     inst_id = _create_institution("M4")
     program_id = _create_program(inst_id)
@@ -276,12 +286,12 @@ def test_add_and_remove_mapping_entries():
     assert len(refreshed["entries"]) == 0
 
 
-def test_remove_nonexistent_entry():
+def test_remove_nonexistent_entry() -> None:
     """remove_plo_mapping_entry returns False for nonexistent ID."""
     assert database_service.remove_plo_mapping_entry("nonexistent") is False
 
 
-def test_discard_draft():
+def test_discard_draft() -> None:
     """discard_plo_mapping_draft deletes draft and its entries."""
     inst_id = _create_institution("M5")
     program_id = _create_program(inst_id)
@@ -294,7 +304,7 @@ def test_discard_draft():
     assert database_service.get_plo_mapping(draft["id"]) is None
 
 
-def test_discard_nonexistent_draft():
+def test_discard_nonexistent_draft() -> None:
     """discard_plo_mapping_draft returns False for nonexistent ID."""
     assert database_service.discard_plo_mapping_draft("nonexistent") is False
 
@@ -304,7 +314,7 @@ def test_discard_nonexistent_draft():
 # ---------------------------------------------------------------------------
 
 
-def test_publish_mapping_assigns_version():
+def test_publish_mapping_assigns_version() -> None:
     """Publishing a draft assigns version 1."""
     inst_id = _create_institution("P1")
     program_id = _create_program(inst_id)
@@ -326,7 +336,7 @@ def test_publish_mapping_assigns_version():
     assert len(published["entries"]) == 1
 
 
-def test_publish_increments_version():
+def test_publish_increments_version() -> None:
     """Second publish gets version 2."""
     inst_id = _create_institution("P2")
     program_id = _create_program(inst_id)
@@ -348,7 +358,7 @@ def test_publish_increments_version():
     assert v2["version"] == 2
 
 
-def test_publish_snapshots_plo_description():
+def test_publish_snapshots_plo_description() -> None:
     """Published entries capture the PLO description at publish time."""
     inst_id = _create_institution("P3")
     program_id = _create_program(inst_id)
@@ -378,7 +388,7 @@ def test_publish_snapshots_plo_description():
 # ---------------------------------------------------------------------------
 
 
-def test_draft_copies_entries_from_latest_published():
+def test_draft_copies_entries_from_latest_published() -> None:
     """New draft after a publish copies entries from the latest version."""
     inst_id = _create_institution("F1")
     program_id = _create_program(inst_id)
@@ -405,7 +415,7 @@ def test_draft_copies_entries_from_latest_published():
 # ---------------------------------------------------------------------------
 
 
-def test_get_plo_mapping_by_version():
+def test_get_plo_mapping_by_version() -> None:
     """Retrieve a specific published version."""
     inst_id = _create_institution("G1")
     program_id = _create_program(inst_id)
@@ -419,14 +429,14 @@ def test_get_plo_mapping_by_version():
     assert result["description"] == "v1"
 
 
-def test_get_plo_mapping_by_version_nonexistent():
+def test_get_plo_mapping_by_version_nonexistent() -> None:
     """Returns None for a version that doesn't exist."""
     inst_id = _create_institution("G2")
     program_id = _create_program(inst_id)
     assert database_service.get_plo_mapping_by_version(program_id, 99) is None
 
 
-def test_get_published_plo_mappings():
+def test_get_published_plo_mappings() -> None:
     """Lists all published versions in order."""
     inst_id = _create_institution("G3")
     program_id = _create_program(inst_id)
@@ -440,7 +450,7 @@ def test_get_published_plo_mappings():
     assert [v["version"] for v in versions] == [1, 2, 3]
 
 
-def test_get_latest_published_plo_mapping():
+def test_get_latest_published_plo_mapping() -> None:
     """Returns the highest-versioned published mapping."""
     inst_id = _create_institution("G4")
     program_id = _create_program(inst_id)
@@ -454,13 +464,13 @@ def test_get_latest_published_plo_mapping():
     assert latest["version"] == 3
 
 
-def test_get_latest_published_none_when_empty():
+def test_get_latest_published_none_when_empty() -> None:
     """Returns None when no published mapping exists."""
     inst_id = _create_institution("G5")
     program_id = _create_program(inst_id)
     assert database_service.get_latest_published_plo_mapping(program_id) is None
 
 
-def test_get_plo_mapping_nonexistent():
+def test_get_plo_mapping_nonexistent() -> None:
     """get_plo_mapping returns None for nonexistent mapping."""
     assert database_service.get_plo_mapping("nonexistent") is None

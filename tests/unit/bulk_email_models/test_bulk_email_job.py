@@ -11,7 +11,7 @@ from src.bulk_email_models.bulk_email_job import BulkEmailJob
 class TestBulkEmailJob:
     """Test BulkEmailJob model"""
 
-    def test_to_dict(self):
+    def test_to_dict(self) -> None:
         """Test converting job to dictionary"""
         job = BulkEmailJob(
             id="job-123",
@@ -48,7 +48,7 @@ class TestBulkEmailJob:
         assert result["error_message"] is None
         assert result["progress_percentage"] == 100
 
-    def test_to_dict_with_none_timestamps(self):
+    def test_to_dict_with_none_timestamps(self) -> None:
         """Test to_dict with None timestamps"""
         job = BulkEmailJob(
             id="job-123",
@@ -74,7 +74,7 @@ class TestBulkEmailJob:
         assert result["completed_at"] is None
         assert result["failed_recipients"] == []
 
-    def test_calculate_progress_percentage_zero_recipients(self):
+    def test_calculate_progress_percentage_zero_recipients(self) -> None:
         """Test progress calculation with zero recipients"""
         job = BulkEmailJob(
             id="job-123",
@@ -96,7 +96,7 @@ class TestBulkEmailJob:
         progress = job._calculate_progress_percentage()
         assert progress == 0
 
-    def test_calculate_progress_percentage_partial(self):
+    def test_calculate_progress_percentage_partial(self) -> None:
         """Test progress calculation with partial completion"""
         job = BulkEmailJob(
             id="job-123",
@@ -118,7 +118,7 @@ class TestBulkEmailJob:
         progress = job._calculate_progress_percentage()
         assert progress == 50
 
-    def test_update_progress_first_time(self):
+    def test_update_progress_first_time(self) -> None:
         """Test update_progress marks job as running"""
         job = BulkEmailJob(
             id="job-123",
@@ -151,7 +151,7 @@ class TestBulkEmailJob:
         assert job.emails_pending == 6
         assert job.failed_recipients == [{"email": "failed@example.com"}]
 
-    def test_update_progress_completion(self):
+    def test_update_progress_completion(self) -> None:
         """Test update_progress marks job as completed"""
         job = BulkEmailJob(
             id="job-123",
@@ -178,7 +178,7 @@ class TestBulkEmailJob:
         assert job.emails_failed == 2
         assert job.emails_pending == 0
 
-    def test_mark_failed(self):
+    def test_mark_failed(self) -> None:
         """Test marking job as failed"""
         job = BulkEmailJob(
             id="job-123",
@@ -203,7 +203,7 @@ class TestBulkEmailJob:
         assert job.error_message == "SMTP connection timeout"
         assert job.completed_at is not None
 
-    def test_mark_cancelled(self):
+    def test_mark_cancelled(self) -> None:
         """Test marking job as cancelled"""
         job = BulkEmailJob(
             id="job-123",
@@ -227,7 +227,7 @@ class TestBulkEmailJob:
         assert job.status == "cancelled"
         assert job.completed_at is not None
 
-    def test_create_job(self):
+    def test_create_job(self) -> None:
         """Test create_job static method"""
         mock_db = Mock()
         mock_db.add = Mock()
@@ -263,7 +263,7 @@ class TestBulkEmailJob:
         mock_db.commit.assert_called_once()
         mock_db.refresh.assert_called_once_with(job)
 
-    def test_get_job(self):
+    def test_get_job(self) -> None:
         """Test get_job static method"""
         mock_db = Mock()
         mock_query = Mock()
@@ -286,7 +286,7 @@ class TestBulkEmailJob:
         assert result == expected_job
         mock_db.query.assert_called_once_with(BulkEmailJob)
 
-    def test_get_recent_jobs_with_user_filter(self):
+    def test_get_recent_jobs_with_user_filter(self) -> None:
         """Test get_recent_jobs with user_id filter"""
         mock_db = Mock()
         mock_query = Mock()
@@ -321,7 +321,7 @@ class TestBulkEmailJob:
         mock_db.query.assert_called_once_with(BulkEmailJob)
         mock_query.filter.assert_called_once()
 
-    def test_get_recent_jobs_without_user_filter(self):
+    def test_get_recent_jobs_without_user_filter(self) -> None:
         """Test get_recent_jobs without user_id filter"""
         mock_db = Mock()
         mock_query = Mock()

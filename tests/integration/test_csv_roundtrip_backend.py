@@ -19,6 +19,8 @@ import zipfile
 from pathlib import Path
 
 # Add project root to path
+from typing import Any
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.database.database_factory import get_database_service
@@ -29,7 +31,7 @@ from src.utils.logging_config import get_logger
 logger = get_logger(__name__)
 
 
-def export_database(institution_id: str, output_path: str) -> dict:
+def export_database(institution_id: str, output_path: str) -> dict[str, Any] | None:
     """Export database to CSV ZIP file."""
     logger.info(f"📦 Exporting institution {institution_id} to {output_path}")
 
@@ -62,7 +64,7 @@ def export_database(institution_id: str, output_path: str) -> dict:
     }
 
 
-def compare_zip_files(export1_path: str, export2_path: str) -> dict:
+def compare_zip_files(export1_path: str, export2_path: str) -> dict[str, Any]:
     """Compare two CSV ZIP exports for data integrity."""
     logger.info("🔍 Comparing exports...")
     logger.info(f"   Export 1: {export1_path}")
@@ -124,7 +126,7 @@ def compare_zip_files(export1_path: str, export2_path: str) -> dict:
     }
 
 
-def main():
+def main() -> Any:
     """Run complete roundtrip validation."""
     logger.info("=" * 70)
     logger.info("🔄 CSV Roundtrip Validation - Full Bidirectionality Test")

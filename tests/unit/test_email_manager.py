@@ -14,7 +14,7 @@ from src.email_providers.email_manager import EmailJob, EmailManager, EmailStatu
 class TestEmailJob(unittest.TestCase):
     """Test EmailJob dataclass"""
 
-    def test_email_job_creation(self):
+    def test_email_job_creation(self) -> None:
         """Test creating an EmailJob"""
         job = EmailJob(
             to_email="test@example.com",
@@ -32,7 +32,7 @@ class TestEmailJob(unittest.TestCase):
         assert job.last_error is None
         assert job.metadata is None
 
-    def test_email_job_with_metadata(self):
+    def test_email_job_with_metadata(self) -> None:
         """Test EmailJob with metadata"""
         metadata = {"user_id": 123, "template": "verification"}
         job = EmailJob(
@@ -49,7 +49,7 @@ class TestEmailJob(unittest.TestCase):
 class TestEmailManagerInitialization(unittest.TestCase):
     """Test EmailManager initialization"""
 
-    def test_default_initialization(self):
+    def test_default_initialization(self) -> None:
         """Test EmailManager with default settings"""
         manager = EmailManager()
 
@@ -60,7 +60,7 @@ class TestEmailManagerInitialization(unittest.TestCase):
         assert manager.tokens == 1.0
         assert len(manager.queue) == 0
 
-    def test_custom_initialization(self):
+    def test_custom_initialization(self) -> None:
         """Test EmailManager with custom settings"""
         manager = EmailManager(rate=0.5, max_retries=5, base_delay=2.0, max_delay=30.0)
 
@@ -73,11 +73,11 @@ class TestEmailManagerInitialization(unittest.TestCase):
 class TestEmailManagerQueueManagement(unittest.TestCase):
     """Test queue management functionality"""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures"""
         self.manager = EmailManager(rate=1.0)  # Fast rate for testing
 
-    def test_add_email(self):
+    def test_add_email(self) -> None:
         """Test adding an email to the queue"""
         job = self.manager.add_email(
             to_email="test@example.com",
@@ -91,7 +91,7 @@ class TestEmailManagerQueueManagement(unittest.TestCase):
         assert job.status == EmailStatus.PENDING
         assert len(self.manager.queue) == 1
 
-    def test_add_multiple_emails(self):
+    def test_add_multiple_emails(self) -> None:
         """Test adding multiple emails to the queue"""
         for i in range(3):
             self.manager.add_email(
@@ -104,7 +104,7 @@ class TestEmailManagerQueueManagement(unittest.TestCase):
         assert len(self.manager.queue) == 3
         assert all(job.status == EmailStatus.PENDING for job in self.manager.queue)
 
-    def test_get_status_empty_queue(self):
+    def test_get_status_empty_queue(self) -> None:
         """Test getting status of empty queue"""
         status = self.manager.get_status()
 
@@ -114,7 +114,7 @@ class TestEmailManagerQueueManagement(unittest.TestCase):
         assert status["failed"] == 0
         assert status["total"] == 0
 
-    def test_get_status_with_emails(self):
+    def test_get_status_with_emails(self) -> None:
         """Test getting status with emails in queue"""
         # Add some emails
         self.manager.add_email("test1@example.com", "Test 1", "<p>Test</p>", "Test")
@@ -125,7 +125,7 @@ class TestEmailManagerQueueManagement(unittest.TestCase):
         assert status["pending"] == 2
         assert status["total"] == 2
 
-    def test_clear_queue(self):
+    def test_clear_queue(self) -> None:
         """Test clearing the queue"""
         # Add some emails
         self.manager.add_email("test1@example.com", "Test 1", "<p>Test</p>", "Test")
@@ -137,7 +137,7 @@ class TestEmailManagerQueueManagement(unittest.TestCase):
 
         assert len(self.manager.queue) == 0
 
-    def test_get_failed_jobs(self):
+    def test_get_failed_jobs(self) -> None:
         """Test getting failed jobs"""
         # Add and mark some jobs as failed
         job1 = self.manager.add_email(
@@ -164,7 +164,7 @@ class TestEmailManagerQueueManagement(unittest.TestCase):
 class TestEmailManagerRateLimiting(unittest.TestCase):
     """Test rate limiting functionality"""
 
-    def test_acquire_token_immediate(self):
+    def test_acquire_token_immediate(self) -> None:
         """Test acquiring a token when one is available"""
         manager = EmailManager(rate=1.0)
 
@@ -176,7 +176,7 @@ class TestEmailManagerRateLimiting(unittest.TestCase):
         assert success is True
         assert elapsed < 0.1  # Should be nearly instant
 
-    def test_acquire_token_wait(self):
+    def test_acquire_token_wait(self) -> None:
         """Test acquiring a token when none available (must wait)"""
         manager = EmailManager(rate=10.0)  # 10 tokens per second = 0.1s per token
 
@@ -191,7 +191,7 @@ class TestEmailManagerRateLimiting(unittest.TestCase):
         assert success is True
         assert elapsed >= 0.05  # Should wait at least 0.05s (conservative)
 
-    def test_acquire_token_timeout(self):
+    def test_acquire_token_timeout(self) -> None:
         """Test token acquisition timeout"""
         manager = EmailManager(rate=0.1)  # Very slow rate
 
@@ -203,7 +203,7 @@ class TestEmailManagerRateLimiting(unittest.TestCase):
 
         assert success is False
 
-    def test_calculate_backoff_delay(self):
+    def test_calculate_backoff_delay(self) -> None:
         """Test exponential backoff calculation"""
         manager = EmailManager(base_delay=2.0, max_delay=20.0)
 
@@ -221,12 +221,12 @@ class TestEmailManagerRateLimiting(unittest.TestCase):
 class TestEmailManagerSending(unittest.TestCase):
     """Test email sending functionality"""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures"""
         self.manager = EmailManager(rate=10.0, max_retries=3, base_delay=0.1)
         self.send_func = Mock()
 
-    def test_send_all_success(self):
+    def test_send_all_success(self) -> None:
         """Test sending all emails successfully"""
         # Add emails
         self.manager.add_email("test1@example.com", "Test 1", "<p>Test</p>", "Test")
@@ -242,7 +242,7 @@ class TestEmailManagerSending(unittest.TestCase):
         assert stats["pending"] == 0
         assert self.send_func.call_count == 2
 
-    def test_send_all_failures(self):
+    def test_send_all_failures(self) -> None:
         """Test sending with all failures"""
         # Add emails
         self.manager.add_email("test1@example.com", "Test 1", "<p>Test</p>", "Test")
@@ -259,7 +259,7 @@ class TestEmailManagerSending(unittest.TestCase):
         # Should retry 3 times per email
         assert self.send_func.call_count == 6  # 2 emails * 3 retries
 
-    def test_send_all_mixed_results(self):
+    def test_send_all_mixed_results(self) -> None:
         """Test sending with mixed success/failure"""
         # Add emails
         self.manager.add_email("test1@example.com", "Test 1", "<p>Test</p>", "Test")
@@ -275,7 +275,7 @@ class TestEmailManagerSending(unittest.TestCase):
         assert stats["failed"] == 1
         assert stats["pending"] == 0
 
-    def test_send_with_retry_success_on_first_attempt(self):
+    def test_send_with_retry_success_on_first_attempt(self) -> None:
         """Test sending succeeds on first attempt"""
         job = self.manager.add_email("test@example.com", "Test", "<p>Test</p>", "Test")
         self.send_func.return_value = True
@@ -286,7 +286,7 @@ class TestEmailManagerSending(unittest.TestCase):
         assert job.attempts == 1
         assert self.send_func.call_count == 1
 
-    def test_send_with_retry_success_on_second_attempt(self):
+    def test_send_with_retry_success_on_second_attempt(self) -> None:
         """Test sending succeeds on second attempt"""
         job = self.manager.add_email("test@example.com", "Test", "<p>Test</p>", "Test")
         self.send_func.side_effect = [False, True]
@@ -297,7 +297,7 @@ class TestEmailManagerSending(unittest.TestCase):
         assert job.attempts == 2
         assert self.send_func.call_count == 2
 
-    def test_send_with_retry_all_attempts_fail(self):
+    def test_send_with_retry_all_attempts_fail(self) -> None:
         """Test sending fails after all retry attempts"""
         job = self.manager.add_email("test@example.com", "Test", "<p>Test</p>", "Test")
         self.send_func.return_value = False
@@ -308,7 +308,7 @@ class TestEmailManagerSending(unittest.TestCase):
         assert job.attempts == 3  # max_retries
         assert self.send_func.call_count == 3
 
-    def test_send_with_retry_exception_handling(self):
+    def test_send_with_retry_exception_handling(self) -> None:
         """Test exception handling during send"""
         job = self.manager.add_email("test@example.com", "Test", "<p>Test</p>", "Test")
         self.send_func.side_effect = [
@@ -323,7 +323,7 @@ class TestEmailManagerSending(unittest.TestCase):
         assert job.attempts == 3
         assert self.send_func.call_count == 3
 
-    def test_send_with_retry_records_last_error(self):
+    def test_send_with_retry_records_last_error(self) -> None:
         """Test that last error is recorded"""
         job = self.manager.add_email("test@example.com", "Test", "<p>Test</p>", "Test")
         error_msg = "Connection refused"
@@ -334,7 +334,7 @@ class TestEmailManagerSending(unittest.TestCase):
         assert success is False
         assert job.last_error == error_msg
 
-    def test_send_empty_queue(self):
+    def test_send_empty_queue(self) -> None:
         """Test sending with empty queue"""
         stats = self.manager.send_all(self.send_func, timeout=5.0)
 
@@ -347,7 +347,7 @@ class TestEmailManagerSending(unittest.TestCase):
 class TestEmailManagerIntegration(unittest.TestCase):
     """Integration tests for EmailManager"""
 
-    def test_full_workflow_all_success(self):
+    def test_full_workflow_all_success(self) -> None:
         """Test complete workflow with all emails succeeding"""
         manager = EmailManager(rate=10.0, max_retries=2, base_delay=0.1)
 
@@ -375,7 +375,7 @@ class TestEmailManagerIntegration(unittest.TestCase):
         assert status["failed"] == 0
         assert status["pending"] == 0
 
-    def test_full_workflow_with_retries(self):
+    def test_full_workflow_with_retries(self) -> None:
         """Test complete workflow with retries"""
         manager = EmailManager(rate=10.0, max_retries=3, base_delay=0.1)
 
@@ -392,7 +392,7 @@ class TestEmailManagerIntegration(unittest.TestCase):
         assert stats["failed"] == 0
         assert send_func.call_count == 4  # 3 attempts for first, 1 for second
 
-    def test_full_workflow_with_failures(self):
+    def test_full_workflow_with_failures(self) -> None:
         """Test complete workflow with permanent failures"""
         manager = EmailManager(rate=10.0, max_retries=2, base_delay=0.1)
 

@@ -4,6 +4,9 @@ Reminder API routes.
 Provides endpoints for sending course-specific assessment reminders to instructors.
 """
 
+from collections.abc import Mapping
+from typing import Any, Dict, cast
+
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 
@@ -17,6 +20,12 @@ reminders_bp = Blueprint("reminders", __name__, url_prefix="/api")
 
 # Initialize logger
 logger = get_logger(__name__)
+
+
+def _get_request_json() -> Dict[str, Any]:
+    """Return a typed JSON object body or an empty dict."""
+    payload = request.get_json(silent=True)
+    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
 
 
 @reminders_bp.route("/send-course-reminder", methods=["POST"])
@@ -42,12 +51,12 @@ def send_course_reminder_api() -> ResponseReturnValue:
         from src.services.email_service import EmailService
 
         # Get request data
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": "No JSON data provided"}), 400
 
-        instructor_id = data.get("instructor_id")
-        course_id = data.get("course_id")
+        instructor_id = str(data.get("instructor_id", "")).strip()
+        course_id = str(data.get("course_id", "")).strip()
 
         if not instructor_id or not course_id:
             return (
@@ -83,9 +92,10 @@ def send_course_reminder_api() -> ResponseReturnValue:
 
         # Get current user (admin sending the reminder)
         current_user = get_current_user_safe()
+        assert current_user is not None
         admin_name = f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip()
         if not admin_name:
-            admin_name = current_user.get("email", "Your program administrator")
+            admin_name = str(current_user.get("email", "Your program administrator"))
 
         # Get institution name
         institution_id = instructor.get("institution_id")
@@ -94,9 +104,10 @@ def send_course_reminder_api() -> ResponseReturnValue:
             if institution_id
             else None
         )
-        institution_name = (
-            institution.get("name", "Your institution")
-            if institution
+        institution_data = cast(Dict[str, Any], institution) if institution else {}
+        institution_name = str(
+            institution_data.get("name", "Your institution")
+            if institution_data
             else "Your institution"
         )
 
@@ -106,7 +117,8 @@ def send_course_reminder_api() -> ResponseReturnValue:
 
         from src.utils.constants import DEFAULT_BASE_URL
 
-        base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL).rstrip("/")
+        app_config = cast(Mapping[str, Any], current_app.config)
+        base_url = str(app_config.get("BASE_URL", DEFAULT_BASE_URL)).rstrip("/")
         assessment_url = f"{base_url}/assessments?course={course_id}"
 
         # Send email

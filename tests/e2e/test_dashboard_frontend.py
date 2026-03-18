@@ -14,7 +14,7 @@ from tests.e2e.conftest import BASE_URL
 class TestDashboardAPI:
     """Test dashboard API functionality"""
 
-    def test_dashboard_data_endpoint(self):
+    def test_dashboard_data_endpoint(self) -> None:
         """Ensure the aggregated dashboard endpoint is reachable."""
         endpoint = f"{BASE_URL}/api/dashboard/data"
 
@@ -41,7 +41,7 @@ class TestDashboardAPI:
 class TestDashboardFrontend:
     """Test dashboard frontend functionality using Playwright"""
 
-    def test_dashboard_page_loads(self, page: Page):
+    def test_dashboard_page_loads(self, page: Page) -> None:
         """Test that the main dashboard page loads without errors"""
         page.goto(str(BASE_URL))
 
@@ -60,7 +60,7 @@ class TestDashboardFrontend:
         title = page.title()
         assert title and len(title) > 0
 
-    def test_dashboard_cards_present(self, authenticated_page: Page):
+    def test_dashboard_cards_present(self, authenticated_page: Page) -> None:
         """Test that dashboard cards are present and populated"""
         # authenticated_page fixture already logs in and goes to dashboard
 

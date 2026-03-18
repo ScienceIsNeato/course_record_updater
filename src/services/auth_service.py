@@ -215,7 +215,7 @@ class AuthService:
     def _get_mock_user(self) -> Optional[Dict[str, Any]]:
         """Mock user for development and testing"""
 
-        base_user = {
+        base_user: Dict[str, Any] = {
             "user_id": "dev-admin-123",
             "email": "admin@mocku.test",
             "role": "site_admin",
@@ -238,7 +238,7 @@ class AuthService:
             session_user_id = session.get("user_id")
             if session_user_id:
                 # Use session data when available (makes tests work in both mock and real mode)
-                session_overrides = {
+                session_overrides: Dict[str, Any] = {
                     "user_id": session.get("user_id", base_user["user_id"]),
                     "email": session.get("email", base_user["email"]),
                     "role": session.get("role", base_user["role"]),
@@ -430,7 +430,7 @@ class AuthService:
         try:
             import src.database.database_service as db
 
-            all_programs = []
+            all_programs: List[str] = []
             institutions = db.get_all_institutions()
             for inst in institutions:
                 inst_id = inst.get("institution_id") or inst.get("id")
@@ -947,7 +947,7 @@ def can_access_program(program_id: str, institution_id: Optional[str] = None) ->
 
 def require_program_access(
     program_id: str, institution_id: Optional[str] = None
-) -> Optional[tuple]:
+) -> Optional[tuple[Any, int]]:
     """
     Check program access and return error response if denied.
 

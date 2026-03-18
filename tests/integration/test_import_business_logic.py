@@ -14,6 +14,9 @@ Tests for the comprehensive business logic scenarios:
 
 import os
 import tempfile
+
+# Mark as integration tests (involves file I/O, database operations)
+from typing import Any
 from unittest.mock import patch
 
 import pandas as pd
@@ -21,14 +24,13 @@ import pytest
 
 from src.services.import_service import ConflictStrategy, ImportService
 
-# Mark as integration tests (involves file I/O, database operations)
 pytestmark = pytest.mark.integration
 
 
 class TestImportBusinessLogic:
     """Test comprehensive import business logic scenarios"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.import_service = ImportService("coastal-state-college")
 
@@ -58,7 +60,7 @@ class TestImportBusinessLogic:
             }
         ]
 
-    def create_test_excel_file(self, courses_data):
+    def create_test_excel_file(self, courses_data: Any) -> Any:
         """Create a temporary Excel file with the REAL MockU format"""
         # Create DataFrame with ACTUAL MockU columns (matching real file)
         rows = []
@@ -103,8 +105,8 @@ class TestImportBusinessLogic:
     @patch("src.services.import_service.create_course")
     @patch("src.services.import_service.get_user_by_email")
     def test_happy_path_first_import(
-        self, mock_get_user, mock_create_course, mock_get_course
-    ):
+        self, mock_get_user: Any, mock_create_course: Any, mock_get_course: Any
+    ) -> None:
         """
         Test: First data import should create a 1:1 copy of the data
 
@@ -116,12 +118,12 @@ class TestImportBusinessLogic:
         """
         # Arrange: Empty database
         # Mock needs to return None initially, then return course after creation
-        created_courses = {}
+        created_courses: dict[str, dict[str, Any]] = {}
 
-        def mock_get_course_fn(course_number, institution_id=None):
+        def mock_get_course_fn(course_number: Any, institution_id: Any = None) -> Any:
             return created_courses.get(course_number)
 
-        def mock_create_course_fn(course_data):
+        def mock_create_course_fn(course_data: Any) -> Any:
             course_id = f"course_{course_data['course_number']}"
             created_courses[course_data["course_number"]] = {
                 "course_id": course_id,
@@ -169,8 +171,8 @@ class TestImportBusinessLogic:
     @patch("src.services.import_service.create_course")
     @patch("src.services.import_service.get_user_by_email")
     def test_identical_reimport_no_changes(
-        self, mock_get_user, mock_create_course, mock_get_course
-    ):
+        self, mock_get_user: Any, mock_create_course: Any, mock_get_course: Any
+    ) -> None:
         """
         Test: Re-importing identical file should make no changes
 
@@ -182,7 +184,9 @@ class TestImportBusinessLogic:
         """
 
         # Arrange: Courses already exist with identical data
-        def mock_get_course_side_effect(course_number, institution_id=None):
+        def mock_get_course_side_effect(
+            course_number: Any, institution_id: Any = None
+        ) -> Any:
             for course in self.sample_courses:
                 if course["course_number"] == course_number:
                     return {
@@ -194,7 +198,7 @@ class TestImportBusinessLogic:
         mock_get_course.side_effect = mock_get_course_side_effect
 
         # Mock users with matching data structure (using real MockU email format)
-        def mock_get_user_side_effect(email):
+        def mock_get_user_side_effect(email: Any) -> Any:
             if "instructor1.name@mocku.test" in email:
                 return {
                     "email": "instructor1.name@mocku.test",
@@ -248,8 +252,8 @@ class TestImportBusinessLogic:
     @patch("src.services.import_service.create_course")
     @patch("src.services.import_service.get_user_by_email")
     def test_incremental_import_one_new_course(
-        self, mock_get_user, mock_create_course, mock_get_course
-    ):
+        self, mock_get_user: Any, mock_create_course: Any, mock_get_course: Any
+    ) -> None:
         """
         Test: Adding one row to Excel should show only that modification
 
@@ -260,9 +264,11 @@ class TestImportBusinessLogic:
         """
 
         # Arrange: First two courses exist, third is new
-        created_courses = {}
+        created_courses: dict[str, dict[str, Any]] = {}
 
-        def mock_get_course_side_effect(course_number, institution_id=None):
+        def mock_get_course_side_effect(
+            course_number: Any, institution_id: Any = None
+        ) -> Any:
             # Check if it was just created
             if course_number in created_courses:
                 return created_courses[course_number]
@@ -272,7 +278,7 @@ class TestImportBusinessLogic:
                     return {**course, "course_id": f"course_{course_number}"}
             return None  # BIO-101 doesn't exist yet
 
-        def mock_create_course_fn(course_data):
+        def mock_create_course_fn(course_data: Any) -> Any:
             course_id = f"course_{course_data['course_number']}"
             created_courses[course_data["course_number"]] = {
                 "course_id": course_id,
@@ -330,7 +336,7 @@ class TestImportBusinessLogic:
         finally:
             os.unlink(excel_file)
 
-    def test_empty_file_import_does_nothing(self):
+    def test_empty_file_import_does_nothing(self) -> None:
         """
         Test: Uploading empty file should do nothing (not empty the DB)
 
@@ -368,7 +374,7 @@ class TestImportBusinessLogic:
             os.unlink(temp_file.name)
 
     @patch("src.services.import_service.get_course_by_number")
-    def test_data_deletion_protection(self, mock_get_course):
+    def test_data_deletion_protection(self, mock_get_course: Any) -> None:
         """
         Test: Data cannot be deleted via import (only created/updated)
 
@@ -385,9 +391,11 @@ class TestImportBusinessLogic:
                 "course_title": "General Chemistry",
             },
         }
-        created_courses = {}
+        created_courses: dict[str, dict[str, Any]] = {}
 
-        def mock_get_course_side_effect(course_number, institution_id=None):
+        def mock_get_course_side_effect(
+            course_number: Any, institution_id: Any = None
+        ) -> Any:
             # Check if it was just created
             if course_number in created_courses:
                 return created_courses[course_number]
@@ -397,7 +405,7 @@ class TestImportBusinessLogic:
                 return {**course, "course_id": f"course_{course_number}"}
             return None
 
-        def mock_create_course_fn(course_data):
+        def mock_create_course_fn(course_data: Any) -> Any:
             course_id = f"course_{course_data['course_number']}"
             created_courses[course_data["course_number"]] = {
                 "course_id": course_id,

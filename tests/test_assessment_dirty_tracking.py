@@ -5,13 +5,15 @@ Tests that the assessment page correctly detects unsaved changes
 and doesn't show false positives when data has been loaded from the server.
 """
 
+from typing import Any
+
 import pytest
 
 
 class TestAssessmentDirtyTracking:
     """Test dirty tracking logic for assessment page"""
 
-    def test_no_changes_after_load(self):
+    def test_no_changes_after_load(self) -> None:
         """Should not detect changes when form values match loaded data"""
         loaded_data = {
             "students_passed": "25",
@@ -36,7 +38,7 @@ class TestAssessmentDirtyTracking:
         has_changes = self._check_for_changes(loaded_data, current_data)
         assert has_changes is False, "Should not detect changes when data matches"
 
-    def test_detects_text_field_change(self):
+    def test_detects_text_field_change(self) -> None:
         """Should detect changes when text field is modified"""
         loaded_data = {
             "students_passed": "25",
@@ -61,7 +63,7 @@ class TestAssessmentDirtyTracking:
         has_changes = self._check_for_changes(loaded_data, current_data)
         assert has_changes is True, "Should detect text field change"
 
-    def test_detects_number_field_change(self):
+    def test_detects_number_field_change(self) -> None:
         """Should detect changes when number field is modified"""
         loaded_data = {
             "students_passed": "25",
@@ -86,7 +88,7 @@ class TestAssessmentDirtyTracking:
         has_changes = self._check_for_changes(loaded_data, current_data)
         assert has_changes is True, "Should detect number field change"
 
-    def test_detects_checkbox_change(self):
+    def test_detects_checkbox_change(self) -> None:
         """Should detect changes when checkbox is toggled"""
         loaded_data = {
             "students_passed": "25",
@@ -111,7 +113,7 @@ class TestAssessmentDirtyTracking:
         has_changes = self._check_for_changes(loaded_data, current_data)
         assert has_changes is True, "Should detect checkbox change"
 
-    def test_empty_to_empty_no_change(self):
+    def test_empty_to_empty_no_change(self) -> None:
         """Should not detect changes when both loaded and current are empty"""
         loaded_data = {
             "students_passed": "",
@@ -136,7 +138,7 @@ class TestAssessmentDirtyTracking:
         has_changes = self._check_for_changes(loaded_data, current_data)
         assert has_changes is False, "Should not detect changes when both are empty"
 
-    def test_adding_new_data_is_change(self):
+    def test_adding_new_data_is_change(self) -> None:
         """Should detect changes when adding data to empty fields"""
         loaded_data = {
             "students_passed": "",
@@ -161,7 +163,7 @@ class TestAssessmentDirtyTracking:
         has_changes = self._check_for_changes(loaded_data, current_data)
         assert has_changes is True, "Should detect new data as change"
 
-    def test_clearing_data_is_change(self):
+    def test_clearing_data_is_change(self) -> None:
         """Should detect changes when clearing previously filled fields"""
         loaded_data = {
             "students_passed": "25",
@@ -186,7 +188,7 @@ class TestAssessmentDirtyTracking:
         has_changes = self._check_for_changes(loaded_data, current_data)
         assert has_changes is True, "Should detect cleared data as change"
 
-    def _check_for_changes(self, loaded_data, current_data):
+    def _check_for_changes(self, loaded_data: Any, current_data: Any) -> Any:
         """
         Helper method that mimics the JavaScript checkForUnsavedChanges logic
         """

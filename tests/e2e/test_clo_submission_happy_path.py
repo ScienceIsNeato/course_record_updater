@@ -13,6 +13,7 @@ Workflow:
 """
 
 import json
+from typing import Any
 
 import pytest
 from playwright.sync_api import Page
@@ -28,7 +29,7 @@ from tests.e2e.test_helpers import (
 # === Helper Functions for Test Data Setup ===
 
 
-def _create_test_program(admin_page, csrf_token, institution_id):
+def _create_test_program(admin_page: Any, csrf_token: Any, institution_id: Any) -> Any:
     """Create test program via API."""
     program_response = admin_page.request.post(
         f"{BASE_URL}/api/programs",
@@ -45,7 +46,9 @@ def _create_test_program(admin_page, csrf_token, institution_id):
     return program_response.json()["program_id"]
 
 
-def _create_test_course(admin_page, csrf_token, institution_id, program_id):
+def _create_test_course(
+    admin_page: Any, csrf_token: Any, institution_id: Any, program_id: Any
+) -> Any:
     """Create test course via API."""
     course_response = admin_page.request.post(
         f"{BASE_URL}/api/courses",
@@ -64,7 +67,7 @@ def _create_test_course(admin_page, csrf_token, institution_id, program_id):
     return course_response.json()["course_id"]
 
 
-def _create_test_term(admin_page, csrf_token, institution_id):
+def _create_test_term(admin_page: Any, csrf_token: Any, institution_id: Any) -> Any:
     """Create test term via API."""
     term_response = admin_page.request.post(
         f"{BASE_URL}/api/terms",
@@ -84,8 +87,13 @@ def _create_test_term(admin_page, csrf_token, institution_id):
 
 
 def _create_test_offering(
-    admin_page, csrf_token, course_id, term_id, instructor_id, institution_id
-):
+    admin_page: Any,
+    csrf_token: Any,
+    course_id: Any,
+    term_id: Any,
+    instructor_id: Any,
+    institution_id: Any,
+) -> Any:
     """Create test offering via API."""
     section_response = admin_page.request.post(
         f"{BASE_URL}/api/offerings",
@@ -104,8 +112,12 @@ def _create_test_offering(
 
 
 def _create_test_section(
-    admin_page, csrf_token, offering_id, section_number, instructor_id
-):
+    admin_page: Any,
+    csrf_token: Any,
+    offering_id: Any,
+    section_number: Any,
+    instructor_id: Any,
+) -> Any:
     """Create test section via API."""
     section_response = admin_page.request.post(
         f"{BASE_URL}/api/sections",
@@ -123,7 +135,9 @@ def _create_test_section(
     return section_response.json()["section_id"]
 
 
-def _create_test_clos(admin_page, csrf_token, course_id, section_ids):
+def _create_test_clos(
+    admin_page: Any, csrf_token: Any, course_id: Any, section_ids: Any
+) -> Any:
     """Create test CLOs for all sections."""
     clo_responses = []
     for section_id in section_ids:
@@ -147,7 +161,9 @@ def _create_test_clos(admin_page, csrf_token, course_id, section_ids):
     return clo_responses
 
 
-def _login_as_instructor(admin_page, instructor_email, csrf_token):
+def _login_as_instructor(
+    admin_page: Any, instructor_email: Any, csrf_token: Any
+) -> None:
     """Login as instructor."""
     admin_page.goto(f"{BASE_URL}/logout")
     admin_page.wait_for_timeout(500)
@@ -159,7 +175,9 @@ def _login_as_instructor(admin_page, instructor_email, csrf_token):
     admin_page.wait_for_selector("text=Dashboard")
 
 
-def _navigate_to_assessments_and_select_section(instructor_page, section_id):
+def _navigate_to_assessments_and_select_section(
+    instructor_page: Any, section_id: Any
+) -> None:
     """Navigate to assessments page and select specific section."""
     instructor_page.goto(f"{BASE_URL}/assessments")
     instructor_page.wait_for_selector("#courseSelect")
@@ -169,26 +187,28 @@ def _navigate_to_assessments_and_select_section(instructor_page, section_id):
 
 @pytest.mark.e2e
 @pytest.mark.e2e
-def _navigate_and_login(instructor_page, live_server):
+def _navigate_and_login(instructor_page: Any, live_server: Any) -> None:
     """Helper: Navigate to audit page and login."""
     instructor_page.goto(f"{live_server.url}/audit/clo")
     instructor_page.wait_for_selector('h2:has-text("Outcome Audit")')
 
 
-def _verify_initial_state(instructor_page):
+def _verify_initial_state(instructor_page: Any) -> None:
     """Helper: Verify initial CLO state."""
     row = instructor_page.locator("tr").filter(has_text="Identify key biological").first
     assert row.locator('.badge:has-text("Assigned")').is_visible()
 
 
-def _fill_assessment_data(instructor_page, students_took, students_passed, tool):
+def _fill_assessment_data(
+    instructor_page: Any, students_took: Any, students_passed: Any, tool: Any
+) -> None:
     """Helper: Fill assessment form data."""
     instructor_page.locator('input[name="students_took"]').fill(str(students_took))
     instructor_page.locator('input[name="students_passed"]').fill(str(students_passed))
     instructor_page.locator('input[name="assessment_tool"]').fill(tool)
 
 
-def _submit_for_approval(instructor_page):
+def _submit_for_approval(instructor_page: Any) -> None:
     """Helper: Submit CLO for approval."""
     with instructor_page.expect_response("**/api/outcomes/*/submit") as response_info:
         instructor_page.locator('button:has-text("Submit for Approval")').click()
@@ -196,7 +216,7 @@ def _submit_for_approval(instructor_page):
     assert response.status == 200
 
 
-def _verify_submitted_state(instructor_page):
+def _verify_submitted_state(instructor_page: Any) -> None:
     """Helper: Verify CLO is in awaiting approval state."""
     instructor_page.wait_for_selector(
         '.badge:has-text("Awaiting Approval")', timeout=5000
@@ -206,8 +226,12 @@ def _verify_submitted_state(instructor_page):
 
 
 def _execute_clo_submission_workflow(
-    admin_page, instructor_page, course_id, section_002_id, clo1_id
-):
+    admin_page: Any,
+    instructor_page: Any,
+    course_id: Any,
+    section_002_id: Any,
+    clo1_id: Any,
+) -> None:
     """Execute the entire CLO submission workflow."""
     # Navigate to assessments
     instructor_page.goto(f"{BASE_URL}/assessments")
@@ -249,8 +273,13 @@ def _execute_clo_submission_workflow(
 
 
 def _verify_section_isolation(
-    admin_page, csrf_token, course_id, section_002_id, section_001_id, section_003_id
-):
+    admin_page: Any,
+    csrf_token: Any,
+    course_id: Any,
+    section_002_id: Any,
+    section_001_id: Any,
+    section_003_id: Any,
+) -> None:
     """Verify that only section 002 was submitted, not 001 or 003."""
     outcomes_response = admin_page.request.get(
         f"{BASE_URL}/api/courses/{course_id}/outcomes",
@@ -286,7 +315,7 @@ def _verify_section_isolation(
 
 
 @pytest.mark.skip(reason="Uses non-existent /api/outcomes/{id}/assign endpoint")
-def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
+def test_clo_submission_happy_path(authenticated_institution_admin_page: Page) -> None:
     """
     Test full CLO submission workflow for instructor.
 

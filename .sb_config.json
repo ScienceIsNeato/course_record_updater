@@ -1,6 +1,5 @@
 {
   "version": "1.0",
-  "swabbing_time": 20,
   "custom_gates": [
     {
       "name": "frontend-sanity",
@@ -24,7 +23,7 @@
       "category": "overconfidence",
       "command": "bash -lc './scripts/run_uat.sh'",
       "level": "scour",
-      "timeout": 180
+      "timeout": 1800
     }
   ],
   "overconfidence": {
@@ -34,7 +33,10 @@
         "enabled": true,
         "auto_fix": false,
         "config_file_path": null,
-        "test_dirs": ["tests"],
+        "test_dirs": [
+          "tests/unit",
+          "tests/integration"
+        ],
         "timeout": 300
       },
       "coverage-gaps.py": {
@@ -48,7 +50,11 @@
         "auto_fix": false,
         "config_file_path": null,
         "strict_typing": true,
-        "include_dirs": ["src", "scripts", "tests"]
+        "include_dirs": [
+          "src",
+          "scripts",
+          "tests"
+        ]
       },
       "type-blindness.py": {
         "enabled": true,
@@ -69,7 +75,7 @@
         "threshold": 80
       },
       "type-blindness.js": {
-        "enabled": false,
+        "enabled": true,
         "auto_fix": false,
         "config_file_path": null,
         "tsconfig": "tsconfig.json"
@@ -90,14 +96,18 @@
         "auto_fix": false,
         "config_file_path": null,
         "max_allowed": 0,
-        "exclude_dirs": [".specstory"]
+        "exclude_dirs": [
+          ".specstory"
+        ]
       },
       "hand-wavy-tests.js": {
         "enabled": true,
         "auto_fix": false,
         "config_file_path": null,
         "additional_assert_functions": [],
-        "exclude_dirs": [".specstory"],
+        "exclude_dirs": [
+          ".specstory"
+        ],
         "max_violations": 0
       },
       "bogus-tests.dart": {
@@ -110,8 +120,12 @@
         "enabled": true,
         "auto_fix": false,
         "config_file_path": null,
-        "test_dirs": ["tests"],
-        "exclude_patterns": ["conftest.py"],
+        "test_dirs": [
+          "tests"
+        ],
+        "exclude_patterns": [
+          "conftest.py"
+        ],
         "min_test_statements": 1,
         "short_test_severity": "fail"
       },
@@ -119,7 +133,9 @@
         "enabled": true,
         "auto_fix": false,
         "config_file_path": null,
-        "exclude_dirs": [".specstory"],
+        "exclude_dirs": [
+          ".specstory"
+        ],
         "max_files": 50000
       },
       "gate-dodging": {
@@ -146,7 +162,7 @@
         "npm_install_flags": []
       },
       "sloppy-frontend.js": {
-        "enabled": false,
+        "enabled": true,
         "auto_fix": false,
         "config_file_path": null,
         "frontend_dirs": []
@@ -163,7 +179,11 @@
         "config_file_path": null,
         "max_rank": "C",
         "max_complexity": 15,
-        "src_dirs": ["src", "scripts", "tests"]
+        "src_dirs": [
+          "src",
+          "scripts",
+          "tests"
+        ]
       },
       "dead-code.py": {
         "enabled": true,
@@ -198,7 +218,10 @@
           "**/dist/**",
           "**/cursor-rules/**"
         ],
-        "src_dirs": ["src", "scripts"],
+        "src_dirs": [
+          "src",
+          "scripts"
+        ],
         "whitelist_file": ""
       },
       "silenced-gates": {
@@ -207,7 +230,7 @@
         "config_file_path": null
       },
       "broken-templates.py": {
-        "enabled": false,
+        "enabled": true,
         "auto_fix": false,
         "config_file_path": null,
         "templates_dir": null
@@ -226,7 +249,11 @@
         "enabled": true,
         "auto_fix": false,
         "config_file_path": null,
-        "scanners": ["bandit", "semgrep", "detect-secrets"],
+        "scanners": [
+          "bandit",
+          "semgrep",
+          "detect-secrets"
+        ],
         "exclude_dirs": [
           ".specstory",
           "venv",
@@ -261,7 +288,11 @@
         "enabled": true,
         "auto_fix": false,
         "config_file_path": null,
-        "scanners": ["bandit", "semgrep", "detect-secrets"],
+        "scanners": [
+          "bandit",
+          "semgrep",
+          "detect-secrets"
+        ],
         "exclude_dirs": [
           ".specstory",
           "venv",
@@ -296,7 +327,13 @@
         "auto_fix": false,
         "config_file_path": null,
         "threshold": 5,
-        "include_dirs": ["src", "tests", "scripts", "static", "templates"],
+        "include_dirs": [
+          "src",
+          "tests",
+          "scripts",
+          "static",
+          "templates"
+        ],
         "min_tokens": 50,
         "min_lines": 5,
         "exclude_dirs": [
@@ -331,7 +368,9 @@
         "min_file_count": 1,
         "min_length": 8,
         "min_words": 3,
-        "include_patterns": ["**/*.py"],
+        "include_patterns": [
+          "**/*.py"
+        ],
         "ignore_patterns": [
           "**/.specstory/**",
           "**/htmlcov/**",
@@ -365,7 +404,13 @@
         "config_file_path": null,
         "max_file_lines": 1000,
         "max_function_lines": 100,
-        "include_dirs": ["src", "tests", "scripts", "static", "templates"],
+        "include_dirs": [
+          "src",
+          "tests",
+          "scripts",
+          "static",
+          "templates"
+        ],
         "exclude_dirs": [
           ".specstory",
           ".git",
@@ -404,5 +449,6 @@
       }
     }
   },
-  "disabled_gates": ["myopia:security-scan", "overconfidence:e2e"]
+  "disabled_gates": [],
+  "swabbing_time": 30
 }

@@ -7,6 +7,7 @@ including adapter discovery and role-based access control.
 
 import tempfile
 from pathlib import Path
+from typing import Any
 
 import pytest
 from openpyxl import Workbook
@@ -18,12 +19,12 @@ from src.database.database_service import create_default_mocku_institution
 class TestAdapterAPIWorkflows:
     """Integration tests for adapter API endpoints."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test environment."""
         # Ensure MockU institution exists
         self.institution_id = create_default_mocku_institution()
 
-    def test_site_admin_adapter_discovery_workflow(self, client):
+    def test_site_admin_adapter_discovery_workflow(self, client: Any) -> None:
         """Test site admin can discover all available adapters via API."""
         # Mock site admin user session (compatible with new SessionService)
         with client.session_transaction() as sess:
@@ -53,7 +54,7 @@ class TestAdapterAPIWorkflows:
         assert ".xlsx" in cei_adapter["supported_formats"]
         assert "courses" in cei_adapter["data_types"]
 
-    def test_institution_admin_adapter_discovery_workflow(self, client):
+    def test_institution_admin_adapter_discovery_workflow(self, client: Any) -> None:
         """Test institution admin only sees their institution's adapters."""
         # Mock institution admin user session (compatible with new SessionService)
         with client.session_transaction() as sess:
@@ -80,7 +81,7 @@ class TestAdapterAPIWorkflows:
                 None,
             ], f"Inst admin should only see their institution's adapters or public adapters, got: {adapter['institution_id']}"
 
-    def test_instructor_adapter_discovery_workflow(self, client):
+    def test_instructor_adapter_discovery_workflow(self, client: Any) -> None:
         """Test instructor sees no adapters (no import permissions)."""
         # Mock instructor user session
         with client.session_transaction() as sess:
@@ -103,7 +104,7 @@ class TestAdapterAPIWorkflows:
         # Instructors should see no adapters
         assert len(data["adapters"]) == 0
 
-    def test_unauthenticated_adapter_access(self, client):
+    def test_unauthenticated_adapter_access(self, client: Any) -> None:
         """Test that unauthenticated users cannot access adapter API."""
         # No user session - should be denied
         response = client.get("/api/adapters")
@@ -140,7 +141,7 @@ class TestAdapterAPIWorkflows:
 
         workbook.save(file_path)
 
-    def test_site_admin_import_workflow_via_api(self, client):
+    def test_site_admin_import_workflow_via_api(self, client: Any) -> None:
         """Test complete import workflow via API for site admin."""
         # Mock site admin user session
         with client.session_transaction() as sess:
@@ -174,7 +175,7 @@ class TestAdapterAPIWorkflows:
             assert data["success"] is True
             assert data["records_processed"] > 0
 
-    def test_instructor_import_restriction_via_api(self, client):
+    def test_instructor_import_restriction_via_api(self, client: Any) -> None:
         """Test that instructors cannot import via API."""
         # Mock instructor user session
         with client.session_transaction() as sess:
@@ -208,7 +209,7 @@ class TestAdapterAPIWorkflows:
             data = response.get_json()
             assert data["success"] is False
 
-    def test_adapter_metadata_consistency(self, client):
+    def test_adapter_metadata_consistency(self, client: Any) -> None:
         """Test that adapter metadata is consistent across API calls."""
         # Mock site admin user session
         with client.session_transaction() as sess:
@@ -250,7 +251,7 @@ class TestAdapterAPIWorkflows:
         assert isinstance(cei_adapter["supported_formats"], list)
         assert ".xlsx" in cei_adapter["supported_formats"]
 
-    def test_error_handling_in_api_workflows(self, client):
+    def test_error_handling_in_api_workflows(self, client: Any) -> None:
         """Test API error handling for various failure scenarios."""
         # Mock site admin user session
         with client.session_transaction() as sess:
@@ -307,7 +308,7 @@ class TestAdapterAPIWorkflows:
                 or "target institution" in data["error"].lower()
             )
 
-    def test_dry_run_workflow_via_api(self, client):
+    def test_dry_run_workflow_via_api(self, client: Any) -> None:
         """Test dry run functionality via API."""
         # Mock site admin user session
         with client.session_transaction() as sess:
@@ -341,7 +342,7 @@ class TestAdapterAPIWorkflows:
             assert data["success"] is True
             assert "dry_run" in data or "preview" in data.get("message", "").lower()
 
-    def test_cross_role_adapter_access_patterns(self, client):
+    def test_cross_role_adapter_access_patterns(self, client: Any) -> None:
         """Test adapter access patterns across different user roles."""
         roles_and_expected_access = [
             ("site_admin", True, "Should see all adapters"),

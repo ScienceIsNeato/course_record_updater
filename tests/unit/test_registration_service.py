@@ -6,6 +6,7 @@ and account activation functionality.
 """
 
 from datetime import datetime, timedelta, timezone
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -27,7 +28,9 @@ class TestInstitutionAdminRegistration:
 
     @patch("src.services.registration_service.db")
     @patch("src.services.registration_service.send_verification_email")
-    def test_register_institution_admin_success(self, mock_send_email, mock_db):
+    def test_register_institution_admin_success(
+        self, mock_send_email: Any, mock_db: Any
+    ) -> None:
         """Test successful institution admin registration"""
         # Setup mocks
         mock_db.get_user_by_email.return_value = None  # User doesn't exist
@@ -68,7 +71,7 @@ class TestInstitutionAdminRegistration:
         assert args["user_name"] == "John Doe"
 
     @patch("src.services.registration_service.db")
-    def test_register_institution_admin_existing_user(self, mock_db):
+    def test_register_institution_admin_existing_user(self, mock_db: Any) -> None:
         """Test registration fails when user already exists"""
         # Setup mock - user exists
         mock_db.get_user_by_email.return_value = {
@@ -86,7 +89,7 @@ class TestInstitutionAdminRegistration:
                 institution_name="Example University",
             )
 
-    def test_register_institution_admin_weak_password(self):
+    def test_register_institution_admin_weak_password(self) -> None:
         """Test registration fails with weak password"""
         with pytest.raises(PasswordValidationError):
             register_institution_admin(
@@ -99,7 +102,9 @@ class TestInstitutionAdminRegistration:
 
     @patch("src.services.registration_service.db")
     @patch("src.services.registration_service.send_verification_email")
-    def test_register_institution_admin_email_failure(self, mock_send_email, mock_db):
+    def test_register_institution_admin_email_failure(
+        self, mock_send_email: Any, mock_db: Any
+    ) -> None:
         """Test registration succeeds even if email fails"""
         # Setup mocks
         mock_db.get_user_by_email.return_value = None
@@ -122,7 +127,7 @@ class TestInstitutionAdminRegistration:
         assert result["email_sent"] is False
 
     @patch("src.services.registration_service.db")
-    def test_register_institution_admin_database_error(self, mock_db):
+    def test_register_institution_admin_database_error(self, mock_db: Any) -> None:
         """Test registration fails on database error"""
         # Setup mock - database error
         mock_db.get_user_by_email.return_value = None
@@ -144,7 +149,7 @@ class TestEmailVerification:
 
     @patch("src.services.registration_service.db")
     @patch("src.services.registration_service.send_welcome_email")
-    def test_verify_email_success(self, mock_send_welcome, mock_db):
+    def test_verify_email_success(self, mock_send_welcome: Any, mock_db: Any) -> None:
         """Test successful email verification"""
         # Setup mocks
         future_time = datetime.now(timezone.utc) + timedelta(hours=12)
@@ -190,7 +195,7 @@ class TestEmailVerification:
         assert updates["email_verification_token"] is None
 
     @patch("src.services.registration_service.db")
-    def test_verify_email_invalid_token(self, mock_db):
+    def test_verify_email_invalid_token(self, mock_db: Any) -> None:
         """Test verification with invalid token"""
         mock_db.get_user_by_verification_token.return_value = None
 
@@ -198,7 +203,7 @@ class TestEmailVerification:
             verify_email("invalid-token")
 
     @patch("src.services.registration_service.db")
-    def test_verify_email_expired_token(self, mock_db):
+    def test_verify_email_expired_token(self, mock_db: Any) -> None:
         """Test verification with expired token"""
         # Setup mock with expired token
         past_time = datetime.now(timezone.utc) - timedelta(hours=1)
@@ -215,7 +220,7 @@ class TestEmailVerification:
             verify_email("expired-token")
 
     @patch("src.services.registration_service.db")
-    def test_verify_email_already_verified(self, mock_db):
+    def test_verify_email_already_verified(self, mock_db: Any) -> None:
         """Test verification when already verified"""
         # Setup mock with active user
         future_time = datetime.now(timezone.utc) + timedelta(hours=12)
@@ -235,7 +240,7 @@ class TestEmailVerification:
         assert "already verified" in result["message"]
 
     @patch("src.services.registration_service.db")
-    def test_verify_email_iso_string_expiry(self, mock_db):
+    def test_verify_email_iso_string_expiry(self, mock_db: Any) -> None:
         """Test verification with ISO string expiry date"""
         # Setup mock with ISO string expiry
         future_time = datetime.now(timezone.utc) + timedelta(hours=12)
@@ -263,7 +268,7 @@ class TestEmailVerification:
             assert result["already_verified"] is False
 
     @patch("src.services.registration_service.db")
-    def test_verify_email_no_expiry_date(self, mock_db):
+    def test_verify_email_no_expiry_date(self, mock_db: Any) -> None:
         """Test email verification when token has no expiry date"""
         # Setup mock user without expiry date
         mock_user = {
@@ -286,7 +291,9 @@ class TestResendVerificationEmail:
 
     @patch("src.services.registration_service.db")
     @patch("src.services.registration_service.send_verification_email")
-    def test_resend_verification_email_success(self, mock_send_email, mock_db):
+    def test_resend_verification_email_success(
+        self, mock_send_email: Any, mock_db: Any
+    ) -> None:
         """Test successful resend of verification email"""
         # Setup mocks
         mock_user = {
@@ -318,7 +325,7 @@ class TestResendVerificationEmail:
         mock_send_email.assert_called_once()
 
     @patch("src.services.registration_service.db")
-    def test_resend_verification_email_user_not_found(self, mock_db):
+    def test_resend_verification_email_user_not_found(self, mock_db: Any) -> None:
         """Test resend when user doesn't exist"""
         mock_db.get_user_by_email.return_value = None
 
@@ -326,7 +333,7 @@ class TestResendVerificationEmail:
             resend_verification_email("nonexistent@example.com")
 
     @patch("src.services.registration_service.db")
-    def test_resend_verification_email_already_active(self, mock_db):
+    def test_resend_verification_email_already_active(self, mock_db: Any) -> None:
         """Test resend when account is already active"""
         mock_user = {
             "id": "user-123",
@@ -341,7 +348,9 @@ class TestResendVerificationEmail:
 
     @patch("src.services.registration_service.db")
     @patch("src.services.registration_service.send_verification_email")
-    def test_resend_verification_email_send_failure(self, mock_send_email, mock_db):
+    def test_resend_verification_email_send_failure(
+        self, mock_send_email: Any, mock_db: Any
+    ) -> None:
         """Test resend verification email when email sending fails"""
         # Setup mocks
         mock_user = {
@@ -369,7 +378,7 @@ class TestRegistrationStatus:
     """Test registration status checking functionality"""
 
     @patch("src.services.registration_service.db")
-    def test_get_registration_status_not_registered(self, mock_db):
+    def test_get_registration_status_not_registered(self, mock_db: Any) -> None:
         """Test status check for non-existent user"""
         mock_db.get_user_by_email.return_value = None
 
@@ -380,7 +389,7 @@ class TestRegistrationStatus:
         assert "No account found" in result["message"]
 
     @patch("src.services.registration_service.db")
-    def test_get_registration_status_active(self, mock_db):
+    def test_get_registration_status_active(self, mock_db: Any) -> None:
         """Test status check for active user"""
         mock_user = {
             "id": "user-123",
@@ -403,7 +412,7 @@ class TestRegistrationStatus:
         assert "active and verified" in result["message"]
 
     @patch("src.services.registration_service.db")
-    def test_get_registration_status_pending_not_expired(self, mock_db):
+    def test_get_registration_status_pending_not_expired(self, mock_db: Any) -> None:
         """Test status check for pending user with valid token"""
         future_time = datetime.now(timezone.utc) + timedelta(hours=12)
         mock_user = {
@@ -426,7 +435,7 @@ class TestRegistrationStatus:
         assert "verification is pending" in result["message"]
 
     @patch("src.services.registration_service.db")
-    def test_get_registration_status_pending_expired(self, mock_db):
+    def test_get_registration_status_pending_expired(self, mock_db: Any) -> None:
         """Test status check for pending user with expired token"""
         past_time = datetime.now(timezone.utc) - timedelta(hours=1)
         mock_user = {
@@ -446,7 +455,7 @@ class TestRegistrationStatus:
         assert result["verification_expired"] is True
 
     @patch("src.services.registration_service.db")
-    def test_get_registration_status_database_error(self, mock_db):
+    def test_get_registration_status_database_error(self, mock_db: Any) -> None:
         """Test status check with database error"""
         mock_db.get_user_by_email.side_effect = Exception("Database error")
 
@@ -457,7 +466,7 @@ class TestRegistrationStatus:
         assert "Failed to check" in result["message"]
 
     @patch("src.services.registration_service.db")
-    def test_get_registration_status_suspended(self, mock_db):
+    def test_get_registration_status_suspended(self, mock_db: Any) -> None:
         """Test status check for suspended user"""
         mock_user = {
             "id": "user-456",
@@ -484,7 +493,9 @@ class TestRegistrationServiceIntegration:
     @patch("src.services.registration_service.db")
     @patch("src.services.registration_service.send_verification_email")
     @patch("src.services.registration_service.send_welcome_email")
-    def test_complete_registration_flow(self, mock_welcome, mock_verify_email, mock_db):
+    def test_complete_registration_flow(
+        self, mock_welcome: Any, mock_verify_email: Any, mock_db: Any
+    ) -> None:
         """Test complete registration and verification flow"""
         # Setup mocks for registration
         mock_db.get_user_by_email.return_value = None
@@ -534,7 +545,7 @@ class TestRegistrationServiceIntegration:
 class TestConvenienceFunctions:
     """Test convenience functions"""
 
-    def test_convenience_functions_exist(self):
+    def test_convenience_functions_exist(self) -> None:
         """Test that all convenience functions are available"""
         assert callable(register_institution_admin)
         assert callable(verify_email)
@@ -544,7 +555,9 @@ class TestConvenienceFunctions:
     @patch(
         "src.services.registration_service.RegistrationService.register_institution_admin"
     )
-    def test_convenience_function_register_institution_admin(self, mock_method):
+    def test_convenience_function_register_institution_admin(
+        self, mock_method: Any
+    ) -> None:
         """Test convenience function delegates correctly"""
         mock_method.return_value = {"success": True}
 
@@ -561,17 +574,17 @@ class TestConvenienceFunctions:
 class TestEmailVerificationExpiry:
     """Test email verification expiry handling."""
 
-    def test_email_verification_expired_no_timestamp(self):
+    def test_email_verification_expired_no_timestamp(self) -> None:
         """Test _check_verification_expired when no timestamp present."""
 
         service = RegistrationService()
-        user = {}  # No verification_expires_at field
+        user: dict[str, Any] = {}  # No verification_expires_at field
 
         result = service._check_verification_expired(user)
 
         assert result is False  # No timestamp means not expired
 
-    def test_email_verification_expired_invalid_format(self):
+    def test_email_verification_expired_invalid_format(self) -> None:
         """Test _check_verification_expired with invalid datetime string."""
 
         service = RegistrationService()

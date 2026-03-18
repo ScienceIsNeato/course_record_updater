@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.orm import joinedload, selectinload
@@ -127,7 +127,7 @@ class SQLDatabase(DatabaseInterface):
             logger.info("[SQLDatabase] Created institution %s", institution_id)
 
         # Automatically create default program for the institution
-        default_program_data = {
+        default_program_data: Dict[str, Any] = {
             "name": f"{short_name} Default Program",
             "institution_id": institution_id,
             "is_default": True,
@@ -168,7 +168,7 @@ class SQLDatabase(DatabaseInterface):
         if existing:
             return existing["institution_id"]
 
-        mocku_payload = {
+        mocku_payload: Dict[str, Any] = {
             "name": "Mock University",
             "short_name": "MOCKU",
             "domain": "mocku.edu",
@@ -212,7 +212,7 @@ class SQLDatabase(DatabaseInterface):
         logo_path: Optional[str] = None,
     ) -> Optional[str]:
         """Create a new institution without creating an admin user (site admin workflow)"""
-        institution_data = {
+        institution_data: Dict[str, Any] = {
             "name": name,
             "short_name": short_name,
             "active": active,
@@ -348,7 +348,15 @@ class SQLDatabase(DatabaseInterface):
                 )
                 return None
             session.add(user)
-            program_ids = payload.get("program_ids") or []
+            raw_program_ids = payload.get("program_ids")
+            program_id_values: List[Any] = (
+                cast(List[Any], raw_program_ids)
+                if isinstance(raw_program_ids, list)
+                else []
+            )
+            program_ids: List[str] = [
+                str(program_id) for program_id in program_id_values if program_id
+            ]
             if program_ids:
                 programs = (
                     session.execute(select(Program).where(Program.id.in_(program_ids)))
@@ -508,8 +516,8 @@ class SQLDatabase(DatabaseInterface):
             )
             institution = session.get(Institution, institution_id)
             if institution:
-                extras = institution.extras or {}
-                billing = extras.get("billing_settings", {})
+                extras: Dict[str, Any] = dict(institution.extras or {})
+                billing: Dict[str, Any] = dict(extras.get("billing_settings", {}))
                 billing["current_instructor_count"] = count
                 extras["billing_settings"] = billing
                 institution.extras = extras
@@ -548,7 +556,15 @@ class SQLDatabase(DatabaseInterface):
 
         with self.sql.session_scope() as session:
             session.add(course)
-            program_ids = payload.get("program_ids") or []
+            raw_program_ids = payload.get("program_ids")
+            program_id_values: List[Any] = (
+                cast(List[Any], raw_program_ids)
+                if isinstance(raw_program_ids, list)
+                else []
+            )
+            program_ids: List[str] = [
+                str(program_id) for program_id in program_id_values if program_id
+            ]
             if program_ids:
                 programs = (
                     session.execute(select(Program).where(Program.id.in_(program_ids)))
@@ -1146,7 +1162,7 @@ class SQLDatabase(DatabaseInterface):
             )
 
             # Enrich sections with related data using separate queries
-            enriched_sections = []
+            enriched_sections: List[Dict[str, Any]] = []
 
             for i, section in enumerate(sections):
                 section_dict = to_dict(section)
@@ -1290,7 +1306,7 @@ class SQLDatabase(DatabaseInterface):
             )
 
             # Enrich with course details
-            result = []
+            result: List[Dict[str, Any]] = []
             for offering in offerings:
                 offering_dict = to_dict(offering)
 
@@ -1573,7 +1589,7 @@ class SQLDatabase(DatabaseInterface):
             )
 
             # Enrich sections with related data (same as get_all_sections)
-            enriched_sections = []
+            enriched_sections: List[Dict[str, Any]] = []
 
             for section in sections:
                 section_dict = to_dict(section)

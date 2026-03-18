@@ -4,19 +4,21 @@ Unit tests for dashboard service section enrichment
 Tests the section enrichment logic that adds course data to sections
 """
 
+from typing import Any
+
 import pytest
 
 from src.services.dashboard_service import DashboardService
 
 
 @pytest.fixture
-def service():
+def service() -> Any:
     """Create dashboard service instance"""
     return DashboardService()
 
 
 @pytest.fixture
-def sample_sections():
+def sample_sections() -> Any:
     """Sample section data"""
     return [
         {
@@ -41,7 +43,7 @@ def sample_sections():
 
 
 @pytest.fixture
-def course_index():
+def course_index() -> Any:
     """Sample course index"""
     return {
         "course-1": {
@@ -58,7 +60,7 @@ def course_index():
 
 
 @pytest.fixture
-def offering_to_course():
+def offering_to_course() -> Any:
     """Sample offering to course mapping"""
     return {
         "offering-1": "course-1",
@@ -71,8 +73,12 @@ class TestDashboardSectionEnrichment:
     """Test dashboard service section enrichment"""
 
     def test_enrich_sections_with_course_data(
-        self, service, sample_sections, course_index, offering_to_course
-    ):
+        self,
+        service: Any,
+        sample_sections: Any,
+        course_index: Any,
+        offering_to_course: Any,
+    ) -> None:
         """Test enriching sections with course information"""
         enriched = service._enrich_sections_with_course_data(
             sample_sections, course_index, offering_to_course
@@ -99,8 +105,8 @@ class TestDashboardSectionEnrichment:
         assert third_section["course_title"] == ""
 
     def test_enrich_single_section_success(
-        self, service, course_index, offering_to_course
-    ):
+        self, service: Any, course_index: Any, offering_to_course: Any
+    ) -> None:
         """Test enriching a single section successfully"""
         section = {
             "section_id": "section-1",
@@ -120,8 +126,8 @@ class TestDashboardSectionEnrichment:
         assert enriched["section_number"] == "01"
 
     def test_enrich_single_section_missing_offering(
-        self, service, course_index, offering_to_course
-    ):
+        self, service: Any, course_index: Any, offering_to_course: Any
+    ) -> None:
         """Test enriching section when offering doesn't exist"""
         section = {
             "section_id": "section-bad",
@@ -140,8 +146,8 @@ class TestDashboardSectionEnrichment:
         assert enriched["section_id"] == "section-bad"
 
     def test_enrich_single_section_missing_course(
-        self, service, course_index, offering_to_course
-    ):
+        self, service: Any, course_index: Any, offering_to_course: Any
+    ) -> None:
         """Test enriching section when course doesn't exist"""
         # Add offering that points to non-existent course
         offering_to_course_with_bad_course = offering_to_course.copy()
@@ -162,8 +168,8 @@ class TestDashboardSectionEnrichment:
         assert enriched["course_title"] == ""
 
     def test_enrich_sections_preserves_original_data(
-        self, service, course_index, offering_to_course
-    ):
+        self, service: Any, course_index: Any, offering_to_course: Any
+    ) -> None:
         """Test that enrichment preserves all original section data"""
         sections = [
             {
@@ -194,8 +200,8 @@ class TestDashboardSectionEnrichment:
         assert section["course_title"] == "Intro to Computer Science"
 
     def test_enrich_sections_with_empty_input(
-        self, service, course_index, offering_to_course
-    ):
+        self, service: Any, course_index: Any, offering_to_course: Any
+    ) -> None:
         """Test enriching empty section list"""
         enriched = service._enrich_sections_with_course_data(
             [], course_index, offering_to_course
@@ -203,10 +209,10 @@ class TestDashboardSectionEnrichment:
 
         assert enriched == []
 
-    def test_log_enrichment_failure_logs_first_three_only(self, service):
+    def test_log_enrichment_failure_logs_first_three_only(self, service: Any) -> None:
         """Test that enrichment failure logging only logs first 3 failures"""
-        course_index = {}
-        offering_to_course = {}
+        course_index: dict[str, dict[str, Any]] = {}
+        offering_to_course: dict[str, str] = {}
 
         # Log 5 failures - first 3 should log, last 2 should be skipped
         for i in range(5):

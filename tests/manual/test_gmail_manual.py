@@ -13,6 +13,7 @@ To run:
 
 import os
 import time
+from collections.abc import Generator
 from datetime import datetime
 
 import pytest
@@ -32,7 +33,7 @@ class TestGmailDeliveryVerification:
     """
 
     @pytest.fixture(autouse=True)
-    def setup_test(self):
+    def setup_test(self) -> Generator[None, None, None]:
         """Configure test environment"""
         # Ensure email sending is enabled
         flask_app.config["MAIL_SUPPRESS_SEND"] = False
@@ -53,7 +54,7 @@ class TestGmailDeliveryVerification:
 
         yield
 
-    def test_send_verification_email_to_gmail(self):
+    def test_send_verification_email_to_gmail(self) -> None:
         """
         Send verification email TO Bella's Gmail inbox
 
@@ -91,7 +92,7 @@ class TestGmailDeliveryVerification:
             print(f"      ✓ Test ID: {self.test_id}")
             print("=" * 80 + "\n")
 
-    def test_send_password_reset_email_to_gmail(self):
+    def test_send_password_reset_email_to_gmail(self) -> None:
         """
         Send password reset email TO Bella's Gmail inbox
 

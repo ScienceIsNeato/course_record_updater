@@ -1,13 +1,15 @@
 """Global test configuration and fixtures for SQLite backend."""
 
 import os
+from collections.abc import Generator
+from typing import Any
 
 import pytest
 
 import src.database.database_service as database_service
 
 
-def pytest_collection_modifyitems(config, items):
+def pytest_collection_modifyitems(config: Any, items: Any) -> None:
     """
     Modify test collection order to run bulk_email tests FIRST.
 
@@ -43,7 +45,7 @@ SITE_ADMIN_PASSWORD = GENERIC_PASSWORD
 INSTITUTION_ADMIN_PASSWORD = GENERIC_PASSWORD
 
 
-def get_worker_id():
+def get_worker_id() -> Any:
     """Get pytest-xdist worker ID (e.g., 'gw0' -> 0, 'gw1' -> 1, None -> use base account)"""
     worker_id = os.environ.get("PYTEST_XDIST_WORKER", None)
     if worker_id and worker_id.startswith("gw"):
@@ -84,7 +86,7 @@ def get_institution_admin_credentials() -> tuple[str, str]:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def ensure_test_database(tmp_path_factory):
+def ensure_test_database(tmp_path_factory: Any) -> Generator[None, None, None]:
     """Provide isolated test database.
 
     KISS approach with pytest-xdist support:
@@ -121,7 +123,7 @@ def ensure_test_database(tmp_path_factory):
 
 
 @pytest.fixture(autouse=True)
-def clean_database_between_tests():
+def clean_database_between_tests() -> Generator[None, None, None]:
     """Database cleanup placeholder - actual cleanup handled by test-type-specific conftest.
 
     Unit tests: tests/unit/conftest.py handles fast DELETE-based cleanup.

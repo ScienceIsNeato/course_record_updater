@@ -1,6 +1,7 @@
 """Unit tests for user API routes (migrated from test_api_routes.py)."""
 
 import json
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -15,7 +16,7 @@ TEST_PASSWORD = GENERIC_PASSWORD  # Test password for unit tests
 class TestUserEndpoints(CommonAuthMixin):
     """Test user management endpoints."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.app = app
         self.app.config["TESTING"] = True
@@ -23,7 +24,7 @@ class TestUserEndpoints(CommonAuthMixin):
         self.client = self.app.test_client()
 
     @patch("src.api.routes.users.get_all_users", return_value=[])
-    def test_get_users_endpoint_exists(self, mock_get_all_users):
+    def test_get_users_endpoint_exists(self, mock_get_all_users: Any) -> None:
         """Test that GET /api/users endpoint exists and returns valid JSON."""
         self._login_user()
 
@@ -36,7 +37,7 @@ class TestUserEndpoints(CommonAuthMixin):
         mock_get_all_users.assert_called_once_with("inst-123")
 
     @patch("src.api.routes.users.get_users_by_role")
-    def test_get_users_with_department_filter(self, mock_get_users):
+    def test_get_users_with_department_filter(self, mock_get_users: Any) -> None:
         """Test GET /api/users with department filter"""
         self._login_site_admin(
             {"user_id": "test-user", "institution_id": "test-institution"}
@@ -75,7 +76,7 @@ class TestUserEndpoints(CommonAuthMixin):
             assert user["department"] == "MATH"
 
     @patch("src.api.routes.users.get_users_by_role")
-    def test_get_users_exception_handling(self, mock_get_users):
+    def test_get_users_exception_handling(self, mock_get_users: Any) -> None:
         """Test GET /api/users exception handling"""
         self._login_user()
         mock_get_users.side_effect = Exception("Database connection failed")
@@ -87,7 +88,7 @@ class TestUserEndpoints(CommonAuthMixin):
         assert data["success"] is False
         assert "error" in data
 
-    def test_create_user_no_json_data(self):
+    def test_create_user_no_json_data(self) -> None:
         """Test POST /api/users with no JSON data"""
         # Don't create session - test unauthenticated request
         response = self.client.post("/api/users", content_type="application/json")
@@ -95,7 +96,7 @@ class TestUserEndpoints(CommonAuthMixin):
         # Real auth returns 401 for unauthenticated requests
         assert response.status_code == 401
 
-    def test_create_user_database_failure(self):
+    def test_create_user_database_failure(self) -> None:
         """Test POST /api/users when database creation fails"""
         self._login_site_admin()
 
@@ -120,7 +121,7 @@ class TestUserEndpoints(CommonAuthMixin):
             assert data["success"] is False
             assert "error" in data
 
-    def test_create_user_exception_handling(self):
+    def test_create_user_exception_handling(self) -> None:
         """Test POST /api/users with exception"""
         from tests.test_utils import create_test_session
 
@@ -156,7 +157,9 @@ class TestUserEndpoints(CommonAuthMixin):
             assert data["success"] is False
 
     @patch("src.api.routes.users.get_all_users", return_value=[])
-    def test_get_users_without_permission_stub_mode(self, mock_get_all_users):
+    def test_get_users_without_permission_stub_mode(
+        self, mock_get_all_users: Any
+    ) -> None:
         """Test GET /api/users in stub mode (auth always passes)."""
         self._login_site_admin()
 
@@ -169,7 +172,7 @@ class TestUserEndpoints(CommonAuthMixin):
         mock_get_all_users.assert_called_once_with("inst-123")
 
     @patch("src.api.routes.users.get_users_by_role")
-    def test_get_users_with_role_filter(self, mock_get_users):
+    def test_get_users_with_role_filter(self, mock_get_users: Any) -> None:
         """Test GET /api/users with role filter."""
         from tests.test_utils import create_test_session
 
@@ -191,7 +194,7 @@ class TestUserEndpoints(CommonAuthMixin):
         # Verify the role filter was applied
         mock_get_users.assert_called_with("instructor")
 
-    def test_create_user_success(self):
+    def test_create_user_success(self) -> None:
         """Test POST /api/users with valid data."""
         from tests.test_utils import create_test_session
 
@@ -223,7 +226,7 @@ class TestUserEndpoints(CommonAuthMixin):
         assert "created" in data["message"].lower()
         assert "user_id" in data  # Real API returns actual user_id
 
-    def test_create_user_missing_required_fields(self):
+    def test_create_user_missing_required_fields(self) -> None:
         """Test POST /api/users with missing required fields."""
         from tests.test_utils import create_test_session
 
@@ -254,7 +257,7 @@ class TestUserEndpoints(CommonAuthMixin):
 class TestUserManagementAPI:
     """Test user management API endpoints comprehensively."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test client and mock data."""
         from src.app import app
 
@@ -269,7 +272,7 @@ class TestUserManagementAPI:
             "institution_id": "test-institution",
         }
 
-    def _login_site_admin(self, overrides=None):
+    def _login_site_admin(self, overrides: Any = None) -> Any:
         """Authenticate requests as a site admin user."""
         from tests.test_utils import create_test_session
 
@@ -285,11 +288,11 @@ class TestUserManagementAPI:
     @patch("src.api.routes.users.has_permission")
     def test_list_users_with_role_filter(
         self,
-        mock_has_permission,
-        mock_get_users,
-        mock_get_current_user,
-        mock_get_institution_id,
-    ):
+        mock_has_permission: Any,
+        mock_get_users: Any,
+        mock_get_current_user: Any,
+        mock_get_institution_id: Any,
+    ) -> None:
         """Test listing users with role filter."""
         self._login_site_admin()
         mock_has_permission.return_value = True
@@ -328,11 +331,11 @@ class TestUserManagementAPI:
     @patch("src.api.routes.users.has_permission")
     def test_list_users_with_department_filter(
         self,
-        mock_has_permission,
-        mock_get_users,
-        mock_get_current_user,
-        mock_get_institution_id,
-    ):
+        mock_has_permission: Any,
+        mock_get_users: Any,
+        mock_get_current_user: Any,
+        mock_get_institution_id: Any,
+    ) -> None:
         """Test listing users with department filter."""
         self._login_site_admin()
         mock_has_permission.return_value = True
@@ -367,7 +370,7 @@ class TestUserManagementAPI:
         assert data["users"][0]["department"] == "MATH"
 
     @patch("src.api.routes.users.has_permission")
-    def test_create_user_validation(self, mock_has_permission):
+    def test_create_user_validation(self, mock_has_permission: Any) -> None:
         """Test create user with validation."""
         self._login_site_admin()
         mock_has_permission.return_value = True
@@ -386,8 +389,8 @@ class TestUserManagementAPI:
     @patch("src.api.utils.get_current_user")
     @patch("src.api.routes.users.has_permission")
     def test_get_user_permission_denied(
-        self, mock_has_permission, mock_get_current_user
-    ):
+        self, mock_has_permission: Any, mock_get_current_user: Any
+    ) -> None:
         """Test user trying to access other user's details without permission."""
         self._login_site_admin({"user_id": "user123", "role": "instructor"})
         mock_get_current_user.return_value = {"user_id": "user123"}
@@ -403,7 +406,7 @@ class TestUserManagementAPI:
 class TestUserCreationPermissionValidation:
     """Test _validate_user_creation_permissions function."""
 
-    def test_program_admin_cannot_create_site_admin(self):
+    def test_program_admin_cannot_create_site_admin(self) -> None:
         """Test that program admin cannot create site admin accounts."""
         from src.api.routes.users import _validate_user_creation_permissions
         from src.app import app
@@ -427,7 +430,7 @@ class TestUserCreationPermissionValidation:
                 in json_data["error"]
             )
 
-    def test_program_admin_cannot_create_institution_admin(self):
+    def test_program_admin_cannot_create_institution_admin(self) -> None:
         """Test that program admin cannot create institution admin accounts."""
         from src.api.routes.users import _validate_user_creation_permissions
         from src.app import app
@@ -451,7 +454,7 @@ class TestUserCreationPermissionValidation:
                 in json_data["error"]
             )
 
-    def test_program_admin_cannot_create_program_admin(self):
+    def test_program_admin_cannot_create_program_admin(self) -> None:
         """Test that program admin cannot create other program admin accounts."""
         from src.api.routes.users import _validate_user_creation_permissions
         from src.app import app
@@ -475,7 +478,7 @@ class TestUserCreationPermissionValidation:
                 in json_data["error"]
             )
 
-    def test_program_admin_requires_institution_id(self):
+    def test_program_admin_requires_institution_id(self) -> None:
         """Test that program admin must provide institution_id when creating instructors."""
         from src.api.routes.users import _validate_user_creation_permissions
         from src.app import app
@@ -499,7 +502,7 @@ class TestUserCreationPermissionValidation:
             assert json_data["success"] is False
             assert "institution_id is required" in json_data["error"]
 
-    def test_program_admin_cannot_create_at_different_institution(self):
+    def test_program_admin_cannot_create_at_different_institution(self) -> None:
         """Test that program admin can only create users at their own institution."""
         from src.api.routes.users import _validate_user_creation_permissions
         from src.app import app
@@ -523,7 +526,7 @@ class TestUserCreationPermissionValidation:
                 in json_data["error"]
             )
 
-    def test_program_admin_can_create_instructor_at_own_institution(self):
+    def test_program_admin_can_create_instructor_at_own_institution(self) -> None:
         """Test that program admin can create instructors at their own institution."""
         from src.api.routes.users import _validate_user_creation_permissions
 
@@ -537,7 +540,7 @@ class TestUserCreationPermissionValidation:
         assert is_valid is True
         assert error_response is None
 
-    def test_institution_admin_cannot_create_site_admin(self):
+    def test_institution_admin_cannot_create_site_admin(self) -> None:
         """Test that institution admin cannot create site admin accounts."""
         from src.api.routes.users import _validate_user_creation_permissions
         from src.app import app
@@ -564,7 +567,7 @@ class TestUserCreationPermissionValidation:
                 in json_data["error"]
             )
 
-    def test_institution_admin_can_create_institution_admin(self):
+    def test_institution_admin_can_create_institution_admin(self) -> None:
         """Test that institution admin can create other institution admins."""
         from src.api.routes.users import _validate_user_creation_permissions
 
@@ -581,7 +584,7 @@ class TestUserCreationPermissionValidation:
         assert is_valid is True
         assert error_response is None
 
-    def test_site_admin_can_create_any_role(self):
+    def test_site_admin_can_create_any_role(self) -> None:
         """Test that site admin can create users of any role."""
         from src.api.routes.users import _validate_user_creation_permissions
 
@@ -623,7 +626,7 @@ class TestUserCreationPermissionValidation:
 class TestUpdateUserRoleEndpoint:
     """Test /api/users/<user_id>/role endpoint."""
 
-    def get_csrf_token(self, client):
+    def get_csrf_token(self, client: Any) -> Any:
         """Get CSRF token using Flask-WTF's generate_csrf."""
         from flask import session as flask_session
         from flask_wtf.csrf import generate_csrf
@@ -637,7 +640,7 @@ class TestUpdateUserRoleEndpoint:
             return generate_csrf()
 
     @pytest.fixture
-    def institution_admin_client(self, client):
+    def institution_admin_client(self, client: Any) -> Any:
         from tests.test_utils import create_test_session
 
         user_data = {
@@ -652,7 +655,9 @@ class TestUpdateUserRoleEndpoint:
         return client
 
     @patch("src.api.utils.get_current_institution_id")
-    def test_missing_role_returns_400(self, mock_get_inst, institution_admin_client):
+    def test_missing_role_returns_400(
+        self, mock_get_inst: Any, institution_admin_client: Any
+    ) -> None:
         mock_get_inst.return_value = "inst-123"
         response = institution_admin_client.patch(
             "/api/users/u1/role",
@@ -663,7 +668,9 @@ class TestUpdateUserRoleEndpoint:
         assert response.get_json()["error"] == "Role is required"
 
     @patch("src.api.utils.get_current_institution_id")
-    def test_invalid_role_returns_400(self, mock_get_inst, institution_admin_client):
+    def test_invalid_role_returns_400(
+        self, mock_get_inst: Any, institution_admin_client: Any
+    ) -> None:
         mock_get_inst.return_value = "inst-123"
         response = institution_admin_client.patch(
             "/api/users/u1/role",
@@ -677,8 +684,8 @@ class TestUpdateUserRoleEndpoint:
     @patch("src.api.utils.get_current_institution_id")
     @patch("src.api.routes.users.get_user_by_id")
     def test_user_not_found_returns_404(
-        self, mock_get_user, mock_get_inst, institution_admin_client
-    ):
+        self, mock_get_user: Any, mock_get_inst: Any, institution_admin_client: Any
+    ) -> None:
         mock_get_inst.return_value = "inst-123"
         mock_get_user.return_value = None
         response = institution_admin_client.patch(
@@ -692,8 +699,8 @@ class TestUpdateUserRoleEndpoint:
     @patch("src.api.utils.get_current_institution_id")
     @patch("src.api.routes.users.get_user_by_id")
     def test_institution_mismatch_returns_404(
-        self, mock_get_user, mock_get_inst, institution_admin_client
-    ):
+        self, mock_get_user: Any, mock_get_inst: Any, institution_admin_client: Any
+    ) -> None:
         mock_get_inst.return_value = "inst-123"
         mock_get_user.return_value = {"user_id": "u1", "institution_id": "inst-999"}
         response = institution_admin_client.patch(
@@ -708,8 +715,12 @@ class TestUpdateUserRoleEndpoint:
     @patch("src.api.routes.users.update_user_role")
     @patch("src.api.routes.users.get_user_by_id")
     def test_update_failure_returns_500(
-        self, mock_get_user, mock_update_role, mock_get_inst, institution_admin_client
-    ):
+        self,
+        mock_get_user: Any,
+        mock_update_role: Any,
+        mock_get_inst: Any,
+        institution_admin_client: Any,
+    ) -> None:
         mock_get_inst.return_value = "inst-123"
         mock_get_user.return_value = {"user_id": "u1", "institution_id": "inst-123"}
         mock_update_role.return_value = False
@@ -725,8 +736,12 @@ class TestUpdateUserRoleEndpoint:
     @patch("src.api.routes.users.update_user_role")
     @patch("src.api.routes.users.get_user_by_id")
     def test_success_returns_200(
-        self, mock_get_user, mock_update_role, mock_get_inst, institution_admin_client
-    ):
+        self,
+        mock_get_user: Any,
+        mock_update_role: Any,
+        mock_get_inst: Any,
+        institution_admin_client: Any,
+    ) -> None:
         mock_get_inst.return_value = "inst-123"
         mock_get_user.side_effect = [
             {"user_id": "u1", "institution_id": "inst-123"},

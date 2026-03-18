@@ -15,6 +15,7 @@ Note: This test covers the most critical edge cases that don't require extensive
 5. Missing optional fields handling
 """
 
+import pytest
 from playwright.sync_api import Page, expect
 
 from tests.e2e.conftest import BASE_URL
@@ -22,6 +23,8 @@ from tests.e2e.test_helpers import (
     create_test_user_via_api,
     get_institution_id_from_user,
 )
+
+pytestmark = [pytest.mark.e2e, pytest.mark.xdist_group("email")]
 
 
 class TestEdgeCases:
@@ -31,7 +34,7 @@ class TestEdgeCases:
 
     def test_complete_edge_cases_workflow(
         self, authenticated_institution_admin_page: Page
-    ):
+    ) -> None:
         """
         STEP 1: Setup - Create test instructor
         STEP 2: Empty recipient list validation (API)

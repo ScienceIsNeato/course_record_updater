@@ -6,13 +6,26 @@ around database_service that adds permission context, validation,
 and audit logging.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from src.database import database_service
 from src.utils.logging_config import get_logger
 from src.utils.term_utils import get_term_status
 
 logger = get_logger(__name__)
+
+
+def _mapping_entries(mapping: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Return mapping entries as a typed list of dicts."""
+    if not mapping:
+        return []
+    raw_entries = mapping.get("entries")
+    if not isinstance(raw_entries, list):
+        return []
+    entry_values: List[Any] = cast(List[Any], raw_entries)
+    return [
+        cast(Dict[str, Any], entry) for entry in entry_values if isinstance(entry, dict)
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -239,22 +252,27 @@ def get_mapping_matrix(
 
     # Courses in the program, each with their CLOs
     courses_raw = database_service.get_courses_by_program(program_id)
-    courses = []
+    courses: List[Dict[str, Any]] = []
     for course in courses_raw:
         clos = database_service.get_course_outcomes(course["course_id"])
         active_clos = [c for c in clos if c.get("active", True)]
         courses.append({**course, "clos": active_clos})
 
     # Build the matrix grid  (plo_id → {clo_outcome_id → entry_id})
-    entries = mapping.get("entries", []) if mapping else []
+    entries = _mapping_entries(mapping)
     entry_lookup: Dict[str, Dict[str, Optional[str]]] = {}
     for plo in plos:
         entry_lookup[plo["id"]] = {}
     for entry in entries:
         plo_id = entry.get("program_outcome_id")
         clo_id = entry.get("course_outcome_id")
-        if plo_id in entry_lookup:
-            entry_lookup[plo_id][clo_id] = entry.get("id")
+        if (
+            isinstance(plo_id, str)
+            and isinstance(clo_id, str)
+            and plo_id in entry_lookup
+        ):
+            entry_id = entry.get("id")
+            entry_lookup[plo_id][clo_id] = str(entry_id) if entry_id else None
 
     return {
         "mapping": mapping,
@@ -318,7 +336,7 @@ def get_plo_dashboard_tree(
         mapping_status = "draft" if mapping else "none"
 
     plos = database_service.get_program_outcomes(program_id)
-    entries = mapping.get("entries", []) if mapping else []
+    entries = _mapping_entries(mapping)
 
     # Build plo_id → [clo_id, ...] and collect the universe of mapped CLOs
     plo_to_clos: Dict[str, List[str]] = {p["id"]: [] for p in plos}
@@ -326,7 +344,11 @@ def get_plo_dashboard_tree(
     for entry in entries:
         plo_id = entry.get("program_outcome_id")
         clo_id = entry.get("course_outcome_id")
-        if plo_id in plo_to_clos and clo_id:
+        if (
+            isinstance(plo_id, str)
+            and isinstance(clo_id, str)
+            and plo_id in plo_to_clos
+        ):
             plo_to_clos[plo_id].append(clo_id)
             all_clo_ids.add(clo_id)
 
@@ -462,7 +484,7 @@ def _build_term_metadata(
 def _resolve_plo_clo_mapping(
     program_id: str,
     plos: List[Dict[str, Any]],
-) -> Tuple[Optional[int], Dict[str, List[str]], set, Dict[str, str]]:
+) -> Tuple[Optional[int], Dict[str, List[str]], set[str], Dict[str, str]]:
     """Resolve latest published mapping and build PLO → CLO index.
 
     Returns:
@@ -470,7 +492,7 @@ def _resolve_plo_clo_mapping(
     """
     mapping = database_service.get_latest_published_plo_mapping(program_id)
     mapping_version = mapping.get("version") if mapping else None
-    entries = mapping.get("entries", []) if mapping else []
+    entries = _mapping_entries(mapping)
 
     plo_to_clos: Dict[str, List[str]] = {p["id"]: [] for p in plos}
     all_clo_ids: set[str] = set()
@@ -479,11 +501,15 @@ def _resolve_plo_clo_mapping(
     for entry in entries:
         plo_id = entry.get("program_outcome_id")
         clo_id = entry.get("course_outcome_id")
-        if plo_id in plo_to_clos and clo_id:
+        if (
+            isinstance(plo_id, str)
+            and isinstance(clo_id, str)
+            and plo_id in plo_to_clos
+        ):
             plo_to_clos[plo_id].append(clo_id)
             all_clo_ids.add(clo_id)
             snap = entry.get("plo_description_snapshot")
-            if snap and plo_id not in plo_snapshots:
+            if isinstance(snap, str) and plo_id not in plo_snapshots:
                 plo_snapshots[plo_id] = snap
 
     return mapping_version, plo_to_clos, all_clo_ids, plo_snapshots
@@ -585,7 +611,7 @@ def _detect_discontinuities(
         num = meta.get("clo_number", "?")
         return f"{course}/{num}"
 
-    prev_active: Optional[set] = None
+    prev_active: Optional[set[str]] = None
     for idx, tm in enumerate(term_meta):
         tid = tm["term_id"]
         active = {cid for cid in clo_ids if by_clo_term.get(cid, {}).get(tid)}
@@ -781,20 +807,30 @@ def _extract_term_id(section_outcome: Dict[str, Any]) -> Optional[str]:
         return str(tid)
 
     # Nested: _section → _offering → term_id
-    sec = section_outcome.get("_section") or section_outcome.get("section") or {}
-    off = sec.get("_offering") or sec.get("offering") or {}
+    sec: Dict[str, Any] = (
+        section_outcome.get("_section") or section_outcome.get("section") or {}
+    )
+    off: Dict[str, Any] = sec.get("_offering") or sec.get("offering") or {}
     tid = off.get("term_id")
     if tid:
         return str(tid)
 
     # Nested: _offering → term_id (flatter serialisation)
-    off2 = section_outcome.get("_offering") or section_outcome.get("offering") or {}
+    off2: Dict[str, Any] = (
+        section_outcome.get("_offering") or section_outcome.get("offering") or {}
+    )
     tid = off2.get("term_id")
     if tid:
         return str(tid)
 
     # Nested term object
-    term = off.get("_term") or off.get("term") or off2.get("_term") or {}
+    term: Dict[str, Any] = (
+        off.get("_term")
+        or off.get("term")
+        or off2.get("_term")
+        or off2.get("term")
+        or {}
+    )
     tid = term.get("id") or term.get("term_id")
     if tid:
         return str(tid)

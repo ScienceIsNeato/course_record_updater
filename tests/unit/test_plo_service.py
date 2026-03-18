@@ -27,7 +27,7 @@ INST_DATA = {
 }
 
 
-def _wire(suffix: str, num_clos: int = 2):
+def _wire(suffix: str, num_clos: int = 2) -> Any:
     """Build institution + program + 1 course (linked) + *num_clos* CLOs.
 
     Returns (inst_id, prog_id, [clo_id, ...]).
@@ -78,7 +78,7 @@ def _make_plo(prog_id: str, inst_id: str, n: int) -> str:
     )
 
 
-def _publish(prog_id: str, entries: List[tuple]) -> str:
+def _publish(prog_id: str, entries: List[tuple[str, str]]) -> str:
     """Publish a mapping with *entries* [(plo_id, clo_id), ...]."""
     draft = database_service.get_or_create_plo_mapping_draft(prog_id)
     mapping_id = draft["id"]
@@ -88,7 +88,9 @@ def _publish(prog_id: str, entries: List[tuple]) -> str:
     return mapping_id
 
 
-def _fake_sections(monkeypatch, records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _fake_sections(
+    monkeypatch: Any, records: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
     """Replace the section-outcome query with a canned list.
 
     Each record needs at minimum: outcome_id, students_took,
@@ -119,7 +121,9 @@ def _fake_sections(monkeypatch, records: List[Dict[str, Any]]) -> List[Dict[str,
 
 
 class TestAggregation:
-    def test_plo_aggregate_sums_across_clos_and_sections(self, monkeypatch):
+    def test_plo_aggregate_sums_across_clos_and_sections(
+        self, monkeypatch: Any
+    ) -> None:
         """PLO aggregate = sum of students_took/passed across all its CLOs' sections."""
         inst_id, prog_id, clo_ids = _wire("AGG1", num_clos=2)
         plo_id = _make_plo(prog_id, inst_id, 1)
@@ -159,7 +163,7 @@ class TestAggregation:
         assert agg1["pass_rate"] == 90.0
         assert agg1["section_count"] == 1
 
-    def test_sections_without_data_excluded_from_rate(self, monkeypatch):
+    def test_sections_without_data_excluded_from_rate(self, monkeypatch: Any) -> None:
         """students_took=0 / None / non-int rows count in section_count only."""
         inst_id, prog_id, clo_ids = _wire("AGG2", num_clos=1)
         plo_id = _make_plo(prog_id, inst_id, 1)
@@ -191,7 +195,7 @@ class TestAggregation:
         assert agg["section_count"] == 4  # all rows present
         assert agg["sections_with_data"] == 1  # only the first row counted
 
-    def test_empty_sections_yields_none_pass_rate(self, monkeypatch):
+    def test_empty_sections_yields_none_pass_rate(self, monkeypatch: Any) -> None:
         """No section outcomes → pass_rate=None, zero counts."""
         inst_id, prog_id, clo_ids = _wire("AGG3", num_clos=1)
         plo_id = _make_plo(prog_id, inst_id, 1)
@@ -205,7 +209,7 @@ class TestAggregation:
         assert agg["students_took"] == 0
         assert agg["section_count"] == 0
 
-    def test_sections_attached_to_correct_clo(self, monkeypatch):
+    def test_sections_attached_to_correct_clo(self, monkeypatch: Any) -> None:
         """Records are indexed by outcome_id — no cross-CLO leakage."""
         inst_id, prog_id, clo_ids = _wire("AGG4", num_clos=2)
         plo_id = _make_plo(prog_id, inst_id, 1)
@@ -220,7 +224,7 @@ class TestAggregation:
         assert clo_by_id[clo_ids[0]]["sections"] == [s0]
         assert clo_by_id[clo_ids[1]]["sections"] == [s1]
 
-    def test_unmapped_clo_sections_ignored(self, monkeypatch):
+    def test_unmapped_clo_sections_ignored(self, monkeypatch: Any) -> None:
         """Section outcomes for a CLO NOT in the mapping don't bleed into the tree."""
         inst_id, prog_id, clo_ids = _wire("AGG5", num_clos=2)
         plo_id = _make_plo(prog_id, inst_id, 1)
@@ -249,7 +253,7 @@ class TestAggregation:
 
 
 class TestMappingResolution:
-    def test_no_mapping_means_no_section_fetch(self, monkeypatch):
+    def test_no_mapping_means_no_section_fetch(self, monkeypatch: Any) -> None:
         """With no mapping at all, the section-outcome query is never called."""
         inst_id, prog_id, _ = _wire("MR1", num_clos=1)
         _make_plo(prog_id, inst_id, 1)
@@ -260,7 +264,7 @@ class TestMappingResolution:
         assert tree["mapping_status"] == "none"
         assert calls == []  # never called — all_clo_ids is empty
 
-    def test_outcome_ids_filter_passed_to_query(self, monkeypatch):
+    def test_outcome_ids_filter_passed_to_query(self, monkeypatch: Any) -> None:
         """Only mapped CLO ids land in the outcome_ids filter."""
         inst_id, prog_id, clo_ids = _wire("MR2", num_clos=3)
         plo_id = _make_plo(prog_id, inst_id, 1)
@@ -275,7 +279,7 @@ class TestMappingResolution:
         assert calls[0]["program_id"] == prog_id
         assert calls[0]["term_id"] is None
 
-    def test_term_id_forwarded(self, monkeypatch):
+    def test_term_id_forwarded(self, monkeypatch: Any) -> None:
         """term_id param is passed through to the section query."""
         inst_id, prog_id, clo_ids = _wire("MR3", num_clos=1)
         plo_id = _make_plo(prog_id, inst_id, 1)
@@ -286,7 +290,7 @@ class TestMappingResolution:
         assert result["term_id"] == "t-xyz"
         assert calls[0]["term_id"] == "t-xyz"
 
-    def test_multiple_plos_each_get_own_clos(self, monkeypatch):
+    def test_multiple_plos_each_get_own_clos(self, monkeypatch: Any) -> None:
         """Entries are partitioned correctly when multiple PLOs share the mapping."""
         inst_id, prog_id, clo_ids = _wire("MR4", num_clos=3)
         plo1 = _make_plo(prog_id, inst_id, 1)
@@ -313,18 +317,18 @@ class TestMappingResolution:
 
 
 class TestDisplayMode:
-    def test_default_is_both(self):
+    def test_default_is_both(self) -> None:
         inst_id, prog_id, _ = _wire("DM1", num_clos=0)
         tree = get_plo_dashboard_tree(prog_id, inst_id)
         assert tree["assessment_display_mode"] == "both"
 
-    def test_reads_from_program_extras(self):
+    def test_reads_from_program_extras(self) -> None:
         inst_id, prog_id, _ = _wire("DM2", num_clos=0)
         database_service.update_program(prog_id, {"assessment_display_mode": "binary"})
         tree = get_plo_dashboard_tree(prog_id, inst_id)
         assert tree["assessment_display_mode"] == "binary"
 
-    def test_unknown_program_falls_back_to_both(self):
+    def test_unknown_program_falls_back_to_both(self) -> None:
         """If program lookup fails (shouldn't happen via the route), default to 'both'."""
         # Use a real institution so the tree builder has a valid inst_id
         # but a garbage program_id that doesn't exist.

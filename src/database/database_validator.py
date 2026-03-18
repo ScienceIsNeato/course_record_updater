@@ -90,7 +90,7 @@ def _get_all_models() -> List[Any]:
     Returns:
         List of model classes
     """
-    models = []
+    models: List[Any] = []
     try:
         # Try to get models from registry (SQLAlchemy 1.4+)
         if hasattr(Base, "registry"):
@@ -116,7 +116,7 @@ def _validate_table_exists(
     Returns:
         Tuple of (issues list, should_continue)
     """
-    issues = []
+    issues: List[str] = []
     table_name = model.__tablename__
 
     if table_name not in inspector.get_table_names():
@@ -139,7 +139,7 @@ def _validate_model_columns(inspector: Any, model: Any, strict: bool) -> List[st
     Returns:
         List of validation issues
     """
-    issues = []
+    issues: List[str] = []
     table_name = model.__tablename__
 
     # Get column names from model and database

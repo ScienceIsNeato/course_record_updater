@@ -8,42 +8,42 @@ from src.utils.logging_config import get_import_logger, setup_logger
 class TestLoggingConfiguration:
     """Test logging configuration functionality."""
 
-    def test_setup_logger_creates_logger(self):
+    def test_setup_logger_creates_logger(self) -> None:
         """Test that setup_logger creates a logger instance."""
         logger = setup_logger("test_logger")
 
         assert isinstance(logger, logging.Logger)
         assert logger.name == "test_logger"
 
-    def test_setup_logger_with_custom_level(self):
+    def test_setup_logger_with_custom_level(self) -> None:
         """Test setup_logger with custom logging level."""
         logger = setup_logger("test_logger_debug", logging.DEBUG)
 
         # Logger may inherit from root logger, so check it's configured
         assert isinstance(logger, logging.Logger)
 
-    def test_setup_logger_has_handlers(self):
+    def test_setup_logger_has_handlers(self) -> None:
         """Test that setup_logger configures handlers."""
         logger = setup_logger("test_logger")
 
         # Should have at least one handler
         assert len(logger.handlers) >= 0  # May be 0 if using root logger
 
-    def test_get_import_logger_returns_logger(self):
+    def test_get_import_logger_returns_logger(self) -> None:
         """Test that get_import_logger returns a logger instance."""
         logger = get_import_logger()
 
         assert isinstance(logger, logging.Logger)
         assert logger.name == "ImportService"
 
-    def test_get_import_logger_same_instance(self):
+    def test_get_import_logger_same_instance(self) -> None:
         """Test that get_import_logger returns the same logger instance."""
         logger1 = get_import_logger()
         logger2 = get_import_logger()
 
         assert logger1 is logger2
 
-    def test_get_import_logger_has_file_handler(self):
+    def test_get_import_logger_has_file_handler(self) -> None:
         """Test that import logger has file handler configured."""
         logger = get_import_logger()
 
@@ -56,14 +56,14 @@ class TestLoggingConfiguration:
         ]
         assert len(file_handlers) > 0
 
-    def test_get_import_logger_log_level(self):
+    def test_get_import_logger_log_level(self) -> None:
         """Test that import logger has appropriate log level."""
         logger = get_import_logger()
 
         # Should be at INFO level or lower to capture import messages
         assert logger.level <= logging.INFO
 
-    def test_get_logger_function(self):
+    def test_get_logger_function(self) -> None:
         """Test the get_logger convenience function."""
         from src.utils.logging_config import get_logger
 
@@ -71,7 +71,7 @@ class TestLoggingConfiguration:
         assert isinstance(logger, logging.Logger)
         assert logger.name == "test_module"
 
-    def test_setup_logger_parameter_variations(self):
+    def test_setup_logger_parameter_variations(self) -> None:
         """Test setup_logger with different parameter variations."""
         import logging
 
@@ -88,7 +88,7 @@ class TestLoggingConfiguration:
 class TestLoggingFormatters:
     """Test logging formatter functionality."""
 
-    def test_multiple_logger_functions(self):
+    def test_multiple_logger_functions(self) -> None:
         """Test that multiple logger functions are available."""
         from src.utils.logging_config import (
             get_api_logger,
@@ -104,7 +104,7 @@ class TestLoggingFormatters:
         assert isinstance(api_logger, logging.Logger)
         assert isinstance(app_logger, logging.Logger)
 
-    def test_logger_configuration_comprehensive(self):
+    def test_logger_configuration_comprehensive(self) -> None:
         """Test comprehensive logger configuration and functionality."""
         from src.utils.logging_config import get_database_logger
 
@@ -127,7 +127,7 @@ class TestLoggingFormatters:
         assert isinstance(app_logger, logging.Logger)
         assert app_logger.name == "FlaskApp"  # Actual logger name
 
-    def test_get_quality_gate_logger(self):
+    def test_get_quality_gate_logger(self) -> None:
         """Test quality gate logger creation and configuration"""
         import logging
 

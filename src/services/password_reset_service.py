@@ -93,7 +93,7 @@ class PasswordResetService:
             )
 
             # Update user with reset token
-            reset_data = {
+            reset_data: Dict[str, Any] = {
                 "password_reset_token": reset_token,
                 "password_reset_token_data": token_data,
                 "password_reset_requested_at": datetime.now(timezone.utc),
@@ -183,7 +183,7 @@ class PasswordResetService:
             password_hash = PasswordService.hash_password(new_password)
 
             # Update user with new password and clear reset token
-            update_data = {
+            update_data: Dict[str, Any] = {
                 "password_hash": password_hash,
                 "password_reset_token": None,
                 "password_reset_token_data": None,

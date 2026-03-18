@@ -11,6 +11,7 @@ This test verifies:
 """
 
 import json
+from typing import Any
 
 import pytest
 from playwright.sync_api import Page, expect
@@ -182,7 +183,7 @@ def _fill_clo_data(instructor_page: Page) -> None:
 @pytest.mark.e2e
 def test_submit_assessments_with_alert_checkbox(
     authenticated_institution_admin_page: Page,
-):
+) -> None:
     """
     Test complete assessment submission flow including:
     - Mixed populated/unpopulated optional fields
@@ -273,11 +274,16 @@ def test_submit_assessments_with_alert_checkbox(
     expect(alert_checkbox).to_be_checked()
 
     # === STEP 7: Set up alert handler BEFORE clicking ===
-    alert_messages = []
-    instructor_page.on(
-        "dialog",
-        lambda dialog: (alert_messages.append(dialog.message), dialog.accept()),
-    )
+    alert_messages: list[str] = []
+
+    def handle_dialog(dialog: Any) -> None:
+        message = (
+            dialog.message if isinstance(dialog.message, str) else dialog.message()
+        )
+        alert_messages.append(message)
+        dialog.accept()
+
+    instructor_page.on("dialog", handle_dialog)
 
     # === STEP 8: Click Submit and wait for response ===
     submit_button = instructor_page.locator("#submitCourseBtn")

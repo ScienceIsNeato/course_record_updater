@@ -1,5 +1,8 @@
 """Unit tests for CLO workflow API endpoints."""
 
+#  Module-level fixture to bypass permission checks for ALL tests in this file
+from collections.abc import Generator
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -9,10 +12,10 @@ from flask import Flask
 from src.api.routes.clo_workflow import clo_workflow_bp
 
 
-#  Module-level fixture to bypass permission checks for ALL tests in this file
 @pytest.fixture(scope="module", autouse=True)
-def bypass_permissions():
+def bypass_permissions() -> Generator[None, None, None]:
     """Bypass permission checks for all CLO workflow route tests."""
+
     with patch(
         "src.services.auth_service.permission_required",
         lambda perm, context_keys=None: lambda f: f,
@@ -21,7 +24,7 @@ def bypass_permissions():
 
 
 @pytest.fixture
-def app():
+def app() -> Any:
     """Create Flask app for testing."""
     app = Flask(__name__)
     app.config["SECRET_KEY"] = "test-secret"
@@ -31,13 +34,13 @@ def app():
 
 
 @pytest.fixture
-def client(app):
+def client(app: Any) -> Any:
     """Create Flask test client."""
     return app.test_client()
 
 
 @pytest.fixture
-def mock_institution():
+def mock_institution() -> Generator[Any, None, None]:
     """Mock institution ID."""
     with patch("src.api.routes.clo_workflow.get_current_institution_id") as mock:
         mock.return_value = "inst-123"
@@ -45,13 +48,13 @@ def mock_institution():
 
 
 @pytest.fixture
-def mock_session():
+def mock_session() -> Generator[None, None, None]:
     """Mock Flask session."""
     with patch("src.api.routes.clo_workflow.session", {"user_id": "user-123"}):
         yield
 
 
-def assert_json_response(response, status_code, success_expected):
+def assert_json_response(response: Any, status_code: Any, success_expected: Any) -> Any:
     """Helper to verify common JSON response patterns."""
     assert response.status_code == status_code
     data = response.get_json()
@@ -67,13 +70,13 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_submit_clo_for_approval_success(
         self,
-        mock_get_outcome,
-        mock_get_course,
-        mock_workflow,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_course: Any,
+        mock_workflow: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test successfully submitting CLO for approval."""
         mock_get_outcome.return_value = {
             "id": "outcome-1",
@@ -90,8 +93,12 @@ class TestCLOAuditEndpoints:
 
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_submit_clo_for_approval_not_found(
-        self, mock_get_outcome, client, mock_institution, mock_session
-    ):
+        self,
+        mock_get_outcome: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test submitting non-existent CLO returns 404."""
         mock_get_outcome.return_value = None
         response = client.post("/api/outcomes/nonexistent/submit")
@@ -102,13 +109,13 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_submit_clo_for_approval_exception(
         self,
-        mock_get_outcome,
-        mock_get_course,
-        mock_workflow,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_course: Any,
+        mock_workflow: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test submitting CLO handles unexpected exceptions."""
         mock_get_outcome.return_value = {"id": "outcome-1", "course_id": "course-1"}
         mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
@@ -123,8 +130,8 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_current_user")
     @patch("src.api.routes.clo_workflow.get_current_institution_id")
     def test_get_clos_for_audit_as_institution_admin(
-        self, mock_get_inst_id, mock_get_user, mock_workflow, client
-    ):
+        self, mock_get_inst_id: Any, mock_get_user: Any, mock_workflow: Any, client: Any
+    ) -> None:
         """Test getting CLOs for audit as institution admin."""
         # Setup
         mock_get_inst_id.return_value = "inst-123"
@@ -150,8 +157,8 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_current_user")
     @patch("src.api.routes.clo_workflow.get_current_institution_id")
     def test_get_clos_for_audit_as_program_admin(
-        self, mock_get_inst_id, mock_get_user, mock_workflow, client
-    ):
+        self, mock_get_inst_id: Any, mock_get_user: Any, mock_workflow: Any, client: Any
+    ) -> None:
         """Test getting CLOs for audit as program admin."""
         # Setup
         mock_get_inst_id.return_value = "inst-123"
@@ -176,8 +183,8 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_current_user")
     @patch("src.api.routes.clo_workflow.get_current_institution_id")
     def test_get_clos_for_audit_program_admin_no_programs(
-        self, mock_get_inst_id, mock_get_user, client
-    ):
+        self, mock_get_inst_id: Any, mock_get_user: Any, client: Any
+    ) -> None:
         """Test program admin with no programs gets empty list."""
         # Setup
         mock_get_inst_id.return_value = "inst-123"
@@ -199,8 +206,8 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_current_user")
     @patch("src.api.routes.clo_workflow.get_current_institution_id")
     def test_get_clos_for_audit_program_admin_wrong_program(
-        self, mock_get_inst_id, mock_get_user, client
-    ):
+        self, mock_get_inst_id: Any, mock_get_user: Any, client: Any
+    ) -> None:
         """Test program admin accessing unauthorized program."""
         # Setup
         mock_get_inst_id.return_value = "inst-123"
@@ -223,13 +230,13 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_approve_clo_success(
         self,
-        mock_get_outcome,
-        mock_get_course,
-        mock_workflow,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_course: Any,
+        mock_workflow: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test successfully approving a CLO."""
         mock_get_outcome.return_value = {
             "id": "outcome-1",
@@ -249,13 +256,13 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_request_clo_rework_success(
         self,
-        mock_get_outcome,
-        mock_get_course,
-        mock_workflow,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_course: Any,
+        mock_workflow: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test successfully requesting CLO rework with feedback."""
         mock_get_outcome.return_value = {
             "id": "outcome-1",
@@ -284,8 +291,13 @@ class TestCLOAuditEndpoints:
         ],
     )
     def test_request_clo_rework_invalid_comments(
-        self, comments, expected_error, client, mock_institution, mock_session
-    ):
+        self,
+        comments: Any,
+        expected_error: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test requesting rework with missing or empty comments returns 400."""
         response = client.post("/api/outcomes/outcome-1/request-rework", json=comments)
         data = assert_json_response(response, 400, False)
@@ -303,15 +315,15 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_workflow_service_failure(
         self,
-        mock_get_outcome,
-        mock_get_course,
-        mock_workflow,
-        endpoint,
-        method_name,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_course: Any,
+        mock_workflow: Any,
+        endpoint: Any,
+        method_name: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test CLO workflow endpoints when service returns False."""
         mock_get_outcome.return_value = {
             "id": "outcome-1",
@@ -332,13 +344,13 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_request_clo_rework_service_failure(
         self,
-        mock_get_outcome,
-        mock_get_course,
-        mock_workflow,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_course: Any,
+        mock_workflow: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test request rework when service returns False."""
         mock_get_outcome.return_value = {
             "id": "outcome-1",
@@ -358,12 +370,12 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_submit_clo_institution_mismatch(
         self,
-        mock_get_outcome,
-        mock_get_course,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_course: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test submitting CLO from different institution returns 404."""
         mock_get_outcome.return_value = {
             "id": "outcome-1",
@@ -382,8 +394,8 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_current_user")
     @patch("src.api.routes.clo_workflow.get_current_institution_id")
     def test_get_clos_for_audit_exception_handling(
-        self, mock_get_inst_id, mock_get_user, mock_workflow, client
-    ):
+        self, mock_get_inst_id: Any, mock_get_user: Any, mock_workflow: Any, client: Any
+    ) -> None:
         """Test get_clos_for_audit handles exceptions gracefully."""
         mock_get_inst_id.return_value = "inst-123"
         mock_get_user.return_value = {
@@ -398,8 +410,12 @@ class TestCLOAuditEndpoints:
 
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_approve_clo_not_found(
-        self, mock_get_outcome, client, mock_institution, mock_session
-    ):
+        self,
+        mock_get_outcome: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test approving non-existent CLO returns 404."""
         mock_get_outcome.return_value = None
         response = client.post("/api/outcomes/nonexistent/approve")
@@ -409,12 +425,12 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_approve_clo_institution_mismatch(
         self,
-        mock_get_outcome,
-        mock_get_course,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_course: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test approving CLO from different institution returns 404."""
         mock_get_outcome.return_value = {
             "id": "outcome-1",
@@ -434,13 +450,13 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_approve_clo_exception(
         self,
-        mock_get_outcome,
-        mock_get_course,
-        mock_workflow,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_course: Any,
+        mock_workflow: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test approving CLO handles unexpected exceptions."""
         mock_get_outcome.return_value = {"id": "outcome-1", "course_id": "course-1"}
         mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
@@ -451,8 +467,12 @@ class TestCLOAuditEndpoints:
 
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_request_rework_not_found(
-        self, mock_get_outcome, client, mock_institution, mock_session
-    ):
+        self,
+        mock_get_outcome: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test requesting rework on non-existent CLO returns 404."""
         mock_get_outcome.return_value = None
         response = client.post(
@@ -465,12 +485,12 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_request_rework_institution_mismatch(
         self,
-        mock_get_outcome,
-        mock_get_course,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_course: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test requesting rework on CLO from different institution returns 404."""
         mock_get_outcome.return_value = {
             "id": "outcome-1",
@@ -493,13 +513,13 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_request_rework_exception(
         self,
-        mock_get_outcome,
-        mock_get_course,
-        mock_workflow,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_course: Any,
+        mock_workflow: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test requesting rework handles unexpected exceptions."""
         mock_get_outcome.return_value = {"id": "outcome-1", "course_id": "course-1"}
         mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
@@ -517,14 +537,14 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_mark_nci_success(
         self,
-        mock_get_outcome,
-        mock_get_course,
-        mock_get_user,
-        mock_workflow,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_course: Any,
+        mock_get_user: Any,
+        mock_workflow: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test marking CLO as Never Coming In (CEI demo follow-up)."""
         mock_get_user.return_value = {"user_id": "user-123"}
         mock_get_outcome.return_value = {
@@ -545,12 +565,12 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_mark_nci_not_found(
         self,
-        mock_get_outcome,
-        mock_get_user,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_user: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test marking NCI when outcome doesn't exist."""
         mock_get_user.return_value = {"user_id": "user-123"}
         mock_get_outcome.return_value = None
@@ -567,14 +587,14 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_mark_nci_service_fails(
         self,
-        mock_get_outcome,
-        mock_get_course,
-        mock_get_user,
-        mock_workflow,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_course: Any,
+        mock_get_user: Any,
+        mock_workflow: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test marking NCI when service method returns False."""
         mock_get_user.return_value = {"user_id": "user-123"}
         mock_get_outcome.return_value = {
@@ -596,14 +616,14 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_mark_nci_exception(
         self,
-        mock_get_outcome,
-        mock_get_course,
-        mock_get_user,
-        mock_workflow,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_course: Any,
+        mock_get_user: Any,
+        mock_workflow: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test marking NCI handles unexpected exceptions."""
         mock_get_user.return_value = {"user_id": "user-123"}
         mock_get_outcome.return_value = {
@@ -624,13 +644,13 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_get_clo_audit_details_success(
         self,
-        mock_get_outcome,
-        mock_get_course,
-        mock_workflow,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_course: Any,
+        mock_workflow: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test successfully getting CLO audit details."""
         mock_get_outcome.return_value = {
             "id": "outcome-1",
@@ -653,8 +673,12 @@ class TestCLOAuditEndpoints:
 
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_get_clo_audit_details_not_found(
-        self, mock_get_outcome, client, mock_institution, mock_session
-    ):
+        self,
+        mock_get_outcome: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test getting audit details for non-existent CLO returns 404."""
         mock_get_outcome.return_value = None
         response = client.get("/api/outcomes/nonexistent/audit-details")
@@ -664,12 +688,12 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_get_clo_audit_details_institution_mismatch(
         self,
-        mock_get_outcome,
-        mock_get_course,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_course: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test getting audit details for CLO from different institution returns 404."""
         mock_get_outcome.return_value = {
             "id": "outcome-1",
@@ -689,13 +713,13 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_get_clo_audit_details_service_returns_none(
         self,
-        mock_get_outcome,
-        mock_get_course,
-        mock_workflow,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_course: Any,
+        mock_workflow: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test getting audit details when service returns None."""
         mock_get_outcome.return_value = {
             "id": "outcome-1",
@@ -713,13 +737,13 @@ class TestCLOAuditEndpoints:
     @patch("src.api.routes.clo_workflow.get_section_outcome")
     def test_get_clo_audit_details_exception_handling(
         self,
-        mock_get_outcome,
-        mock_get_course,
-        mock_workflow,
-        client,
-        mock_institution,
-        mock_session,
-    ):
+        mock_get_outcome: Any,
+        mock_get_course: Any,
+        mock_workflow: Any,
+        client: Any,
+        mock_institution: Any,
+        mock_session: Any,
+    ) -> None:
         """Test get_clo_audit_details handles exceptions gracefully."""
         mock_get_outcome.return_value = {
             "id": "outcome-1",

@@ -5,7 +5,7 @@ Handles sending emails to multiple recipients with progress tracking.
 """
 
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from flask import current_app
 from sqlalchemy.orm import Session
@@ -56,7 +56,7 @@ class BulkEmailService:
 
         from src.models.models_sql import User
 
-        recipients = []
+        recipients: List[Dict[str, Any]] = []
         for instructor_id in instructor_ids:
             # Query user by ID
             user = db.execute(
@@ -69,7 +69,7 @@ class BulkEmailService:
                 )
                 continue
 
-            if not user.email:
+            if user.email is None:
                 logger.warning(
                     f"[BulkEmailService] Instructor {instructor_id} has no email, skipping"
                 )
@@ -127,7 +127,7 @@ class BulkEmailService:
     def _send_emails_background(
         app: "Any",
         job_id: str,
-        recipients: List[Dict],
+        recipients: List[Dict[str, Any]],
         personal_message: Optional[str],
         term: Optional[str],
         deadline: Optional[str],
@@ -145,11 +145,13 @@ class BulkEmailService:
             from src.database.database_factory import get_database_service
 
             db_service = get_database_service()
-            db = db_service.sql.get_session()  # type: ignore[attr-defined]
+            db_session: Session = cast(
+                Session, db_service.sql.get_session()  # type: ignore[attr-defined]
+            )
 
             try:
                 # Get job
-                job = BulkEmailJob.get_job(db, job_id)
+                job = BulkEmailJob.get_job(db_session, job_id)
                 if not job:
                     logger.error(f"[BulkEmailService] Job {job_id} not found")
                     return
@@ -157,7 +159,8 @@ class BulkEmailService:
                 # Get BASE_URL from config
                 from src.utils.constants import DEFAULT_BASE_URL
 
-                base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
+                app_config = cast(Dict[str, Any], current_app.config)
+                base_url = str(app_config.get("BASE_URL", DEFAULT_BASE_URL))
 
                 # Create email manager with reasonable rate limit
                 # EmailManager has exponential backoff to handle provider-specific rate limit errors
@@ -174,12 +177,15 @@ class BulkEmailService:
                 from src.utils.constants import EMAIL_SUBJECT_REMINDER_PREFIX
 
                 for recipient in recipients:
+                    recipient_email = str(recipient.get("email", ""))
+                    recipient_name = str(recipient.get("name", "Instructor"))
+                    recipient_user_id = recipient.get("user_id")
                     subject_suffix = f" for {term}" if term else ""
                     email_manager.add_email(
-                        to_email=recipient["email"],
+                        to_email=recipient_email,
                         subject=f"{EMAIL_SUBJECT_REMINDER_PREFIX}{subject_suffix}",
                         html_body=BulkEmailService._render_reminder_html(
-                            recipient["name"],
+                            recipient_name,
                             personal_message,
                             term,
                             deadline,
@@ -187,14 +193,14 @@ class BulkEmailService:
                             course_id,
                         ),
                         text_body=BulkEmailService._render_reminder_text(
-                            recipient["name"],
+                            recipient_name,
                             personal_message,
                             term,
                             deadline,
                             base_url,
                             course_id,
                         ),
-                        metadata={"user_id": recipient.get("user_id")},
+                        metadata={"user_id": recipient_user_id},
                     )
 
                 # Get email service instance
@@ -213,16 +219,16 @@ class BulkEmailService:
                 # Send all emails with progress updates
                 def update_progress() -> None:
                     """Update job progress in database"""
-                    status = email_manager.get_status()
+                    status: Dict[str, int] = email_manager.get_status()
 
-                    failed_jobs = email_manager.get_failed_jobs()
-                    failed_recipients = [
+                    failed_jobs: List[Any] = email_manager.get_failed_jobs()
+                    failed_recipients: List[Dict[str, Any]] = [
                         {
-                            "email": job.to_email,
-                            "error": job.last_error,
-                            "attempts": job.attempts,
+                            "email": failed_job.to_email,
+                            "error": failed_job.last_error,
+                            "attempts": failed_job.attempts,
                         }
-                        for job in failed_jobs
+                        for failed_job in failed_jobs
                     ]
 
                     # job is guaranteed to be not None at this point (we returned early if None)
@@ -233,10 +239,10 @@ class BulkEmailService:
                         emails_pending=status["pending"],
                         failed_recipients=failed_recipients,
                     )
-                    db.commit()
+                    db_session.commit()
 
                 # Send emails and update progress periodically
-                stats = email_manager.send_all(send_email, timeout=60)
+                stats: Dict[str, int] = email_manager.send_all(send_email, timeout=60)
 
                 # Final progress update
                 update_progress()
@@ -252,13 +258,13 @@ class BulkEmailService:
                 )
 
                 # Mark job as failed
-                job = BulkEmailJob.get_job(db, job_id)
+                job = BulkEmailJob.get_job(db_session, job_id)
                 if job:
                     job.mark_failed(str(e))
-                    db.commit()
+                    db_session.commit()
 
             finally:
-                db.close()
+                db_session.close()
 
     @staticmethod
     def _render_reminder_html(
@@ -394,7 +400,7 @@ class BulkEmailService:
         return text
 
     @staticmethod
-    def get_job_status(db: Session, job_id: str) -> Optional[Dict]:
+    def get_job_status(db: Session, job_id: str) -> Optional[Dict[str, Any]]:
         """
         Get status of a bulk email job.
 
@@ -414,7 +420,7 @@ class BulkEmailService:
     @staticmethod
     def get_recent_jobs(
         db: Session, user_id: Optional[str] = None, limit: int = 50
-    ) -> List[Dict]:
+    ) -> List[Dict[str, Any]]:
         """
         Get recent bulk email jobs.
 

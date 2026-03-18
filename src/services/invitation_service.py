@@ -291,7 +291,7 @@ class InvitationService:
                     if term:
                         term_name = term.get("term_name") or term.get("name")
 
-        parts = []
+        parts: List[str] = []
         if term_name:
             parts.append(term_name)
         if course_number:
@@ -474,7 +474,7 @@ class InvitationService:
         return user_data
 
     @staticmethod
-    def _parse_display_name(display_name: Optional[str], email: str) -> tuple:
+    def _parse_display_name(display_name: Optional[str], email: str) -> tuple[str, str]:
         """Parse display name into first and last name components."""
         if display_name and " " in display_name:
             parts = display_name.split(" ")
@@ -519,7 +519,7 @@ class InvitationService:
 
         # Determine names - prefer provided, fallback to existing if not "Invited User", fallback to email
         # If existing user has placeholder names, overwrite them
-        update_data = {
+        update_data: Dict[str, Any] = {
             "password_hash": password_hash,
             "account_status": "active",
             "email_verified": True,

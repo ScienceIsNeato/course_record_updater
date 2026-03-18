@@ -17,7 +17,7 @@ NEW_TEST_PASSWORD = GENERIC_PASSWORD
 class TestProfileUpdateAPI:
     """Test profile update API endpoint."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.app = app
         self.app.config["TESTING"] = True
@@ -33,13 +33,13 @@ class TestProfileUpdateAPI:
             "institution_id": "inst-123",
         }
 
-    def _login_user(self):
+    def _login_user(self) -> None:
         """Create authenticated session."""
         from tests.test_utils import create_test_session
 
         create_test_session(self.client, self.test_user)
 
-    def test_profile_update_requires_authentication(self):
+    def test_profile_update_requires_authentication(self) -> None:
         """Test that profile update requires login."""
         # No login - should return 401
         response = self.client.patch(
@@ -48,7 +48,7 @@ class TestProfileUpdateAPI:
         )
         assert response.status_code == 401
 
-    def test_profile_update_success(self):
+    def test_profile_update_success(self) -> None:
         """Test successful profile update."""
         self._login_user()
 
@@ -72,7 +72,7 @@ class TestProfileUpdateAPI:
             assert call_args[0][1]["first_name"] == "Jane"
             assert call_args[0][1]["last_name"] == "Smith"
 
-    def test_profile_update_no_json(self):
+    def test_profile_update_no_json(self) -> None:
         """Test profile update with no JSON data."""
         self._login_user()
 
@@ -83,7 +83,7 @@ class TestProfileUpdateAPI:
         assert data["success"] is False
         assert "No JSON data" in data["error"]
 
-    def test_profile_update_cannot_change_email(self):
+    def test_profile_update_cannot_change_email(self) -> None:
         """Test that email cannot be changed via profile update."""
         self._login_user()
 
@@ -103,7 +103,7 @@ class TestProfileUpdateAPI:
             call_args = mock_update.call_args
             assert "email" not in call_args[0][1]
 
-    def test_profile_update_cannot_change_role(self):
+    def test_profile_update_cannot_change_role(self) -> None:
         """Test that role cannot be changed via profile update."""
         self._login_user()
 
@@ -123,7 +123,7 @@ class TestProfileUpdateAPI:
             call_args = mock_update.call_args
             assert "role" not in call_args[0][1]
 
-    def test_profile_update_database_error(self):
+    def test_profile_update_database_error(self) -> None:
         """Test profile update handles database errors."""
         self._login_user()
 
@@ -143,7 +143,7 @@ class TestProfileUpdateAPI:
 class TestChangePasswordAPI:
     """Test password change API endpoint."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.app = app
         self.app.config["TESTING"] = True
@@ -159,13 +159,13 @@ class TestChangePasswordAPI:
             "institution_id": "inst-123",
         }
 
-    def _login_user(self):
+    def _login_user(self) -> None:
         """Create authenticated session."""
         from tests.test_utils import create_test_session
 
         create_test_session(self.client, self.test_user)
 
-    def test_change_password_requires_authentication(self):
+    def test_change_password_requires_authentication(self) -> None:
         """Test that password change requires login."""
         # No login - should return 401
         response = self.client.post(
@@ -177,7 +177,7 @@ class TestChangePasswordAPI:
         )
         assert response.status_code == 401
 
-    def test_change_password_success(self):
+    def test_change_password_success(self) -> None:
         """Test successful password change."""
         self._login_user()
 
@@ -208,7 +208,7 @@ class TestChangePasswordAPI:
             assert data["success"] is True
             assert "Password changed" in data["message"]
 
-    def test_change_password_no_json(self):
+    def test_change_password_no_json(self) -> None:
         """Test password change with no JSON data."""
         self._login_user()
 
@@ -219,7 +219,7 @@ class TestChangePasswordAPI:
         assert data["success"] is False
         assert "No JSON data" in data["error"]
 
-    def test_change_password_missing_current_password(self):
+    def test_change_password_missing_current_password(self) -> None:
         """Test password change with missing current password."""
         self._login_user()
 
@@ -233,7 +233,7 @@ class TestChangePasswordAPI:
         assert data["success"] is False
         assert "current_password" in data["error"]
 
-    def test_change_password_missing_new_password(self):
+    def test_change_password_missing_new_password(self) -> None:
         """Test password change with missing new password."""
         self._login_user()
 
@@ -247,7 +247,7 @@ class TestChangePasswordAPI:
         assert data["success"] is False
         assert "new_password" in data["error"]
 
-    def test_change_password_wrong_current_password(self):
+    def test_change_password_wrong_current_password(self) -> None:
         """Test password change with incorrect current password."""
         self._login_user()
 
@@ -274,7 +274,7 @@ class TestChangePasswordAPI:
             assert data["success"] is False
             assert "Current password is incorrect" in data["error"]
 
-    def test_change_password_weak_new_password(self):
+    def test_change_password_weak_new_password(self) -> None:
         """Test password change with weak new password."""
         self._login_user()
 
@@ -307,7 +307,7 @@ class TestChangePasswordAPI:
             data = response.get_json()
             assert data["success"] is False
 
-    def test_change_password_database_error(self):
+    def test_change_password_database_error(self) -> None:
         """Test password change handles database errors."""
         self._login_user()
 

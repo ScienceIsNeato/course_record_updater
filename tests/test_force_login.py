@@ -4,6 +4,8 @@ Tests for force login parameter and logout error handling.
 Ensures users can recover from broken session states.
 """
 
+from typing import Any
+
 import pytest
 
 from src.database.database_service import db
@@ -15,7 +17,7 @@ class TestForceLogin:
     """Test force login parameter functionality"""
 
     @pytest.fixture(autouse=True)
-    def setup_user(self):
+    def setup_user(self) -> None:
         """Create test user for login tests"""
         password = "Demo2025!"
         password_hash = PasswordService.hash_password(password)
@@ -39,7 +41,7 @@ class TestForceLogin:
 
         db.create_user(user_data)
 
-    def test_force_login_clears_session(self, client):
+    def test_force_login_clears_session(self, client: Any) -> None:
         """Force login should clear existing session"""
         # First, log in normally
         response = client.post(
@@ -60,7 +62,7 @@ class TestForceLogin:
         with client.session_transaction() as sess:
             assert sess.get("user_id") is None
 
-    def test_force_login_shows_login_page(self, client):
+    def test_force_login_shows_login_page(self, client: Any) -> None:
         """Force login should show login page even when authenticated"""
         # Log in
         client.post(
@@ -73,7 +75,7 @@ class TestForceLogin:
         assert response.status_code == 200
         assert b"login" in response.data.lower()
 
-    def test_normal_login_redirects_when_authenticated(self, client):
+    def test_normal_login_redirects_when_authenticated(self, client: Any) -> None:
         """Normal /login should redirect to dashboard when authenticated"""
         # Log in
         client.post(
@@ -86,7 +88,7 @@ class TestForceLogin:
         assert response.status_code == 302
         assert "/dashboard" in response.location
 
-    def test_force_login_with_next_parameter(self, client):
+    def test_force_login_with_next_parameter(self, client: Any) -> None:
         """Force login should preserve next parameter"""
         # Log in
         client.post(
@@ -102,7 +104,7 @@ class TestForceLogin:
         with client.session_transaction() as sess:
             assert sess.get("next_after_login") == "/assessments"
 
-    def test_force_login_when_not_authenticated(self, client):
+    def test_force_login_when_not_authenticated(self, client: Any) -> None:
         """Force login should work normally when not authenticated"""
         response = client.get("/login?force=true")
         assert response.status_code == 200
@@ -113,7 +115,7 @@ class TestLogoutErrorHandling:
     """Test logout error handling redirects to force login"""
 
     @pytest.fixture(autouse=True)
-    def setup_user(self):
+    def setup_user(self) -> None:
         """Create test user for login tests"""
         password = "Demo2025!"
         password_hash = PasswordService.hash_password(password)
@@ -132,7 +134,7 @@ class TestLogoutErrorHandling:
             db.create_new_institution_simple("Test Inst", "TEST")
         db.create_user(user_data)
 
-    def test_logout_success_redirects_to_home(self, client):
+    def test_logout_success_redirects_to_home(self, client: Any) -> None:
         """Successful logout should redirect to home"""
         # Log in first
         client.post(

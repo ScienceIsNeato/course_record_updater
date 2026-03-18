@@ -7,7 +7,7 @@ from src.services.dashboard_service import DashboardService
 
 
 @pytest.mark.integration
-def test_institution_admin_dashboard_program_metrics_from_db():
+def test_institution_admin_dashboard_program_metrics_from_db() -> None:
     """
     Integration Test: Institution Admin Dashboard Returns Program Metrics from DB
 

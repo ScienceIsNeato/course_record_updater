@@ -5,6 +5,8 @@ Tests the complete login/logout flow through the API endpoints.
 """
 
 import json
+from collections.abc import Generator
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -14,7 +16,7 @@ from src.utils.constants import INVALID_PASSWORD
 
 
 @pytest.fixture
-def client():
+def client() -> Generator[Any, None, None]:
     """Create test client"""
     app.config["TESTING"] = True
     app.config["SECRET_KEY"] = "test-secret-key"
@@ -25,7 +27,7 @@ def client():
 
 
 @pytest.fixture
-def sample_user_data():
+def sample_user_data() -> Any:
     """Sample user data for testing"""
     return {
         "user_id": "user-123",
@@ -48,12 +50,12 @@ class TestLoginAPI:
     @patch("src.services.login_service.db")
     def test_login_success(
         self,
-        mock_db,
-        mock_password_service,
-        mock_session,
-        client,
-        sample_user_data,
-    ):
+        mock_db: Any,
+        mock_password_service: Any,
+        mock_session: Any,
+        client: Any,
+        sample_user_data: Any,
+    ) -> None:
         """Test successful login via API"""
         # Setup
         mock_password_service.check_account_lockout.return_value = None
@@ -83,7 +85,9 @@ class TestLoginAPI:
 
     @patch("src.services.login_service.PasswordService")
     @patch("src.services.login_service.db")
-    def test_login_invalid_credentials(self, mock_db, mock_password_service, client):
+    def test_login_invalid_credentials(
+        self, mock_db: Any, mock_password_service: Any, client: Any
+    ) -> None:
         """Test login with invalid credentials"""
         # Setup
         mock_password_service.check_account_lockout.return_value = None
@@ -106,7 +110,9 @@ class TestLoginAPI:
         assert "Invalid email or password" in data["error"]
 
     @patch("src.services.login_service.PasswordService")
-    def test_login_account_locked(self, mock_password_service, client):
+    def test_login_account_locked(
+        self, mock_password_service: Any, client: Any
+    ) -> None:
         """Test login when account is locked"""
         # Setup
         from src.services.password_service import AccountLockedError
@@ -130,7 +136,7 @@ class TestLoginAPI:
         assert data["success"] is False
         assert "Account is locked" in data["error"]
 
-    def test_login_missing_data(self, client):
+    def test_login_missing_data(self, client: Any) -> None:
         """Test login with missing required data"""
         # Execute - missing password
         response = client.post(
@@ -145,7 +151,7 @@ class TestLoginAPI:
         assert data["success"] is False
         assert "Missing required field: password" in data["error"]
 
-    def test_login_no_json(self, client):
+    def test_login_no_json(self, client: Any) -> None:
         """Test login with no JSON data"""
         # Execute
         response = client.post("/api/auth/login")
@@ -163,12 +169,12 @@ class TestLoginAPI:
     @patch("src.services.login_service.db")
     def test_login_remember_me(
         self,
-        mock_db,
-        mock_password_service,
-        mock_session,
-        client,
-        sample_user_data,
-    ):
+        mock_db: Any,
+        mock_password_service: Any,
+        mock_session: Any,
+        client: Any,
+        sample_user_data: Any,
+    ) -> None:
         """Test login with remember me option"""
         # Setup
         mock_password_service.check_account_lockout.return_value = None
@@ -207,7 +213,7 @@ class TestLogoutAPI:
     """Test logout API endpoint"""
 
     @patch("src.services.login_service.SessionService")
-    def test_logout_success(self, mock_session, client):
+    def test_logout_success(self, mock_session: Any, client: Any) -> None:
         """Test successful logout via API"""
         # Setup
         mock_session.get_session_info.return_value = {"email": "test@example.com"}
@@ -224,7 +230,7 @@ class TestLogoutAPI:
         assert data["message"] == "Logout successful"
 
     @patch("src.services.login_service.SessionService")
-    def test_logout_with_error(self, mock_session, client):
+    def test_logout_with_error(self, mock_session: Any, client: Any) -> None:
         """Test logout when error occurs"""
         # Setup
         mock_session.get_session_info.side_effect = Exception("Session error")
@@ -244,7 +250,7 @@ class TestLoginStatusAPI:
     """Test login status API endpoint"""
 
     @patch("src.services.login_service.SessionService")
-    def test_status_logged_in(self, mock_session, client):
+    def test_status_logged_in(self, mock_session: Any, client: Any) -> None:
         """Test getting status when user is logged in"""
         # Setup
         mock_session.is_user_logged_in.return_value = True
@@ -269,7 +275,7 @@ class TestLoginStatusAPI:
         assert data["role"] == "instructor"
 
     @patch("src.services.login_service.SessionService")
-    def test_status_not_logged_in(self, mock_session, client):
+    def test_status_not_logged_in(self, mock_session: Any, client: Any) -> None:
         """Test getting status when user is not logged in"""
         # Setup
         mock_session.is_user_logged_in.return_value = False
@@ -289,7 +295,7 @@ class TestSessionRefreshAPI:
     """Test session refresh API endpoint"""
 
     @patch("src.services.login_service.SessionService")
-    def test_refresh_success(self, mock_session, client):
+    def test_refresh_success(self, mock_session: Any, client: Any) -> None:
         """Test successful session refresh"""
         # Setup
         mock_session.is_user_logged_in.return_value = True
@@ -306,7 +312,7 @@ class TestSessionRefreshAPI:
         assert data["message"] == "Session refreshed successfully"
 
     @patch("src.services.login_service.SessionService")
-    def test_refresh_no_session(self, mock_session, client):
+    def test_refresh_no_session(self, mock_session: Any, client: Any) -> None:
         """Test refresh when no active session"""
         # Setup
         mock_session.is_user_logged_in.return_value = False
@@ -325,7 +331,9 @@ class TestLockoutStatusAPI:
     """Test lockout status API endpoint"""
 
     @patch("src.services.login_service.PasswordService")
-    def test_lockout_status_not_locked(self, mock_password_service, client):
+    def test_lockout_status_not_locked(
+        self, mock_password_service: Any, client: Any
+    ) -> None:
         """Test checking lockout status when not locked"""
         # Setup
         mock_password_service.is_account_locked.return_value = (False, None)
@@ -341,7 +349,9 @@ class TestLockoutStatusAPI:
         assert data["message"] == "Account is not locked"
 
     @patch("src.services.login_service.PasswordService")
-    def test_lockout_status_locked(self, mock_password_service, client):
+    def test_lockout_status_locked(
+        self, mock_password_service: Any, client: Any
+    ) -> None:
         """Test checking lockout status when locked"""
         # Setup
         from datetime import datetime, timedelta
@@ -367,8 +377,12 @@ class TestUnlockAccountAPI:
     @patch("src.services.auth_service.auth_service.get_current_user")
     @patch("src.services.auth_service.get_current_user")
     def test_unlock_account_success(
-        self, mock_module_get_user, mock_service_get_user, mock_password_service, client
-    ):
+        self,
+        mock_module_get_user: Any,
+        mock_service_get_user: Any,
+        mock_password_service: Any,
+        client: Any,
+    ) -> None:
         """Test successful account unlock"""
         # Setup - must have admin role to unlock accounts
         user_context = {
@@ -397,8 +411,8 @@ class TestUnlockAccountAPI:
     @patch("src.services.auth_service.auth_service.get_current_user")
     @patch("src.services.auth_service.get_current_user")
     def test_unlock_account_no_auth(
-        self, mock_module_get_user, mock_service_get_user, client
-    ):
+        self, mock_module_get_user: Any, mock_service_get_user: Any, client: Any
+    ) -> None:
         """Test unlock account when not authenticated"""
         # Setup
         mock_module_get_user.return_value = None
@@ -417,7 +431,7 @@ class TestUnlockAccountAPI:
         assert data["success"] is False
         assert "Authentication required" in data["error"]
 
-    def test_unlock_account_missing_email(self, client):
+    def test_unlock_account_missing_email(self, client: Any) -> None:
         """Test unlock account with missing email"""
         # Execute
         with client.session_transaction() as sess:
@@ -447,12 +461,12 @@ class TestLoginFlowIntegration:
     @patch("src.services.login_service.db")
     def test_complete_login_logout_flow(
         self,
-        mock_db,
-        mock_password_service,
-        mock_session,
-        client,
-        sample_user_data,
-    ):
+        mock_db: Any,
+        mock_password_service: Any,
+        mock_session: Any,
+        client: Any,
+        sample_user_data: Any,
+    ) -> None:
         """Test complete login -> status check -> logout flow"""
 
         # Step 1: Login
@@ -505,8 +519,8 @@ class TestLoginFlowIntegration:
     @patch("src.services.login_service.PasswordService")
     @patch("src.services.login_service.db")
     def test_failed_login_attempts_tracking(
-        self, mock_db, mock_password_service, client
-    ):
+        self, mock_db: Any, mock_password_service: Any, client: Any
+    ) -> None:
         """Test that failed login attempts are properly tracked"""
 
         # Setup for failed attempts

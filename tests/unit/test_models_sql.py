@@ -21,13 +21,13 @@ from src.models.models_sql import (
 class TestGenerateUUID:
     """Test UUID generation."""
 
-    def test_generate_uuid_returns_string(self):
+    def test_generate_uuid_returns_string(self) -> None:
         """Test that generate_uuid returns a string."""
         result = generate_uuid()
         assert isinstance(result, str)
         assert len(result) == 36  # UUID format: 8-4-4-4-12
 
-    def test_generate_uuid_unique(self):
+    def test_generate_uuid_unique(self) -> None:
         """Test that generate_uuid returns unique values."""
         uuid1 = generate_uuid()
         uuid2 = generate_uuid()
@@ -37,7 +37,7 @@ class TestGenerateUUID:
 class TestModelDispatch:
     """Test model type dispatch in _get_model_data."""
 
-    def test_get_model_data_unknown_type(self):
+    def test_get_model_data_unknown_type(self) -> None:
         """Test _get_model_data with unknown model type."""
 
         # Create a mock object that's not a known model type
@@ -50,7 +50,7 @@ class TestModelDispatch:
         # Should return empty dict for unknown types
         assert result == {}
 
-    def test_get_model_data_institution(self):
+    def test_get_model_data_institution(self) -> None:
         """Test _get_model_data dispatches Institution correctly."""
         mock_inst = Mock(spec=Institution)
         mock_inst.id = "inst_123"
@@ -63,15 +63,20 @@ class TestModelDispatch:
         # For now, just verify it returns a dict (branch coverage)
         assert isinstance(result, dict)
 
-    def test_get_model_data_user(self):
+    def test_get_model_data_user(self) -> None:
         """Test _get_model_data dispatches User correctly."""
-        mock_user = Mock(spec=User)
-        mock_user.id = "user_123"
+        mock_user = User(
+            id="user_123",
+            email="test@example.com",
+            first_name="Test",
+            last_name="User",
+            role="instructor",
+        )
 
         result = _get_model_data(mock_user)
         assert isinstance(result, dict)
 
-    def test_get_model_data_program(self):
+    def test_get_model_data_program(self) -> None:
         """Test _get_model_data dispatches Program correctly."""
         mock_program = Mock(spec=Program)
         mock_program.id = "prog_123"
@@ -79,15 +84,19 @@ class TestModelDispatch:
         result = _get_model_data(mock_program)
         assert isinstance(result, dict)
 
-    def test_get_model_data_course(self):
+    def test_get_model_data_course(self) -> None:
         """Test _get_model_data dispatches Course correctly."""
-        mock_course = Mock(spec=Course)
-        mock_course.id = "course_123"
+        mock_course = Course(
+            id="course_123",
+            course_number="TEST-101",
+            course_title="Test Course",
+            institution_id="inst_123",
+        )
 
         result = _get_model_data(mock_course)
         assert isinstance(result, dict)
 
-    def test_get_model_data_term(self):
+    def test_get_model_data_term(self) -> None:
         """Test _get_model_data dispatches Term correctly."""
         term = Term(
             id="term_123",
@@ -104,31 +113,42 @@ class TestModelDispatch:
         assert result["status"] in {"ACTIVE", "SCHEDULED", "PASSED", "UNKNOWN"}
         assert isinstance(result["is_active"], bool)
 
-    def test_get_model_data_course_offering(self):
+    def test_get_model_data_course_offering(self) -> None:
         """Test _get_model_data dispatches CourseOffering correctly."""
-        mock_offering = Mock(spec=CourseOffering)
-        mock_offering.id = "offering_123"
+        mock_offering = CourseOffering(
+            id="offering_123",
+            course_id="course_123",
+            term_id="term_123",
+            institution_id="inst_123",
+        )
 
         result = _get_model_data(mock_offering)
         assert isinstance(result, dict)
 
-    def test_get_model_data_course_section(self):
+    def test_get_model_data_course_section(self) -> None:
         """Test _get_model_data dispatches CourseSection correctly."""
-        mock_section = Mock(spec=CourseSection)
-        mock_section.id = "section_123"
+        mock_section = CourseSection(
+            id="section_123",
+            offering_id="offering_123",
+            section_number="001",
+        )
 
         result = _get_model_data(mock_section)
         assert isinstance(result, dict)
 
-    def test_get_model_data_course_outcome(self):
+    def test_get_model_data_course_outcome(self) -> None:
         """Test _get_model_data dispatches CourseOutcome correctly."""
-        mock_outcome = Mock(spec=CourseOutcome)
-        mock_outcome.id = "outcome_123"
+        mock_outcome = CourseOutcome(
+            id="outcome_123",
+            course_id="course_123",
+            clo_number="1",
+            description="Understand core concepts",
+        )
 
         result = _get_model_data(mock_outcome)
         assert isinstance(result, dict)
 
-    def test_get_model_data_user_invitation(self):
+    def test_get_model_data_user_invitation(self) -> None:
         """Test _get_model_data dispatches UserInvitation correctly."""
         mock_invitation = Mock(spec=UserInvitation)
         mock_invitation.id = "inv_123"
@@ -140,7 +160,7 @@ class TestModelDispatch:
 class TestToDictEdgeCases:
     """Test to_dict function edge cases."""
 
-    def test_to_dict_with_extras(self):
+    def test_to_dict_with_extras(self) -> None:
         """Test to_dict with model that has extras attribute."""
         mock_model = Mock()
         mock_model.extras = {"custom_field": "custom_value"}
@@ -152,7 +172,7 @@ class TestToDictEdgeCases:
         assert "custom_field" in result
         assert result["custom_field"] == "custom_value"
 
-    def test_to_dict_with_extra_fields_param(self):
+    def test_to_dict_with_extra_fields_param(self) -> None:
         """Test to_dict with extra_fields parameter."""
         mock_model = Mock()
         mock_model.extras = None  # No extras attribute
@@ -164,7 +184,7 @@ class TestToDictEdgeCases:
         assert "additional_data" in result
         assert result["additional_data"] == "extra_value"
 
-    def test_to_dict_with_both_extras_and_extra_fields(self):
+    def test_to_dict_with_both_extras_and_extra_fields(self) -> None:
         """Test to_dict with both extras attribute and extra_fields param."""
         mock_model = Mock()
         mock_model.extras = {"from_model": "model_value"}
@@ -178,7 +198,7 @@ class TestToDictEdgeCases:
         assert result["from_model"] == "model_value"
         assert result["from_param"] == "param_value"
 
-    def test_to_dict_unknown_model_type(self):
+    def test_to_dict_unknown_model_type(self) -> None:
         """Test to_dict with unknown model type."""
 
         class UnknownModel:
@@ -190,7 +210,7 @@ class TestToDictEdgeCases:
         # Should return empty dict (or dict with only extras if present)
         assert isinstance(result, dict)
 
-    def test_to_dict_course_offering(self):
+    def test_to_dict_course_offering(self) -> None:
         """Test to_dict with CourseOffering model."""
         from src.models.models_sql import CourseOffering, to_dict
 
@@ -206,7 +226,7 @@ class TestToDictEdgeCases:
         assert result["offering_id"] == "off-123"
         assert result["course_id"] == "course-123"
 
-    def test_to_dict_course_section(self):
+    def test_to_dict_course_section(self) -> None:
         """Test to_dict with CourseSection model."""
         from src.models.models_sql import CourseSection, to_dict
 
@@ -219,7 +239,7 @@ class TestToDictEdgeCases:
         assert result["section_id"] == "sec-123"
         assert result["offering_id"] == "off-123"
 
-    def test_to_dict_course_outcome(self):
+    def test_to_dict_course_outcome(self) -> None:
         """Test to_dict with CourseOutcome model."""
         from src.models.models_sql import CourseOutcome, to_dict
 
@@ -232,7 +252,7 @@ class TestToDictEdgeCases:
         assert result["outcome_id"] == "out-123"
         assert result["course_id"] == "course-123"
 
-    def test_to_dict_course_section_outcome_includes_workflow_fields(self):
+    def test_to_dict_course_section_outcome_includes_workflow_fields(self) -> None:
         """Regression test: CourseSectionOutcome to_dict must include status fields.
 
         The audit CLO page requires status, approval_status, submitted_at, etc.

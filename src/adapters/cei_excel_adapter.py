@@ -8,7 +8,7 @@ This keeps CEI-specific logic separate from the generic import system.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union, cast
 
 import pandas as pd
 
@@ -457,6 +457,12 @@ class CEIExcelAdapter(FileBaseAdapter):
     MAX_FILE_SIZE_MB = 500
     MAX_RECORDS_TO_PROCESS = 500000
 
+    @staticmethod
+    def _read_excel_dataframe(file_path: str, **kwargs: Any) -> pd.DataFrame:
+        """Read an Excel file and narrow pandas' partially unknown return type."""
+        read_excel = cast(Callable[..., pd.DataFrame], getattr(pd, "read_excel"))
+        return read_excel(file_path, **kwargs)
+
     def __init__(self) -> None:
         """Initialize CEI Excel adapter with format specifications."""
         super().__init__()
@@ -555,7 +561,7 @@ class CEIExcelAdapter(FileBaseAdapter):
     ) -> Union[pd.DataFrame, Tuple[bool, str]]:
         """Read Excel file sample for validation."""
         try:
-            df = pd.read_excel(file_path, nrows=10)  # Sample first 10 rows
+            df = self._read_excel_dataframe(file_path, nrows=10)
             if df.empty:
                 return False, "Excel file is empty"
             return df
@@ -635,7 +641,7 @@ class CEIExcelAdapter(FileBaseAdapter):
 
     def _validate_data_patterns(self, df: pd.DataFrame, format_type: str) -> List[str]:
         """Validate data patterns in key columns."""
-        validation_errors = []
+        validation_errors: List[str] = []
 
         # Validate course column
         course_error = self._validate_course_column(df)
@@ -748,8 +754,8 @@ class CEIExcelAdapter(FileBaseAdapter):
         - clos: Course Learning Outcomes
         """
         try:
-            df = pd.read_excel(file_path, nrows=50)  # Sample for analysis
-            detected_types = []
+            df = self._read_excel_dataframe(file_path, nrows=50)
+            detected_types: List[str] = []
 
             if self._has_course_data(df):
                 detected_types.append("courses")
@@ -802,7 +808,7 @@ class CEIExcelAdapter(FileBaseAdapter):
 
     def parse_file(
         self, file_path: str, options: Dict[str, Any]
-    ) -> Dict[str, List[Dict]]:
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """
         Parse CEI Excel file into structured data ready for database import.
 
@@ -852,7 +858,7 @@ class CEIExcelAdapter(FileBaseAdapter):
     def _read_excel_file(self, file_path: str) -> pd.DataFrame:
         """Read and validate Excel file."""
         try:
-            df = pd.read_excel(file_path)
+            df = self._read_excel_dataframe(file_path)
         except Exception as e:
             raise FileCompatibilityError(f"Cannot read Excel file: {str(e)}") from e
 
@@ -863,10 +869,10 @@ class CEIExcelAdapter(FileBaseAdapter):
 
     def _process_excel_rows(
         self, df: pd.DataFrame, institution_id: str
-    ) -> Dict[str, List[Dict]]:
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """Process all Excel rows and collect entities by type."""
         # Initialize result structure
-        result: Dict[str, List[Dict]] = {
+        result: Dict[str, List[Dict[str, Any]]] = {
             "courses": [],
             "users": [],  # Note: using 'users' not 'faculty' to match database service
             "terms": [],
@@ -892,7 +898,9 @@ class CEIExcelAdapter(FileBaseAdapter):
         return result
 
     def _collect_row_entities(
-        self, entities: Dict[str, Any], result: Dict[str, List[Dict]]
+        self,
+        entities: Dict[str, Any],
+        result: Dict[str, List[Dict[str, Any]]],
     ) -> None:
         """Collect entities from a single row into the result structure."""
         timestamp = datetime.now().isoformat()
@@ -913,7 +921,9 @@ class CEIExcelAdapter(FileBaseAdapter):
                 entity["created_at"] = timestamp
                 result[result_key].append(entity)
 
-    def _finalize_results(self, result: Dict[str, List[Dict]]) -> Dict[str, List[Dict]]:
+    def _finalize_results(
+        self, result: Dict[str, List[Dict[str, Any]]]
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """Remove duplicates and validate final results."""
         # Remove duplicates from each data type
         result = self._deduplicate_results(result)
@@ -926,8 +936,8 @@ class CEIExcelAdapter(FileBaseAdapter):
         return result
 
     def _deduplicate_results(
-        self, result: Dict[str, List[Dict]]
-    ) -> Dict[str, List[Dict]]:
+        self, result: Dict[str, List[Dict[str, Any]]]
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """Remove duplicate records from parsed results."""
 
         # Define key fields for each data type to identify duplicates
@@ -950,12 +960,12 @@ class CEIExcelAdapter(FileBaseAdapter):
                 continue
 
             keys = key_fields.get(data_type, ["id"])
-            seen = set()
-            unique_records = []
+            seen: Set[tuple[str, ...]] = set()
+            unique_records: List[Dict[str, Any]] = []
 
             for record in records:
                 # Create key tuple from specified fields
-                key_values = []
+                key_values: List[str] = []
                 for field in keys:
                     value = record.get(field)
                     # Handle None values and convert to string for hashing
@@ -972,7 +982,10 @@ class CEIExcelAdapter(FileBaseAdapter):
         return result
 
     def export_data(
-        self, data: Dict[str, List[Dict]], output_path: str, options: Dict[str, Any]
+        self,
+        data: Dict[str, List[Dict[str, Any]]],
+        output_path: str,
+        options: Dict[str, Any],
     ) -> Tuple[bool, str, int]:
         """
         Export structured data to CEI Excel format.
@@ -1044,7 +1057,7 @@ class CEIExcelAdapter(FileBaseAdapter):
             return False, f"Export failed: {str(e)}", 0
 
     def _build_cei_export_records(
-        self, data: Dict[str, List[Dict]], options: Dict[str, Any]
+        self, data: Dict[str, List[Dict[str, Any]]], options: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
         """
         Build CEI-format records from standardized database data.
@@ -1070,31 +1083,45 @@ class CEIExcelAdapter(FileBaseAdapter):
             return self._build_synthesized_records(data)
 
     def _build_records_from_sections(
-        self, data: Dict[str, List[Dict]]
+        self, data: Dict[str, List[Dict[str, Any]]]
     ) -> List[Dict[str, Any]]:
         """Build records from sections (preferred - most complete data)."""
-        records = []
-        courses = data.get("courses", [])
-        users = data.get("users", [])
-        terms = data.get("terms", [])
-        offerings = data.get("offerings", [])
-        sections = data.get("sections", [])
+        records: List[Dict[str, Any]] = []
+        courses: List[Dict[str, Any]] = data.get("courses", [])
+        users: List[Dict[str, Any]] = data.get("users", [])
+        terms: List[Dict[str, Any]] = data.get("terms", [])
+        offerings: List[Dict[str, Any]] = data.get("offerings", [])
+        sections: List[Dict[str, Any]] = data.get("sections", [])
 
         # Build lookups
-        instructors_lookup = {user["user_id"]: user for user in users}
-        terms_lookup = {term["term_id"]: term for term in terms}
-        offerings_lookup = {
-            offering.get("offering_id") or offering.get("id"): offering
-            for offering in offerings
-        }
-        courses_lookup = {
-            course.get("course_id") or course.get("id"): course for course in courses
-        }
+        instructors_lookup: Dict[str, Dict[str, Any]] = {}
+        for user in users:
+            user_id = user.get("user_id")
+            if user_id:
+                instructors_lookup[str(user_id)] = user
+
+        terms_lookup: Dict[str, Dict[str, Any]] = {}
+        for term in terms:
+            term_id_value = term.get("term_id")
+            if term_id_value:
+                terms_lookup[str(term_id_value)] = term
+
+        offerings_lookup: Dict[str, Dict[str, Any]] = {}
+        for offering in offerings:
+            offering_id_value = offering.get("offering_id") or offering.get("id")
+            if offering_id_value:
+                offerings_lookup[str(offering_id_value)] = offering
+
+        courses_lookup: Dict[str, Dict[str, Any]] = {}
+        for course in courses:
+            course_id_value = course.get("course_id") or course.get("id")
+            if course_id_value:
+                courses_lookup[str(course_id_value)] = course
 
         # Process each section
         for section in sections:
             offering_id = section.get("offering_id")
-            offering = offerings_lookup.get(offering_id, {})
+            offering = offerings_lookup.get(str(offering_id), {}) if offering_id else {}
             if not offering:
                 continue
 
@@ -1102,12 +1129,14 @@ class CEIExcelAdapter(FileBaseAdapter):
             term_id = offering.get("term_id")
             instructor_id = section.get("instructor_id")
 
-            course = courses_lookup.get(course_id, {})
-            instructor = instructors_lookup.get(instructor_id, {})
-            term = terms_lookup.get(term_id, {})
+            course = courses_lookup.get(str(course_id), {}) if course_id else {}
+            instructor = (
+                instructors_lookup.get(str(instructor_id), {}) if instructor_id else {}
+            )
+            term = terms_lookup.get(str(term_id), {}) if term_id else {}
             term_formatted = self._format_term_for_cei_export(term)
 
-            record = {
+            record: Dict[str, Any] = {
                 "course": course.get("course_number", ""),
                 "section": section.get("section_number", "01"),
                 "effterm_c": term_formatted,
@@ -1120,18 +1149,31 @@ class CEIExcelAdapter(FileBaseAdapter):
         return records
 
     def _build_records_from_offerings(
-        self, data: Dict[str, List[Dict]]
+        self, data: Dict[str, List[Dict[str, Any]]]
     ) -> List[Dict[str, Any]]:
         """Build records from offerings (fallback when sections unavailable)."""
-        records = []
-        courses = data.get("courses", [])
-        users = data.get("users", [])
-        terms = data.get("terms", [])
-        offerings = data.get("offerings", [])
+        records: List[Dict[str, Any]] = []
+        courses: List[Dict[str, Any]] = data.get("courses", [])
+        users: List[Dict[str, Any]] = data.get("users", [])
+        terms: List[Dict[str, Any]] = data.get("terms", [])
+        offerings: List[Dict[str, Any]] = data.get("offerings", [])
 
         instructors = [user for user in users if user.get("role") == "instructor"]
-        instructors_lookup = {user["user_id"]: user for user in instructors}
-        terms_lookup = {term["term_id"]: term for term in terms}
+        instructors_lookup: Dict[str, Dict[str, Any]] = {}
+        for user in instructors:
+            user_id = user.get("user_id")
+            if user_id:
+                instructors_lookup[str(user_id)] = user
+
+        terms_lookup: Dict[str, Dict[str, Any]] = {}
+        for term in terms:
+            term_id_value = term.get("term_id")
+            if term_id_value:
+                terms_lookup[str(term_id_value)] = term
+
+        empty_course: Dict[str, Any] = {}
+        empty_instructor: Dict[str, Any] = {}
+        empty_term: Dict[str, Any] = {}
 
         for offering in offerings:
             course_number = offering.get("course_number", "")
@@ -1139,13 +1181,18 @@ class CEIExcelAdapter(FileBaseAdapter):
             instructor_id = offering.get("instructor_id")
 
             course = next(
-                (c for c in courses if c.get("course_number") == course_number), {}
+                (c for c in courses if c.get("course_number") == course_number),
+                empty_course,
             )
-            instructor = instructors_lookup.get(instructor_id, {})
-            term = terms_lookup.get(term_id, {})
+            instructor = (
+                instructors_lookup.get(str(instructor_id), empty_instructor)
+                if instructor_id
+                else empty_instructor
+            )
+            term = terms_lookup.get(str(term_id), empty_term) if term_id else empty_term
             term_formatted = self._format_term_for_cei_export(term)
 
-            record = {
+            record: Dict[str, Any] = {
                 "course": course_number,
                 "section": offering.get("section_number", "01"),
                 "effterm_c": term_formatted,
@@ -1158,13 +1205,13 @@ class CEIExcelAdapter(FileBaseAdapter):
         return records
 
     def _build_synthesized_records(
-        self, data: Dict[str, List[Dict]]
+        self, data: Dict[str, List[Dict[str, Any]]]
     ) -> List[Dict[str, Any]]:
         """Synthesize records from courses and instructors (last resort)."""
-        records = []
-        courses = data.get("courses", [])
-        users = data.get("users", [])
-        terms = data.get("terms", [])
+        records: List[Dict[str, Any]] = []
+        courses: List[Dict[str, Any]] = data.get("courses", [])
+        users: List[Dict[str, Any]] = data.get("users", [])
+        terms: List[Dict[str, Any]] = data.get("terms", [])
 
         instructors = [user for user in users if user.get("role") == "instructor"]
 
@@ -1173,7 +1220,7 @@ class CEIExcelAdapter(FileBaseAdapter):
                 term = terms[0] if terms else {}
                 term_formatted = self._format_term_for_cei_export(term)
 
-                record = {
+                record: Dict[str, Any] = {
                     "course": course.get("course_number", ""),
                     "section": "01",  # Default section
                     "effterm_c": term_formatted,

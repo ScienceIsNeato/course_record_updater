@@ -1,6 +1,6 @@
 """Courses API routes."""
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
@@ -42,6 +42,16 @@ from src.utils.logging_config import get_logger
 
 courses_bp = Blueprint("courses", __name__, url_prefix="/api")
 logger = get_logger(__name__)
+
+
+def _get_request_json() -> Dict[str, Any]:
+    """Return a typed JSON object body or an empty dict."""
+    payload = request.get_json(silent=True)
+    return (
+        cast(Dict[str, Any], payload)
+        if isinstance(payload, dict)
+        else cast(Dict[str, Any], {})
+    )
 
 
 @courses_bp.route("/courses", methods=["GET"])
@@ -103,7 +113,16 @@ def _user_can_access_program(current_user: Dict[str, Any], program_id: str) -> b
         return False
     if current_user.get("role") == UserRole.SITE_ADMIN.value:
         return True
-    return program_id in current_user.get("program_ids", [])
+    raw_program_ids = current_user.get("program_ids")
+    program_id_values: List[Any] = (
+        cast(List[Any], raw_program_ids) if isinstance(raw_program_ids, list) else []
+    )
+    user_program_ids: List[str] = [
+        str(program_id_value)
+        for program_id_value in program_id_values
+        if program_id_value
+    ]
+    return program_id in user_program_ids
 
 
 def _get_courses_by_scope(
@@ -156,12 +175,29 @@ def _get_institution_courses(
 
         current_user = get_current_user_safe()
         if current_user and current_user.get("role") == UserRole.PROGRAM_ADMIN.value:
-            user_program_ids = current_user.get("program_ids", [])
+            raw_program_ids = current_user.get("program_ids")
+            program_id_values: List[Any] = (
+                cast(List[Any], raw_program_ids)
+                if isinstance(raw_program_ids, list)
+                else []
+            )
+            user_program_ids: List[str] = [
+                str(program_id_value)
+                for program_id_value in program_id_values
+                if program_id_value
+            ]
             if user_program_ids:
                 courses = [
                     c
                     for c in courses
-                    if any(pid in user_program_ids for pid in c.get("program_ids", []))
+                    if any(
+                        pid in user_program_ids
+                        for pid in (
+                            [str(value) for value in c.get("program_ids", []) if value]
+                            if isinstance(c.get("program_ids"), list)
+                            else []
+                        )
+                    )
                 ]
                 context_info = f"programs {user_program_ids}"
 
@@ -186,7 +222,7 @@ def _get_program_courses(
 def create_course_api() -> ResponseReturnValue:
     """Create a new course."""
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -203,8 +239,9 @@ def create_course_api() -> ResponseReturnValue:
                 400,
             )
 
-        data["institution_id"] = institution_id
-        course_id = create_course(data)
+        course_payload = dict(data)
+        course_payload["institution_id"] = institution_id
+        course_id = create_course(course_payload)
 
         if course_id:
             return (
@@ -287,7 +324,7 @@ def assign_course_to_default(course_id: str) -> ResponseReturnValue:
         if not institution_id:
             current_user = get_current_user_safe()
             if current_user and current_user.get("role") == UserRole.SITE_ADMIN.value:
-                payload = request.get_json(silent=True) or {}
+                payload = _get_request_json()
                 institution_id = str(
                     payload.get("institution_id")
                     or request.args.get("institution_id")
@@ -346,7 +383,7 @@ def get_course_by_id_endpoint(course_id: str) -> ResponseReturnValue:
 def update_course_endpoint(course_id: str) -> ResponseReturnValue:
     """Update course details."""
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -360,11 +397,22 @@ def update_course_endpoint(course_id: str) -> ResponseReturnValue:
         ) != course.get("institution_id"):
             return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
 
+        update_payload = dict(data)
         if "program_ids" in data:
-            program_ids = data.pop("program_ids")
+            raw_program_ids = update_payload.pop("program_ids")
+            program_id_values: List[Any] = (
+                cast(List[Any], raw_program_ids)
+                if isinstance(raw_program_ids, list)
+                else []
+            )
+            program_ids = [
+                str(program_id_value)
+                for program_id_value in program_id_values
+                if program_id_value
+            ]
             update_course_programs(course_id, program_ids)
 
-        success = update_course(course_id, data)
+        success = update_course(course_id, update_payload)
 
         if success:
             updated_course = get_course_by_id(course_id)
@@ -402,8 +450,8 @@ def duplicate_course_endpoint(course_id: str) -> ResponseReturnValue:
         ) != source_course.get("institution_id"):
             return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
 
-        payload = request.get_json(silent=True) or {}
-        override_fields = {
+        payload = _get_request_json()
+        override_fields: Dict[str, Any] = {
             key: payload.get(key)
             for key in [
                 "course_number",
@@ -416,9 +464,19 @@ def duplicate_course_endpoint(course_id: str) -> ResponseReturnValue:
         }
 
         if "program_ids" in payload:
-            override_fields["program_ids"] = payload.get("program_ids")
+            raw_program_ids = payload.get("program_ids")
+            program_id_values: List[Any] = (
+                cast(List[Any], raw_program_ids)
+                if isinstance(raw_program_ids, list)
+                else []
+            )
+            override_fields["program_ids"] = [
+                str(program_id_value)
+                for program_id_value in program_id_values
+                if program_id_value
+            ]
 
-        duplicate_programs = payload.get("duplicate_programs", True)
+        duplicate_programs = bool(payload.get("duplicate_programs", True))
 
         new_course_id = duplicate_course_record(
             source_course,

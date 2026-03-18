@@ -1,5 +1,6 @@
 """Unit tests for reminders API routes (migrated from test_api_routes.py)."""
 
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -9,7 +10,7 @@ class TestCourseReminderEndpoint:
     """Test /api/send-course-reminder endpoint."""
 
     @pytest.fixture
-    def authenticated_client_and_token(self, client):
+    def authenticated_client_and_token(self, client: Any) -> Any:
         """Create an authenticated client with CSRF properly configured."""
         from tests.test_utils import create_test_session
 
@@ -35,13 +36,13 @@ class TestCourseReminderEndpoint:
     @patch("src.services.email_service.EmailService.send_course_assessment_reminder")
     def test_send_course_reminder_success(
         self,
-        mock_send_email,
-        mock_get_current_user,
-        mock_get_institution,
-        mock_get_course,
-        mock_get_instructor,
-        authenticated_client_and_token,
-    ):
+        mock_send_email: Any,
+        mock_get_current_user: Any,
+        mock_get_institution: Any,
+        mock_get_course: Any,
+        mock_get_instructor: Any,
+        authenticated_client_and_token: Any,
+    ) -> None:
         """Test successfully sending course reminder email."""
         client = authenticated_client_and_token
         # Setup mocks
@@ -88,8 +89,11 @@ class TestCourseReminderEndpoint:
     @patch("src.database.database_service.get_user_by_id")
     @patch("src.database.database_service.get_course_by_id")
     def test_send_course_reminder_missing_json(
-        self, mock_get_course, mock_get_instructor, authenticated_client_and_token
-    ):
+        self,
+        mock_get_course: Any,
+        mock_get_instructor: Any,
+        authenticated_client_and_token: Any,
+    ) -> None:
         """Test sending reminder with no JSON data returns 400."""
         client = authenticated_client_and_token
         response = client.post(
@@ -104,8 +108,11 @@ class TestCourseReminderEndpoint:
     @patch("src.database.database_service.get_user_by_id")
     @patch("src.database.database_service.get_course_by_id")
     def test_send_course_reminder_missing_fields(
-        self, mock_get_course, mock_get_instructor, authenticated_client_and_token
-    ):
+        self,
+        mock_get_course: Any,
+        mock_get_instructor: Any,
+        authenticated_client_and_token: Any,
+    ) -> None:
         """Test sending reminder with missing required fields returns 400."""
         client = authenticated_client_and_token
         response = client.post(
@@ -121,8 +128,11 @@ class TestCourseReminderEndpoint:
     @patch("src.database.database_service.get_user_by_id")
     @patch("src.database.database_service.get_course_by_id")
     def test_send_course_reminder_instructor_not_found(
-        self, mock_get_course, mock_get_instructor, authenticated_client_and_token
-    ):
+        self,
+        mock_get_course: Any,
+        mock_get_instructor: Any,
+        authenticated_client_and_token: Any,
+    ) -> None:
         """Test sending reminder for non-existent instructor returns 404."""
         client = authenticated_client_and_token
         mock_get_instructor.return_value = None
@@ -143,8 +153,11 @@ class TestCourseReminderEndpoint:
     @patch("src.database.database_service.get_user_by_id")
     @patch("src.database.database_service.get_course_by_id")
     def test_send_course_reminder_course_not_found(
-        self, mock_get_course, mock_get_instructor, authenticated_client_and_token
-    ):
+        self,
+        mock_get_course: Any,
+        mock_get_instructor: Any,
+        authenticated_client_and_token: Any,
+    ) -> None:
         """Test sending reminder for non-existent course returns 404."""
         client = authenticated_client_and_token
         mock_get_instructor.return_value = {
@@ -173,13 +186,13 @@ class TestCourseReminderEndpoint:
     @patch("src.services.email_service.EmailService.send_course_assessment_reminder")
     def test_send_course_reminder_instructor_no_name(
         self,
-        mock_send_email,
-        mock_get_current_user,
-        mock_get_instructor,
-        mock_get_course,
-        mock_get_institution,
-        authenticated_client_and_token,
-    ):
+        mock_send_email: Any,
+        mock_get_current_user: Any,
+        mock_get_instructor: Any,
+        mock_get_course: Any,
+        mock_get_institution: Any,
+        authenticated_client_and_token: Any,
+    ) -> None:
         """Test sending reminder when instructor has no first/last name uses email fallback."""
         client = authenticated_client_and_token
         # Instructor with no first/last name
@@ -225,13 +238,13 @@ class TestCourseReminderEndpoint:
     @patch("src.services.email_service.EmailService.send_course_assessment_reminder")
     def test_send_course_reminder_email_exception(
         self,
-        mock_send_email,
-        mock_get_current_user,
-        mock_get_institution,
-        mock_get_course,
-        mock_get_instructor,
-        authenticated_client_and_token,
-    ):
+        mock_send_email: Any,
+        mock_get_current_user: Any,
+        mock_get_institution: Any,
+        mock_get_course: Any,
+        mock_get_instructor: Any,
+        authenticated_client_and_token: Any,
+    ) -> None:
         """Test sending reminder handles email exceptions gracefully."""
         client = authenticated_client_and_token
         # Setup mocks

@@ -7,7 +7,7 @@ import os
 from tests.e2e.mailtrap_scraper import wait_for_email
 
 
-def test_scraper_basic():
+def test_scraper_basic() -> None:
     """Test that scraper can fetch emails from Mailtrap UI"""
     print("\n" + "=" * 60)
     print("🔬 Testing Mailtrap UI Scraper")
