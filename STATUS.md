@@ -32,6 +32,12 @@
 - `sm scour -g overconfidence:e2e --verbose --no-cache` ✅
 - `sm scour --json --output-file /tmp/scour-green-final.json --no-cache` ✅ (`all_passed: true`)
 
+**Delivery**:
+
+- Commit: `f296bf9`
+- Branch: `chore/slop-mop-remediation`
+- PR: `#69` (`https://github.com/ScienceIsNeato/course_record_updater/pull/69`)
+
 ## Latest Work: Swab/Scour Policy Update (2026-03-17)
 
 **Status**: ✅ Applied via `sm config`
