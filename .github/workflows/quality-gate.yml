@@ -75,6 +75,8 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
           pip install --no-cache-dir slopmop==0.9.0
+      - name: Fix slopmop template dirs
+        run: python scripts/ci_fix_slopmop_templates.py
       - name: Generate slop-mop SARIF
         continue-on-error: true
         run: |
@@ -124,6 +126,8 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
           pip install --no-cache-dir slopmop==0.9.0
+      - name: Fix slopmop template dirs
+        run: python scripts/ci_fix_slopmop_templates.py
       - name: Run Python Lint & Format (black, isort, flake8)
         run: sm swab -g laziness:sloppy-formatting.py --verbose --no-cache
         env:
@@ -152,6 +156,8 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
           pip install --no-cache-dir slopmop==0.9.0
+      - name: Fix slopmop template dirs
+        run: python scripts/ci_fix_slopmop_templates.py
       - name: Run Coverage (unit + integration)
         run: |
           echo "=== Environment Debug ==="
@@ -426,6 +432,8 @@ jobs:
           pip install -r requirements-dev.txt
           pip install semgrep
           pip install --no-cache-dir slopmop==0.9.0
+      - name: Fix slopmop template dirs
+        run: python scripts/ci_fix_slopmop_templates.py
       - name: Run Security Audit
         run: |
           # Force unbuffered output for real-time visibility in CI
@@ -477,6 +485,8 @@ jobs:
       - name: Install slopmop
         run: |
           pip install --no-cache-dir slopmop==0.9.0
+      - name: Fix slopmop template dirs
+        run: python scripts/ci_fix_slopmop_templates.py
       - name: Run Python Static Analysis (mypy, imports)
         run: |
           sm swab -g overconfidence:missing-annotations.py --verbose --no-cache
@@ -506,6 +516,8 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
           pip install --no-cache-dir slopmop==0.9.0
+      - name: Fix slopmop template dirs
+        run: python scripts/ci_fix_slopmop_templates.py
       - name: Run Code Duplication Check
         run: sm scour -g myopia:source-duplication --verbose --no-cache
         env:
@@ -540,6 +552,8 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
           pip install --no-cache-dir slopmop==0.9.0
+      - name: Fix slopmop template dirs
+        run: python scripts/ci_fix_slopmop_templates.py
       - name: Run Frontend Sanity Gate
         run: sm swab -g overconfidence:frontend-sanity --verbose --no-cache
         env:
@@ -581,6 +595,8 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
           pip install --no-cache-dir slopmop==0.9.0
+      - name: Fix slopmop template dirs
+        run: python scripts/ci_fix_slopmop_templates.py
       - name: Run JavaScript Lint & Format (ESLint, Prettier)
         run: sm swab -g laziness:sloppy-formatting.js --verbose --no-cache
         env:
@@ -660,5 +676,7 @@ jobs:
         run: |
           pip install radon xenon
           pip install --no-cache-dir slopmop==0.9.0
+      - name: Fix slopmop template dirs
+        run: python scripts/ci_fix_slopmop_templates.py
       - name: Check Complexity (threshold 15)
         run: sm swab -g laziness:complexity-creep.py --verbose --no-cache
