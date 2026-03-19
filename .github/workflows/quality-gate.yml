@@ -74,7 +74,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-          pip install slopmop==0.9.0
+          pip install --no-cache-dir slopmop==0.9.0
+          sm --version
       - name: Generate slop-mop SARIF
         continue-on-error: true
         run: |
@@ -102,7 +103,7 @@ jobs:
             slopmop-swab.sarif
             slopmop-swab.json
 
-  python-lint-format:
+  slopmop-laziness-sloppy-formatting-py:
     runs-on: ubuntu-latest
     needs: setup
     steps:
@@ -123,13 +124,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-          pip install slopmop==0.9.0
+          pip install --no-cache-dir slopmop==0.9.0
+          sm --version
       - name: Run Python Lint & Format (black, isort, flake8)
         run: sm swab -g laziness:sloppy-formatting.py --verbose --no-cache
         env:
           PYTHONPATH: .
 
-  unit-tests-with-coverage:
+  slopmop-overconfidence-py-quality:
     runs-on: ubuntu-latest
     needs: setup
     timeout-minutes: 20
@@ -151,7 +153,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-          pip install slopmop==0.9.0
+          pip install --no-cache-dir slopmop==0.9.0
+          sm --version
       - name: Run Coverage (unit + integration)
         run: |
           echo "=== Environment Debug ==="
@@ -402,7 +405,7 @@ jobs:
             test-results/
             logs/test_server.log
 
-  security-check:
+  slopmop-myopia-dependency-risk-py:
     runs-on: ubuntu-latest
     needs: setup
     timeout-minutes: 10
@@ -425,7 +428,8 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
           pip install semgrep
-          pip install slopmop==0.9.0
+          pip install --no-cache-dir slopmop==0.9.0
+          sm --version
       - name: Run Security Audit
         run: |
           # Force unbuffered output for real-time visibility in CI
@@ -453,7 +457,7 @@ jobs:
             bandit-report.json
             safety-report.txt
 
-  python-static-analysis:
+  slopmop-overconfidence-static-analysis-py:
     runs-on: ubuntu-latest
     needs: setup
     steps:
@@ -475,7 +479,9 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
       - name: Install slopmop
-        run: pip install slopmop==0.9.0
+        run: |
+          pip install --no-cache-dir slopmop==0.9.0
+          sm --version
       - name: Run Python Static Analysis (mypy, imports)
         run: |
           sm swab -g overconfidence:missing-annotations.py --verbose --no-cache
@@ -483,7 +489,7 @@ jobs:
         env:
           PYTHONPATH: .
 
-  duplication-check:
+  slopmop-myopia-source-duplication:
     runs-on: ubuntu-latest
     needs: setup
     steps:
@@ -504,13 +510,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-          pip install slopmop==0.9.0
+          pip install --no-cache-dir slopmop==0.9.0
+          sm --version
       - name: Run Code Duplication Check
         run: sm scour -g myopia:source-duplication --verbose --no-cache
         env:
           PYTHONPATH: .
 
-  frontend-sanity:
+  slopmop-overconfidence-frontend-sanity:
     runs-on: ubuntu-latest
     needs: setup
     timeout-minutes: 10
@@ -538,7 +545,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-          pip install slopmop==0.9.0
+          pip install --no-cache-dir slopmop==0.9.0
+          sm --version
       - name: Run Frontend Sanity Gate
         run: sm swab -g overconfidence:frontend-sanity --verbose --no-cache
         env:
@@ -552,7 +560,7 @@ jobs:
             logs/frontend_sanity_server.log
             logs/application.log
 
-  js-checks:
+  slopmop-overconfidence-js-quality:
     runs-on: ubuntu-latest
     needs: setup
     steps:
@@ -579,7 +587,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-          pip install slopmop==0.9.0
+          pip install --no-cache-dir slopmop==0.9.0
+          sm --version
       - name: Run JavaScript Lint & Format (ESLint, Prettier)
         run: sm swab -g laziness:sloppy-formatting.js --verbose --no-cache
         env:
@@ -595,7 +604,7 @@ jobs:
 
   coverage-new-code:
     runs-on: ubuntu-latest
-    needs: [setup, unit-tests-with-coverage]
+    needs: [setup, slopmop-overconfidence-py-quality]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -645,7 +654,7 @@ jobs:
             coverage-diff.html
             logs/diff_coverage_report.txt
 
-  complexity:
+  slopmop-laziness-complexity-creep-py:
     runs-on: ubuntu-latest
     needs: setup
     timeout-minutes: 10
@@ -658,6 +667,7 @@ jobs:
       - name: Install radon and xenon
         run: |
           pip install radon xenon
-          pip install slopmop==0.9.0
+          pip install --no-cache-dir slopmop==0.9.0
+          sm --version
       - name: Check Complexity (threshold 15)
         run: sm swab -g laziness:complexity-creep.py --verbose --no-cache

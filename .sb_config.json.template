@@ -1,6 +1,31 @@
 {
   "version": "1.0",
-  "swabbing_time": 20,
+  "custom_gates": [
+    {
+      "name": "frontend-sanity",
+      "description": "LoopCloser frontend HTML asset API and JS syntax sanity",
+      "category": "overconfidence",
+      "command": "bash -lc './scripts/run_frontend_sanity.sh'",
+      "level": "swab",
+      "timeout": 45
+    },
+    {
+      "name": "smoke",
+      "description": "LoopCloser smoke suite",
+      "category": "overconfidence",
+      "command": "bash -lc './scripts/run_smoke.sh'",
+      "level": "scour",
+      "timeout": 90
+    },
+    {
+      "name": "e2e",
+      "description": "LoopCloser end-to-end suite",
+      "category": "overconfidence",
+      "command": "bash -lc './scripts/run_uat.sh'",
+      "level": "scour",
+      "timeout": 1800
+    }
+  ],
   "overconfidence": {
     "enabled": true,
     "gates": {
@@ -9,12 +34,13 @@
         "auto_fix": false,
         "config_file_path": null,
         "test_dirs": [
-          "tests"
+          "tests/unit",
+          "tests/integration"
         ],
         "timeout": 300
       },
       "coverage-gaps.py": {
-          "command": "bash -lc './scripts/run_frontend_sanity.sh'",
+        "enabled": true,
         "auto_fix": false,
         "config_file_path": null,
         "threshold": 80
@@ -22,9 +48,13 @@
       "missing-annotations.py": {
         "enabled": true,
         "auto_fix": false,
-        "command": "bash -lc './scripts/run_smoke.sh'",
+        "config_file_path": null,
         "strict_typing": true,
-        "include_dirs": []
+        "include_dirs": [
+          "src",
+          "scripts",
+          "tests"
+        ]
       },
       "type-blindness.py": {
         "enabled": true,
@@ -35,7 +65,7 @@
       "untested-code.js": {
         "enabled": true,
         "auto_fix": false,
-        "command": "bash -lc './scripts/run_uat.sh'",
+        "config_file_path": null,
         "test_command": "npm test"
       },
       "coverage-gaps.js": {
@@ -51,7 +81,7 @@
         "tsconfig": "tsconfig.json"
       },
       "coverage-gaps.dart": {
-        "enabled": true,
+        "enabled": false,
         "auto_fix": false,
         "config_file_path": null,
         "threshold": 80
@@ -66,18 +96,22 @@
         "auto_fix": false,
         "config_file_path": null,
         "max_allowed": 0,
-        "exclude_dirs": []
+        "exclude_dirs": [
+          ".specstory"
+        ]
       },
       "hand-wavy-tests.js": {
         "enabled": true,
         "auto_fix": false,
         "config_file_path": null,
         "additional_assert_functions": [],
-        "exclude_dirs": [],
+        "exclude_dirs": [
+          ".specstory"
+        ],
         "max_violations": 0
       },
       "bogus-tests.dart": {
-        "enabled": true,
+        "enabled": false,
         "auto_fix": false,
         "config_file_path": null,
         "max_allowed": 0
@@ -99,7 +133,9 @@
         "enabled": true,
         "auto_fix": false,
         "config_file_path": null,
-        "exclude_dirs": [],
+        "exclude_dirs": [
+          ".specstory"
+        ],
         "max_files": 50000
       },
       "gate-dodging": {
@@ -122,7 +158,7 @@
       "sloppy-formatting.js": {
         "enabled": true,
         "auto_fix": false,
-        "config_file_path": null,
+        "config_file_path": "config/.eslintrc.json",
         "npm_install_flags": []
       },
       "sloppy-frontend.js": {
@@ -132,7 +168,7 @@
         "frontend_dirs": []
       },
       "generated-artifacts.dart": {
-        "enabled": true,
+        "enabled": false,
         "auto_fix": false,
         "config_file_path": null,
         "exclude_paths": []
@@ -143,7 +179,11 @@
         "config_file_path": null,
         "max_rank": "C",
         "max_complexity": 15,
-        "src_dirs": []
+        "src_dirs": [
+          "src",
+          "scripts",
+          "tests"
+        ]
       },
       "dead-code.py": {
         "enabled": true,
@@ -151,6 +191,21 @@
         "config_file_path": null,
         "min_confidence": 80,
         "exclude_patterns": [
+          "**/.specstory/**",
+          "**/.git/**",
+          "**/.mypy_cache/**",
+          "**/.pytest_cache/**",
+          "**/.ruff_cache/**",
+          "**/htmlcov/**",
+          "**/coverage/**",
+          "**/logs/**",
+          "**/archive/**",
+          "**/research/**",
+          "**/data/**",
+          "**/.slopmop/**",
+          "**/.agent/**",
+          "**/.claude/**",
+          "**/.vscode/**",
           "**/venv/**",
           "**/.venv/**",
           "**/node_modules/**",
@@ -164,7 +219,8 @@
           "**/cursor-rules/**"
         ],
         "src_dirs": [
-          "."
+          "src",
+          "scripts"
         ],
         "whitelist_file": ""
       },
@@ -199,11 +255,28 @@
           "detect-secrets"
         ],
         "exclude_dirs": [
+          ".specstory",
           "venv",
           ".venv",
           "node_modules",
           "cursor-rules",
-          "archives",
+          "archive",
+          "build",
+          "coverage",
+          "htmlcov",
+          "research",
+          "docs",
+          "demos",
+          "templates",
+          "static",
+          "flask_session",
+          "data",
+          ".envrc.template",
+          ".github",
+          ".mypy_cache",
+          ".pytest_cache",
+          ".ruff_cache",
+          ".slopmop",
           "logs",
           "tests",
           "*/.venv",
@@ -221,11 +294,27 @@
           "detect-secrets"
         ],
         "exclude_dirs": [
+          ".specstory",
           "venv",
           ".venv",
           "node_modules",
           "cursor-rules",
-          "archives",
+          "archive",
+          "build",
+          "coverage",
+          "htmlcov",
+          "research",
+          "docs",
+          "demos",
+          "templates",
+          "static",
+          "flask_session",
+          "data",
+          ".mypy_cache",
+          ".pytest_cache",
+          ".ruff_cache",
+          ".slopmop",
+          ".secrets.baseline",
           "logs",
           "tests",
           "*/.venv",
@@ -239,11 +328,37 @@
         "config_file_path": null,
         "threshold": 5,
         "include_dirs": [
-          "."
+          "src",
+          "tests",
+          "scripts",
+          "static",
+          "templates"
         ],
         "min_tokens": 50,
         "min_lines": 5,
-        "exclude_dirs": []
+        "exclude_dirs": [
+          ".specstory",
+          ".git",
+          ".mypy_cache",
+          ".pytest_cache",
+          ".ruff_cache",
+          ".slopmop",
+          ".agent",
+          ".claude",
+          ".vscode",
+          "venv",
+          ".venv",
+          "node_modules",
+          "cursor-rules",
+          "coverage",
+          "htmlcov",
+          "build",
+          "logs",
+          "archive",
+          "research",
+          "data",
+          "flask_session"
+        ]
       },
       "string-duplication.py": {
         "enabled": true,
@@ -257,6 +372,21 @@
           "**/*.py"
         ],
         "ignore_patterns": [
+          "**/.specstory/**",
+          "**/htmlcov/**",
+          "**/coverage/**",
+          "**/build/**",
+          "**/logs/**",
+          "**/archive/**",
+          "**/research/**",
+          "**/data/**",
+          "**/.slopmop/**",
+          "**/.mypy_cache/**",
+          "**/.pytest_cache/**",
+          "**/.ruff_cache/**",
+          "**/.agent/**",
+          "**/.claude/**",
+          "**/.vscode/**",
           "**/node_modules/**",
           "**/.venv/**",
           "**/venv/**",
@@ -269,19 +399,45 @@
         ]
       },
       "code-sprawl": {
-        "enabled": true,
+        "enabled": false,
         "auto_fix": false,
         "config_file_path": null,
         "max_file_lines": 1000,
         "max_function_lines": 100,
         "include_dirs": [
-          "."
+          "src",
+          "tests",
+          "scripts",
+          "static",
+          "templates"
         ],
-        "exclude_dirs": [],
+        "exclude_dirs": [
+          ".specstory",
+          ".git",
+          ".mypy_cache",
+          ".pytest_cache",
+          ".ruff_cache",
+          ".slopmop",
+          ".agent",
+          ".claude",
+          ".vscode",
+          "venv",
+          ".venv",
+          "node_modules",
+          "cursor-rules",
+          "coverage",
+          "htmlcov",
+          "build",
+          "logs",
+          "archive",
+          "research",
+          "data",
+          "flask_session"
+        ],
         "extensions": []
       },
       "ignored-feedback": {
-        "enabled": true,
+        "enabled": false,
         "auto_fix": false,
         "config_file_path": null,
         "fail_on_unresolved": false
@@ -292,5 +448,7 @@
         "config_file_path": null
       }
     }
-  }
+  },
+  "disabled_gates": [],
+  "swabbing_time": 30
 }

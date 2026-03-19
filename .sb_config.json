@@ -158,7 +158,7 @@
       "sloppy-formatting.js": {
         "enabled": true,
         "auto_fix": false,
-        "config_file_path": "config/.eslintrc.js",
+        "config_file_path": "config/.eslintrc.json",
         "npm_install_flags": []
       },
       "sloppy-frontend.js": {
