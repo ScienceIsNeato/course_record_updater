@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import Page
 
 from tests.e2e.conftest import BASE_URL
@@ -172,9 +173,27 @@ def _step_verify_integrity(page: Page, original_course_count: int) -> None:
     """Step 4: Verify data integrity after roundtrip."""
     print("\n✅ STEP 4: Verify data integrity...")
 
-    # Navigate with explicit wait for any redirects to settle
-    page.goto(f"{BASE_URL}/courses", wait_until="networkidle")
-    page.wait_for_timeout(1000)  # Extra wait for any post-load redirects
+    # Import completion can trigger app-side redirects; retry once redirects settle.
+    navigated = False
+    for attempt in range(3):
+        try:
+            page.goto(
+                f"{BASE_URL}/courses", wait_until="domcontentloaded", timeout=15000
+            )
+            page.wait_for_load_state("networkidle")
+            page.wait_for_timeout(750)
+            if "/courses" in page.url:
+                navigated = True
+                break
+        except PlaywrightError as exc:
+            if "interrupted by another navigation" not in str(exc) or attempt == 2:
+                raise
+            page.wait_for_timeout(1000)
+
+    if not navigated:
+        pytest.fail(
+            f"Could not stabilize navigation to /courses after import; final URL: {page.url}"
+        )
 
     course_rows = page.locator("table tbody tr")
     visible_course_count = course_rows.count()
