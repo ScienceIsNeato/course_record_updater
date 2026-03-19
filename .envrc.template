@@ -46,7 +46,7 @@
 #    # Then edit .envrc:
 #    export ETHEREAL_USER="real-user@ethereal.email"
 #    export ETHEREAL_PASS="real-password"
-#    export BREVO_MAILER_TOKEN="real-brevo-api-token"
+#    export BREVO_API_KEY="real-brevo-api-token"  # pragma: allowlist secret
 #
 # 2. CI/CD (GitHub Secrets):
 #    Add secrets via: GitHub repo → Settings → Secrets and variables → Actions  # pragma: allowlist secret

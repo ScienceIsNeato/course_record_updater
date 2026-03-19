@@ -182,6 +182,7 @@ python scripts/seed_db.py --clear
     Make sure the `GOOGLE_APPLICATION_CREDENTIALS` environment variable points to your service account key file, or that you are logged in via `gcloud auth application-default login`.
     ```bash
     # Example for service account key:
+    export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/gcloud/loopcloser-service-account.json"
     ```
 6.  **Run the application:**
     ```bash
