@@ -430,6 +430,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
+          pip install pip-audit
           pip install semgrep
           pip install --no-cache-dir slopmop==0.9.0
       - name: Fix slopmop template dirs
