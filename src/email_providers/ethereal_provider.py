@@ -8,13 +8,14 @@ Perfect for E2E testing where you need to verify email delivery and content.
 See: https://ethereal.email/
 """
 
-import email
 import imaplib
 import smtplib
 import time
+from email import message_from_bytes
+from email.message import Message
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 from src.email_providers.base_provider import EmailProvider
 from src.utils.logging_config import get_logger
@@ -185,9 +186,7 @@ class EtherealProvider(EmailProvider):
             logger.error(f"[Ethereal Provider] IMAP connection failed: {e}")
             return None
 
-    def _extract_email_body(
-        self, email_message: email.message.Message
-    ) -> tuple[str, str]:
+    def _extract_email_body(self, email_message: Message) -> tuple[str, str]:
         """Extract text and HTML body from email message"""
         body_text = ""
         body_html = ""
@@ -263,7 +262,7 @@ class EtherealProvider(EmailProvider):
             # Type guard: ensure we have bytes
             if not isinstance(email_body, bytes):
                 return None
-            email_message = email.message_from_bytes(email_body)
+            email_message = cast(Message, message_from_bytes(email_body))
 
             # Extract email details
             subject = email_message.get("Subject", "")

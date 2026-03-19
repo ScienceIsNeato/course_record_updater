@@ -1,148 +1,226 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
     <title>Complete Registration - MockU Course Admin</title>
     <!-- nosemgrep: html.security.audit.missing-integrity.missing-integrity -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM"
+      crossorigin="anonymous"
+    />
     <!-- nosemgrep: html.security.audit.missing-integrity.missing-integrity -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
-    <link rel="icon" href="{{ url_for('static', filename='images/mocku_logo.jpg') }}" type="image/jpeg">
-</head>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='auth.css') }}"
+    />
+    <link
+      rel="icon"
+      href="{{ url_for('static', filename='images/mocku_logo.jpg') }}"
+      type="image/jpeg"
+    />
+  </head>
 
-<body class="auth-body">
+  <body class="auth-body">
     <div class="auth-container">
-        <div class="auth-card">
-            <div class="auth-header">
-                <img src="{{ url_for('static', filename='images/loopcloser_wordmark.png') }}" alt="Loopcloser" class="auth-logo" style="height: 48px; width: auto;">
-                <h2 class="auth-title">Complete Registration</h2>
-                <p class="auth-subtitle">Set up your account</p>
-            </div>
-
-            <!-- Invitation Details (populated after validation) -->
-            <output id="invitationDetails" class="alert alert-info d-none">
-                <h6 class="alert-heading"><i class="fas fa-envelope-open-text me-2"></i>Invitation Details</h6>
-                <p class="mb-1"><strong>From:</strong> <span id="inviterName"></span></p>
-                <p class="mb-1"><strong>Institution:</strong> <span id="institutionName"></span></p>
-                <div id="personalMessageSection" class="d-none mt-2 pt-2 border-top">
-                    <p class="mb-1"><strong>Personal Message:</strong></p>
-                    <p class="mb-0 fst-italic" id="personalMessage"></p>
-                </div>
-            </output>
-
-            <!-- Status Messages -->
-            <div id="statusMessage" class="alert d-none" role="alert"></div>
-
-            <!-- Loading State -->
-            <div id="loadingInvitation" class="text-center py-4">
-                <div class="spinner-border text-primary" aria-label="Loading">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <p class="text-muted mt-2">Validating invitation...</p>
-            </div>
-
-            <!-- Registration Form (hidden until invitation validated) -->
-            <form id="acceptInvitationForm" class="auth-form d-none" novalidate>
-                <input type="hidden" id="invitationToken" value="{{ invitation_token }}">
-
-                <!-- Email (pre-filled, readonly) -->
-                <div class="form-floating mb-3">
-                    <input type="email" class="form-control readonly-field" id="email" name="email" readonly required>
-                    <label for="email">Email Address</label>
-                </div>
-
-                <!-- Role (pre-filled, readonly) -->
-                <div class="form-floating mb-3">
-                    <input type="text" class="form-control readonly-field" id="role" name="role" readonly required>
-                    <label for="role">Role</label>
-                </div>
-
-                <!-- Display Name (test expects first_name + last_name) -->
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <div class="form-floating">
-                            <input type="text" class="form-control" id="firstName" name="first_name"
-                                placeholder="First Name" required>
-                            <label for="firstName">First Name</label>
-                            <div class="invalid-feedback">
-                                Please enter your first name.
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-floating">
-                            <input type="text" class="form-control" id="lastName" name="last_name"
-                                placeholder="Last Name" required>
-                            <label for="lastName">Last Name</label>
-                            <div class="invalid-feedback">
-                                Please enter your last name.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Password -->
-                <div class="input-group mb-2 has-validation">
-                    <div class="form-floating flex-grow-1">
-                        <input type="password" class="form-control" id="password" name="password" placeholder="Password"
-                            required minlength="8">
-                        <label for="password">Password</label>
-                    </div>
-                    <button class="btn btn-outline-secondary password-toggle-btn" type="button" id="togglePassword">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <div class="invalid-feedback w-100">
-                        Password does not meet requirements.
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <small class="text-muted">
-                        <strong>Password must contain:</strong><br>
-                        • At least 8 characters<br>
-                        • One uppercase letter (A-Z)<br>
-                        • One lowercase letter (a-z)<br>
-                        • One number (0-9)<br>
-                        • One special character (!@#$%^&*...)
-                    </small>
-                </div>
-
-                <!-- Confirm Password -->
-                <div class="input-group mb-4 has-validation">
-                    <div class="form-floating flex-grow-1">
-                        <input type="password" class="form-control" id="confirmPassword" name="confirm_password"
-                            placeholder="Confirm Password" required>
-                        <label for="confirmPassword">Confirm Password</label>
-                    </div>
-                    <button class="btn btn-outline-secondary password-toggle-btn" type="button" id="toggleConfirmPassword">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <div class="invalid-feedback w-100">
-                        Passwords must match.
-                    </div>
-                </div>
-
-                <button type="submit" class="btn btn-primary w-100" id="submitBtn">
-                    <span class="btn-text">Complete Registration</span>
-                    <span class="btn-spinner d-none">
-                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                        Creating account...
-                    </span>
-                </button>
-            </form>
+      <div class="auth-card">
+        <div class="auth-header">
+          <img
+            src="{{ url_for('static', filename='images/loopcloser_wordmark.png') }}"
+            alt="Loopcloser"
+            class="auth-logo"
+            style="height: 48px; width: auto"
+          />
+          <h2 class="auth-title">Complete Registration</h2>
+          <p class="auth-subtitle">Set up your account</p>
         </div>
+
+        <!-- Invitation Details (populated after validation) -->
+        <output id="invitationDetails" class="alert alert-info d-none">
+          <h6 class="alert-heading">
+            <i class="fas fa-envelope-open-text me-2"></i>Invitation Details
+          </h6>
+          <p class="mb-1">
+            <strong>From:</strong> <span id="inviterName"></span>
+          </p>
+          <p class="mb-1">
+            <strong>Institution:</strong> <span id="institutionName"></span>
+          </p>
+          <div id="personalMessageSection" class="d-none mt-2 pt-2 border-top">
+            <p class="mb-1"><strong>Personal Message:</strong></p>
+            <p class="mb-0 fst-italic" id="personalMessage"></p>
+          </div>
+        </output>
+
+        <!-- Status Messages -->
+        <div id="statusMessage" class="alert d-none" role="alert"></div>
+
+        <!-- Loading State -->
+        <div id="loadingInvitation" class="text-center py-4">
+          <div class="spinner-border text-primary" aria-label="Loading">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="text-muted mt-2">Validating invitation...</p>
+        </div>
+
+        <!-- Registration Form (hidden until invitation validated) -->
+        <form id="acceptInvitationForm" class="auth-form d-none" novalidate>
+          <input
+            type="hidden"
+            id="invitationToken"
+            value="{{ invitation_token }}"
+          />
+
+          <!-- Email (pre-filled, readonly) -->
+          <div class="form-floating mb-3">
+            <input
+              type="email"
+              class="form-control readonly-field"
+              id="email"
+              name="email"
+              readonly
+              required
+            />
+            <label for="email">Email Address</label>
+          </div>
+
+          <!-- Role (pre-filled, readonly) -->
+          <div class="form-floating mb-3">
+            <input
+              type="text"
+              class="form-control readonly-field"
+              id="role"
+              name="role"
+              readonly
+              required
+            />
+            <label for="role">Role</label>
+          </div>
+
+          <!-- Display Name (test expects first_name + last_name) -->
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <div class="form-floating">
+                <input
+                  type="text"
+                  class="form-control"
+                  id="firstName"
+                  name="first_name"
+                  placeholder="First Name"
+                  required
+                />
+                <label for="firstName">First Name</label>
+                <div class="invalid-feedback">
+                  Please enter your first name.
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-floating">
+                <input
+                  type="text"
+                  class="form-control"
+                  id="lastName"
+                  name="last_name"
+                  placeholder="Last Name"
+                  required
+                />
+                <label for="lastName">Last Name</label>
+                <div class="invalid-feedback">Please enter your last name.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div class="input-group mb-2 has-validation">
+            <div class="form-floating flex-grow-1">
+              <input
+                type="password"
+                class="form-control"
+                id="password"
+                name="password"
+                placeholder="Password"
+                required
+                minlength="8"
+              />
+              <label for="password">Password</label>
+            </div>
+            <button
+              class="btn btn-outline-secondary password-toggle-btn"
+              type="button"
+              id="togglePassword"
+            >
+              <i class="fas fa-eye"></i>
+            </button>
+            <div class="invalid-feedback w-100">
+              Password does not meet requirements.
+            </div>
+          </div>
+          <div class="mb-3">
+            <small class="text-muted">
+              <strong>Password must contain:</strong><br />
+              • At least 8 characters<br />
+              • One uppercase letter (A-Z)<br />
+              • One lowercase letter (a-z)<br />
+              • One number (0-9)<br />
+              • One special character (!@#$%^&*...)
+            </small>
+          </div>
+
+          <!-- Confirm Password -->
+          <div class="input-group mb-4 has-validation">
+            <div class="form-floating flex-grow-1">
+              <input
+                type="password"
+                class="form-control"
+                id="confirmPassword"
+                name="confirm_password"
+                placeholder="Confirm Password"
+                required
+              />
+              <label for="confirmPassword">Confirm Password</label>
+            </div>
+            <button
+              class="btn btn-outline-secondary password-toggle-btn"
+              type="button"
+              id="toggleConfirmPassword"
+            >
+              <i class="fas fa-eye"></i>
+            </button>
+            <div class="invalid-feedback w-100">Passwords must match.</div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100" id="submitBtn">
+            <span class="btn-text">Complete Registration</span>
+            <span class="btn-spinner d-none">
+              <span
+                class="spinner-border spinner-border-sm"
+                aria-hidden="true"
+              ></span>
+              Creating account...
+            </span>
+          </button>
+        </form>
+      </div>
     </div>
 
     <!-- nosemgrep: html.security.audit.missing-integrity.missing-integrity -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
-        crossorigin="anonymous"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+      crossorigin="anonymous"
+    ></script>
     <script src="{{ url_for('static', filename='register_invitation.js') }}"></script>
-</body>
-
+  </body>
 </html>

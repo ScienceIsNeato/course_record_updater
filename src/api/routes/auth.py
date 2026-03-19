@@ -5,6 +5,8 @@ Provides endpoints for user registration, email verification,
 login/logout, session management, and account lockout handling.
 """
 
+from typing import Any, Dict, cast
+
 from flask import Blueprint, flash, jsonify, redirect, request, url_for
 from flask.typing import ResponseReturnValue
 
@@ -31,6 +33,12 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/api")
 logger = get_logger(__name__)
 
 
+def _get_request_json() -> Dict[str, Any]:
+    """Return a typed JSON object body or an empty dict."""
+    payload = request.get_json(silent=True)
+    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
+
+
 # ===== REGISTRATION API ENDPOINTS =====
 
 
@@ -44,17 +52,27 @@ def register_institution_admin_api() -> ResponseReturnValue:
     Returns 201 with success, message, user_id, institution_id, email_sent.
     """
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
 
         # Validate required fields
-        required_fields = [
-            "email",
-            "password",
-            "first_name",
-            "last_name",
-            "institution_name",
+        email = str(data.get("email", "")).strip().lower()
+        password = str(data.get("password", ""))
+        first_name = str(data.get("first_name", "")).strip()
+        last_name = str(data.get("last_name", "")).strip()
+        institution_name = str(data.get("institution_name", "")).strip()
+        website_url_raw = data.get("website_url", "")
+        website_url = str(website_url_raw).strip() or None
+
+        required_values = {
+            "email": email,
+            "password": password,
+            "first_name": first_name,
+            "last_name": last_name,
+            "institution_name": institution_name,
+        }
+        missing_fields = [
+            field for field, value in required_values.items() if not value
         ]
-        missing_fields = [field for field in required_fields if not data.get(field)]
 
         if missing_fields:
             return (
@@ -66,14 +84,6 @@ def register_institution_admin_api() -> ResponseReturnValue:
                 ),
                 400,
             )
-
-        # Extract data
-        email = data["email"].strip().lower()
-        password = data["password"]
-        first_name = data["first_name"].strip()
-        last_name = data["last_name"].strip()
-        institution_name = data["institution_name"].strip()
-        website_url = data.get("website_url", "").strip() or None
 
         # Validate email format
         if "@" not in email or "." not in email:
@@ -167,10 +177,10 @@ def resend_verification_email_api() -> ResponseReturnValue:
     Expects JSON with email. Returns 200 with success, message, email_sent.
     """
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
 
         # Validate email
-        email = data.get("email", "").strip().lower()
+        email = str(data.get("email", "")).strip().lower()
         if not email:
             return (
                 jsonify({"success": False, "error": "Email address is required"}),
@@ -282,10 +292,11 @@ def login_api() -> ResponseReturnValue:
     )
     from src.services.password_service import AccountLockedError
 
+    data: Dict[str, Any] = {}
     try:
 
         # Get request data
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -300,11 +311,14 @@ def login_api() -> ResponseReturnValue:
                     400,
                 )
 
+        email = str(data.get("email", "")).strip().lower()
+        password = str(data.get("password", ""))
+
         # Authenticate user
         result = LoginService.authenticate_user(
-            email=data["email"],
-            password=data["password"],
-            remember_me=data.get("remember_me", False),
+            email=email,
+            password=password,
+            remember_me=bool(data.get("remember_me", False)),
         )
 
         # Import session locally to avoid circular imports when this module is
@@ -460,11 +474,12 @@ def unlock_account_api() -> ResponseReturnValue:
         from src.services.login_service import LoginService
 
         # Get request data
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
-        if "email" not in data:
+        email = str(data.get("email", "")).strip().lower()
+        if not email:
             return (
                 jsonify({"success": False, "error": MISSING_REQUIRED_FIELD_EMAIL_MSG}),
                 400,
@@ -486,7 +501,7 @@ def unlock_account_api() -> ResponseReturnValue:
             )
 
         # Unlock account
-        result = LoginService.unlock_account(data["email"], current_user["user_id"])
+        result = LoginService.unlock_account(email, current_user["user_id"])
 
         return jsonify({"success": True, **result}), 200
 

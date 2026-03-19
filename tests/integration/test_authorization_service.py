@@ -7,6 +7,7 @@ works correctly across all user roles and scenarios.
 These tests focus on real-world usage patterns and critical security boundaries.
 """
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -19,7 +20,7 @@ from src.services.auth_service import AuthService, Permission, UserRole
 class TestAuthorizationService:
     """Integration tests for authorization system critical paths"""
 
-    def test_site_admin_full_access(self):
+    def test_site_admin_full_access(self) -> None:
         """Test: Site admin should have access to everything"""
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -70,7 +71,7 @@ class TestAuthorizationService:
                     programs = service.get_accessible_programs()
                     assert len(programs) > 0  # Should have access to all
 
-    def test_institution_admin_scoped_access(self):
+    def test_institution_admin_scoped_access(self) -> None:
         """Test: Institution admin should have institution-scoped access"""
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -116,7 +117,7 @@ class TestAuthorizationService:
                 is False
             )
 
-    def test_program_admin_scoped_access(self):
+    def test_program_admin_scoped_access(self) -> None:
         """Test: Program admin should have program-scoped access"""
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -174,7 +175,7 @@ class TestAuthorizationService:
                 is False
             )
 
-    def test_instructor_limited_access(self):
+    def test_instructor_limited_access(self) -> None:
         """Test: Instructor should have limited, personal access"""
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -207,7 +208,7 @@ class TestAuthorizationService:
             programs = service.get_accessible_programs()
             assert programs == []  # Instructors don't manage programs
 
-    def test_unauthorized_user_no_access(self):
+    def test_unauthorized_user_no_access(self) -> None:
         """Test: Unauthenticated user should have no access"""
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -238,7 +239,7 @@ class TestAuthorizationService:
 class TestAPIEndpointSecurity:
     """Integration tests for API endpoint security with different user roles"""
 
-    def test_protected_endpoints_require_authentication(self):
+    def test_protected_endpoints_require_authentication(self) -> None:
         """Test: Protected endpoints should require authentication"""
         app = Flask(__name__)
 
@@ -248,21 +249,21 @@ class TestAPIEndpointSecurity:
         api = Blueprint("api", __name__, url_prefix="/api")
 
         @api.route("/auth/login", methods=["POST"])
-        def login_api():
+        def login_api() -> Any:
             return "login page"
 
         app.register_blueprint(api)
 
         # Add the non-API login route that @login_required redirects to
         @app.route("/login", methods=["GET", "POST"])
-        def login():
+        def login() -> Any:
             return "login page"
 
         with app.test_request_context():
             from src.services.auth_service import login_required
 
             @login_required
-            def protected_endpoint():
+            def protected_endpoint() -> Any:
                 return "protected content"
 
             # Test with no authentication - should redirect to login
@@ -277,7 +278,7 @@ class TestAPIEndpointSecurity:
                 assert hasattr(result, "status_code")
                 assert result.status_code == 302
 
-    def test_permission_endpoints_enforce_permissions(self):
+    def test_permission_endpoints_enforce_permissions(self) -> None:
         """Test: Permission-required endpoints should enforce permissions"""
         app = Flask(__name__)
 
@@ -285,7 +286,7 @@ class TestAPIEndpointSecurity:
             from src.services.auth_service import permission_required
 
             @permission_required("manage_users")
-            def admin_endpoint():
+            def admin_endpoint() -> Any:
                 return "admin content"
 
             # Test with authenticated user but no permission
@@ -319,7 +320,7 @@ class TestAPIEndpointSecurity:
                             assert isinstance(result, tuple)
                             assert result[1] == 403
 
-    def test_context_aware_endpoints_validate_context(self):
+    def test_context_aware_endpoints_validate_context(self) -> None:
         """Test: Context-aware endpoints should validate context"""
         app = Flask(__name__)
 
@@ -327,7 +328,7 @@ class TestAPIEndpointSecurity:
             from src.services.auth_service import permission_required
 
             @permission_required("view_program_data", context_keys=["program_id"])
-            def program_endpoint():
+            def program_endpoint() -> Any:
                 return "program content"
 
             # Test with authentication but invalid context
@@ -367,7 +368,7 @@ class TestAPIEndpointSecurity:
 class TestDataAccessPatterns:
     """Integration tests for data access patterns across different user types"""
 
-    def test_institution_data_filtering(self):
+    def test_institution_data_filtering(self) -> None:
         """Test: Data should be filtered by institution context"""
         # This tests the conceptual pattern - in real implementation,
         # database queries would be filtered by institution_id
@@ -388,7 +389,7 @@ class TestDataAccessPatterns:
         assert len(accessible_programs) == 2
         assert all(p["institution_id"] == "inst-a" for p in accessible_programs)
 
-    def test_program_data_filtering(self):
+    def test_program_data_filtering(self) -> None:
         """Test: Data should be filtered by program context for program admins"""
         # Mock data from multiple programs
         all_courses = [
@@ -406,7 +407,7 @@ class TestDataAccessPatterns:
         assert len(accessible_courses) == 2
         assert all(c["program_id"] in accessible_programs for c in accessible_courses)
 
-    def test_instructor_personal_data_filtering(self):
+    def test_instructor_personal_data_filtering(self) -> None:
         """Test: Instructors should only see their own sections/courses"""
         # Mock sections from multiple instructors
         all_sections = [
@@ -429,7 +430,7 @@ class TestDataAccessPatterns:
 class TestSecurityBoundaries:
     """Integration tests for critical security boundaries"""
 
-    def test_cross_institution_access_blocked(self):
+    def test_cross_institution_access_blocked(self) -> None:
         """Test: Users cannot access data from other institutions"""
 
         # Test institution admin trying to access other institution
@@ -454,7 +455,7 @@ class TestSecurityBoundaries:
                 is False
             )
 
-    def test_cross_program_access_blocked(self):
+    def test_cross_program_access_blocked(self) -> None:
         """Test: Program admins cannot access programs outside their scope"""
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -476,7 +477,7 @@ class TestSecurityBoundaries:
                 is False
             )
 
-    def test_privilege_escalation_blocked(self):
+    def test_privilege_escalation_blocked(self) -> None:
         """Test: Users cannot escalate privileges beyond their role"""
 
         # Test that instructor cannot access admin functions
@@ -504,7 +505,7 @@ class TestSecurityBoundaries:
 class TestAuthorizationSystemHealth:
     """Integration tests to validate overall system health and completeness"""
 
-    def test_all_roles_have_valid_permissions(self):
+    def test_all_roles_have_valid_permissions(self) -> None:
         """Test: All roles should have valid, non-empty permission sets"""
         from src.services.auth_service import ROLE_PERMISSIONS
 
@@ -518,7 +519,7 @@ class TestAuthorizationSystemHealth:
                 role_perms, list
             ), f"Permissions should be a list for role {role.value}"
 
-    def test_permission_system_consistency(self):
+    def test_permission_system_consistency(self) -> None:
         """Test: Permission system should be internally consistent"""
 
         # Test that all permission constants are strings
@@ -532,7 +533,7 @@ class TestAuthorizationSystemHealth:
         assert hierarchy[0] == "site_admin"  # Highest privilege
         assert hierarchy[-1] == "instructor"  # Lowest privilege
 
-    def test_decorator_integration(self):
+    def test_decorator_integration(self) -> None:
         """Test: All authorization decorators should be importable and functional"""
         from src.services.auth_service import (
             admin_required,
@@ -554,7 +555,7 @@ class TestAuthorizationSystemHealth:
         assert callable(perm_decorator)
         assert callable(role_decorator)
 
-    def test_authorization_service_singleton(self):
+    def test_authorization_service_singleton(self) -> None:
         """Test: AuthService should work as expected"""
         from src.services.auth_service import auth_service
 

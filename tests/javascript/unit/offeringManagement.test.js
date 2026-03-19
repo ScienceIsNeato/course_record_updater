@@ -17,10 +17,10 @@ const {
   loadOfferings,
   resolveOfferingStatus,
   applyFilters,
-  populateFilters
-} = require('../../../static/offeringManagement.js');
+  populateFilters,
+} = require("../../../static/offeringManagement.js");
 
-describe('Offering Management - Create Offering Modal', () => {
+describe("Offering Management - Create Offering Modal", () => {
   let mockFetch;
   let consoleErrorSpy;
 
@@ -60,7 +60,7 @@ describe('Offering Management - Create Offering Modal', () => {
     global.fetch = mockFetch;
 
     // Mock console.error
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation();
 
     // Mock Bootstrap Modal (constructor + static helpers)
     const ModalCtor = jest.fn(() => ({ show: jest.fn(), hide: jest.fn() }));
@@ -76,132 +76,144 @@ describe('Offering Management - Create Offering Modal', () => {
     jest.restoreAllMocks();
   });
 
-  describe('Form Validation', () => {
-    test('should require course selection', () => {
-      const courseSelect = document.getElementById('offeringCourseId');
+  describe("Form Validation", () => {
+    test("should require course selection", () => {
+      const courseSelect = document.getElementById("offeringCourseId");
 
-      courseSelect.value = '';
+      courseSelect.value = "";
       expect(courseSelect.validity.valid).toBe(false);
 
-      courseSelect.value = 'course-1';
+      courseSelect.value = "course-1";
       expect(courseSelect.validity.valid).toBe(true);
     });
 
-    test('should require term selection', () => {
-      const termSelect = document.getElementById('offeringTermId');
+    test("should require term selection", () => {
+      const termSelect = document.getElementById("offeringTermId");
 
-      termSelect.value = '';
+      termSelect.value = "";
       expect(termSelect.validity.valid).toBe(false);
 
-      termSelect.value = 'term-1';
+      termSelect.value = "term-1";
       expect(termSelect.validity.valid).toBe(true);
     });
 
-    test('should allow empty sections', () => {
-      const sectionsContainer = document.getElementById('sectionsContainer');
+    test("should allow empty sections", () => {
+      const sectionsContainer = document.getElementById("sectionsContainer");
       // Sections are optional (can create offering with 0 sections)
       expect(sectionsContainer).toBeTruthy();
       expect(sectionsContainer.children.length).toBe(0);
     });
   });
 
-  describe('Form Submission - API Call', () => {
-    test('should POST offering data to /api/offerings on form submit', async () => {
+  describe("Form Submission - API Call", () => {
+    test("should POST offering data to /api/offerings on form submit", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           success: true,
-          offering_id: 'offering-123',
-          message: 'Offering created'
-        })
+          offering_id: "offering-123",
+          message: "Offering created",
+        }),
       });
 
-      const form = document.getElementById('createOfferingForm');
-      document.getElementById('offeringCourseId').value = 'course-1';
-      document.getElementById('offeringTermId').value = 'term-1';
-      document.getElementById('offeringProgramId').value = 'program-1';
+      const form = document.getElementById("createOfferingForm");
+      document.getElementById("offeringCourseId").value = "course-1";
+      document.getElementById("offeringTermId").value = "term-1";
+      document.getElementById("offeringProgramId").value = "program-1";
 
-      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      const submitEvent = new Event("submit", {
+        bubbles: true,
+        cancelable: true,
+      });
       form.dispatchEvent(submitEvent);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/offerings',
+        "/api/offerings",
         expect.objectContaining({
-          method: 'POST',
+          method: "POST",
           headers: expect.objectContaining({
-            'Content-Type': 'application/json',
-            'X-CSRFToken': 'test-csrf-token'
+            "Content-Type": "application/json",
+            "X-CSRFToken": "test-csrf-token",
           }),
-          body: expect.stringContaining('course-1')
-        })
+          body: expect.stringContaining("course-1"),
+        }),
       );
     });
 
-    test('should include all offering fields in POST body', async () => {
+    test("should include all offering fields in POST body", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true, offering_id: 'offering-123' })
+        json: async () => ({ success: true, offering_id: "offering-123" }),
       });
 
-      const form = document.getElementById('createOfferingForm');
-      document.getElementById('offeringCourseId').value = 'course-2';
-      document.getElementById('offeringTermId').value = 'term-2';
-      document.getElementById('offeringProgramId').value = 'program-2';
+      const form = document.getElementById("createOfferingForm");
+      document.getElementById("offeringCourseId").value = "course-2";
+      document.getElementById("offeringTermId").value = "term-2";
+      document.getElementById("offeringProgramId").value = "program-2";
 
-      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      const submitEvent = new Event("submit", {
+        bubbles: true,
+        cancelable: true,
+      });
       form.dispatchEvent(submitEvent);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const callArgs = mockFetch.mock.calls[0];
       const body = JSON.parse(callArgs[1].body);
 
       expect(body).toMatchObject({
-        course_id: 'course-2',
-        term_id: 'term-2',
-        program_id: 'program-2',
-        sections: []
+        course_id: "course-2",
+        term_id: "term-2",
+        program_id: "program-2",
+        sections: [],
       });
     });
 
-    test('should send program_id as null when no program is selected', async () => {
+    test("should send program_id as null when no program is selected", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true, offering_id: 'offering-123' })
+        json: async () => ({ success: true, offering_id: "offering-123" }),
       });
 
-      const form = document.getElementById('createOfferingForm');
-      document.getElementById('offeringCourseId').value = 'course-1';
-      document.getElementById('offeringTermId').value = 'term-1';
-      document.getElementById('offeringProgramId').value = '';
+      const form = document.getElementById("createOfferingForm");
+      document.getElementById("offeringCourseId").value = "course-1";
+      document.getElementById("offeringTermId").value = "term-1";
+      document.getElementById("offeringProgramId").value = "";
 
-      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      const submitEvent = new Event("submit", {
+        bubbles: true,
+        cancelable: true,
+      });
       form.dispatchEvent(submitEvent);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const callArgs = mockFetch.mock.calls[0];
       const body = JSON.parse(callArgs[1].body);
       expect(body.program_id).toBeNull();
     });
 
-    test('should handle empty sections as empty array', async () => {
+    test("should handle empty sections as empty array", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true, offering_id: 'offering-123' })
+        json: async () => ({ success: true, offering_id: "offering-123" }),
       });
 
-      const form = document.getElementById('createOfferingForm');
-      document.getElementById('offeringCourseId').value = 'course-1';
-      document.getElementById('offeringTermId').value = 'term-1';
-      document.getElementById('offeringProgramId').value = 'program-1';
+      const form = document.getElementById("createOfferingForm");
+      document.getElementById("offeringCourseId").value = "course-1";
+      document.getElementById("offeringTermId").value = "term-1";
+      document.getElementById("offeringProgramId").value = "program-1";
 
-      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      const submitEvent = new Event("submit", {
+        bubbles: true,
+        cancelable: true,
+      });
       form.dispatchEvent(submitEvent);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const callArgs = mockFetch.mock.calls[0];
       const body = JSON.parse(callArgs[1].body);
@@ -209,194 +221,235 @@ describe('Offering Management - Create Offering Modal', () => {
       expect(body.sections).toEqual([]);
     });
 
-    test('should show loading state during API call', async () => {
+    test("should show loading state during API call", async () => {
       mockFetch.mockImplementationOnce(
         () =>
-          new Promise(resolve =>
+          new Promise((resolve) =>
             setTimeout(
               () =>
                 resolve({
                   ok: true,
-                  json: async () => ({ success: true })
+                  json: async () => ({ success: true }),
                 }),
-              100
-            )
-          )
+              100,
+            ),
+          ),
       );
 
-      const form = document.getElementById('createOfferingForm');
-      document.getElementById('offeringCourseId').value = 'course-1';
-      document.getElementById('offeringTermId').value = 'term-1';
-      document.getElementById('offeringProgramId').value = 'program-1';
+      const form = document.getElementById("createOfferingForm");
+      document.getElementById("offeringCourseId").value = "course-1";
+      document.getElementById("offeringTermId").value = "term-1";
+      document.getElementById("offeringProgramId").value = "program-1";
 
-      const btnText = document.querySelector('.btn-text');
-      const btnSpinner = document.querySelector('.btn-spinner');
+      const btnText = document.querySelector(".btn-text");
+      const btnSpinner = document.querySelector(".btn-spinner");
 
-      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      const submitEvent = new Event("submit", {
+        bubbles: true,
+        cancelable: true,
+      });
       form.dispatchEvent(submitEvent);
 
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Loading state should be active
-      expect(btnText.classList.contains('d-none')).toBe(true);
-      expect(btnSpinner.classList.contains('d-none')).toBe(false);
+      expect(btnText.classList.contains("d-none")).toBe(true);
+      expect(btnSpinner.classList.contains("d-none")).toBe(false);
 
       // Wait for completion
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Should return to normal
-      expect(btnText.classList.contains('d-none')).toBe(false);
-      expect(btnSpinner.classList.contains('d-none')).toBe(true);
+      expect(btnText.classList.contains("d-none")).toBe(false);
+      expect(btnSpinner.classList.contains("d-none")).toBe(true);
     });
 
-    test('should close modal and reset form on success', async () => {
+    test("should close modal and reset form on success", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           success: true,
-          offering_id: 'offering-123',
-          message: 'Offering created'
-        })
+          offering_id: "offering-123",
+          message: "Offering created",
+        }),
       });
 
-      const form = document.getElementById('createOfferingForm');
-      const courseSelect = document.getElementById('offeringCourseId');
+      const form = document.getElementById("createOfferingForm");
+      const courseSelect = document.getElementById("offeringCourseId");
 
-      courseSelect.value = 'course-1';
-      document.getElementById('offeringTermId').value = 'term-1';
-      document.getElementById('offeringProgramId').value = 'program-1';
+      courseSelect.value = "course-1";
+      document.getElementById("offeringTermId").value = "term-1";
+      document.getElementById("offeringProgramId").value = "program-1";
 
-      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      const submitEvent = new Event("submit", {
+        bubbles: true,
+        cancelable: true,
+      });
       form.dispatchEvent(submitEvent);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Modal should be closed (implementation prefers getOrCreateInstance if present)
       expect(bootstrap.Modal.getOrCreateInstance).toHaveBeenCalled();
 
       // Form should be reset
-      expect(courseSelect.value).toBe('');
+      expect(courseSelect.value).toBe("");
     });
 
-    test('should display error message on API failure', async () => {
+    test("should display error message on API failure", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 400,
-        json: async () => ({ error: 'Course already offered in this term' })
+        json: async () => ({ error: "Course already offered in this term" }),
       });
 
       global.alert = jest.fn();
 
-      const form = document.getElementById('createOfferingForm');
-      document.getElementById('offeringCourseId').value = 'course-1';
-      document.getElementById('offeringTermId').value = 'term-1';
-      document.getElementById('offeringProgramId').value = 'program-1';
+      const form = document.getElementById("createOfferingForm");
+      document.getElementById("offeringCourseId").value = "course-1";
+      document.getElementById("offeringTermId").value = "term-1";
+      document.getElementById("offeringProgramId").value = "program-1";
 
-      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      const submitEvent = new Event("submit", {
+        bubbles: true,
+        cancelable: true,
+      });
       form.dispatchEvent(submitEvent);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(global.alert).toHaveBeenCalledWith(
-        expect.stringContaining('Course already offered in this term')
+        expect.stringContaining("Course already offered in this term"),
       );
     });
 
-    test('should handle network errors gracefully', async () => {
-      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+    test("should handle network errors gracefully", async () => {
+      mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
       global.alert = jest.fn();
 
-      const form = document.getElementById('createOfferingForm');
-      document.getElementById('offeringCourseId').value = 'course-1';
-      document.getElementById('offeringTermId').value = 'term-1';
-      document.getElementById('offeringProgramId').value = 'program-1';
+      const form = document.getElementById("createOfferingForm");
+      document.getElementById("offeringCourseId").value = "course-1";
+      document.getElementById("offeringTermId").value = "term-1";
+      document.getElementById("offeringProgramId").value = "program-1";
 
-      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      const submitEvent = new Event("submit", {
+        bubbles: true,
+        cancelable: true,
+      });
       form.dispatchEvent(submitEvent);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(global.alert).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to create offering')
+        expect.stringContaining("Failed to create offering"),
       );
       expect(consoleErrorSpy).toHaveBeenCalled();
     });
   });
 
-  describe('CSRF Token Handling', () => {
-    test('should include CSRF token in headers', async () => {
+  describe("CSRF Token Handling", () => {
+    test("should include CSRF token in headers", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true, offering_id: 'offering-123' })
+        json: async () => ({ success: true, offering_id: "offering-123" }),
       });
 
-      const form = document.getElementById('createOfferingForm');
-      document.getElementById('offeringCourseId').value = 'course-1';
-      document.getElementById('offeringTermId').value = 'term-1';
+      const form = document.getElementById("createOfferingForm");
+      document.getElementById("offeringCourseId").value = "course-1";
+      document.getElementById("offeringTermId").value = "term-1";
 
-      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      const submitEvent = new Event("submit", {
+        bubbles: true,
+        cancelable: true,
+      });
       form.dispatchEvent(submitEvent);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const callArgs = mockFetch.mock.calls[0];
-      expect(callArgs[1].headers['X-CSRFToken']).toBe('test-csrf-token');
+      expect(callArgs[1].headers["X-CSRFToken"]).toBe("test-csrf-token");
     });
   });
 
-  describe('Dropdown Loading (show.bs.modal handlers)', () => {
-    test('should load courses/terms/programs when createOfferingModal is shown', async () => {
+  describe("Dropdown Loading (show.bs.modal handlers)", () => {
+    test("should load courses/terms/programs when createOfferingModal is shown", async () => {
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({
-            courses: [{ course_id: 'course-1', course_number: 'CS101', course_title: 'Intro' }]
-          })
+            courses: [
+              {
+                course_id: "course-1",
+                course_number: "CS101",
+                course_title: "Intro",
+              },
+            ],
+          }),
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ terms: [{ term_id: 'term-1', name: 'Fall 2024' }] })
+          json: async () => ({
+            terms: [{ term_id: "term-1", name: "Fall 2024" }],
+          }),
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ programs: [{ program_id: 'program-1', name: 'Computer Science' }] })
+          json: async () => ({
+            programs: [{ program_id: "program-1", name: "Computer Science" }],
+          }),
         });
 
       // Trigger the Bootstrap modal show event (listener is attached by initOfferingManagement)
-      document.getElementById('createOfferingModal').dispatchEvent(new Event('show.bs.modal'));
+      document
+        .getElementById("createOfferingModal")
+        .dispatchEvent(new Event("show.bs.modal"));
 
-      await new Promise(resolve => setTimeout(resolve, 25));
+      await new Promise((resolve) => setTimeout(resolve, 25));
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/courses');
-      expect(global.fetch).toHaveBeenCalledWith('/api/terms?all=true');
-      expect(global.fetch).toHaveBeenCalledWith('/api/programs');
+      expect(global.fetch).toHaveBeenCalledWith("/api/courses");
+      expect(global.fetch).toHaveBeenCalledWith("/api/terms?all=true");
+      expect(global.fetch).toHaveBeenCalledWith("/api/programs");
 
-      expect(document.getElementById('offeringCourseId').options.length).toBeGreaterThan(1);
-      expect(document.getElementById('offeringTermId').options.length).toBeGreaterThan(1);
-      expect(document.getElementById('offeringProgramId').options.length).toBeGreaterThan(1);
+      expect(
+        document.getElementById("offeringCourseId").options.length,
+      ).toBeGreaterThan(1);
+      expect(
+        document.getElementById("offeringTermId").options.length,
+      ).toBeGreaterThan(1);
+      expect(
+        document.getElementById("offeringProgramId").options.length,
+      ).toBeGreaterThan(1);
     });
 
-    test('should show error option text if create dropdown API fetch fails', async () => {
+    test("should show error option text if create dropdown API fetch fails", async () => {
       mockFetch.mockResolvedValueOnce({ ok: false, json: async () => ({}) });
 
-      document.getElementById('createOfferingModal').dispatchEvent(new Event('show.bs.modal'));
-      await new Promise(resolve => setTimeout(resolve, 25));
+      document
+        .getElementById("createOfferingModal")
+        .dispatchEvent(new Event("show.bs.modal"));
+      await new Promise((resolve) => setTimeout(resolve, 25));
 
-      expect(document.getElementById('offeringCourseId').innerHTML).toContain('Error loading courses');
-      expect(document.getElementById('offeringTermId').innerHTML).toContain('Error loading terms');
-      expect(document.getElementById('offeringProgramId').innerHTML).toContain('Error loading programs');
+      expect(document.getElementById("offeringCourseId").innerHTML).toContain(
+        "Error loading courses",
+      );
+      expect(document.getElementById("offeringTermId").innerHTML).toContain(
+        "Error loading terms",
+      );
+      expect(document.getElementById("offeringProgramId").innerHTML).toContain(
+        "Error loading programs",
+      );
     });
   });
 });
 
-describe('resolveOfferingStatus helper', () => {
-  test('returns direct status when provided', () => {
-    const status = resolveOfferingStatus({ status: 'active' });
-    expect(status).toBe('ACTIVE');
+describe("resolveOfferingStatus helper", () => {
+  test("returns direct status when provided", () => {
+    const status = resolveOfferingStatus({ status: "active" });
+    expect(status).toBe("ACTIVE");
   });
 
-  test('calculates status from term dates when missing', () => {
+  test("calculates status from term dates when missing", () => {
     const now = Date.now();
     const day = 24 * 60 * 60 * 1000;
     const futureStart = new Date(now + 7 * day).toISOString().slice(0, 10);
@@ -404,13 +457,13 @@ describe('resolveOfferingStatus helper', () => {
 
     const status = resolveOfferingStatus({
       term_start_date: futureStart,
-      term_end_date: futureEnd
+      term_end_date: futureEnd,
     });
-    expect(status).toBe('SCHEDULED');
+    expect(status).toBe("SCHEDULED");
   });
 });
 
-describe('Offering Management - Edit / Delete / Listing Helpers', () => {
+describe("Offering Management - Edit / Delete / Listing Helpers", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
@@ -444,94 +497,101 @@ describe('Offering Management - Edit / Delete / Listing Helpers', () => {
     jest.restoreAllMocks();
   });
 
-  test('openEditOfferingModal should populate fields and show modal', () => {
+  test("openEditOfferingModal should populate fields and show modal", () => {
     const offeringData = {
       capacity: 25,
-      course_title: 'Intro',
-      term_name: 'Fall 2024',
-      term_id: 'term-1',
-      program_id: 'program-1'
+      course_title: "Intro",
+      term_name: "Fall 2024",
+      term_id: "term-1",
+      program_id: "program-1",
     };
 
     // Add program option so selecting works after timeout
-    const programSelect = document.getElementById('editOfferingProgramId');
-    programSelect.innerHTML = '<option value="program-1">Computer Science</option>';
+    const programSelect = document.getElementById("editOfferingProgramId");
+    programSelect.innerHTML =
+      '<option value="program-1">Computer Science</option>';
 
     // Add term option
-    const termSelect = document.getElementById('editOfferingTerm');
+    const termSelect = document.getElementById("editOfferingTerm");
     termSelect.innerHTML += '<option value="term-1">Fall 2024</option>';
 
-    openEditOfferingModal('offering-123', offeringData);
+    openEditOfferingModal("offering-123", offeringData);
 
-    expect(document.getElementById('editOfferingId').value).toBe('offering-123');
-    expect(document.getElementById('editOfferingCourse').value).toBe('Intro');
+    expect(document.getElementById("editOfferingId").value).toBe(
+      "offering-123",
+    );
+    expect(document.getElementById("editOfferingCourse").value).toBe("Intro");
 
     jest.advanceTimersByTime(500);
-    expect(document.getElementById('editOfferingProgramId').value).toBe('program-1');
-    expect(document.getElementById('editOfferingTerm').value).toBe('term-1');
+    expect(document.getElementById("editOfferingProgramId").value).toBe(
+      "program-1",
+    );
+    expect(document.getElementById("editOfferingTerm").value).toBe("term-1");
   });
 
-  test('deleteOffering should no-op when user cancels confirmation', async () => {
+  test("deleteOffering should no-op when user cancels confirmation", async () => {
     global.confirm = jest.fn(() => false);
 
-    await deleteOffering('offering-1', 'Course', 'Term');
+    await deleteOffering("offering-1", "Course", "Term");
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
-  test('deleteOffering should call DELETE and alert on success', async () => {
+  test("deleteOffering should call DELETE and alert on success", async () => {
     global.fetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ success: true })
+      json: async () => ({ success: true }),
     });
 
-    await deleteOffering('offering-1', 'Course', 'Term');
+    await deleteOffering("offering-1", "Course", "Term");
 
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/offerings/offering-1',
-      expect.objectContaining({ method: 'DELETE' })
+      "/api/offerings/offering-1",
+      expect.objectContaining({ method: "DELETE" }),
     );
     expect(global.alert).toHaveBeenCalled();
   });
 
-  test('loadOfferings should render empty-state when no offerings are returned', async () => {
+  test("loadOfferings should render empty-state when no offerings are returned", async () => {
     global.fetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ offerings: [] })
+      json: async () => ({ offerings: [] }),
     });
 
     await loadOfferings();
-    expect(document.getElementById('offeringsTableContainer').innerHTML).toContain('No course offerings found');
+    expect(
+      document.getElementById("offeringsTableContainer").innerHTML,
+    ).toContain("No course offerings found");
   });
 
-  test('loadOfferings should render table when offerings are returned', async () => {
+  test("loadOfferings should render table when offerings are returned", async () => {
     global.fetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         offerings: [
           {
-            offering_id: 'off-1',
-            course_title: 'Intro',
-            term_name: 'Fall 2024',
-            status: 'ACTIVE',
+            offering_id: "off-1",
+            course_title: "Intro",
+            term_name: "Fall 2024",
+            status: "ACTIVE",
             section_count: 2,
             total_enrollment: 30,
-            program_ids: ['prog-1'],  // All offerings must have program associations
-            program_names: ['Computer Science']
-          }
-        ]
-      })
+            program_ids: ["prog-1"], // All offerings must have program associations
+            program_names: ["Computer Science"],
+          },
+        ],
+      }),
     });
 
     await loadOfferings();
-    const html = document.getElementById('offeringsTableContainer').innerHTML;
-    expect(html).toContain('<table');
-    expect(html).toContain('Intro');
-    expect(html).toContain('Fall 2024');
-    expect(html).toContain('Active');
+    const html = document.getElementById("offeringsTableContainer").innerHTML;
+    expect(html).toContain("<table");
+    expect(html).toContain("Intro");
+    expect(html).toContain("Fall 2024");
+    expect(html).toContain("Active");
   });
 });
 
-describe('Offering Management - Edit Offering Modal', () => {
+describe("Offering Management - Edit Offering Modal", () => {
   let mockFetch;
 
   beforeEach(() => {
@@ -564,12 +624,12 @@ describe('Offering Management - Edit Offering Modal', () => {
     global.bootstrap = {
       Modal: {
         getInstance: jest.fn(() => ({
-          hide: jest.fn()
+          hide: jest.fn(),
         })),
         prototype: {
-          show: jest.fn()
-        }
-      }
+          show: jest.fn(),
+        },
+      },
     };
 
     // Initialize offering management (replaces DOMContentLoaded trigger)
@@ -580,152 +640,158 @@ describe('Offering Management - Edit Offering Modal', () => {
     jest.restoreAllMocks();
   });
 
-  test('openEditOfferingModal should populate form and show modal', () => {
+  test("openEditOfferingModal should populate form and show modal", () => {
     const mockModal = { show: jest.fn() };
     global.bootstrap.Modal = jest.fn(() => mockModal);
 
-    window.openEditOfferingModal('offering-123', {
+    window.openEditOfferingModal("offering-123", {
       capacity: 40,
-      course_title: 'Intro to CS',
-      term_name: 'Fall 2024',
-      term_id: 'term-1'
+      course_title: "Intro to CS",
+      term_name: "Fall 2024",
+      term_id: "term-1",
     });
 
-    expect(document.getElementById('editOfferingId').value).toBe('offering-123');
-    expect(document.getElementById('editOfferingCourse').value).toBe('Intro to CS');
+    expect(document.getElementById("editOfferingId").value).toBe(
+      "offering-123",
+    );
+    expect(document.getElementById("editOfferingCourse").value).toBe(
+      "Intro to CS",
+    );
     expect(mockModal.show).toHaveBeenCalled();
   });
 
-  test('openEditOfferingModal should set program select after dropdown is populated', () => {
+  test("openEditOfferingModal should set program select after dropdown is populated", () => {
     jest.useFakeTimers();
 
     const mockModal = { show: jest.fn() };
     global.bootstrap.Modal = jest.fn(() => mockModal);
 
-    const programSelect = document.getElementById('editOfferingProgramId');
-    programSelect.value = '';
+    const programSelect = document.getElementById("editOfferingProgramId");
+    programSelect.value = "";
 
-    window.openEditOfferingModal('offering-123', {
+    window.openEditOfferingModal("offering-123", {
       capacity: 10,
-      course_title: 'Intro',
-      term_name: 'Fall',
-      term_id: 'term-1',
-      program_id: 'program-2'
+      course_title: "Intro",
+      term_name: "Fall",
+      term_id: "term-1",
+      program_id: "program-2",
     });
 
     // Program should be set after timer fires
     jest.advanceTimersByTime(600);
-    expect(programSelect.value).toBe('program-2');
+    expect(programSelect.value).toBe("program-2");
 
     jest.useRealTimers();
   });
 
-  test('should PUT updated offering data to /api/offerings/<id>', async () => {
+  test("should PUT updated offering data to /api/offerings/<id>", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ success: true, message: 'Offering updated' })
+      json: async () => ({ success: true, message: "Offering updated" }),
     });
 
-    const form = document.getElementById('editOfferingForm');
-    document.getElementById('editOfferingId').value = 'offering-123';
-    document.getElementById('editOfferingProgramId').value = 'program-1';
-    document.getElementById('editOfferingTerm').value = 'term-2';
+    const form = document.getElementById("editOfferingForm");
+    document.getElementById("editOfferingId").value = "offering-123";
+    document.getElementById("editOfferingProgramId").value = "program-1";
+    document.getElementById("editOfferingTerm").value = "term-2";
 
-    const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+    const submitEvent = new Event("submit", {
+      bubbles: true,
+      cancelable: true,
+    });
     form.dispatchEvent(submitEvent);
 
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     expect(mockFetch).toHaveBeenCalledWith(
-      '/api/offerings/offering-123',
+      "/api/offerings/offering-123",
       expect.objectContaining({
-        method: 'PUT',
+        method: "PUT",
         headers: expect.objectContaining({
-          'Content-Type': 'application/json',
-          'X-CSRFToken': 'test-csrf-token'
+          "Content-Type": "application/json",
+          "X-CSRFToken": "test-csrf-token",
         }),
-        body: expect.stringContaining('program-1')
-      })
+        body: expect.stringContaining("program-1"),
+      }),
     );
 
     const callArgs = mockFetch.mock.calls[0];
     const body = JSON.parse(callArgs[1].body);
-    expect(body.program_id).toBe('program-1');
-    expect(body.term_id).toBe('term-2');
+    expect(body.program_id).toBe("program-1");
+    expect(body.term_id).toBe("term-2");
   });
 });
 
-describe('Offering Management - Delete Offering', () => {
+describe("Offering Management - Delete Offering", () => {
   let mockFetch;
   let confirmSpy;
   let alertSpy;
 
   beforeEach(() => {
-    document.body.innerHTML = '<meta name="csrf-token" content="test-csrf-token">';
+    document.body.innerHTML =
+      '<meta name="csrf-token" content="test-csrf-token">';
     mockFetch = jest.fn();
     global.fetch = mockFetch;
-    confirmSpy = jest.spyOn(window, 'confirm');
-    alertSpy = jest.spyOn(window, 'alert').mockImplementation();
+    confirmSpy = jest.spyOn(window, "confirm");
+    alertSpy = jest.spyOn(window, "alert").mockImplementation();
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  test('should DELETE offering with confirmation', async () => {
+  test("should DELETE offering with confirmation", async () => {
     confirmSpy.mockReturnValue(true);
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ success: true })
+      json: async () => ({ success: true }),
     });
 
-    await window.deleteOffering('offering-123', 'CS101', 'Fall 2024');
+    await window.deleteOffering("offering-123", "CS101", "Fall 2024");
 
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining("CS101"));
     expect(confirmSpy).toHaveBeenCalledWith(
-      expect.stringContaining('CS101')
-    );
-    expect(confirmSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Fall 2024')
+      expect.stringContaining("Fall 2024"),
     );
     expect(mockFetch).toHaveBeenCalledWith(
-      '/api/offerings/offering-123',
+      "/api/offerings/offering-123",
       expect.objectContaining({
-        method: 'DELETE',
+        method: "DELETE",
         headers: expect.objectContaining({
-          'X-CSRFToken': 'test-csrf-token'
-        })
-      })
+          "X-CSRFToken": "test-csrf-token",
+        }),
+      }),
     );
     expect(alertSpy).toHaveBeenCalledWith(
-      expect.stringContaining('deleted successfully')
+      expect.stringContaining("deleted successfully"),
     );
   });
 
-  test('should not delete if user cancels confirmation', async () => {
+  test("should not delete if user cancels confirmation", async () => {
     confirmSpy.mockReturnValue(false);
 
-    await window.deleteOffering('offering-123', 'CS101', 'Fall 2024');
+    await window.deleteOffering("offering-123", "CS101", "Fall 2024");
 
     expect(mockFetch).not.toHaveBeenCalled();
     expect(alertSpy).not.toHaveBeenCalled();
   });
 
-  test('should handle API errors gracefully', async () => {
+  test("should handle API errors gracefully", async () => {
     confirmSpy.mockReturnValue(true);
     mockFetch.mockResolvedValueOnce({
       ok: false,
-      json: async () => ({ error: 'Offering has sections assigned' })
+      json: async () => ({ error: "Offering has sections assigned" }),
     });
 
-    await window.deleteOffering('offering-123', 'CS101', 'Fall 2024');
+    await window.deleteOffering("offering-123", "CS101", "Fall 2024");
 
     expect(alertSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Offering has sections assigned')
+      expect.stringContaining("Offering has sections assigned"),
     );
   });
 });
 
-describe('Offering Management - Filtering', () => {
+describe("Offering Management - Filtering", () => {
   beforeEach(() => {
     // Set up DOM with filter elements and a table container with mock data
     document.body.innerHTML = `
@@ -763,64 +829,70 @@ describe('Offering Management - Filtering', () => {
     `;
   });
 
-  test('applyFilters should show all rows when no filter is selected', () => {
-    document.getElementById('filterTerm').value = '';
-    document.getElementById('filterProgram').value = '';
+  test("applyFilters should show all rows when no filter is selected", () => {
+    document.getElementById("filterTerm").value = "";
+    document.getElementById("filterProgram").value = "";
 
     // We assume applyFilters exists and works
-    if (typeof applyFilters === 'function') {
+    if (typeof applyFilters === "function") {
       applyFilters();
 
-      const rows = document.querySelectorAll('.offering-row');
-      rows.forEach(row => {
-        expect(row.style.display).not.toBe('none');
+      const rows = document.querySelectorAll(".offering-row");
+      rows.forEach((row) => {
+        expect(row.style.display).not.toBe("none");
       });
     }
   });
 
-  test('applyFilters should filter by term', () => {
-    if (typeof applyFilters === 'function') {
-      document.getElementById('filterTerm').value = 'term-1';
-      document.getElementById('filterProgram').value = '';
+  test("applyFilters should filter by term", () => {
+    if (typeof applyFilters === "function") {
+      document.getElementById("filterTerm").value = "term-1";
+      document.getElementById("filterProgram").value = "";
 
       applyFilters();
 
-      const visibleRows = Array.from(document.querySelectorAll('.offering-row')).filter(r => r.style.display !== 'none');
+      const visibleRows = Array.from(
+        document.querySelectorAll(".offering-row"),
+      ).filter((r) => r.style.display !== "none");
       expect(visibleRows.length).toBe(2);
-      expect(visibleRows[0].textContent).toContain('Course 1');
-      expect(visibleRows[1].textContent).toContain('Course 3');
+      expect(visibleRows[0].textContent).toContain("Course 1");
+      expect(visibleRows[1].textContent).toContain("Course 3");
     }
   });
 
-  test('applyFilters should filter by program', () => {
-    if (typeof applyFilters === 'function') {
-      document.getElementById('filterTerm').value = '';
-      document.getElementById('filterProgram').value = 'prog-1';
+  test("applyFilters should filter by program", () => {
+    if (typeof applyFilters === "function") {
+      document.getElementById("filterTerm").value = "";
+      document.getElementById("filterProgram").value = "prog-1";
 
       applyFilters();
 
-      const visibleRows = Array.from(document.querySelectorAll('.offering-row')).filter(r => r.style.display !== 'none');
+      const visibleRows = Array.from(
+        document.querySelectorAll(".offering-row"),
+      ).filter((r) => r.style.display !== "none");
       expect(visibleRows.length).toBe(2);
-      expect(visibleRows[0].textContent).toContain('Course 1');
-      expect(visibleRows[1].textContent).toContain('Course 2');
+      expect(visibleRows[0].textContent).toContain("Course 1");
+      expect(visibleRows[1].textContent).toContain("Course 2");
     }
   });
 
-  test('applyFilters should filter by both term and program', () => {
-    if (typeof applyFilters === 'function') {
-      document.getElementById('filterTerm').value = 'term-2';
-      document.getElementById('filterProgram').value = 'prog-1';
+  test("applyFilters should filter by both term and program", () => {
+    if (typeof applyFilters === "function") {
+      document.getElementById("filterTerm").value = "term-2";
+      document.getElementById("filterProgram").value = "prog-1";
 
       applyFilters();
 
-      const visibleRows = Array.from(document.querySelectorAll('.offering-row')).filter(r => r.style.display !== 'none');
+      const visibleRows = Array.from(
+        document.querySelectorAll(".offering-row"),
+      ).filter((r) => r.style.display !== "none");
       expect(visibleRows.length).toBe(1);
-      expect(visibleRows[0].textContent).toContain('Course 2');
+      expect(visibleRows[0].textContent).toContain("Course 2");
     }
   });
 });
 
-describe('Offering Management - populateFilters', () => {
+describe("Offering Management - populateFilters", () => {
   let mockFetch;
 
   beforeEach(() => {
@@ -841,59 +913,59 @@ describe('Offering Management - populateFilters', () => {
     jest.restoreAllMocks();
   });
 
-  test('populateFilters should fetch terms and programs and populate dropdowns', async () => {
+  test("populateFilters should fetch terms and programs and populate dropdowns", async () => {
     mockFetch
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           terms: [
-            { term_id: 'term-1', name: 'Fall 2024' },
-            { term_id: 'term-2', name: 'Spring 2025' }
-          ]
-        })
+            { term_id: "term-1", name: "Fall 2024" },
+            { term_id: "term-2", name: "Spring 2025" },
+          ],
+        }),
       })
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           programs: [
-            { program_id: 'prog-1', name: 'Computer Science' },
-            { program_id: 'prog-2', name: 'Mathematics' }
-          ]
-        })
+            { program_id: "prog-1", name: "Computer Science" },
+            { program_id: "prog-2", name: "Mathematics" },
+          ],
+        }),
       });
 
     await populateFilters();
 
-    const termSelect = document.getElementById('filterTerm');
-    const programSelect = document.getElementById('filterProgram');
+    const termSelect = document.getElementById("filterTerm");
+    const programSelect = document.getElementById("filterProgram");
 
     // Check terms populated (1 default + 2 fetched)
     expect(termSelect.options.length).toBe(3);
-    expect(termSelect.options[1].value).toBe('term-1');
-    expect(termSelect.options[1].textContent).toBe('Fall 2024');
-    expect(termSelect.options[2].value).toBe('term-2');
+    expect(termSelect.options[1].value).toBe("term-1");
+    expect(termSelect.options[1].textContent).toBe("Fall 2024");
+    expect(termSelect.options[2].value).toBe("term-2");
 
     // Check programs populated
     expect(programSelect.options.length).toBe(3);
-    expect(programSelect.options[1].value).toBe('prog-1');
-    expect(programSelect.options[1].textContent).toBe('Computer Science');
+    expect(programSelect.options[1].value).toBe("prog-1");
+    expect(programSelect.options[1].textContent).toBe("Computer Science");
   });
 
-  test('populateFilters should handle missing DOM elements gracefully', async () => {
-    document.body.innerHTML = ''; // No filter elements
+  test("populateFilters should handle missing DOM elements gracefully", async () => {
+    document.body.innerHTML = ""; // No filter elements
 
     // Should not throw
     await expect(populateFilters()).resolves.toBeUndefined();
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  test('populateFilters should skip fetch if dropdowns already populated', async () => {
+  test("populateFilters should skip fetch if dropdowns already populated", async () => {
     // Pre-populate with options
-    document.getElementById('filterTerm').innerHTML = `
+    document.getElementById("filterTerm").innerHTML = `
       <option value="">All Terms</option>
       <option value="term-1">Fall 2024</option>
     `;
-    document.getElementById('filterProgram').innerHTML = `
+    document.getElementById("filterProgram").innerHTML = `
       <option value="">All Programs</option>
       <option value="prog-1">CS</option>
     `;
@@ -904,24 +976,24 @@ describe('Offering Management - populateFilters', () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  test('populateFilters should preserve current selection after repopulating', async () => {
+  test("populateFilters should preserve current selection after repopulating", async () => {
     // Set up initial state with pre-selected term
-    const termSelect = document.getElementById('filterTerm');
-    const programSelect = document.getElementById('filterProgram');
-    
+    const termSelect = document.getElementById("filterTerm");
+    const programSelect = document.getElementById("filterProgram");
+
     // Add options including the one we want selected
     termSelect.innerHTML = `
       <option value="">All Terms</option>
       <option value="term-1">Fall 2024</option>
       <option value="term-2">Spring 2025</option>
     `;
-    termSelect.value = 'term-2';
-    
+    termSelect.value = "term-2";
+
     // Clear so populateFilters will fetch (only 1 option = default)
     // But we want to test that the VALUE is preserved, so we need a different approach
     // Actually the function checks if options.length > 1 and returns early if populated
     // So let's test a fresh fetch scenario where we set value BEFORE population
-    
+
     // Reset to trigger fetch
     termSelect.innerHTML = '<option value="">All Terms</option>';
     programSelect.innerHTML = '<option value="">All Programs</option>';
@@ -931,16 +1003,16 @@ describe('Offering Management - populateFilters', () => {
         ok: true,
         json: async () => ({
           terms: [
-            { term_id: 'term-1', name: 'Fall 2024' },
-            { term_id: 'term-2', name: 'Spring 2025' }
-          ]
-        })
+            { term_id: "term-1", name: "Fall 2024" },
+            { term_id: "term-2", name: "Spring 2025" },
+          ],
+        }),
       })
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          programs: [{ program_id: 'prog-1', name: 'CS' }]
-        })
+          programs: [{ program_id: "prog-1", name: "CS" }],
+        }),
       });
 
     await populateFilters();
@@ -950,17 +1022,22 @@ describe('Offering Management - populateFilters', () => {
     expect(programSelect.options.length).toBe(2);
   });
 
-  test('populateFilters should handle fetch errors gracefully', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+  test("populateFilters should handle fetch errors gracefully", async () => {
+    const consoleSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
     await populateFilters();
 
-    expect(consoleSpy).toHaveBeenCalledWith('Error populating filters', expect.any(Error));
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Error populating filters",
+      expect.any(Error),
+    );
     consoleSpy.mockRestore();
   });
 
-  test('populateFilters should handle non-ok responses', async () => {
+  test("populateFilters should handle non-ok responses", async () => {
     mockFetch
       .mockResolvedValueOnce({ ok: false })
       .mockResolvedValueOnce({ ok: false });
@@ -968,7 +1045,7 @@ describe('Offering Management - populateFilters', () => {
     await populateFilters();
 
     // Should not throw, dropdowns remain with just default option
-    const termSelect = document.getElementById('filterTerm');
+    const termSelect = document.getElementById("filterTerm");
     expect(termSelect.options.length).toBe(1);
   });
 });

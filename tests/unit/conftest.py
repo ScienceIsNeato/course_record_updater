@@ -9,20 +9,22 @@ per test. Schema is created once per session and only data is cleared between te
 Table list is derived from SQLAlchemy metadata (never hardcoded) so it stays in sync
 with the schema automatically.
 
-Invocation: Use `python scripts/ship_it.py --checks python-unit-tests` as the primary
-interface. The ship_it.py wrapper handles venv activation, env vars, and parallel
-execution via maintAInability-gate.sh. Direct pytest is acceptable for single-file
-verification during development only.
+Invocation: Use `sm swab -g overconfidence:untested-code.py --verbose` as the primary
+interface. For single-file development feedback, direct pytest remains acceptable.
 """
 
 import os
+from collections.abc import Generator
+from typing import Any
 
 import pytest
 from sqlalchemy import text
 
 
 @pytest.fixture(scope="session", autouse=True)
-def setup_unit_test_database(tmp_path_factory, worker_id):
+def setup_unit_test_database(
+    tmp_path_factory: Any, worker_id: Any
+) -> Generator[Any, None, None]:
     """
     Set up isolated database for each pytest-xdist worker.
 
@@ -53,7 +55,7 @@ def setup_unit_test_database(tmp_path_factory, worker_id):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def disable_csrf_for_unit_tests():
+def disable_csrf_for_unit_tests() -> Generator[None, None, None]:
     """Disable CSRF validation for unit tests.
 
     Unit tests focus on business logic, not CSRF protection. Without this
@@ -70,7 +72,7 @@ def disable_csrf_for_unit_tests():
 
 
 @pytest.fixture(scope="function", autouse=True)
-def reset_db_between_tests():
+def reset_db_between_tests() -> Generator[None, None, None]:
     """
     Fast database cleanup between tests using DELETE instead of DROP/CREATE.
 
@@ -81,7 +83,7 @@ def reset_db_between_tests():
     _fast_clear_all_tables()
 
 
-def _fast_clear_all_tables():
+def _fast_clear_all_tables() -> None:
     """Clear all table data using DELETE statements (much faster than DDL reset).
 
     Table list is derived from SQLAlchemy Base.metadata.sorted_tables so it

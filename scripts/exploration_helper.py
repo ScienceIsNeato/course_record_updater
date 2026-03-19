@@ -12,7 +12,7 @@ Provides utilities for:
 import json
 import sys
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
 # Add src to path for constants import
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -31,7 +31,7 @@ class ExplorationTracker:
         self.progress = self._load_progress()
         self.findings = self._load_findings()
 
-    def _load_progress(self) -> Dict:
+    def _load_progress(self) -> Dict[str, Any]:
         """Load progress from file or create new."""
         if self.progress_file.exists():
             try:
@@ -45,7 +45,7 @@ class ExplorationTracker:
             "start_time": None,
         }
 
-    def _load_findings(self) -> Dict:
+    def _load_findings(self) -> Dict[str, Any]:
         """Load findings from file or create new."""
         if self.findings_file.exists():
             try:
@@ -84,7 +84,7 @@ class ExplorationTracker:
             self.findings[category].append(finding)
             self.save_findings()
 
-    def get_statistics(self) -> Dict:
+    def get_statistics(self) -> Dict[str, int]:
         """Get testing statistics."""
         return {
             "pages_tested": len(self.progress["pages_tested"]),

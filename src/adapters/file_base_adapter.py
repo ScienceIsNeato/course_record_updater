@@ -8,7 +8,7 @@ formats with automatic file compatibility detection and data type identification
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, cast
 
 
 class FileCompatibilityError(Exception):
@@ -248,7 +248,10 @@ class FileBaseAdapter(ABC):
         # By default, return the same formats as import
         adapter_info = self.get_adapter_info()
         formats = adapter_info.get("supported_formats", [".xlsx"])
-        return list(formats) if isinstance(formats, list) else [".xlsx"]
+        if not isinstance(formats, list):
+            return [".xlsx"]
+        typed_formats = cast(list[object], formats)
+        return [str(file_format) for file_format in typed_formats]
 
     def get_file_size_limit(self) -> int:
         """
@@ -333,7 +336,10 @@ class FileBaseAdapter(ABC):
         """
         adapter_info = self.get_adapter_info()
         formats = adapter_info.get("supported_formats", [])
-        return list(formats) if isinstance(formats, list) else []
+        if not isinstance(formats, list):
+            return []
+        typed_formats: List[Any] = cast(List[Any], formats)
+        return [str(fmt) for fmt in typed_formats if isinstance(fmt, str)]
 
     def validate_file_extension(self, file_path: str) -> Tuple[bool, str]:
         """

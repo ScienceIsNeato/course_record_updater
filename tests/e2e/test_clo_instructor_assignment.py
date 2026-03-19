@@ -1,5 +1,6 @@
 import json
 import uuid
+from typing import Any
 
 import pytest
 from playwright.sync_api import Page, expect
@@ -11,7 +12,7 @@ from tests.e2e.test_helpers import (
 )
 
 
-def _setup_unassigned_clo(admin_page, institution_id):
+def _setup_unassigned_clo(admin_page: Any, institution_id: Any) -> Any:
     """
     Sets up an unassigned CLO for testing.
     """
@@ -151,7 +152,9 @@ def _setup_unassigned_clo(admin_page, institution_id):
 
 
 @pytest.mark.e2e
-def test_clo_invite_button_opens_modal(authenticated_institution_admin_page: Page):
+def test_clo_invite_button_opens_modal(
+    authenticated_institution_admin_page: Page,
+) -> None:
     admin_page = authenticated_institution_admin_page
     admin_page.on("console", lambda msg: print(f"Browser Console: {msg.text}"))
     inst_id = get_institution_id_from_user(admin_page)
@@ -177,7 +180,7 @@ def test_clo_invite_button_opens_modal(authenticated_institution_admin_page: Pag
 @pytest.mark.e2e
 def test_clo_scroll_regression_on_reload(
     authenticated_institution_admin_page: Page,
-):
+) -> None:
     """
     Verifies that the table can be scrolled and that reloading the table
     (mimicking an update like 'faculty-invited') preserves the scroll position.
@@ -189,7 +192,7 @@ def test_clo_scroll_regression_on_reload(
     data = _setup_unassigned_clo(admin_page, inst_id)
 
     # Simplified mock to force a long table
-    def handle_route(route):
+    def handle_route(route: Any) -> None:
         url = route.request.url
         # Match Audit API for this test setup
         if "/api/outcomes/audit" in url:

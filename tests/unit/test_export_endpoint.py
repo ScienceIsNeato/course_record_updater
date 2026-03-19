@@ -6,6 +6,7 @@ Tests authentication, parameter handling, and security
 
 import tempfile
 from pathlib import Path
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -17,7 +18,7 @@ from src.services.export_service import ExportResult
 class TestExportEndpoint:
     """Test /api/export/data endpoint"""
 
-    def test_export_requires_authentication(self, client):
+    def test_export_requires_authentication(self, client: Any) -> None:
         """Unauthenticated users should get 401"""
         response = client.get("/api/export/data")
 
@@ -27,12 +28,12 @@ class TestExportEndpoint:
 
     @patch("src.api.routes.exports.create_export_service")
     def test_export_with_authentication(
-        self, mock_create_service, authenticated_client
-    ):
+        self, mock_create_service: Any, authenticated_client: Any
+    ) -> None:
         """Authenticated users should be able to export"""
 
         # Mock the export service to write the actual file where the endpoint expects it
-        def mock_export(config, output_path):
+        def mock_export(config: Any, output_path: Any) -> Any:
             # Create the file at the path the endpoint specifies
             with open(output_path, "wb") as f:
                 f.write(b"fake excel data")
@@ -65,8 +66,8 @@ class TestExportEndpoint:
 
     @patch("src.api.routes.exports.create_export_service")
     def test_export_sanitizes_path_traversal(
-        self, mock_create_service, authenticated_client
-    ):
+        self, mock_create_service: Any, authenticated_client: Any
+    ) -> None:
         """Export should sanitize path traversal attempts"""
         # Create a real temp file
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as f:
@@ -111,7 +112,9 @@ class TestExportEndpoint:
             Path(temp_path).unlink(missing_ok=True)
 
     @patch("src.api.routes.exports.create_export_service")
-    def test_export_handles_failure(self, mock_create_service, authenticated_client):
+    def test_export_handles_failure(
+        self, mock_create_service: Any, authenticated_client: Any
+    ) -> None:
         """Export should handle service failures gracefully"""
         # Mock adapter to return supported formats
         mock_adapter = Mock()
@@ -142,11 +145,13 @@ class TestExportEndpoint:
         assert data["success"] is False
 
     @patch("src.api.routes.exports.create_export_service")
-    def test_export_with_parameters(self, mock_create_service, authenticated_client):
+    def test_export_with_parameters(
+        self, mock_create_service: Any, authenticated_client: Any
+    ) -> None:
         """Export should accept and use optional parameters"""
 
         # Mock the export service to write the actual file where the endpoint expects it
-        def mock_export(config, output_path):
+        def mock_export(config: Any, output_path: Any) -> Any:
             # Create the file at the path the endpoint specifies
             with open(output_path, "wb") as f:
                 f.write(b"fake excel data")
@@ -191,8 +196,8 @@ class TestExportEndpoint:
     @patch("src.api.routes.exports.get_all_institutions")
     @patch("src.api.routes.exports.create_export_service")
     def test_site_admin_export_all_institutions(
-        self, mock_create_service, mock_get_institutions, client
-    ):
+        self, mock_create_service: Any, mock_get_institutions: Any, client: Any
+    ) -> None:
         """Test Site Admin system-wide export (zip of folders)"""
         # Create site admin session
         with client.session_transaction() as sess:
@@ -211,7 +216,7 @@ class TestExportEndpoint:
         ]
 
         # Mock export service
-        def mock_export(config, output_path):
+        def mock_export(config: Any, output_path: Any) -> Any:
             # Create fake export file
             with open(output_path, "wb") as f:
                 f.write(b"fake export data")
@@ -248,8 +253,8 @@ class TestExportEndpoint:
     @patch("src.api.routes.exports.get_all_institutions")
     @patch("src.api.routes.exports.create_export_service")
     def test_site_admin_export_no_institutions(
-        self, mock_create_service, mock_get_institutions, client
-    ):
+        self, mock_create_service: Any, mock_get_institutions: Any, client: Any
+    ) -> None:
         """Test Site Admin export when no institutions exist"""
         # Create site admin session
         with client.session_transaction() as sess:
@@ -289,7 +294,9 @@ class TestExportEndpoint:
         assert "no institutions" in data["error"].lower()
 
     @patch("src.api.routes.exports.create_export_service")
-    def test_export_handles_exception(self, mock_create_service, authenticated_client):
+    def test_export_handles_exception(
+        self, mock_create_service: Any, authenticated_client: Any
+    ) -> None:
         """Export should handle unexpected exceptions"""
         # Mock adapter to return supported formats
         mock_adapter = Mock()
@@ -317,8 +324,8 @@ class TestExportEndpoint:
 
     @patch("src.api.routes.exports.get_current_user_safe")
     def test_export_missing_institution_context(
-        self, mock_get_user, authenticated_client
-    ):
+        self, mock_get_user: Any, authenticated_client: Any
+    ) -> None:
         """Export should fail when user has no institution context"""
         # Mock user without institution_id (must be authenticated to pass @login_required)
         mock_get_user.return_value = {
@@ -335,7 +342,9 @@ class TestExportEndpoint:
         assert "institution context" in data["error"].lower()
 
     @patch("src.api.routes.exports.create_export_service")
-    def test_export_adapter_not_found(self, mock_create_service, authenticated_client):
+    def test_export_adapter_not_found(
+        self, mock_create_service: Any, authenticated_client: Any
+    ) -> None:
         """Export should fail gracefully when adapter is not found"""
         # Mock registry returning None for adapter
         mock_registry = Mock()
@@ -357,11 +366,11 @@ class TestExportEndpoint:
 
     @patch("src.api.routes.exports.create_export_service")
     def test_export_adapter_exception_fallback(
-        self, mock_create_service, authenticated_client
-    ):
+        self, mock_create_service: Any, authenticated_client: Any
+    ) -> None:
         """Export should fall back to default format when adapter info query fails"""
 
-        def mock_export(config, output_path):
+        def mock_export(config: Any, output_path: Any) -> Any:
             # Create the file at the path the endpoint specifies
             with open(output_path, "wb") as f:
                 f.write(b"fake excel data")
@@ -391,11 +400,11 @@ class TestExportEndpoint:
 
     @patch("src.api.routes.exports.create_export_service")
     def test_export_sanitizes_empty_data_type(
-        self, mock_create_service, authenticated_client
-    ):
+        self, mock_create_service: Any, authenticated_client: Any
+    ) -> None:
         """Export should fall back to 'courses' when data_type is sanitized to empty"""
 
-        def mock_export(config, output_path):
+        def mock_export(config: Any, output_path: Any) -> Any:
             # Verify the config used "courses" as fallback
             assert config.institution_id is not None
             # Create the file

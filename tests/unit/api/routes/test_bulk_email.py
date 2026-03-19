@@ -10,6 +10,12 @@ in tests without import pollution issues.
 
 import json
 import unittest
+
+# Module-level fixture to bypass permission checks for ALL tests in this file
+# This runs BEFORE test class instantiation, ensuring patches are active
+# when decorators are evaluated (critical for pytest-xdist parallel execution)
+from collections.abc import Generator
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -18,11 +24,8 @@ from flask import Flask
 from src.api.routes.bulk_email import bulk_email_bp
 
 
-# Module-level fixture to bypass permission checks for ALL tests in this file
-# This runs BEFORE test class instantiation, ensuring patches are active
-# when decorators are evaluated (critical for pytest-xdist parallel execution)
 @pytest.fixture(scope="module", autouse=True)
-def bypass_permissions():
+def bypass_permissions() -> Generator[None, None, None]:
     """Bypass permission checks for all bulk_email route tests"""
     with patch(
         "src.services.auth_service.permission_required",
@@ -34,7 +37,7 @@ def bypass_permissions():
 class TestBulkEmailAPI(unittest.TestCase):
     """Test bulk email API endpoints"""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures"""
         self.app = Flask(__name__)
         self.app.config["TESTING"] = True
@@ -53,8 +56,8 @@ class TestBulkEmailAPI(unittest.TestCase):
     @patch("src.api.routes.bulk_email.BulkEmailService")
     @patch("src.api.routes.bulk_email.get_db")
     def test_send_instructor_reminders_success(
-        self, mock_get_db, mock_service, mock_get_user
-    ):
+        self, mock_get_db: Any, mock_service: Any, mock_get_user: Any
+    ) -> None:
         """Test sending instructor reminders successfully"""
         # Setup mocks
         mock_get_user.return_value = self.mock_user
@@ -93,7 +96,7 @@ class TestBulkEmailAPI(unittest.TestCase):
         assert call_kwargs["deadline"] == "2024-12-31"
 
     @patch("src.api.routes.bulk_email.get_current_user")
-    def test_send_instructor_reminders_missing_body(self, mock_get_user):
+    def test_send_instructor_reminders_missing_body(self, mock_get_user: Any) -> None:
         """Test sending reminders with missing request body"""
         mock_get_user.return_value = self.mock_user
 
@@ -109,7 +112,7 @@ class TestBulkEmailAPI(unittest.TestCase):
         assert "required" in data["error"].lower()
 
     @patch("src.api.routes.bulk_email.get_current_user")
-    def test_send_instructor_reminders_empty_list(self, mock_get_user):
+    def test_send_instructor_reminders_empty_list(self, mock_get_user: Any) -> None:
         """Test sending reminders with empty instructor list"""
         mock_get_user.return_value = self.mock_user
 
@@ -125,7 +128,7 @@ class TestBulkEmailAPI(unittest.TestCase):
         assert "non-empty" in data["error"].lower()
 
     @patch("src.api.routes.bulk_email.get_current_user")
-    def test_send_instructor_reminders_invalid_type(self, mock_get_user):
+    def test_send_instructor_reminders_invalid_type(self, mock_get_user: Any) -> None:
         """Test sending reminders with invalid instructor_ids type"""
         mock_get_user.return_value = self.mock_user
 
@@ -140,7 +143,7 @@ class TestBulkEmailAPI(unittest.TestCase):
         assert data["success"] is False
 
     @patch("src.api.routes.bulk_email.get_current_user")
-    def test_send_instructor_reminders_no_auth(self, mock_get_user):
+    def test_send_instructor_reminders_no_auth(self, mock_get_user: Any) -> None:
         """Test sending reminders without authentication"""
         mock_get_user.return_value = None
 
@@ -158,7 +161,9 @@ class TestBulkEmailAPI(unittest.TestCase):
     @patch("src.api.routes.bulk_email.get_current_user")
     @patch("src.api.routes.bulk_email.BulkEmailService")
     @patch("src.api.routes.bulk_email.get_db")
-    def test_get_job_status_success(self, mock_get_db, mock_service, mock_get_user):
+    def test_get_job_status_success(
+        self, mock_get_db: Any, mock_service: Any, mock_get_user: Any
+    ) -> None:
         """Test getting job status successfully"""
         # Setup mocks
         mock_get_user.return_value = self.mock_user
@@ -192,7 +197,9 @@ class TestBulkEmailAPI(unittest.TestCase):
     @patch("src.api.routes.bulk_email.get_current_user")
     @patch("src.api.routes.bulk_email.BulkEmailService")
     @patch("src.api.routes.bulk_email.get_db")
-    def test_get_job_status_not_found(self, mock_get_db, mock_service, mock_get_user):
+    def test_get_job_status_not_found(
+        self, mock_get_db: Any, mock_service: Any, mock_get_user: Any
+    ) -> None:
         """Test getting status for non-existent job"""
         mock_get_user.return_value = self.mock_user
         mock_db = Mock()
@@ -207,7 +214,7 @@ class TestBulkEmailAPI(unittest.TestCase):
         assert "not found" in data["error"].lower()
 
     @patch("src.api.routes.bulk_email.get_current_user")
-    def test_get_job_status_no_auth(self, mock_get_user):
+    def test_get_job_status_no_auth(self, mock_get_user: Any) -> None:
         """Test getting job status without authentication"""
         mock_get_user.return_value = None
 
@@ -220,7 +227,9 @@ class TestBulkEmailAPI(unittest.TestCase):
     @patch("src.api.routes.bulk_email.get_current_user")
     @patch("src.api.routes.bulk_email.BulkEmailService")
     @patch("src.api.routes.bulk_email.get_db")
-    def test_get_recent_jobs_success(self, mock_get_db, mock_service, mock_get_user):
+    def test_get_recent_jobs_success(
+        self, mock_get_db: Any, mock_service: Any, mock_get_user: Any
+    ) -> None:
         """Test getting recent jobs successfully"""
         mock_get_user.return_value = self.mock_user
         mock_db = Mock()
@@ -253,7 +262,9 @@ class TestBulkEmailAPI(unittest.TestCase):
     @patch("src.api.routes.bulk_email.get_current_user")
     @patch("src.api.routes.bulk_email.BulkEmailService")
     @patch("src.api.routes.bulk_email.get_db")
-    def test_get_recent_jobs_with_limit(self, mock_get_db, mock_service, mock_get_user):
+    def test_get_recent_jobs_with_limit(
+        self, mock_get_db: Any, mock_service: Any, mock_get_user: Any
+    ) -> None:
         """Test getting recent jobs with custom limit"""
         mock_get_user.return_value = self.mock_user
         mock_db = Mock()
@@ -271,8 +282,8 @@ class TestBulkEmailAPI(unittest.TestCase):
     @patch("src.api.routes.bulk_email.BulkEmailService")
     @patch("src.api.routes.bulk_email.get_db")
     def test_get_recent_jobs_limit_capped(
-        self, mock_get_db, mock_service, mock_get_user
-    ):
+        self, mock_get_db: Any, mock_service: Any, mock_get_user: Any
+    ) -> None:
         """Test that limit is capped at maximum"""
         mock_get_user.return_value = self.mock_user
         mock_db = Mock()
@@ -289,8 +300,8 @@ class TestBulkEmailAPI(unittest.TestCase):
     @patch("src.api.routes.bulk_email.BulkEmailService")
     @patch("src.api.routes.bulk_email.get_db")
     def test_send_instructor_reminders_value_error(
-        self, mock_get_db, mock_service, mock_get_user
-    ):
+        self, mock_get_db: Any, mock_service: Any, mock_get_user: Any
+    ) -> None:
         """Test send instructor reminders ValueError handling"""
         mock_get_user.return_value = self.mock_user
         mock_db = Mock()
@@ -317,8 +328,8 @@ class TestBulkEmailAPI(unittest.TestCase):
     @patch("src.api.routes.bulk_email.BulkEmailService")
     @patch("src.api.routes.bulk_email.get_db")
     def test_send_instructor_reminders_generic_exception(
-        self, mock_get_db, mock_service, mock_get_user
-    ):
+        self, mock_get_db: Any, mock_service: Any, mock_get_user: Any
+    ) -> None:
         """Test send instructor reminders generic Exception handling"""
         mock_get_user.return_value = self.mock_user
         mock_db = Mock()
@@ -344,8 +355,8 @@ class TestBulkEmailAPI(unittest.TestCase):
     @patch("src.api.routes.bulk_email.BulkEmailService")
     @patch("src.api.routes.bulk_email.get_db")
     def test_get_job_status_generic_exception(
-        self, mock_get_db, mock_service, mock_get_user
-    ):
+        self, mock_get_db: Any, mock_service: Any, mock_get_user: Any
+    ) -> None:
         """Test get job status generic Exception handling"""
         mock_get_user.return_value = self.mock_user
         mock_db = Mock()
@@ -365,8 +376,8 @@ class TestBulkEmailAPI(unittest.TestCase):
     @patch("src.api.routes.bulk_email.BulkEmailService")
     @patch("src.api.routes.bulk_email.get_db")
     def test_get_recent_jobs_generic_exception(
-        self, mock_get_db, mock_service, mock_get_user
-    ):
+        self, mock_get_db: Any, mock_service: Any, mock_get_user: Any
+    ) -> None:
         """Test get recent jobs generic Exception handling"""
         mock_get_user.return_value = self.mock_user
         mock_db = Mock()

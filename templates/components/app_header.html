@@ -1,19 +1,22 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container">
-        <a class="navbar-brand d-flex align-items-center" href="/">
-            <img src="{{ url_for('static', filename='images/loopcloser_icon.png') }}" alt="Loopcloser Logo"
-                height="30" class="d-inline-block align-text-top me-2">
-            Loopcloser
-        </a>
-        {% if nav_button_text|default(None) and nav_button_url|default(None) %}
-        <div class="navbar-nav ms-auto">
-            <a class="btn btn-outline-light" href="{{ nav_button_url }}">
-                {% if nav_button_icon|default(None) %}
-                <i class="{{ nav_button_icon }} me-1"></i>
-                {% endif %}
-                {{ nav_button_text }}
-            </a>
-        </div>
-        {% endif %}
+  <div class="container">
+    <a class="navbar-brand d-flex align-items-center" href="/">
+      <img
+        src="{{ url_for('static', filename='images/loopcloser_icon.png') }}"
+        alt="Loopcloser Logo"
+        height="30"
+        class="d-inline-block align-text-top me-2"
+      />
+      Loopcloser
+    </a>
+    {% if nav_button_text|default(None) and nav_button_url|default(None) %}
+    <div class="navbar-nav ms-auto">
+      <a class="btn btn-outline-light" href="{{ nav_button_url }}">
+        {% if nav_button_icon|default(None) %}
+        <i class="{{ nav_button_icon }} me-1"></i>
+        {% endif %} {{ nav_button_text }}
+      </a>
     </div>
+    {% endif %}
+  </div>
 </nav>

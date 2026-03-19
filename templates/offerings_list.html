@@ -1,49 +1,54 @@
-{% extends "dashboard/base_dashboard.html" %}
-
-{% block title %}Course Offerings - MockU Admin{% endblock %}
-
-{% block page_title %}📋 Course Offerings{% endblock %}
-{% block page_subtitle %}Manage offerings for Courses in specific Terms{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
-{% endblock %}
-
-{% block content %}
+{% extends "dashboard/base_dashboard.html" %} {% block title %}Course Offerings
+- MockU Admin{% endblock %} {% block page_title %}📋 Course Offerings{% endblock
+%} {% block page_subtitle %}Manage offerings for Courses in specific Terms{%
+endblock %} {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}" />
+{% endblock %} {% block content %}
 <div class="dashboard-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">📋</span>
-            All Course Offerings
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-primary" onclick="openCreateOfferingModal()">
-                <i class="fas fa-plus"></i> Add Offering
-            </button>
-        </div>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">📋</span>
+      All Course Offerings
+    </h5>
+    <div class="panel-actions">
+      <button
+        class="btn btn-sm btn-primary"
+        onclick="openCreateOfferingModal()"
+      >
+        <i class="fas fa-plus"></i> Add Offering
+      </button>
     </div>
-    <div class="panel-content">
-        <div class="row mb-3 g-2">
-            <div class="col-md-3">
-                <select id="filterTerm" class="form-select form-select-sm" onchange="applyFilters()">
-                    <option value="">All Terms</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <select id="filterProgram" class="form-select form-select-sm" onchange="applyFilters()">
-                    <option value="">All Programs</option>
-                </select>
-            </div>
-        </div>
-        <div id="offeringsTableContainer">
-            <!-- Table populated by JS -->
-            <output class="d-flex justify-content-center p-5" aria-live="polite">
-                <div class="spinner-border text-primary" aria-hidden="true">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-            </output>
-        </div>
+  </div>
+  <div class="panel-content">
+    <div class="row mb-3 g-2">
+      <div class="col-md-3">
+        <select
+          id="filterTerm"
+          class="form-select form-select-sm"
+          onchange="applyFilters()"
+        >
+          <option value="">All Terms</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select
+          id="filterProgram"
+          class="form-select form-select-sm"
+          onchange="applyFilters()"
+        >
+          <option value="">All Programs</option>
+        </select>
+      </div>
     </div>
+    <div id="offeringsTableContainer">
+      <!-- Table populated by JS -->
+      <output class="d-flex justify-content-center p-5" aria-live="polite">
+        <div class="spinner-border text-primary" aria-hidden="true">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </output>
+    </div>
+  </div>
 </div>
 
 <!-- Include Offering Management Modals (Create/Edit) -->
@@ -54,19 +59,15 @@
      OR import them. Since 'include' is powerful, let's replicate the modals from institution_admin.html 
      conceptually but place them here for this page. -->
 
-{% include '_offering_modals.html' %}
-
-{% endblock %}
-
-{% block extra_js %}
+{% include '_offering_modals.html' %} {% endblock %} {% block extra_js %}
 <script src="{{ url_for('static', filename='offeringManagement.js') }}"></script>
 <script>
-    // Load offerings when page is ready. 
-    // offeringManagement.js handles global init, but we call load function specifically here.
-    document.addEventListener('DOMContentLoaded', () => {
-        if (typeof loadOfferings === 'function') {
-            loadOfferings();
-        }
-    });
+  // Load offerings when page is ready.
+  // offeringManagement.js handles global init, but we call load function specifically here.
+  document.addEventListener("DOMContentLoaded", () => {
+    if (typeof loadOfferings === "function") {
+      loadOfferings();
+    }
+  });
 </script>
 {% endblock %}

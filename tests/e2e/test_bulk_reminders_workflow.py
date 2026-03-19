@@ -7,10 +7,12 @@ and successful delivery to multiple instructors.
 User Persona: Dr. Sarah Williams (Program Admin) sending reminders to 5 instructors
 """
 
+import pytest
 from playwright.sync_api import Page, expect
 
-# Test Configuration
-BASE_URL = "http://localhost:3002"  # E2E tests use port 3002
+from tests.e2e.conftest import BASE_URL
+
+pytestmark = [pytest.mark.e2e, pytest.mark.xdist_group("email")]
 
 
 class TestBulkInstructorReminders:
@@ -63,7 +65,7 @@ class TestBulkInstructorReminders:
     def test_complete_bulk_reminder_workflow(
         self,
         authenticated_institution_admin_page: Page,
-    ):
+    ) -> None:
         """
         E2E: Complete bulk reminder workflow with progress tracking.
 

@@ -5,6 +5,7 @@ Product demonstration materials for showcasing key workflows.
 ## Available Demos
 
 ### 1. Single Term Outcome Management (2025)
+
 **File:** `single_term_outcome_management.md`
 **Duration:** 30 minutes
 **Workflow:** Import → Assign → Complete → Audit → Export
@@ -12,6 +13,7 @@ Product demonstration materials for showcasing key workflows.
 Complete end-to-end demonstration of collecting and managing learning outcomes for a single academic term.
 
 ### 2. Program Learning Outcomes Dashboard (2026)
+
 **File:** `plo_dashboard.md` · Automated: `demos/plo_dashboard_workflow.json`
 **Duration:** 10 minutes
 **Workflow:** Create PLO → Edit → Map CLO → Publish → Drill to Section
@@ -22,6 +24,7 @@ the drilldown tree has real section-assessment leaves out of the box.
 BIOL's PLO-4 is intentionally unmapped to demonstrate empty states.
 
 **Automated run (all four beats via real API + sqlite verification):**
+
 ```bash
 python docs/workflow-walkthroughs/scripts/run_demo.py --auto
 ```
@@ -41,6 +44,7 @@ python docs/workflow-walkthroughs/scripts/run_demo.py single_term_outcome_manage
 ```
 
 The runner dispatches based on file extension:
+
 - **`.json`** → delegates to `demos/run_demo.py` (API calls, CSRF
   handling, sqlite3 verification, `--fail-fast`, `--verify-only`)
 - **`.md`** → parses the walkthrough contract below, runs the setup
@@ -61,6 +65,7 @@ open docs/workflow-walkthroughs/single_term_outcome_management.md
 ```
 
 **Demo Account:**
+
 - URL: http://localhost:3001
 - Email: demo2025.admin@example.com
 - Password: Demo2024!
@@ -74,43 +79,48 @@ To add a new workflow demonstration:
 1. **Create markdown file** named after the workflow (e.g., `multi_year_assessment_tracking.md`)
 
 2. **Follow the standard structure:**
-   ```markdown
+
+   ````markdown
    # Workflow Name
-   
+
    **Duration:** X minutes
    **Year:** 2025
    **Workflow:** Brief description
-   
+
    ## Setup
-   
+
    ```bash
    # Setup commands
    python scripts/seed_db.py --demo --clear --env dev
    ./restart_server.sh dev
    ```
-   
+   ````
+
    **Demo Account:**
    - URL: http://localhost:3001
    - Email: demo2025.admin@example.com
    - Password: Demo2024!
-   
-   ---
-   
+
+   ***
+
    ## Demo Flow
-   
+
    ### Step 1: Title
-   
+
    Instructions for what to do and expect.
-   
+
    **Press Enter to continue →**
-   
-   ---
-   
+
+   ***
+
    ### Step 2: Title
-   
+
    More instructions...
-   
+
    **Press Enter to continue →**
+
+   ```
+
    ```
 
 3. **Test with run_demo.py:**
@@ -123,7 +133,7 @@ To add a new workflow demonstration:
 For compatibility with `run_demo.py`, demos should follow these conventions:
 
 - **`## Setup` section** with bash code block containing setup commands
-- **`### Step N: Title`** for each demo step  
+- **`### Step N: Title`** for each demo step
 - **`**Press Enter to continue →**`** markers where demo should pause
 - Clear instructions for actions and expected results
 - **Demo Account** section with credentials
@@ -137,6 +147,7 @@ For compatibility with `run_demo.py`, demos should follow these conventions:
 Parses markdown demo files and provides step-by-step interactive guidance.
 
 **Features:**
+
 - Runs setup commands automatically (with confirmation)
 - Displays steps one at a time
 - Waits for Enter key to continue
@@ -144,6 +155,7 @@ Parses markdown demo files and provides step-by-step interactive guidance.
 - Color-coded output for readability
 
 **Usage:**
+
 ```bash
 # Default to PLO JSON demo, run automated
 python docs/workflow-walkthroughs/scripts/run_demo.py --auto
@@ -173,6 +185,7 @@ python scripts/seed_db.py --demo --manifest demos/full_semester_manifest.json --
 ```
 
 The full-semester manifest creates:
+
 - Institution: Fictional University (demo accounts)
 - **BIOL** and **ZOOL** programs, each with multi-term courses
 - **Program Outcomes** (4 in BIOL, 2 in ZOOL) with a **v1 published

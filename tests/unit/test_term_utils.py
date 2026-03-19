@@ -22,21 +22,21 @@ from src.utils.term_utils import (
 class TestTermGenerator:
     """Test the TermGenerator class functionality."""
 
-    def test_default_initialization(self):
+    def test_default_initialization(self) -> None:
         """Test default TermGenerator initialization."""
         generator = TermGenerator()
         assert generator.base_year == datetime.now().year
         assert generator.years_forward == 2
         assert generator.years_back == 1
 
-    def test_custom_initialization(self):
+    def test_custom_initialization(self) -> None:
         """Test TermGenerator with custom parameters."""
         generator = TermGenerator(base_year=2024, years_forward=1, years_back=0)
         assert generator.base_year == 2024
         assert generator.years_forward == 1
         assert generator.years_back == 0
 
-    def test_get_valid_terms_structure(self):
+    def test_get_valid_terms_structure(self) -> None:
         """Test that valid terms are generated correctly."""
         generator = TermGenerator(base_year=2024, years_forward=1, years_back=1)
         terms = generator.get_valid_terms()
@@ -54,7 +54,7 @@ class TestTermGenerator:
         # Check terms are sorted
         assert terms == sorted(terms)
 
-    def test_is_valid_term(self):
+    def test_is_valid_term(self) -> None:
         """Test term validation."""
         generator = TermGenerator(base_year=2024, years_forward=1, years_back=1)
 
@@ -69,7 +69,7 @@ class TestTermGenerator:
         assert not generator.is_valid_term("INVALID")  # Bad format
         assert not generator.is_valid_term("")  # Empty string
 
-    def test_get_current_term(self):
+    def test_get_current_term(self) -> None:
         """Test current term detection."""
         generator = TermGenerator()
         current = generator.get_current_term()
@@ -82,7 +82,7 @@ class TestTermGenerator:
         # Should be a valid term according to the generator
         assert generator.is_valid_term(current)
 
-    def test_get_term_display_name(self):
+    def test_get_term_display_name(self) -> None:
         """Test human-readable term names."""
         generator = TermGenerator()
 
@@ -100,7 +100,7 @@ class TestTermGenerator:
 class TestModuleFunctions:
     """Test the module-level convenience functions."""
 
-    def test_get_allowed_terms(self):
+    def test_get_allowed_terms(self) -> None:
         """Test get_allowed_terms function."""
         terms = get_allowed_terms()
         assert isinstance(terms, list)
@@ -112,7 +112,7 @@ class TestModuleFunctions:
         assert f"SP{current_year}" in terms
         assert f"SU{current_year}" in terms
 
-    def test_is_valid_term_function(self):
+    def test_is_valid_term_function(self) -> None:
         """Test is_valid_term function."""
         # Should work with current year terms
         current_year = datetime.now().year
@@ -124,14 +124,14 @@ class TestModuleFunctions:
         assert not is_valid_term("INVALID")
         assert not is_valid_term("")
 
-    def test_get_current_term_function(self):
+    def test_get_current_term_function(self) -> None:
         """Test get_current_term function."""
         current = get_current_term()
         assert isinstance(current, str)
         assert len(current) == 6
         assert is_valid_term(current)  # Should be valid according to our validator
 
-    def test_default_term_generator_exists(self):
+    def test_default_term_generator_exists(self) -> None:
         """Test that default_term_generator is properly initialized."""
         assert default_term_generator is not None
         assert isinstance(default_term_generator, TermGenerator)
@@ -144,7 +144,7 @@ class TestModuleFunctions:
 class TestBackwardCompatibility:
     """Test backward compatibility with old ALLOWED_TERMS approach."""
 
-    def test_replaces_hardcoded_terms(self):
+    def test_replaces_hardcoded_terms(self) -> None:
         """Test that dynamic terms include typical hardcoded values."""
         terms = get_allowed_terms()
 
@@ -159,7 +159,7 @@ class TestBackwardCompatibility:
         for term in expected_terms:
             assert term in terms, f"Expected term {term} not found in {terms}"
 
-    def test_validation_works_like_lambda(self):
+    def test_validation_works_like_lambda(self) -> None:
         """Test that is_valid_term works like the old lambda: t in ALLOWED_TERMS."""
         # Get current allowed terms
         allowed = get_allowed_terms()
@@ -178,7 +178,7 @@ class TestBackwardCompatibility:
 class TestTermGeneratorExtended:
     """Extended tests for TermGenerator class."""
 
-    def test_term_generator_get_current_term_logic(self):
+    def test_term_generator_get_current_term_logic(self) -> None:
         """Test get_current_term logic with mocked datetime."""
         generator = TermGenerator()
 
@@ -194,7 +194,7 @@ class TestTermGeneratorExtended:
             current_term = generator.get_current_term()
             assert current_term is not None
 
-    def test_term_generator_is_valid_term_edge_cases(self):
+    def test_term_generator_is_valid_term_edge_cases(self) -> None:
         """Test is_valid_term with various edge cases."""
         generator = TermGenerator()
 
@@ -205,25 +205,25 @@ class TestTermGeneratorExtended:
 class TestTermStatusHelpers:
     """Tests for get_term_status/is_term_active helpers."""
 
-    def test_status_active(self):
+    def test_status_active(self) -> None:
         with patch("src.utils.term_utils.get_current_time") as mock_now:
             mock_now.return_value = datetime(2024, 1, 15)
             assert get_term_status("2024-01-01", "2024-02-01") == TERM_STATUS_ACTIVE
             assert is_term_active("2024-01-01", "2024-02-01") is True
 
-    def test_status_scheduled(self):
+    def test_status_scheduled(self) -> None:
         with patch("src.utils.term_utils.get_current_time") as mock_now:
             mock_now.return_value = datetime(2024, 1, 15)
             assert get_term_status("2024-02-01", "2024-05-01") == TERM_STATUS_SCHEDULED
             assert is_term_active("2024-02-01", "2024-05-01") is False
 
-    def test_status_passed(self):
+    def test_status_passed(self) -> None:
         with patch("src.utils.term_utils.get_current_time") as mock_now:
             mock_now.return_value = datetime(2024, 6, 1)
             assert get_term_status("2024-01-01", "2024-05-01") == TERM_STATUS_PASSED
             assert is_term_active("2024-01-01", "2024-05-01") is False
 
-    def test_status_unknown_when_missing_dates(self):
+    def test_status_unknown_when_missing_dates(self) -> None:
         assert get_term_status(None, None) == "UNKNOWN"
 
         # Test with empty string
@@ -233,7 +233,7 @@ class TestTermStatusHelpers:
         # Test with whitespace
         assert generator.is_valid_term("   ") is False
 
-    def test_term_generator_get_term_display_name_invalid_input(self):
+    def test_term_generator_get_term_display_name_invalid_input(self) -> None:
         """Test get_term_display_name with invalid input."""
         generator = TermGenerator()
 
@@ -249,13 +249,13 @@ class TestTermStatusHelpers:
 class TestModuleLevelFunctionsExtended:
     """Extended tests for module-level functions."""
 
-    def test_get_allowed_terms_returns_list(self):
+    def test_get_allowed_terms_returns_list(self) -> None:
         """Test that get_allowed_terms returns a list."""
         terms = get_allowed_terms()
         assert isinstance(terms, list)
         assert len(terms) > 0
 
-    def test_is_valid_term_function_with_various_inputs(self):
+    def test_is_valid_term_function_with_various_inputs(self) -> None:
         """Test is_valid_term function with various inputs."""
         # Test with valid term
         valid_terms = get_allowed_terms()
@@ -268,7 +268,7 @@ class TestModuleLevelFunctionsExtended:
         assert is_valid_term("") is False
         assert is_valid_term(None) is False
 
-    def test_get_current_term_function_returns_string(self):
+    def test_get_current_term_function_returns_string(self) -> None:
         """Test that get_current_term returns a string."""
         current_term = get_current_term()
         assert isinstance(current_term, str)
@@ -278,7 +278,7 @@ class TestModuleLevelFunctionsExtended:
 class TestBackwardCompatibilityExtended:
     """Extended backward compatibility tests."""
 
-    def test_validation_consistency(self):
+    def test_validation_consistency(self) -> None:
         """Test that validation is consistent across different interfaces."""
         # Get a valid term
         valid_terms = get_allowed_terms()
@@ -288,7 +288,7 @@ class TestBackwardCompatibilityExtended:
             # Test through different interfaces
             assert is_valid_term(test_term) is True
 
-    def test_term_generation_parameters(self):
+    def test_term_generation_parameters(self) -> None:
         """Test that term generation parameters are reasonable."""
         generator = TermGenerator()
 
@@ -301,7 +301,7 @@ class TestBackwardCompatibilityExtended:
         assert all(isinstance(term, str) for term in valid_terms)
         assert all(len(term) > 0 for term in valid_terms)
 
-    def test_term_generator_edge_cases(self):
+    def test_term_generator_edge_cases(self) -> None:
         """Test TermGenerator edge cases."""
         generator = TermGenerator()
 
@@ -328,7 +328,7 @@ class TestBackwardCompatibilityExtended:
 class TestTermGeneratorCustomization:
     """Test TermGenerator customization and configuration options."""
 
-    def test_term_generator_custom_parameters(self):
+    def test_term_generator_custom_parameters(self) -> None:
         """Test TermGenerator with custom parameters."""
         generator = TermGenerator(base_year=2023, years_forward=3, years_back=2)
         assert generator.base_year == 2023
@@ -341,7 +341,7 @@ class TestTermGeneratorCustomization:
         assert "SP2026" in terms
         assert len(terms) >= 18  # 6 years * 3 terms per year
 
-    def test_get_current_term_month_logic(self):
+    def test_get_current_term_month_logic(self) -> None:
         """Test current term logic for different months."""
         generator = TermGenerator()
 
@@ -361,7 +361,7 @@ class TestTermGeneratorCustomization:
             mock_datetime.now.return_value = Mock(year=2024, month=10)
             assert generator.get_current_term() == "FA2024"
 
-    def test_get_term_display_name_edge_cases(self):
+    def test_get_term_display_name_edge_cases(self) -> None:
         """Test term display name with edge cases."""
         generator = TermGenerator()
 
@@ -377,7 +377,7 @@ class TestTermGeneratorCustomization:
         assert isinstance(invalid_result, str)
         assert generator.get_term_display_name("") == ""
 
-    def test_is_valid_term_edge_cases(self):
+    def test_is_valid_term_edge_cases(self) -> None:
         """Test term validation with edge cases."""
         generator = TermGenerator(base_year=2024, years_forward=1, years_back=1)
 
@@ -392,7 +392,7 @@ class TestTermGeneratorCustomization:
         assert generator.is_valid_term("INVALID") is False
         assert generator.is_valid_term("FA24") is False
 
-    def test_get_default_terms_class_method(self):
+    def test_get_default_terms_class_method(self) -> None:
         """Test get_default_terms class method."""
         terms = TermGenerator.get_default_terms()
 
@@ -407,7 +407,7 @@ class TestTermGeneratorCustomization:
         current_year_terms = [term for term in terms if str(current_year) in term]
         assert len(current_year_terms) >= 3  # At least FA, SP, SU
 
-    def test_backward_compatibility_comprehensive(self):
+    def test_backward_compatibility_comprehensive(self) -> None:
         """Test backward compatibility functions comprehensively."""
         # Test get_allowed_terms
         allowed_terms = get_allowed_terms()
@@ -426,7 +426,7 @@ class TestTermGeneratorCustomization:
         assert len(current_term) >= 6
         assert current_term in allowed_terms
 
-    def test_term_generator_zero_range(self):
+    def test_term_generator_zero_range(self) -> None:
         """Test TermGenerator with zero forward/back range."""
         generator = TermGenerator(base_year=2024, years_forward=0, years_back=0)
         terms = generator.get_valid_terms()

@@ -16,7 +16,7 @@ global.bootstrap = {
 
 global.fetch = jest.fn();
 
-require("../../../static/audit_clo.js");
+const { remindOutcome } = require("../../../static/audit_clo.js");
 
 describe.skip("Reminder Message Data Population - TDD Failure Capture", () => {
   beforeEach(() => {

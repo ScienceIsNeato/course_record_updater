@@ -46,6 +46,7 @@ python run_demo.py --demo full_semester_workflow.json
 ```
 
 **What this does**:
+
 - Runs setup commands (prompts for confirmation)
 - Shows each step with clear instructions
 - Provides clickable URLs for navigation
@@ -64,6 +65,7 @@ python run_demo.py --demo full_semester_workflow.json --auto --fail-fast
 ```
 
 **What this does**:
+
 - Runs straight through without pauses
 - Executes browser automation (currently stubbed)
 - Stops at first failure
@@ -82,20 +84,21 @@ python run_demo.py --demo full_semester_workflow.json --auto --start-step 15 --f
 
 ## 📋 Demo Steps Overview
 
-| Step | Phase | Action |
-|------|-------|--------|
-| 1-2 | Setup | Health check, admin login |
-| 3 | Config | Edit Biology program description |
-| 4-5 | Courses | Navigate courses, duplicate BIOL-101 |
-| 6-7 | Faculty | Logout admin, login Dr. Morgan |
-| 8-10 | Assessment | Fill assessment form, save data |
-| 11 | Data | Run `advance_demo.py semester_end` |
-| 12-17 | Audit | Login admin, audit dashboard, filters, export |
-| 18-19 | Wrap-up | Review KPIs, completion |
+| Step  | Phase      | Action                                        |
+| ----- | ---------- | --------------------------------------------- |
+| 1-2   | Setup      | Health check, admin login                     |
+| 3     | Config     | Edit Biology program description              |
+| 4-5   | Courses    | Navigate courses, duplicate BIOL-101          |
+| 6-7   | Faculty    | Logout admin, login Dr. Morgan                |
+| 8-10  | Assessment | Fill assessment form, save data               |
+| 11    | Data       | Run `advance_demo.py semester_end`            |
+| 12-17 | Audit      | Login admin, audit dashboard, filters, export |
+| 18-19 | Wrap-up    | Review KPIs, completion                       |
 
 ## 🔧 What Still Needs Work
 
 ### Critical (Blocks Automated Mode)
+
 1. **Browser automation hooks** in `run_demo.py` are placeholders
    - Need to call actual `mcp_cursor-ide-browser_*` tools
    - Actions: `browser_login`, `browser_navigate`, `browser_click`, `browser_select`, etc.
@@ -106,18 +109,21 @@ python run_demo.py --demo full_semester_workflow.json --auto --start-step 15 --f
    - Location: `collect_artifacts()` method
 
 ### Nice-to-Have (Doesn't Block Human Mode)
+
 3. **Variable substitution** (`{{course_id}}`) needs testing
 4. **Artifact directory** structure needs validation
 
 ## 🚀 Next Steps
 
 ### For AI (Automated Validation)
+
 1. Run `--auto --fail-fast` to find first failing step
 2. Implement browser tool hooks for that step's action
 3. Re-run from that step: `--start-step N --fail-fast`
 4. Repeat until full demo passes
 
 ### For Human (Manual Validation)
+
 1. Run `python run_demo.py --demo full_semester_workflow.json`
 2. Follow instructions step-by-step
 3. Press Enter to advance
@@ -150,4 +156,3 @@ python run_demo.py --demo full_semester_workflow.json --auto --start-step 15 --f
 **AI Role**: Implement browser hooks, run automated validation, fix failures iteratively
 
 Let's get this working flawlessly! 🚀
-

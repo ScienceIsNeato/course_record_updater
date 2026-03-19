@@ -5,6 +5,7 @@ Tests that when a program has no program_admins, the system falls back
 to institution_admins for submission notifications.
 """
 
+from typing import Any
 from unittest.mock import patch
 
 from src.services.clo_workflow_service import CLOWorkflowService
@@ -16,8 +17,8 @@ class TestAdminNotificationFallback:
     @patch("src.services.clo_workflow_service.db")
     @patch("src.services.clo_workflow_service.EmailService")
     def test_falls_back_to_institution_admin_when_no_program_admins(
-        self, mock_email_service, mock_db
-    ):
+        self, mock_email_service: Any, mock_db: Any
+    ) -> None:
         """
         When a program has no program_admins, should fall back to institution_admins.
         """
@@ -96,8 +97,8 @@ class TestAdminNotificationFallback:
     @patch("src.services.clo_workflow_service.db")
     @patch("src.services.clo_workflow_service.EmailService")
     def test_fails_when_no_program_admins_and_no_institution_admins(
-        self, mock_email_service, mock_db
-    ):
+        self, mock_email_service: Any, mock_db: Any
+    ) -> None:
         """
         When a program has no admins AND institution has no admins, should return False.
         """

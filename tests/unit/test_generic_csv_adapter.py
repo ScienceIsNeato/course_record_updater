@@ -9,6 +9,7 @@ import csv
 import json
 import zipfile
 from datetime import datetime
+from typing import Any
 
 import pytest
 
@@ -22,7 +23,7 @@ from src.adapters.generic_csv_adapter import (
 class TestGenericCSVAdapterMetadata:
     """Test adapter metadata and info methods."""
 
-    def test_get_adapter_info_returns_required_fields(self):
+    def test_get_adapter_info_returns_required_fields(self) -> None:
         """Adapter info should contain all required metadata fields."""
         adapter = GenericCSVAdapter()
         info = adapter.get_adapter_info()
@@ -35,7 +36,7 @@ class TestGenericCSVAdapterMetadata:
         assert info["is_bidirectional"] is True
         assert info["version"] == "1.0"
 
-    def test_adapter_supports_all_entity_types(self):
+    def test_adapter_supports_all_entity_types(self) -> None:
         """Adapter should declare support for all core entity types."""
         adapter = GenericCSVAdapter()
         info = adapter.get_adapter_info()
@@ -58,7 +59,7 @@ class TestGenericCSVAdapterMetadata:
 class TestGenericCSVAdapterValidation:
     """Test file validation functionality."""
 
-    def test_validate_non_zip_file_fails(self, tmp_path):
+    def test_validate_non_zip_file_fails(self, tmp_path: Any) -> None:
         """Non-ZIP files should fail validation."""
         adapter = GenericCSVAdapter()
 
@@ -71,7 +72,7 @@ class TestGenericCSVAdapterValidation:
         assert is_valid is False
         assert "Invalid file type" in message
 
-    def test_validate_zip_without_manifest_fails(self, tmp_path):
+    def test_validate_zip_without_manifest_fails(self, tmp_path: Any) -> None:
         """ZIP without manifest.json should fail validation."""
         adapter = GenericCSVAdapter()
 
@@ -85,7 +86,7 @@ class TestGenericCSVAdapterValidation:
         assert is_valid is False
         assert "Missing manifest.json" in message
 
-    def test_validate_zip_with_wrong_version_fails(self, tmp_path):
+    def test_validate_zip_with_wrong_version_fails(self, tmp_path: Any) -> None:
         """ZIP with incompatible version should fail validation."""
         adapter = GenericCSVAdapter()
 
@@ -102,7 +103,7 @@ class TestGenericCSVAdapterValidation:
         assert is_valid is False
         assert "Incompatible format version" in message
 
-    def test_validate_valid_zip_succeeds(self, tmp_path):
+    def test_validate_valid_zip_succeeds(self, tmp_path: Any) -> None:
         """Valid ZIP with correct manifest should pass validation."""
         adapter = GenericCSVAdapter()
 
@@ -127,13 +128,13 @@ class TestGenericCSVAdapterValidation:
 class TestGenericCSVAdapterExport:
     """Test export functionality (TDD - tests written first)."""
 
-    def test_export_empty_data_creates_valid_zip(self, tmp_path):
+    def test_export_empty_data_creates_valid_zip(self, tmp_path: Any) -> None:
         """Exporting empty data should create valid ZIP with manifest."""
         adapter = GenericCSVAdapter()
         output_file = tmp_path / "export.zip"
 
         # Empty data for all entities
-        data = {entity: [] for entity in EXPORT_ORDER}
+        data: dict[str, list[dict[str, Any]]] = {entity: [] for entity in EXPORT_ORDER}
 
         success, message, count = adapter.export_data(
             data, str(output_file), options={}
@@ -153,7 +154,7 @@ class TestGenericCSVAdapterExport:
             assert manifest["format_version"] == "1.0"
             assert manifest["entity_counts"]["institutions"] == 0
 
-    def test_export_single_institution(self, tmp_path):
+    def test_export_single_institution(self, tmp_path: Any) -> None:
         """Export with single institution should create correct CSV."""
         adapter = GenericCSVAdapter()
         output_file = tmp_path / "export.zip"
@@ -194,7 +195,7 @@ class TestGenericCSVAdapterExport:
             assert "id,name,short_name" in lines[0]
             assert "inst-1,Test University,TU" in lines[1]
 
-    def test_export_excludes_sensitive_user_fields(self, tmp_path):
+    def test_export_excludes_sensitive_user_fields(self, tmp_path: Any) -> None:
         """User export excludes sensitive fields including password_hash and active tokens."""
         adapter = GenericCSVAdapter()
         output_file = tmp_path / "export.zip"
@@ -248,7 +249,7 @@ class TestGenericCSVAdapterExport:
             assert "password_reset_token" not in user
             assert "email_verification_token" not in user
 
-    def test_export_serializes_json_fields(self, tmp_path):
+    def test_export_serializes_json_fields(self, tmp_path: Any) -> None:
         """Export should serialize JSON/dict fields as JSON strings."""
         adapter = GenericCSVAdapter()
         output_file = tmp_path / "export.zip"
@@ -292,7 +293,7 @@ class TestGenericCSVAdapterExport:
             assert grade_dist["A"] == 10
             assert grade_dist["B"] == 8
 
-    def test_export_respects_entity_order(self, tmp_path):
+    def test_export_respects_entity_order(self, tmp_path: Any) -> None:
         """Export should create CSVs in correct dependency order."""
         adapter = GenericCSVAdapter()
         output_file = tmp_path / "export.zip"
@@ -325,7 +326,7 @@ class TestGenericCSVAdapterExport:
             assert "users.csv" in files
             assert "programs.csv" in files
 
-    def test_export_creates_accurate_manifest(self, tmp_path):
+    def test_export_creates_accurate_manifest(self, tmp_path: Any) -> None:
         """Manifest should accurately reflect entity counts."""
         adapter = GenericCSVAdapter()
         output_file = tmp_path / "export.zip"
@@ -356,7 +357,7 @@ class TestGenericCSVAdapterExport:
             assert manifest["entity_counts"]["users"] == 5
             assert manifest["entity_counts"]["programs"] == 3
 
-    def test_export_handles_datetime_serialization(self, tmp_path):
+    def test_export_handles_datetime_serialization(self, tmp_path: Any) -> None:
         """Export should serialize datetime objects to ISO format."""
         adapter = GenericCSVAdapter()
         output_file = tmp_path / "export.zip"
@@ -400,7 +401,7 @@ class TestGenericCSVAdapterExport:
 class TestGenericCSVAdapterImport:
     """Test import functionality (TDD - tests written first)."""
 
-    def test_parse_file_validates_zip_format(self, tmp_path):
+    def test_parse_file_validates_zip_format(self, tmp_path: Any) -> None:
         """Import should reject non-ZIP files."""
         adapter = GenericCSVAdapter()
 
@@ -413,7 +414,7 @@ class TestGenericCSVAdapterImport:
 
         assert "not a valid zip" in str(exc_info.value).lower()
 
-    def test_parse_file_validates_manifest_exists(self, tmp_path):
+    def test_parse_file_validates_manifest_exists(self, tmp_path: Any) -> None:
         """Import should reject ZIP without manifest."""
         adapter = GenericCSVAdapter()
 
@@ -427,7 +428,7 @@ class TestGenericCSVAdapterImport:
 
         assert "manifest" in str(exc_info.value).lower()
 
-    def test_parse_file_validates_format_version(self, tmp_path):
+    def test_parse_file_validates_format_version(self, tmp_path: Any) -> None:
         """Import should reject incompatible format versions."""
         adapter = GenericCSVAdapter()
 
@@ -447,7 +448,7 @@ class TestGenericCSVAdapterImport:
             or "version" in str(exc_info.value).lower()
         )
 
-    def test_parse_file_parses_valid_export(self, tmp_path):
+    def test_parse_file_parses_valid_export(self, tmp_path: Any) -> None:
         """Import should successfully parse valid CSV export."""
         adapter = GenericCSVAdapter()
 
@@ -491,7 +492,7 @@ class TestGenericCSVAdapterImport:
         assert user["email"] == "test1@test.edu"
         assert user["first_name"] == "John"
 
-    def test_parse_file_respects_import_order(self, tmp_path):
+    def test_parse_file_respects_import_order(self, tmp_path: Any) -> None:
         """Import should parse entities in dependency order."""
         adapter = GenericCSVAdapter()
 
@@ -516,7 +517,7 @@ class TestGenericCSVAdapterImport:
         assert "programs" in result
         assert "users" in result
 
-    def test_parse_file_deserializes_json_fields(self, tmp_path):
+    def test_parse_file_deserializes_json_fields(self, tmp_path: Any) -> None:
         """Import should deserialize JSON field strings back to dicts."""
         adapter = GenericCSVAdapter()
 
@@ -549,7 +550,7 @@ class TestGenericCSVAdapterImport:
         assert isinstance(section["grade_distribution"], dict)
         assert section["grade_distribution"]["A"] == 10
 
-    def test_parse_file_deserializes_datetime_fields(self, tmp_path):
+    def test_parse_file_deserializes_datetime_fields(self, tmp_path: Any) -> None:
         """Import should deserialize ISO datetime strings to Python datetime objects."""
         adapter = GenericCSVAdapter()
 
@@ -581,7 +582,7 @@ class TestGenericCSVAdapterImport:
         assert inst["created_at"].month == 10
         assert inst["created_at"].day == 5
 
-    def test_parse_file_deserializes_boolean_fields(self, tmp_path):
+    def test_parse_file_deserializes_boolean_fields(self, tmp_path: Any) -> None:
         """Import should deserialize boolean strings to actual booleans."""
         adapter = GenericCSVAdapter()
 
@@ -606,7 +607,7 @@ class TestGenericCSVAdapterImport:
         assert result["institutions"][0]["is_active"] is True
         assert result["institutions"][1]["is_active"] is False
 
-    def test_parse_file_handles_empty_strings_as_null(self, tmp_path):
+    def test_parse_file_handles_empty_strings_as_null(self, tmp_path: Any) -> None:
         """Import should treat empty strings as NULL values."""
         adapter = GenericCSVAdapter()
 
@@ -634,7 +635,7 @@ class TestGenericCSVAdapterImport:
         assert user["display_name"] is None or user["display_name"] == ""
         assert user["oauth_provider"] is None or user["oauth_provider"] == ""
 
-    def test_parse_file_handles_malformed_csv(self, tmp_path):
+    def test_parse_file_handles_malformed_csv(self, tmp_path: Any) -> None:
         """Import should handle malformed CSV gracefully."""
         adapter = GenericCSVAdapter()
 
@@ -662,7 +663,7 @@ class TestGenericCSVAdapterImport:
             # Acceptable to raise exception for malformed data
             assert "malformed" in str(e).lower() or "invalid" in str(e).lower()
 
-    def test_parse_file_returns_all_entity_types(self, tmp_path):
+    def test_parse_file_returns_all_entity_types(self, tmp_path: Any) -> None:
         """Import should return data for all expected entity types."""
         adapter = GenericCSVAdapter()
 
@@ -702,7 +703,7 @@ class TestGenericCSVAdapterImport:
             assert entity in result
             assert len(result[entity]) > 0
 
-    def _create_comprehensive_test_data(self):
+    def _create_comprehensive_test_data(self) -> Any:
         """Create realistic mini-university dataset."""
         return {
             "institutions": [
@@ -961,14 +962,14 @@ class TestGenericCSVAdapterImport:
             ],
         }
 
-    def _find_by_id(self, collection, entity_id):
+    def _find_by_id(self, collection: Any, entity_id: Any) -> Any:
         """Helper to find entity by ID."""
         for item in collection:
             if item.get("id") == entity_id:
                 return item
         return None
 
-    def _verify_counts(self, result):
+    def _verify_counts(self, result: Any) -> None:
         """Verify entity counts."""
         assert len(result["institutions"]) == 2
         assert len(result["programs"]) == 3
@@ -982,7 +983,7 @@ class TestGenericCSVAdapterImport:
         assert len(result["course_outcomes"]) == 3
         assert len(result["user_invitations"]) == 2
 
-    def _verify_data_integrity(self, result):
+    def _verify_data_integrity(self, result: Any) -> None:
         """Verify content of specific records."""
         hogwarts = self._find_by_id(result["institutions"], "hogwarts-001")
         assert hogwarts["name"] == "Hogwarts School of Witchcraft"
@@ -995,14 +996,14 @@ class TestGenericCSVAdapterImport:
         harry = self._find_by_id(result["users"], "user-harry")
         assert harry["display_name"] is None
 
-    def _verify_relationships(self, result):
+    def _verify_relationships(self, result: Any) -> None:
         """Verify many-to-many relationships."""
         harry_programs = [
             up for up in result["user_programs"] if up["user_id"] == "user-harry"
         ]
         assert len(harry_programs) == 2
 
-    def _verify_json_and_special_fields(self, result):
+    def _verify_json_and_special_fields(self, result: Any) -> None:
         """Verify JSON, boolean, and other special field handling."""
         # JSON deserialization
         section = result["course_sections"][0]
@@ -1023,7 +1024,9 @@ class TestGenericCSVAdapterImport:
         old_course = self._find_by_id(result["courses"], "course-old")
         assert old_course["active"] is False
 
-    def test_comprehensive_realistic_export_import_roundtrip(self, tmp_path):
+    def test_comprehensive_realistic_export_import_roundtrip(
+        self, tmp_path: Any
+    ) -> None:
         """
         Comprehensive test with realistic data exercising all entity types,
         relationships, JSON fields, booleans, NULLs, and edge cases.
@@ -1053,25 +1056,25 @@ class TestGenericCSVAdapterImport:
 class TestGenericCSVAdapterHelperFunctions:
     """Test the refactored helper functions for deserialization."""
 
-    def test_try_parse_json_valid_json(self):
+    def test_try_parse_json_valid_json(self) -> None:
         """Should parse valid JSON strings."""
         adapter = GenericCSVAdapter()
         result = adapter._try_parse_json('{"key": "value", "num": 42}')
         assert result == {"key": "value", "num": 42}
 
-    def test_try_parse_json_invalid_json(self):
+    def test_try_parse_json_invalid_json(self) -> None:
         """Should return original string if JSON parsing fails."""
         adapter = GenericCSVAdapter()
         result = adapter._try_parse_json("not valid json")
         assert result == "not valid json"
 
-    def test_try_parse_json_empty_string(self):
+    def test_try_parse_json_empty_string(self) -> None:
         """Should handle empty strings."""
         adapter = GenericCSVAdapter()
         result = adapter._try_parse_json("")
         assert result == ""
 
-    def test_try_parse_datetime_iso8601(self):
+    def test_try_parse_datetime_iso8601(self) -> None:
         """Should parse ISO 8601 datetime strings."""
         adapter = GenericCSVAdapter()
         result = adapter._try_parse_datetime("2024-01-15T10:30:00")
@@ -1080,86 +1083,86 @@ class TestGenericCSVAdapterHelperFunctions:
         assert result.month == 1
         assert result.day == 15
 
-    def test_try_parse_datetime_with_z_timezone(self):
+    def test_try_parse_datetime_with_z_timezone(self) -> None:
         """Should handle 'Z' timezone indicator."""
         adapter = GenericCSVAdapter()
         result = adapter._try_parse_datetime("2024-01-15T10:30:00Z")
         assert isinstance(result, datetime)
 
-    def test_try_parse_datetime_invalid(self):
+    def test_try_parse_datetime_invalid(self) -> None:
         """Should return original string if datetime parsing fails."""
         adapter = GenericCSVAdapter()
         result = adapter._try_parse_datetime("not a datetime")
         assert result == "not a datetime"
 
-    def test_deserialize_value_empty_string(self):
+    def test_deserialize_value_empty_string(self) -> None:
         """Should convert empty strings to None."""
         adapter = GenericCSVAdapter()
         result = adapter._deserialize_value("any_key", "")
         assert result is None
 
-    def test_deserialize_value_none(self):
+    def test_deserialize_value_none(self) -> None:
         """Should pass through None values."""
         adapter = GenericCSVAdapter()
         result = adapter._deserialize_value("any_key", None)
         assert result is None
 
-    def test_deserialize_value_non_string(self):
+    def test_deserialize_value_non_string(self) -> None:
         """Should pass through non-string values unchanged."""
         adapter = GenericCSVAdapter()
         result = adapter._deserialize_value("any_key", 42)
         assert result == 42
 
-    def test_deserialize_value_json_field(self):
+    def test_deserialize_value_json_field(self) -> None:
         """Should deserialize JSON fields."""
         adapter = GenericCSVAdapter()
         result = adapter._deserialize_value("grade_distribution", '{"A": 10, "B": 5}')
         assert result == {"A": 10, "B": 5}
 
-    def test_deserialize_value_assessment_data_field(self):
+    def test_deserialize_value_assessment_data_field(self) -> None:
         """Should deserialize assessment_data as JSON field."""
         adapter = GenericCSVAdapter()
         result = adapter._deserialize_value("assessment_data", '{"test": "data"}')
         assert result == {"test": "data"}
 
-    def test_deserialize_value_extras_field(self):
+    def test_deserialize_value_extras_field(self) -> None:
         """Should deserialize extras as JSON field."""
         adapter = GenericCSVAdapter()
         result = adapter._deserialize_value("extras", '{"extra": "info"}')
         assert result == {"extra": "info"}
 
-    def test_deserialize_value_boolean_true(self):
+    def test_deserialize_value_boolean_true(self) -> None:
         """Should deserialize 'true' string to boolean True."""
         adapter = GenericCSVAdapter()
         result = adapter._deserialize_value("any_key", "true")
         assert result is True
 
-    def test_deserialize_value_boolean_false(self):
+    def test_deserialize_value_boolean_false(self) -> None:
         """Should deserialize 'false' string to boolean False."""
         adapter = GenericCSVAdapter()
         result = adapter._deserialize_value("any_key", "false")
         assert result is False
 
-    def test_deserialize_value_boolean_case_insensitive(self):
+    def test_deserialize_value_boolean_case_insensitive(self) -> None:
         """Should handle boolean values case-insensitively."""
         adapter = GenericCSVAdapter()
         assert adapter._deserialize_value("key", "True") is True
         assert adapter._deserialize_value("key", "FALSE") is False
         assert adapter._deserialize_value("key", "TrUe") is True
 
-    def test_deserialize_value_datetime_string(self):
+    def test_deserialize_value_datetime_string(self) -> None:
         """Should deserialize datetime strings."""
         adapter = GenericCSVAdapter()
         result = adapter._deserialize_value("created_at", "2024-01-15T10:30:00")
         assert isinstance(result, datetime)
 
-    def test_deserialize_value_regular_string(self):
+    def test_deserialize_value_regular_string(self) -> None:
         """Should pass through regular strings unchanged."""
         adapter = GenericCSVAdapter()
         result = adapter._deserialize_value("name", "John Doe")
         assert result == "John Doe"
 
-    def test_deserialize_record_full_integration(self):
+    def test_deserialize_record_full_integration(self) -> None:
         """Should deserialize a complete row with mixed types."""
         adapter = GenericCSVAdapter()
         row = {

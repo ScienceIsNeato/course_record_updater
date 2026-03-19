@@ -1,195 +1,388 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
-    <head>
-        <meta http-equiv='Content-Type' content='text/html; charset=utf-8'>
-        <title>Diff Coverage</title>
-        <style>
-            .src-snippet { margin-top: 2em; }
-            .src-name { font-weight: bold; }
-            .snippets {
-                border-top: 1px solid #bdbdbd;
-                border-bottom: 1px solid #bdbdbd;
-            }
-            pre { line-height: 125%; }
-td.linenos .normal { color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px; }
-span.linenos { color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px; }
-td.linenos .special { color: #000000; background-color: #ffffc0; padding-left: 5px; padding-right: 5px; }
-span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 5px; padding-right: 5px; }
-.hll { background-color: #ffcccc }
-.c { color: #3D7B7B; font-style: italic } /* Comment */
-.err { border: 1px solid #F00 } /* Error */
-.k { color: #008000; font-weight: bold } /* Keyword */
-.o { color: #666 } /* Operator */
-.ch { color: #3D7B7B; font-style: italic } /* Comment.Hashbang */
-.cm { color: #3D7B7B; font-style: italic } /* Comment.Multiline */
-.cp { color: #9C6500 } /* Comment.Preproc */
-.cpf { color: #3D7B7B; font-style: italic } /* Comment.PreprocFile */
-.c1 { color: #3D7B7B; font-style: italic } /* Comment.Single */
-.cs { color: #3D7B7B; font-style: italic } /* Comment.Special */
-.gd { color: #A00000 } /* Generic.Deleted */
-.ge { font-style: italic } /* Generic.Emph */
-.ges { font-weight: bold; font-style: italic } /* Generic.EmphStrong */
-.gr { color: #E40000 } /* Generic.Error */
-.gh { color: #000080; font-weight: bold } /* Generic.Heading */
-.gi { color: #008400 } /* Generic.Inserted */
-.go { color: #717171 } /* Generic.Output */
-.gp { color: #000080; font-weight: bold } /* Generic.Prompt */
-.gs { font-weight: bold } /* Generic.Strong */
-.gu { color: #800080; font-weight: bold } /* Generic.Subheading */
-.gt { color: #04D } /* Generic.Traceback */
-.kc { color: #008000; font-weight: bold } /* Keyword.Constant */
-.kd { color: #008000; font-weight: bold } /* Keyword.Declaration */
-.kn { color: #008000; font-weight: bold } /* Keyword.Namespace */
-.kp { color: #008000 } /* Keyword.Pseudo */
-.kr { color: #008000; font-weight: bold } /* Keyword.Reserved */
-.kt { color: #B00040 } /* Keyword.Type */
-.m { color: #666 } /* Literal.Number */
-.s { color: #BA2121 } /* Literal.String */
-.na { color: #687822 } /* Name.Attribute */
-.nb { color: #008000 } /* Name.Builtin */
-.nc { color: #00F; font-weight: bold } /* Name.Class */
-.no { color: #800 } /* Name.Constant */
-.nd { color: #A2F } /* Name.Decorator */
-.ni { color: #717171; font-weight: bold } /* Name.Entity */
-.ne { color: #CB3F38; font-weight: bold } /* Name.Exception */
-.nf { color: #00F } /* Name.Function */
-.nl { color: #767600 } /* Name.Label */
-.nn { color: #00F; font-weight: bold } /* Name.Namespace */
-.nt { color: #008000; font-weight: bold } /* Name.Tag */
-.nv { color: #19177C } /* Name.Variable */
-.ow { color: #A2F; font-weight: bold } /* Operator.Word */
-.w { color: #BBB } /* Text.Whitespace */
-.mb { color: #666 } /* Literal.Number.Bin */
-.mf { color: #666 } /* Literal.Number.Float */
-.mh { color: #666 } /* Literal.Number.Hex */
-.mi { color: #666 } /* Literal.Number.Integer */
-.mo { color: #666 } /* Literal.Number.Oct */
-.sa { color: #BA2121 } /* Literal.String.Affix */
-.sb { color: #BA2121 } /* Literal.String.Backtick */
-.sc { color: #BA2121 } /* Literal.String.Char */
-.dl { color: #BA2121 } /* Literal.String.Delimiter */
-.sd { color: #BA2121; font-style: italic } /* Literal.String.Doc */
-.s2 { color: #BA2121 } /* Literal.String.Double */
-.se { color: #AA5D1F; font-weight: bold } /* Literal.String.Escape */
-.sh { color: #BA2121 } /* Literal.String.Heredoc */
-.si { color: #A45A77; font-weight: bold } /* Literal.String.Interpol */
-.sx { color: #008000 } /* Literal.String.Other */
-.sr { color: #A45A77 } /* Literal.String.Regex */
-.s1 { color: #BA2121 } /* Literal.String.Single */
-.ss { color: #19177C } /* Literal.String.Symbol */
-.bp { color: #008000 } /* Name.Builtin.Pseudo */
-.fm { color: #00F } /* Name.Function.Magic */
-.vc { color: #19177C } /* Name.Variable.Class */
-.vg { color: #19177C } /* Name.Variable.Global */
-.vi { color: #19177C } /* Name.Variable.Instance */
-.vm { color: #19177C } /* Name.Variable.Magic */
-.il { color: #666 } /* Literal.Number.Integer.Long */
-        </style>
-    </head>
-    <body>
-        <h1>Diff Coverage</h1>
-        <p>Diff: origin/main...HEAD, staged and unstaged changes</p>
-        <ul>
-            <li><b>Total</b>: 570 lines</li>
-            <li><b>Missing</b>: 59 lines</li>
-            <li><b>Coverage</b>: 89%</li>
-        </ul>
-        <table border="1">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Diff Coverage</title>
+    <style>
+      .src-snippet {
+        margin-top: 2em;
+      }
+      .src-name {
+        font-weight: bold;
+      }
+      .snippets {
+        border-top: 1px solid #bdbdbd;
+        border-bottom: 1px solid #bdbdbd;
+      }
+      pre {
+        line-height: 125%;
+      }
+      td.linenos .normal {
+        color: inherit;
+        background-color: transparent;
+        padding-left: 5px;
+        padding-right: 5px;
+      }
+      span.linenos {
+        color: inherit;
+        background-color: transparent;
+        padding-left: 5px;
+        padding-right: 5px;
+      }
+      td.linenos .special {
+        color: #000000;
+        background-color: #ffffc0;
+        padding-left: 5px;
+        padding-right: 5px;
+      }
+      span.linenos.special {
+        color: #000000;
+        background-color: #ffffc0;
+        padding-left: 5px;
+        padding-right: 5px;
+      }
+      .hll {
+        background-color: #ffcccc;
+      }
+      .c {
+        color: #3d7b7b;
+        font-style: italic;
+      } /* Comment */
+      .err {
+        border: 1px solid #f00;
+      } /* Error */
+      .k {
+        color: #008000;
+        font-weight: bold;
+      } /* Keyword */
+      .o {
+        color: #666;
+      } /* Operator */
+      .ch {
+        color: #3d7b7b;
+        font-style: italic;
+      } /* Comment.Hashbang */
+      .cm {
+        color: #3d7b7b;
+        font-style: italic;
+      } /* Comment.Multiline */
+      .cp {
+        color: #9c6500;
+      } /* Comment.Preproc */
+      .cpf {
+        color: #3d7b7b;
+        font-style: italic;
+      } /* Comment.PreprocFile */
+      .c1 {
+        color: #3d7b7b;
+        font-style: italic;
+      } /* Comment.Single */
+      .cs {
+        color: #3d7b7b;
+        font-style: italic;
+      } /* Comment.Special */
+      .gd {
+        color: #a00000;
+      } /* Generic.Deleted */
+      .ge {
+        font-style: italic;
+      } /* Generic.Emph */
+      .ges {
+        font-weight: bold;
+        font-style: italic;
+      } /* Generic.EmphStrong */
+      .gr {
+        color: #e40000;
+      } /* Generic.Error */
+      .gh {
+        color: #000080;
+        font-weight: bold;
+      } /* Generic.Heading */
+      .gi {
+        color: #008400;
+      } /* Generic.Inserted */
+      .go {
+        color: #717171;
+      } /* Generic.Output */
+      .gp {
+        color: #000080;
+        font-weight: bold;
+      } /* Generic.Prompt */
+      .gs {
+        font-weight: bold;
+      } /* Generic.Strong */
+      .gu {
+        color: #800080;
+        font-weight: bold;
+      } /* Generic.Subheading */
+      .gt {
+        color: #04d;
+      } /* Generic.Traceback */
+      .kc {
+        color: #008000;
+        font-weight: bold;
+      } /* Keyword.Constant */
+      .kd {
+        color: #008000;
+        font-weight: bold;
+      } /* Keyword.Declaration */
+      .kn {
+        color: #008000;
+        font-weight: bold;
+      } /* Keyword.Namespace */
+      .kp {
+        color: #008000;
+      } /* Keyword.Pseudo */
+      .kr {
+        color: #008000;
+        font-weight: bold;
+      } /* Keyword.Reserved */
+      .kt {
+        color: #b00040;
+      } /* Keyword.Type */
+      .m {
+        color: #666;
+      } /* Literal.Number */
+      .s {
+        color: #ba2121;
+      } /* Literal.String */
+      .na {
+        color: #687822;
+      } /* Name.Attribute */
+      .nb {
+        color: #008000;
+      } /* Name.Builtin */
+      .nc {
+        color: #00f;
+        font-weight: bold;
+      } /* Name.Class */
+      .no {
+        color: #800;
+      } /* Name.Constant */
+      .nd {
+        color: #a2f;
+      } /* Name.Decorator */
+      .ni {
+        color: #717171;
+        font-weight: bold;
+      } /* Name.Entity */
+      .ne {
+        color: #cb3f38;
+        font-weight: bold;
+      } /* Name.Exception */
+      .nf {
+        color: #00f;
+      } /* Name.Function */
+      .nl {
+        color: #767600;
+      } /* Name.Label */
+      .nn {
+        color: #00f;
+        font-weight: bold;
+      } /* Name.Namespace */
+      .nt {
+        color: #008000;
+        font-weight: bold;
+      } /* Name.Tag */
+      .nv {
+        color: #19177c;
+      } /* Name.Variable */
+      .ow {
+        color: #a2f;
+        font-weight: bold;
+      } /* Operator.Word */
+      .w {
+        color: #bbb;
+      } /* Text.Whitespace */
+      .mb {
+        color: #666;
+      } /* Literal.Number.Bin */
+      .mf {
+        color: #666;
+      } /* Literal.Number.Float */
+      .mh {
+        color: #666;
+      } /* Literal.Number.Hex */
+      .mi {
+        color: #666;
+      } /* Literal.Number.Integer */
+      .mo {
+        color: #666;
+      } /* Literal.Number.Oct */
+      .sa {
+        color: #ba2121;
+      } /* Literal.String.Affix */
+      .sb {
+        color: #ba2121;
+      } /* Literal.String.Backtick */
+      .sc {
+        color: #ba2121;
+      } /* Literal.String.Char */
+      .dl {
+        color: #ba2121;
+      } /* Literal.String.Delimiter */
+      .sd {
+        color: #ba2121;
+        font-style: italic;
+      } /* Literal.String.Doc */
+      .s2 {
+        color: #ba2121;
+      } /* Literal.String.Double */
+      .se {
+        color: #aa5d1f;
+        font-weight: bold;
+      } /* Literal.String.Escape */
+      .sh {
+        color: #ba2121;
+      } /* Literal.String.Heredoc */
+      .si {
+        color: #a45a77;
+        font-weight: bold;
+      } /* Literal.String.Interpol */
+      .sx {
+        color: #008000;
+      } /* Literal.String.Other */
+      .sr {
+        color: #a45a77;
+      } /* Literal.String.Regex */
+      .s1 {
+        color: #ba2121;
+      } /* Literal.String.Single */
+      .ss {
+        color: #19177c;
+      } /* Literal.String.Symbol */
+      .bp {
+        color: #008000;
+      } /* Name.Builtin.Pseudo */
+      .fm {
+        color: #00f;
+      } /* Name.Function.Magic */
+      .vc {
+        color: #19177c;
+      } /* Name.Variable.Class */
+      .vg {
+        color: #19177c;
+      } /* Name.Variable.Global */
+      .vi {
+        color: #19177c;
+      } /* Name.Variable.Instance */
+      .vm {
+        color: #19177c;
+      } /* Name.Variable.Magic */
+      .il {
+        color: #666;
+      } /* Literal.Number.Integer.Long */
+    </style>
+  </head>
+  <body>
+    <h1>Diff Coverage</h1>
+    <p>Diff: origin/main...HEAD, staged and unstaged changes</p>
+    <ul>
+      <li><b>Total</b>: 570 lines</li>
+      <li><b>Missing</b>: 59 lines</li>
+      <li><b>Coverage</b>: 89%</li>
+    </ul>
+    <table border="1">
+      <tr>
+        <th>Source File</th>
+        <th>Diff Coverage (%)</th>
+        <th>Missing Lines</th>
+      </tr>
+      <tr>
+        <td>adapters/adapter_registry.py</td>
+        <td>100%</td>
+        <td>&nbsp;</td>
+      </tr>
+      <tr>
+        <td>api/__init__.py</td>
+        <td>100%</td>
+        <td>&nbsp;</td>
+      </tr>
+      <tr>
+        <td>api/routes/clo_workflow.py</td>
+        <td>100%</td>
+        <td>&nbsp;</td>
+      </tr>
+      <tr>
+        <td>api/routes/management.py</td>
+        <td>100%</td>
+        <td>&nbsp;</td>
+      </tr>
+      <tr>
+        <td>api_routes.py</td>
+        <td>85.9%</td>
+        <td>1141-1142,1668-1669,4748-4749,4751-4752,4767,4851-4853,4858</td>
+      </tr>
+      <tr>
+        <td>app.py</td>
+        <td>92.7%</td>
+        <td>408,419,430</td>
+      </tr>
+      <tr>
+        <td>auth_service.py</td>
+        <td>80.0%</td>
+        <td>180-181,652,670,674,712-713,716-717,721</td>
+      </tr>
+      <tr>
+        <td>dashboard_service.py</td>
+        <td>100%</td>
+        <td>&nbsp;</td>
+      </tr>
+      <tr>
+        <td>database_service.py</td>
+        <td>86.5%</td>
+        <td>344,348,359,362,381,438,587</td>
+      </tr>
+      <tr>
+        <td>database_sqlite.py</td>
+        <td>60.9%</td>
+        <td>1044,1055,1058,1061,1289-1293</td>
+      </tr>
+      <tr>
+        <td>email_providers/__init__.py</td>
+        <td>100%</td>
+        <td>&nbsp;</td>
+      </tr>
+      <tr>
+        <td>email_providers/whitelist.py</td>
+        <td>100%</td>
+        <td>&nbsp;</td>
+      </tr>
+      <tr>
+        <td>email_service.py</td>
+        <td>90.2%</td>
+        <td>477-478,486,496,550-551</td>
+      </tr>
+      <tr>
+        <td>import_service.py</td>
+        <td>84.2%</td>
+        <td>632-636,703,706,1290,1293</td>
+      </tr>
+      <tr>
+        <td>login_service.py</td>
+        <td>100%</td>
+        <td>&nbsp;</td>
+      </tr>
+      <tr>
+        <td>models_sql.py</td>
+        <td>92.3%</td>
+        <td>459,466</td>
+      </tr>
+      <tr>
+        <td>session/manager.py</td>
+        <td>100%</td>
+        <td>&nbsp;</td>
+      </tr>
+    </table>
+    <div class="src-snippet">
+      <div class="src-name">api_routes.py</div>
+      <div class="snippets">
+        <div class="snippet">
+          <table class="snippettable">
             <tr>
-                <th>Source File</th>
-                <th>Diff Coverage (%)</th>
-                <th>Missing Lines</th>
-            </tr>
-            <tr>
-                <td>adapters/adapter_registry.py</td>
-                <td>100%</td>
-                <td>&nbsp;</td>
-            </tr>
-            <tr>
-                <td>api/__init__.py</td>
-                <td>100%</td>
-                <td>&nbsp;</td>
-            </tr>
-            <tr>
-                <td>api/routes/clo_workflow.py</td>
-                <td>100%</td>
-                <td>&nbsp;</td>
-            </tr>
-            <tr>
-                <td>api/routes/management.py</td>
-                <td>100%</td>
-                <td>&nbsp;</td>
-            </tr>
-            <tr>
-                <td>api_routes.py</td>
-                <td>85.9%</td>
-                <td>1141-1142,1668-1669,4748-4749,4751-4752,4767,4851-4853,4858</td>
-            </tr>
-            <tr>
-                <td>app.py</td>
-                <td>92.7%</td>
-                <td>408,419,430</td>
-            </tr>
-            <tr>
-                <td>auth_service.py</td>
-                <td>80.0%</td>
-                <td>180-181,652,670,674,712-713,716-717,721</td>
-            </tr>
-            <tr>
-                <td>dashboard_service.py</td>
-                <td>100%</td>
-                <td>&nbsp;</td>
-            </tr>
-            <tr>
-                <td>database_service.py</td>
-                <td>86.5%</td>
-                <td>344,348,359,362,381,438,587</td>
-            </tr>
-            <tr>
-                <td>database_sqlite.py</td>
-                <td>60.9%</td>
-                <td>1044,1055,1058,1061,1289-1293</td>
-            </tr>
-            <tr>
-                <td>email_providers/__init__.py</td>
-                <td>100%</td>
-                <td>&nbsp;</td>
-            </tr>
-            <tr>
-                <td>email_providers/whitelist.py</td>
-                <td>100%</td>
-                <td>&nbsp;</td>
-            </tr>
-            <tr>
-                <td>email_service.py</td>
-                <td>90.2%</td>
-                <td>477-478,486,496,550-551</td>
-            </tr>
-            <tr>
-                <td>import_service.py</td>
-                <td>84.2%</td>
-                <td>632-636,703,706,1290,1293</td>
-            </tr>
-            <tr>
-                <td>login_service.py</td>
-                <td>100%</td>
-                <td>&nbsp;</td>
-            </tr>
-            <tr>
-                <td>models_sql.py</td>
-                <td>92.3%</td>
-                <td>459,466</td>
-            </tr>
-            <tr>
-                <td>session/manager.py</td>
-                <td>100%</td>
-                <td>&nbsp;</td>
-            </tr>
-        </table>
-        <div class="src-snippet">
-            <div class="src-name">api_routes.py</div>
-            <div class="snippets">
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">1137</span>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">1137</span>
 <span class="normal">1138</span>
 <span class="normal">1139</span>
 <span class="normal">1140</span>
@@ -198,7 +391,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">1143</span>
 <span class="normal">1144</span>
 <span class="normal">1145</span>
-<span class="normal">1146</span></pre></div></td><td class="code"><div><pre><span></span><a id="api_routes.py-1137" name="api_routes.py-1137"></a>            <span class="p">)</span>
+<span class="normal">1146</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="api_routes.py-1137" name="api_routes.py-1137"></a>            <span class="p">)</span>
 <a id="api_routes.py-1138" name="api_routes.py-1138"></a>        <span class="k">else</span><span class="p">:</span>
 <a id="api_routes.py-1139" name="api_routes.py-1139"></a>            <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span><span class="s2">&quot;success&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Failed to update role&quot;</span><span class="p">}),</span> <span class="mi">500</span>
 <a id="api_routes.py-1140" name="api_routes.py-1140"></a>
@@ -208,9 +406,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="api_routes.py-1144" name="api_routes.py-1144"></a>
 <a id="api_routes.py-1145" name="api_routes.py-1145"></a><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users/&lt;user_id&gt;/deactivate&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
 <a id="api_routes.py-1146" name="api_routes.py-1146"></a><span class="nd">@permission_required</span><span class="p">(</span><span class="s2">&quot;manage_users&quot;</span><span class="p">)</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">1664</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">1664</span>
 <span class="normal">1665</span>
 <span class="normal">1666</span>
 <span class="normal">1667</span>
@@ -219,7 +427,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">1670</span>
 <span class="normal">1671</span>
 <span class="normal">1672</span>
-<span class="normal">1673</span></pre></div></td><td class="code"><div><pre><span></span><a id="api_routes.py-1664" name="api_routes.py-1664"></a>            <span class="p">),</span>
+<span class="normal">1673</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="api_routes.py-1664" name="api_routes.py-1664"></a>            <span class="p">),</span>
 <a id="api_routes.py-1665" name="api_routes.py-1665"></a>            <span class="mi">201</span><span class="p">,</span>
 <a id="api_routes.py-1666" name="api_routes.py-1666"></a>        <span class="p">)</span>
 <a id="api_routes.py-1667" name="api_routes.py-1667"></a>
@@ -229,9 +442,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="api_routes.py-1671" name="api_routes.py-1671"></a>
 <a id="api_routes.py-1672" name="api_routes.py-1672"></a><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/courses/&lt;course_id&gt;&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DELETE&quot;</span><span class="p">])</span>
 <a id="api_routes.py-1673" name="api_routes.py-1673"></a><span class="nd">@permission_required</span><span class="p">(</span><span class="s2">&quot;manage_courses&quot;</span><span class="p">)</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">4744</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">4744</span>
 <span class="normal">4745</span>
 <span class="normal">4746</span>
 <span class="normal">4747</span>
@@ -243,7 +466,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">4753</span>
 <span class="normal">4754</span>
 <span class="normal">4755</span>
-<span class="normal">4756</span></pre></div></td><td class="code"><div><pre><span></span><a id="api_routes.py-4744" name="api_routes.py-4744"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<span class="normal">4756</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="api_routes.py-4744" name="api_routes.py-4744"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
 <a id="api_routes.py-4745" name="api_routes.py-4745"></a>            <span class="sa">f</span><span class="s2">&quot;Invalid file path: must be within </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ALLOWED_DEMO_FILE_PREFIXES</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
 <a id="api_routes.py-4746" name="api_routes.py-4746"></a>        <span class="p">)</span>
 <a id="api_routes.py-4747" name="api_routes.py-4747"></a>
@@ -256,9 +484,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="api_routes.py-4754" name="api_routes.py-4754"></a>
 <a id="api_routes.py-4755" name="api_routes.py-4755"></a><span class="k">def</span><span class="w"> </span><span class="nf">_get_excel_file_from_request</span><span class="p">():</span>
 <a id="api_routes.py-4756" name="api_routes.py-4756"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">4763</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">4763</span>
 <span class="normal">4764</span>
 <span class="normal">4765</span>
 <span class="normal">4766</span>
@@ -266,7 +504,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">4768</span>
 <span class="normal">4769</span>
 <span class="normal">4770</span>
-<span class="normal">4771</span></pre></div></td><td class="code"><div><pre><span></span><a id="api_routes.py-4763" name="api_routes.py-4763"></a>    <span class="n">demo_file_path</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;demo_file_path&quot;</span><span class="p">)</span>
+<span class="normal">4771</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="api_routes.py-4763" name="api_routes.py-4763"></a>    <span class="n">demo_file_path</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;demo_file_path&quot;</span><span class="p">)</span>
 <a id="api_routes.py-4764" name="api_routes.py-4764"></a>    <span class="k">if</span> <span class="n">demo_file_path</span><span class="p">:</span>
 <a id="api_routes.py-4765" name="api_routes.py-4765"></a>        <span class="n">normalized_path</span> <span class="o">=</span> <span class="n">_validate_demo_file_path</span><span class="p">(</span><span class="n">demo_file_path</span><span class="p">)</span>
 <a id="api_routes.py-4766" name="api_routes.py-4766"></a>        <span class="c1"># Create a minimal mock file object for downstream compatibility.</span>
@@ -275,9 +518,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="api_routes.py-4769" name="api_routes.py-4769"></a>            <span class="p">(</span><span class="nb">object</span><span class="p">,),</span>
 <a id="api_routes.py-4770" name="api_routes.py-4770"></a>            <span class="p">{</span><span class="s2">&quot;filename&quot;</span><span class="p">:</span> <span class="n">normalized_path</span><span class="p">,</span> <span class="s2">&quot;demo_path&quot;</span><span class="p">:</span> <span class="n">normalized_path</span><span class="p">},</span>
 <a id="api_routes.py-4771" name="api_routes.py-4771"></a>        <span class="p">)()</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">4847</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">4847</span>
 <span class="normal">4848</span>
 <span class="normal">4849</span>
 <span class="normal">4850</span>
@@ -292,7 +545,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">4859</span>
 <span class="normal">4860</span>
 <span class="normal">4861</span>
-<span class="normal">4862</span></pre></div></td><td class="code"><div><pre><span></span><a id="api_routes.py-4847" name="api_routes.py-4847"></a>
+<span class="normal">4862</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="api_routes.py-4847" name="api_routes.py-4847"></a>
 <a id="api_routes.py-4848" name="api_routes.py-4848"></a>    <span class="c1"># Check if this is a demo file path (not an uploaded file)</span>
 <a id="api_routes.py-4849" name="api_routes.py-4849"></a>    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="s2">&quot;demo_path&quot;</span><span class="p">):</span>
 <a id="api_routes.py-4850" name="api_routes.py-4850"></a>        <span class="c1"># Use the demo file path directly</span>
@@ -308,14 +566,23 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="api_routes.py-4860" name="api_routes.py-4860"></a>        <span class="c1"># Use secure temporary file creation</span>
 <a id="api_routes.py-4861" name="api_routes.py-4861"></a>        <span class="n">temp_file_prefix</span> <span class="o">=</span> <span class="p">(</span>
 <a id="api_routes.py-4862" name="api_routes.py-4862"></a>            <span class="sa">f</span><span class="s2">&quot;import_</span><span class="si">{</span><span class="n">current_user</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;user_id&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">import_params</span><span class="p">[</span><span class="s1">&#39;import_data_type&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">_&quot;</span>
-</pre></div></td></tr></table></div>
-
-            </div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
         </div>
-        <div class="src-snippet">
-            <div class="src-name">app.py</div>
-            <div class="snippets">
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">404</span>
+      </div>
+    </div>
+    <div class="src-snippet">
+      <div class="src-name">app.py</div>
+      <div class="snippets">
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">404</span>
 <span class="normal">405</span>
 <span class="normal">406</span>
 <span class="normal">407</span>
@@ -323,7 +590,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">409</span>
 <span class="normal">410</span>
 <span class="normal">411</span>
-<span class="normal">412</span></pre></div></td><td class="code"><div><pre><span></span><a id="app.py-404" name="app.py-404"></a>    <span class="n">user</span> <span class="o">=</span> <span class="n">get_current_user</span><span class="p">()</span>
+<span class="normal">412</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="app.py-404" name="app.py-404"></a>    <span class="n">user</span> <span class="o">=</span> <span class="n">get_current_user</span><span class="p">()</span>
 <a id="app.py-405" name="app.py-405"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">user</span><span class="p">:</span>
 <a id="app.py-406" name="app.py-406"></a>        <span class="k">return</span> <span class="n">redirect</span><span class="p">(</span><span class="n">url_for</span><span class="p">(</span><span class="s2">&quot;login&quot;</span><span class="p">))</span>
 <a id="app.py-407" name="app.py-407"></a>
@@ -332,9 +604,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="app.py-410" name="app.py-410"></a>
 <a id="app.py-411" name="app.py-411"></a><span class="nd">@app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/offerings&quot;</span><span class="p">)</span>
 <a id="app.py-412" name="app.py-412"></a><span class="nd">@login_required</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">415</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">415</span>
 <span class="normal">416</span>
 <span class="normal">417</span>
 <span class="normal">418</span>
@@ -342,7 +624,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">420</span>
 <span class="normal">421</span>
 <span class="normal">422</span>
-<span class="normal">423</span></pre></div></td><td class="code"><div><pre><span></span><a id="app.py-415" name="app.py-415"></a>    <span class="n">user</span> <span class="o">=</span> <span class="n">get_current_user</span><span class="p">()</span>
+<span class="normal">423</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="app.py-415" name="app.py-415"></a>    <span class="n">user</span> <span class="o">=</span> <span class="n">get_current_user</span><span class="p">()</span>
 <a id="app.py-416" name="app.py-416"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">user</span><span class="p">:</span>
 <a id="app.py-417" name="app.py-417"></a>        <span class="k">return</span> <span class="n">redirect</span><span class="p">(</span><span class="n">url_for</span><span class="p">(</span><span class="s2">&quot;login&quot;</span><span class="p">))</span>
 <a id="app.py-418" name="app.py-418"></a>
@@ -351,9 +638,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="app.py-421" name="app.py-421"></a>
 <a id="app.py-422" name="app.py-422"></a><span class="nd">@app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/programs&quot;</span><span class="p">)</span>
 <a id="app.py-423" name="app.py-423"></a><span class="nd">@login_required</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">426</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">426</span>
 <span class="normal">427</span>
 <span class="normal">428</span>
 <span class="normal">429</span>
@@ -361,7 +658,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">431</span>
 <span class="normal">432</span>
 <span class="normal">433</span>
-<span class="normal">434</span></pre></div></td><td class="code"><div><pre><span></span><a id="app.py-426" name="app.py-426"></a>    <span class="n">user</span> <span class="o">=</span> <span class="n">get_current_user</span><span class="p">()</span>
+<span class="normal">434</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="app.py-426" name="app.py-426"></a>    <span class="n">user</span> <span class="o">=</span> <span class="n">get_current_user</span><span class="p">()</span>
 <a id="app.py-427" name="app.py-427"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">user</span><span class="p">:</span>
 <a id="app.py-428" name="app.py-428"></a>        <span class="k">return</span> <span class="n">redirect</span><span class="p">(</span><span class="n">url_for</span><span class="p">(</span><span class="s2">&quot;login&quot;</span><span class="p">))</span>
 <a id="app.py-429" name="app.py-429"></a>
@@ -370,14 +672,23 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="app.py-432" name="app.py-432"></a>
 <a id="app.py-433" name="app.py-433"></a><span class="nd">@app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/faculty&quot;</span><span class="p">)</span>
 <a id="app.py-434" name="app.py-434"></a><span class="nd">@login_required</span>
-</pre></div></td></tr></table></div>
-
-            </div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
         </div>
-        <div class="src-snippet">
-            <div class="src-name">auth_service.py</div>
-            <div class="snippets">
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">176</span>
+      </div>
+    </div>
+    <div class="src-snippet">
+      <div class="src-name">auth_service.py</div>
+      <div class="snippets">
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">176</span>
 <span class="normal">177</span>
 <span class="normal">178</span>
 <span class="normal">179</span>
@@ -386,7 +697,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">182</span>
 <span class="normal">183</span>
 <span class="normal">184</span>
-<span class="normal">185</span></pre></div></td><td class="code"><div><pre><span></span><a id="auth_service.py-176" name="auth_service.py-176"></a>        <span class="k">if</span> <span class="n">user</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">user</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;institution_id&quot;</span><span class="p">):</span>
+<span class="normal">185</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="auth_service.py-176" name="auth_service.py-176"></a>        <span class="k">if</span> <span class="n">user</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">user</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;institution_id&quot;</span><span class="p">):</span>
 <a id="auth_service.py-177" name="auth_service.py-177"></a>            <span class="n">resolved_id</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_resolve_institution_id_from_user</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
 <a id="auth_service.py-178" name="auth_service.py-178"></a>            <span class="k">if</span> <span class="n">resolved_id</span><span class="p">:</span>
 <a id="auth_service.py-179" name="auth_service.py-179"></a>                <span class="c1"># Copy to avoid mutating the underlying session dict reference</span>
@@ -396,9 +712,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="auth_service.py-183" name="auth_service.py-183"></a>
 <a id="auth_service.py-184" name="auth_service.py-184"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_get_mock_user</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <a id="auth_service.py-185" name="auth_service.py-185"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Mock user for development and testing&quot;&quot;&quot;</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">648</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">648</span>
 <span class="normal">649</span>
 <span class="normal">650</span>
 <span class="normal">651</span>
@@ -406,7 +732,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">653</span>
 <span class="normal">654</span>
 <span class="normal">655</span>
-<span class="normal">656</span></pre></div></td><td class="code"><div><pre><span></span><a id="auth_service.py-648" name="auth_service.py-648"></a><span class="sd">    Returns:</span>
+<span class="normal">656</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="auth_service.py-648" name="auth_service.py-648"></a><span class="sd">    Returns:</span>
 <a id="auth_service.py-649" name="auth_service.py-649"></a><span class="sd">        Tuple of (institution_id, failure_reason). failure_reason is None when resolved.</span>
 <a id="auth_service.py-650" name="auth_service.py-650"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="auth_service.py-651" name="auth_service.py-651"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">user</span><span class="p">:</span>
@@ -415,9 +746,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="auth_service.py-654" name="auth_service.py-654"></a>    <span class="n">institution_id</span> <span class="o">=</span> <span class="n">user</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;institution_id&quot;</span><span class="p">)</span>
 <a id="auth_service.py-655" name="auth_service.py-655"></a>    <span class="k">if</span> <span class="n">institution_id</span><span class="p">:</span>
 <a id="auth_service.py-656" name="auth_service.py-656"></a>        <span class="k">return</span> <span class="n">institution_id</span><span class="p">,</span> <span class="kc">None</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">666</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">666</span>
 <span class="normal">667</span>
 <span class="normal">668</span>
 <span class="normal">669</span>
@@ -428,7 +769,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">674</span>
 <span class="normal">675</span>
 <span class="normal">676</span>
-<span class="normal">677</span></pre></div></td><td class="code"><div><pre><span></span><a id="auth_service.py-666" name="auth_service.py-666"></a>    <span class="kn">import</span><span class="w"> </span><span class="nn">database_service</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">db</span>
+<span class="normal">677</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="auth_service.py-666" name="auth_service.py-666"></a>    <span class="kn">import</span><span class="w"> </span><span class="nn">database_service</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">db</span>
 <a id="auth_service.py-667" name="auth_service.py-667"></a>
 <a id="auth_service.py-668" name="auth_service.py-668"></a>    <span class="n">institution</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_institution_by_short_name</span><span class="p">(</span><span class="n">institution_short_name</span><span class="p">)</span>
 <a id="auth_service.py-669" name="auth_service.py-669"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">institution</span><span class="p">:</span>
@@ -440,9 +786,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </span><a id="auth_service.py-675" name="auth_service.py-675"></a>
 <a id="auth_service.py-676" name="auth_service.py-676"></a>    <span class="k">return</span> <span class="n">resolved_id</span><span class="p">,</span> <span class="kc">None</span>
 <a id="auth_service.py-677" name="auth_service.py-677"></a>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">708</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">708</span>
 <span class="normal">709</span>
 <span class="normal">710</span>
 <span class="normal">711</span>
@@ -459,7 +815,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">722</span>
 <span class="normal">723</span>
 <span class="normal">724</span>
-<span class="normal">725</span></pre></div></td><td class="code"><div><pre><span></span><a id="auth_service.py-708" name="auth_service.py-708"></a>    <span class="k">if</span> <span class="n">failure_reason</span> <span class="o">==</span> <span class="s2">&quot;missing_short_name&quot;</span><span class="p">:</span>
+<span class="normal">725</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="auth_service.py-708" name="auth_service.py-708"></a>    <span class="k">if</span> <span class="n">failure_reason</span> <span class="o">==</span> <span class="s2">&quot;missing_short_name&quot;</span><span class="p">:</span>
 <a id="auth_service.py-709" name="auth_service.py-709"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
 <a id="auth_service.py-710" name="auth_service.py-710"></a>            <span class="sa">f</span><span class="s2">&quot;No institution context (short_name) available for user </span><span class="si">{</span><span class="n">user_id</span><span class="si">}</span><span class="s2">&quot;</span>
 <a id="auth_service.py-711" name="auth_service.py-711"></a>        <span class="p">)</span>
@@ -477,14 +838,23 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="auth_service.py-723" name="auth_service.py-723"></a>        <span class="p">)</span>
 <a id="auth_service.py-724" name="auth_service.py-724"></a>
 <a id="auth_service.py-725" name="auth_service.py-725"></a>    <span class="k">return</span> <span class="kc">None</span>
-</pre></div></td></tr></table></div>
-
-            </div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
         </div>
-        <div class="src-snippet">
-            <div class="src-name">database_service.py</div>
-            <div class="snippets">
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">340</span>
+      </div>
+    </div>
+    <div class="src-snippet">
+      <div class="src-name">database_service.py</div>
+      <div class="snippets">
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">340</span>
 <span class="normal">341</span>
 <span class="normal">342</span>
 <span class="normal">343</span>
@@ -496,7 +866,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">349</span>
 <span class="normal">350</span>
 <span class="normal">351</span>
-<span class="normal">352</span></pre></div></td><td class="code"><div><pre><span></span><a id="database_service.py-340" name="database_service.py-340"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="normal">352</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="database_service.py-340" name="database_service.py-340"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <a id="database_service.py-341" name="database_service.py-341"></a><span class="sd">    Clone an existing course (and optionally program assignments) for demo workflows.</span>
 <a id="database_service.py-342" name="database_service.py-342"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="database_service.py-343" name="database_service.py-343"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">source_course</span><span class="p">:</span>
@@ -509,9 +884,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="database_service.py-350" name="database_service.py-350"></a>    <span class="n">overrides</span> <span class="o">=</span> <span class="n">overrides</span> <span class="ow">or</span> <span class="p">{}</span>
 <a id="database_service.py-351" name="database_service.py-351"></a>    <span class="n">sanitized_overrides</span><span class="p">,</span> <span class="n">program_ids_override</span> <span class="o">=</span> <span class="n">_sanitize_course_duplication_overrides</span><span class="p">(</span>
 <a id="database_service.py-352" name="database_service.py-352"></a>        <span class="n">overrides</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">355</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">355</span>
 <span class="normal">356</span>
 <span class="normal">357</span>
 <span class="normal">358</span>
@@ -522,7 +907,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">363</span>
 <span class="normal">364</span>
 <span class="normal">365</span>
-<span class="normal">366</span></pre></div></td><td class="code"><div><pre><span></span><a id="database_service.py-355" name="database_service.py-355"></a>    <span class="n">base_number</span> <span class="o">=</span> <span class="n">sanitized_overrides</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;course_number&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">source_course</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+<span class="normal">366</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="database_service.py-355" name="database_service.py-355"></a>    <span class="n">base_number</span> <span class="o">=</span> <span class="n">sanitized_overrides</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;course_number&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">source_course</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
 <a id="database_service.py-356" name="database_service.py-356"></a>        <span class="s2">&quot;course_number&quot;</span>
 <a id="database_service.py-357" name="database_service.py-357"></a>    <span class="p">)</span>
 <a id="database_service.py-358" name="database_service.py-358"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">base_number</span><span class="p">:</span>
@@ -534,9 +924,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="database_service.py-364" name="database_service.py-364"></a>    <span class="n">sanitized_overrides</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span>
 <a id="database_service.py-365" name="database_service.py-365"></a>        <span class="s2">&quot;course_number&quot;</span><span class="p">,</span> <span class="n">_generate_unique_course_number</span><span class="p">(</span><span class="n">base_number</span><span class="p">,</span> <span class="n">institution_id</span><span class="p">)</span>
 <a id="database_service.py-366" name="database_service.py-366"></a>    <span class="p">)</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">377</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">377</span>
 <span class="normal">378</span>
 <span class="normal">379</span>
 <span class="normal">380</span>
@@ -544,7 +944,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">382</span>
 <span class="normal">383</span>
 <span class="normal">384</span>
-<span class="normal">385</span></pre></div></td><td class="code"><div><pre><span></span><a id="database_service.py-377" name="database_service.py-377"></a>
+<span class="normal">385</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="database_service.py-377" name="database_service.py-377"></a>
 <a id="database_service.py-378" name="database_service.py-378"></a><span class="k">def</span><span class="w"> </span><span class="nf">_get_institution_id_or_log</span><span class="p">(</span><span class="n">source_course</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <a id="database_service.py-379" name="database_service.py-379"></a>    <span class="n">institution_id</span> <span class="o">=</span> <span class="n">source_course</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;institution_id&quot;</span><span class="p">)</span>
 <a id="database_service.py-380" name="database_service.py-380"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">institution_id</span><span class="p">:</span>
@@ -553,16 +958,31 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="database_service.py-383" name="database_service.py-383"></a>
 <a id="database_service.py-384" name="database_service.py-384"></a>
 <a id="database_service.py-385" name="database_service.py-385"></a><span class="k">def</span><span class="w"> </span><span class="nf">_sanitize_course_duplication_overrides</span><span class="p">(</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">434</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">434</span>
 <span class="normal">435</span>
 <span class="normal">436</span>
 <span class="normal">437</span>
 <span class="normal">438</span>
 <span class="normal">439</span>
 <span class="normal">440</span>
-<span class="normal">441</span></pre></div></td><td class="code"><div><pre><span></span><a id="database_service.py-434" name="database_service.py-434"></a>    <span class="n">program_ids_override</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+<span class="normal">441</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="database_service.py-434" name="database_service.py-434"></a>    <span class="n">program_ids_override</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
 <a id="database_service.py-435" name="database_service.py-435"></a>    <span class="n">duplicate_programs</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
 <a id="database_service.py-436" name="database_service.py-436"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <a id="database_service.py-437" name="database_service.py-437"></a>    <span class="k">if</span> <span class="n">program_ids_override</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -570,9 +990,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </span><a id="database_service.py-439" name="database_service.py-439"></a>    <span class="k">if</span> <span class="n">duplicate_programs</span><span class="p">:</span>
 <a id="database_service.py-440" name="database_service.py-440"></a>        <span class="k">return</span> <span class="n">source_course</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;program_ids&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
 <a id="database_service.py-441" name="database_service.py-441"></a>    <span class="k">return</span> <span class="p">[]</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">583</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">583</span>
 <span class="normal">584</span>
 <span class="normal">585</span>
 <span class="normal">586</span>
@@ -580,7 +1010,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">588</span>
 <span class="normal">589</span>
 <span class="normal">590</span>
-<span class="normal">591</span></pre></div></td><td class="code"><div><pre><span></span><a id="database_service.py-583" name="database_service.py-583"></a>
+<span class="normal">591</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="database_service.py-583" name="database_service.py-583"></a>
 <a id="database_service.py-584" name="database_service.py-584"></a>
 <a id="database_service.py-585" name="database_service.py-585"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_programs_for_course</span><span class="p">(</span><span class="n">course_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <a id="database_service.py-586" name="database_service.py-586"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get all programs that a course is attached to.&quot;&quot;&quot;</span>
@@ -589,14 +1024,23 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="database_service.py-589" name="database_service.py-589"></a>
 <a id="database_service.py-590" name="database_service.py-590"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_unassigned_courses</span><span class="p">(</span><span class="n">institution_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <a id="database_service.py-591" name="database_service.py-591"></a>    <span class="k">return</span> <span class="n">_db_service</span><span class="o">.</span><span class="n">get_unassigned_courses</span><span class="p">(</span><span class="n">institution_id</span><span class="p">)</span>
-</pre></div></td></tr></table></div>
-
-            </div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
         </div>
-        <div class="src-snippet">
-            <div class="src-name">database_sqlite.py</div>
-            <div class="snippets">
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">1040</span>
+      </div>
+    </div>
+    <div class="src-snippet">
+      <div class="src-name">database_sqlite.py</div>
+      <div class="snippets">
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">1040</span>
 <span class="normal">1041</span>
 <span class="normal">1042</span>
 <span class="normal">1043</span>
@@ -604,7 +1048,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">1045</span>
 <span class="normal">1046</span>
 <span class="normal">1047</span>
-<span class="normal">1048</span></pre></div></td><td class="code"><div><pre><span></span><a id="database_sqlite.py-1040" name="database_sqlite.py-1040"></a>                    <span class="c1"># User request implied &quot;unique to COURSE+PROGRAM&quot;, so strict match is best.</span>
+<span class="normal">1048</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="database_sqlite.py-1040" name="database_sqlite.py-1040"></a>                    <span class="c1"># User request implied &quot;unique to COURSE+PROGRAM&quot;, so strict match is best.</span>
 <a id="database_sqlite.py-1041" name="database_sqlite.py-1041"></a>
 <a id="database_sqlite.py-1042" name="database_sqlite.py-1042"></a>                    <span class="n">filters</span> <span class="o">=</span> <span class="p">[</span><span class="n">CourseOutcome</span><span class="o">.</span><span class="n">course_id</span> <span class="o">==</span> <span class="n">offering</span><span class="o">.</span><span class="n">course_id</span><span class="p">]</span>
 <a id="database_sqlite.py-1043" name="database_sqlite.py-1043"></a>                    <span class="k">if</span> <span class="n">offering</span><span class="o">.</span><span class="n">program_id</span><span class="p">:</span>
@@ -613,9 +1062,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="database_sqlite.py-1046" name="database_sqlite.py-1046"></a>                        <span class="n">filters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">CourseOutcome</span><span class="o">.</span><span class="n">program_id</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span>
 <a id="database_sqlite.py-1047" name="database_sqlite.py-1047"></a>
 <a id="database_sqlite.py-1048" name="database_sqlite.py-1048"></a>                    <span class="n">templates</span> <span class="o">=</span> <span class="p">(</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">1051</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">1051</span>
 <span class="normal">1052</span>
 <span class="normal">1053</span>
 <span class="normal">1054</span>
@@ -629,7 +1088,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">1062</span>
 <span class="normal">1063</span>
 <span class="normal">1064</span>
-<span class="normal">1065</span></pre></div></td><td class="code"><div><pre><span></span><a id="database_sqlite.py-1051" name="database_sqlite.py-1051"></a>                        <span class="o">.</span><span class="n">all</span><span class="p">()</span>
+<span class="normal">1065</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="database_sqlite.py-1051" name="database_sqlite.py-1051"></a>                        <span class="o">.</span><span class="n">all</span><span class="p">()</span>
 <a id="database_sqlite.py-1052" name="database_sqlite.py-1052"></a>                    <span class="p">)</span>
 <a id="database_sqlite.py-1053" name="database_sqlite.py-1053"></a>
 <a id="database_sqlite.py-1054" name="database_sqlite.py-1054"></a>                    <span class="k">for</span> <span class="n">template</span> <span class="ow">in</span> <span class="n">templates</span><span class="p">:</span>
@@ -644,9 +1108,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="database_sqlite.py-1063" name="database_sqlite.py-1063"></a>                        <span class="p">)</span>
 <a id="database_sqlite.py-1064" name="database_sqlite.py-1064"></a>
 <a id="database_sqlite.py-1065" name="database_sqlite.py-1065"></a>            <span class="k">return</span> <span class="n">section_id</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">1285</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">1285</span>
 <span class="normal">1286</span>
 <span class="normal">1287</span>
 <span class="normal">1288</span>
@@ -658,7 +1132,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">1294</span>
 <span class="normal">1295</span>
 <span class="normal">1296</span>
-<span class="normal">1297</span></pre></div></td><td class="code"><div><pre><span></span><a id="database_sqlite.py-1285" name="database_sqlite.py-1285"></a>            <span class="k">return</span> <span class="p">[</span><span class="n">to_dict</span><span class="p">(</span><span class="n">course</span><span class="p">)</span> <span class="k">for</span> <span class="n">course</span> <span class="ow">in</span> <span class="n">program</span><span class="o">.</span><span class="n">courses</span><span class="p">]</span>
+<span class="normal">1297</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="database_sqlite.py-1285" name="database_sqlite.py-1285"></a>            <span class="k">return</span> <span class="p">[</span><span class="n">to_dict</span><span class="p">(</span><span class="n">course</span><span class="p">)</span> <span class="k">for</span> <span class="n">course</span> <span class="ow">in</span> <span class="n">program</span><span class="o">.</span><span class="n">courses</span><span class="p">]</span>
 <a id="database_sqlite.py-1286" name="database_sqlite.py-1286"></a>
 <a id="database_sqlite.py-1287" name="database_sqlite.py-1287"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_programs_for_course</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">course_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <a id="database_sqlite.py-1288" name="database_sqlite.py-1288"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Get all programs that a course is attached to.&quot;&quot;&quot;</span>
@@ -671,14 +1150,23 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="database_sqlite.py-1295" name="database_sqlite.py-1295"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_unassigned_courses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">institution_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <a id="database_sqlite.py-1296" name="database_sqlite.py-1296"></a>        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">sqlite</span><span class="o">.</span><span class="n">session_scope</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
 <a id="database_sqlite.py-1297" name="database_sqlite.py-1297"></a>            <span class="n">courses</span> <span class="o">=</span> <span class="p">(</span>
-</pre></div></td></tr></table></div>
-
-            </div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
         </div>
-        <div class="src-snippet">
-            <div class="src-name">email_service.py</div>
-            <div class="snippets">
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">473</span>
+      </div>
+    </div>
+    <div class="src-snippet">
+      <div class="src-name">email_service.py</div>
+      <div class="snippets">
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">473</span>
 <span class="normal">474</span>
 <span class="normal">475</span>
 <span class="normal">476</span>
@@ -687,7 +1175,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">479</span>
 <span class="normal">480</span>
 <span class="normal">481</span>
-<span class="normal">482</span></pre></div></td><td class="code"><div><pre><span></span><a id="email_service.py-473" name="email_service.py-473"></a><span class="sd">        Determine the log file destination for email previews.</span>
+<span class="normal">482</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="email_service.py-473" name="email_service.py-473"></a><span class="sd">        Determine the log file destination for email previews.</span>
 <a id="email_service.py-474" name="email_service.py-474"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="email_service.py-475" name="email_service.py-475"></a>        <span class="k">try</span><span class="p">:</span>
 <a id="email_service.py-476" name="email_service.py-476"></a>            <span class="n">config</span> <span class="o">=</span> <span class="n">current_app</span><span class="o">.</span><span class="n">config</span>
@@ -697,9 +1190,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="email_service.py-480" name="email_service.py-480"></a>        <span class="n">log_override</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;EMAIL_LOG_PATH&quot;</span><span class="p">)</span>
 <a id="email_service.py-481" name="email_service.py-481"></a>        <span class="k">if</span> <span class="n">log_override</span><span class="p">:</span>
 <a id="email_service.py-482" name="email_service.py-482"></a>            <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">log_override</span><span class="p">)</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">482</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">482</span>
 <span class="normal">483</span>
 <span class="normal">484</span>
 <span class="normal">485</span>
@@ -707,7 +1210,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">487</span>
 <span class="normal">488</span>
 <span class="normal">489</span>
-<span class="normal">490</span></pre></div></td><td class="code"><div><pre><span></span><a id="email_service.py-482" name="email_service.py-482"></a>            <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">log_override</span><span class="p">)</span>
+<span class="normal">490</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="email_service.py-482" name="email_service.py-482"></a>            <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">log_override</span><span class="p">)</span>
 <a id="email_service.py-483" name="email_service.py-483"></a>
 <a id="email_service.py-484" name="email_service.py-484"></a>        <span class="n">log_dir</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;LOG_DIR&quot;</span><span class="p">)</span>
 <a id="email_service.py-485" name="email_service.py-485"></a>        <span class="k">if</span> <span class="n">log_dir</span><span class="p">:</span>
@@ -716,9 +1224,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="email_service.py-488" name="email_service.py-488"></a>        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;logs&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;email.log&quot;</span>
 <a id="email_service.py-489" name="email_service.py-489"></a>
 <a id="email_service.py-490" name="email_service.py-490"></a>    <span class="nd">@staticmethod</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">492</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">492</span>
 <span class="normal">493</span>
 <span class="normal">494</span>
 <span class="normal">495</span>
@@ -726,7 +1244,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">497</span>
 <span class="normal">498</span>
 <span class="normal">499</span>
-<span class="normal">500</span></pre></div></td><td class="code"><div><pre><span></span><a id="email_service.py-492" name="email_service.py-492"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="normal">500</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="email_service.py-492" name="email_service.py-492"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <a id="email_service.py-493" name="email_service.py-493"></a><span class="sd">        Trim preview text so log entries stay compact.</span>
 <a id="email_service.py-494" name="email_service.py-494"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="email_service.py-495" name="email_service.py-495"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">content</span><span class="p">:</span>
@@ -735,9 +1258,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="email_service.py-498" name="email_service.py-498"></a>        <span class="n">normalized</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
 <a id="email_service.py-499" name="email_service.py-499"></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">normalized</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">limit</span><span class="p">:</span>
 <a id="email_service.py-500" name="email_service.py-500"></a>            <span class="k">return</span> <span class="n">normalized</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">546</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">546</span>
 <span class="normal">547</span>
 <span class="normal">548</span>
 <span class="normal">549</span>
@@ -746,7 +1279,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">552</span>
 <span class="normal">553</span>
 <span class="normal">554</span>
-<span class="normal">555</span></pre></div></td><td class="code"><div><pre><span></span><a id="email_service.py-546" name="email_service.py-546"></a>            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;---&quot;</span><span class="p">)</span>
+<span class="normal">555</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="email_service.py-546" name="email_service.py-546"></a>            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;---&quot;</span><span class="p">)</span>
 <a id="email_service.py-547" name="email_service.py-547"></a>
 <a id="email_service.py-548" name="email_service.py-548"></a>            <span class="k">with</span> <span class="n">log_path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">log_file</span><span class="p">:</span>
 <a id="email_service.py-549" name="email_service.py-549"></a>                <span class="n">log_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -756,14 +1294,23 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="email_service.py-553" name="email_service.py-553"></a>            <span class="p">)</span>
 <a id="email_service.py-554" name="email_service.py-554"></a>
 <a id="email_service.py-555" name="email_service.py-555"></a>    <span class="nd">@staticmethod</span>
-</pre></div></td></tr></table></div>
-
-            </div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
         </div>
-        <div class="src-snippet">
-            <div class="src-name">import_service.py</div>
-            <div class="snippets">
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">628</span>
+      </div>
+    </div>
+    <div class="src-snippet">
+      <div class="src-name">import_service.py</div>
+      <div class="snippets">
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">628</span>
 <span class="normal">629</span>
 <span class="normal">630</span>
 <span class="normal">631</span>
@@ -775,7 +1322,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">637</span>
 <span class="normal">638</span>
 <span class="normal">639</span>
-<span class="normal">640</span></pre></div></td><td class="code"><div><pre><span></span><a id="import_service.py-628" name="import_service.py-628"></a>
+<span class="normal">640</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="import_service.py-628" name="import_service.py-628"></a>
 <a id="import_service.py-629" name="import_service.py-629"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_mark_conflicts_resolved</span><span class="p">(</span>
 <a id="import_service.py-630" name="import_service.py-630"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">detected_conflicts</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ConflictRecord</span><span class="p">],</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">ConflictStrategy</span>
 <a id="import_service.py-631" name="import_service.py-631"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -788,9 +1340,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="import_service.py-638" name="import_service.py-638"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_handle_new_course</span><span class="p">(</span>
 <a id="import_service.py-639" name="import_service.py-639"></a>        <span class="bp">self</span><span class="p">,</span>
 <a id="import_service.py-640" name="import_service.py-640"></a>        <span class="n">course_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">699</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">699</span>
 <span class="normal">700</span>
 <span class="normal">701</span>
 <span class="normal">702</span>
@@ -800,7 +1362,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">706</span>
 <span class="normal">707</span>
 <span class="normal">708</span>
-<span class="normal">709</span></pre></div></td><td class="code"><div><pre><span></span><a id="import_service.py-699" name="import_service.py-699"></a>                    <span class="n">user_data</span><span class="p">,</span> <span class="n">existing_user</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">dry_run</span><span class="p">,</span> <span class="n">conflicts</span>
+<span class="normal">709</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="import_service.py-699" name="import_service.py-699"></a>                    <span class="n">user_data</span><span class="p">,</span> <span class="n">existing_user</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">dry_run</span><span class="p">,</span> <span class="n">conflicts</span>
 <a id="import_service.py-700" name="import_service.py-700"></a>                <span class="p">)</span>
 <a id="import_service.py-701" name="import_service.py-701"></a>            <span class="k">elif</span> <span class="n">existing_user</span><span class="p">:</span>
 <a id="import_service.py-702" name="import_service.py-702"></a>                <span class="c1"># User exists but in different institution - this is an email conflict</span>
@@ -811,9 +1378,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </span><a id="import_service.py-707" name="import_service.py-707"></a>            <span class="k">else</span><span class="p">:</span>
 <a id="import_service.py-708" name="import_service.py-708"></a>                <span class="n">conflicts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_new_user</span><span class="p">(</span><span class="n">user_data</span><span class="p">,</span> <span class="n">email</span><span class="p">,</span> <span class="n">dry_run</span><span class="p">,</span> <span class="n">conflicts</span><span class="p">)</span>
 <a id="import_service.py-709" name="import_service.py-709"></a>                <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="n">conflicts</span>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">1286</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">1286</span>
 <span class="normal">1287</span>
 <span class="normal">1288</span>
 <span class="normal">1289</span>
@@ -824,7 +1401,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">1294</span>
 <span class="normal">1295</span>
 <span class="normal">1296</span>
-<span class="normal">1297</span></pre></div></td><td class="code"><div><pre><span></span><a id="import_service.py-1286" name="import_service.py-1286"></a>        <span class="k">try</span><span class="p">:</span>
+<span class="normal">1297</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="import_service.py-1286" name="import_service.py-1286"></a>        <span class="k">try</span><span class="p">:</span>
 <a id="import_service.py-1287" name="import_service.py-1287"></a>            <span class="c1"># Use course_id (not id) - Course model&#39;s primary key is course_id</span>
 <a id="import_service.py-1288" name="import_service.py-1288"></a>            <span class="n">course_id</span> <span class="o">=</span> <span class="n">course</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;course_id&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">course</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">)</span>
 <a id="import_service.py-1289" name="import_service.py-1289"></a>            <span class="k">if</span> <span class="ow">not</span> <span class="n">course_id</span><span class="p">:</span>
@@ -836,21 +1418,35 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="import_service.py-1295" name="import_service.py-1295"></a>            <span class="k">return</span> <span class="kc">True</span>
 <a id="import_service.py-1296" name="import_service.py-1296"></a>        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
 <a id="import_service.py-1297" name="import_service.py-1297"></a>            <span class="c1"># Already linked, that&#39;s fine</span>
-</pre></div></td></tr></table></div>
-
-            </div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
         </div>
-        <div class="src-snippet">
-            <div class="src-name">models_sql.py</div>
-            <div class="snippets">
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">455</span>
+      </div>
+    </div>
+    <div class="src-snippet">
+      <div class="src-name">models_sql.py</div>
+      <div class="snippets">
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">455</span>
 <span class="normal">456</span>
 <span class="normal">457</span>
 <span class="normal">458</span>
 <span class="normal">459</span>
 <span class="normal">460</span>
 <span class="normal">461</span>
-<span class="normal">462</span></pre></div></td><td class="code"><div><pre><span></span><a id="models_sql.py-455" name="models_sql.py-455"></a>        <span class="k">return</span> <span class="n">_course_outcome_to_dict</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+<span class="normal">462</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="models_sql.py-455" name="models_sql.py-455"></a>        <span class="k">return</span> <span class="n">_course_outcome_to_dict</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
 <a id="models_sql.py-456" name="models_sql.py-456"></a>    <span class="k">elif</span> <span class="n">model_type</span> <span class="o">==</span> <span class="n">UserInvitation</span><span class="p">:</span>
 <a id="models_sql.py-457" name="models_sql.py-457"></a>        <span class="k">return</span> <span class="n">_user_invitation_to_dict</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
 <a id="models_sql.py-458" name="models_sql.py-458"></a>    <span class="k">elif</span> <span class="n">model_type</span> <span class="o">==</span> <span class="n">CourseSectionOutcome</span><span class="p">:</span>
@@ -858,9 +1454,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </span><a id="models_sql.py-460" name="models_sql.py-460"></a>    <span class="k">else</span><span class="p">:</span>
 <a id="models_sql.py-461" name="models_sql.py-461"></a>        <span class="k">return</span> <span class="p">{}</span>
 <a id="models_sql.py-462" name="models_sql.py-462"></a>
-</pre></div></td></tr></table></div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-            <div class="snippet"><table class="snippettable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">462</span>
+        <div class="snippet">
+          <table class="snippettable">
+            <tr>
+              <td class="linenos">
+                <div class="linenodiv">
+                  <pre><span class="normal">462</span>
 <span class="normal">463</span>
 <span class="normal">464</span>
 <span class="normal">465</span>
@@ -868,7 +1474,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">467</span>
 <span class="normal">468</span>
 <span class="normal">469</span>
-<span class="normal">470</span></pre></div></td><td class="code"><div><pre><span></span><a id="models_sql.py-462" name="models_sql.py-462"></a>
+<span class="normal">470</span></pre>
+                </div>
+              </td>
+              <td class="code">
+                <div>
+                  <pre><span></span><a id="models_sql.py-462" name="models_sql.py-462"></a>
 <a id="models_sql.py-463" name="models_sql.py-463"></a>
 <a id="models_sql.py-464" name="models_sql.py-464"></a><span class="k">def</span><span class="w"> </span><span class="nf">_course_section_outcome_to_dict</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="n">CourseSectionOutcome</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <a id="models_sql.py-465" name="models_sql.py-465"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert CourseSectionOutcome model to dictionary.&quot;&quot;&quot;</span>
@@ -877,9 +1488,13 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="models_sql.py-468" name="models_sql.py-468"></a>        <span class="s2">&quot;section_id&quot;</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">section_id</span><span class="p">,</span>
 <a id="models_sql.py-469" name="models_sql.py-469"></a>        <span class="s2">&quot;outcome_id&quot;</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">outcome_id</span><span class="p">,</span>
 <a id="models_sql.py-470" name="models_sql.py-470"></a>        <span class="s2">&quot;students_took&quot;</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">students_took</span><span class="p">,</span>
-</pre></div></td></tr></table></div>
-
-            </div>
+</pre>
+                </div>
+              </td>
+            </tr>
+          </table>
         </div>
-    </body>
+      </div>
+    </div>
+  </body>
 </html>

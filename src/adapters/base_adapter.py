@@ -1,6 +1,6 @@
 # adapters/base_adapter.py
 
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional, TypeAlias
 
 from src.utils.term_utils import is_valid_term
 
@@ -8,6 +8,10 @@ from src.utils.term_utils import is_valid_term
 # Define a custom exception for validation errors
 class ValidationError(ValueError):
     pass
+
+
+FieldValidator: TypeAlias = Callable[[Any], bool]
+FieldConfig: TypeAlias = tuple[bool, type[Any] | None, FieldValidator | None]
 
 
 class BaseAdapter:
@@ -18,7 +22,7 @@ class BaseAdapter:
 
     # Define fields expected from input sources and their requirements
     # Tuple: (required: bool, type: type | None, validator_func: callable | None)
-    EXPECTED_FIELDS = {
+    EXPECTED_FIELDS: Dict[str, FieldConfig] = {
         "course_title": (True, str, None),
         "course_number": (True, str, None),
         # 'semester': (True, str, None), # Replaced by term
@@ -28,17 +32,17 @@ class BaseAdapter:
         "num_students": (
             False,
             int,
-            lambda n: n >= 0,
+            lambda student_count: student_count >= 0,
         ),
     }
 
-    def _prepare_raw_input_data(self, form_data: dict) -> dict:
+    def _prepare_raw_input_data(self, form_data: dict[str, Any]) -> dict[str, str]:
         """Prepare raw input data by stripping whitespace."""
         return {k: str(v).strip() for k, v in form_data.items()}
 
-    def _check_required_fields(self, raw_input_data: dict) -> list:
+    def _check_required_fields(self, raw_input_data: dict[str, Any]) -> list[str]:
         """Check for missing required fields and return errors."""
-        errors = []
+        errors: list[str] = []
         for field, config in self.EXPECTED_FIELDS.items():
             is_required = config[0]
             if is_required and not raw_input_data.get(field):
@@ -47,7 +51,7 @@ class BaseAdapter:
 
     def _convert_field_value(
         self, field: str, value_str: str, expected_type: type
-    ) -> tuple:
+    ) -> tuple[Any, Optional[str]]:
         """Convert field value to expected type. Returns (processed_value, error_msg)."""
         if not expected_type:
             return value_str, None
@@ -83,7 +87,11 @@ class BaseAdapter:
         return None
 
     def _should_include_field(
-        self, field: str, processed_value: Any, is_required_field: bool, errors: list
+        self,
+        field: str,
+        processed_value: Any,
+        is_required_field: bool,
+        errors: list[str],
     ) -> bool:
         """Determine if field should be included in validated data."""
         # Check if field caused an error
@@ -94,7 +102,9 @@ class BaseAdapter:
         # Only add if it has a value or is explicitly required
         return processed_value is not None or is_required_field
 
-    def _process_single_field(self, field: str, value_str: str, config: tuple) -> tuple:
+    def _process_single_field(
+        self, field: str, value_str: str, config: tuple[bool, type | None, Any]
+    ) -> tuple[Any, list[str], Any]:
         """Process a single field through validation pipeline. Returns (processed_value, errors, parsed_num_students)."""
         is_required_field, expected_type, validator = config
         errors: list[str] = []
@@ -105,12 +115,15 @@ class BaseAdapter:
             return None, errors, parsed_num_students
 
         # Type conversion
-        processed_value, conversion_error = self._convert_field_value(
-            field, value_str, expected_type
-        )
-        if conversion_error:
-            errors.append(conversion_error)
-            return None, errors, parsed_num_students
+        if expected_type is None:
+            processed_value = value_str
+        else:
+            processed_value, conversion_error = self._convert_field_value(
+                field, value_str, expected_type
+            )
+            if conversion_error:
+                errors.append(conversion_error)
+                return None, errors, parsed_num_students
 
         # Store num_students for cross-field validation
         if field == "num_students" and processed_value is not None:
@@ -123,10 +136,12 @@ class BaseAdapter:
 
         return processed_value, errors, parsed_num_students
 
-    def _parse_form_data(self, form_data: dict) -> tuple:
+    def _parse_form_data(
+        self, form_data: dict[str, Any]
+    ) -> tuple[dict[str, Any], list[str]]:
         """Parse form data into typed values. Returns (parsed_data, conversion_errors)."""
-        parsed_data = {}
-        conversion_errors = []
+        parsed_data: dict[str, Any] = {}
+        conversion_errors: list[str] = []
         raw_input_data = self._prepare_raw_input_data(form_data)
 
         for field, value_str in raw_input_data.items():
@@ -139,9 +154,12 @@ class BaseAdapter:
                     continue
 
                 # Convert field value
-                processed_value, conversion_error = self._convert_field_value(
-                    field, value_str, expected_type
-                )
+                if expected_type is None:
+                    processed_value, conversion_error = value_str, None
+                else:
+                    processed_value, conversion_error = self._convert_field_value(
+                        field, value_str, expected_type
+                    )
                 if conversion_error:
                     conversion_errors.append(conversion_error)
                 elif processed_value is not None:
@@ -149,14 +167,14 @@ class BaseAdapter:
 
         return parsed_data, conversion_errors
 
-    def _validate_parsed_data(self, parsed_data: dict) -> list:
+    def _validate_parsed_data(self, parsed_data: dict[str, Any]) -> list[str]:
         """
         Validate parsed data against field rules.
 
         Args:
             parsed_data: The parsed and transformed data to validate
         """
-        errors = []
+        errors: list[str] = []
 
         for field, processed_value in parsed_data.items():
             if field in self.EXPECTED_FIELDS:
@@ -172,7 +190,7 @@ class BaseAdapter:
 
         return errors
 
-    def parse_and_validate(self, form_data: dict) -> Dict[str, Any]:
+    def parse_and_validate(self, form_data: dict[str, Any]) -> Dict[str, Any]:
         """
         Parses and validates data from a form-like dictionary.
         Includes logic for grade distribution validation.

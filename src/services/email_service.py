@@ -16,7 +16,7 @@ Features:
 
 import os
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import Any, Dict, Optional, cast
 from urllib.parse import urljoin
 
 from flask import Flask, current_app
@@ -65,6 +65,31 @@ class EmailService:
     _last_error_message: Optional[str] = None
 
     @staticmethod
+    def _app_config() -> Dict[str, Any]:
+        """Return Flask config as a typed mapping."""
+        return cast(Dict[str, Any], current_app.config)
+
+    @staticmethod
+    def _get_base_url() -> str:
+        """Return configured application base URL as a string."""
+        return str(EmailService._app_config().get("BASE_URL", DEFAULT_BASE_URL))
+
+    @staticmethod
+    def _get_config_bool(key: str, default: bool = False) -> bool:
+        """Return a boolean config value with light coercion."""
+        value = EmailService._app_config().get(key, default)
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.lower() == "true"
+        return bool(value)
+
+    @staticmethod
+    def _get_config_str(key: str, default: str) -> str:
+        """Return a string config value."""
+        return str(EmailService._app_config().get(key, default))
+
+    @staticmethod
     def _is_protected_email(email: Optional[str]) -> bool:
         """
         Check if email address is from a protected domain (e.g., production institutions)
@@ -103,33 +128,34 @@ class EmailService:
             app: Flask application instance
         """
         logger.info("[Email Service] Configuring email settings")
+        config = cast(Dict[str, Any], app.config)
 
         # Email server configuration
-        app.config.setdefault("MAIL_SERVER", os.getenv("MAIL_SERVER", "localhost"))
-        app.config.setdefault("MAIL_PORT", int(os.getenv("MAIL_PORT", "587")))
-        app.config.setdefault(
+        config.setdefault("MAIL_SERVER", os.getenv("MAIL_SERVER", "localhost"))
+        config.setdefault("MAIL_PORT", int(os.getenv("MAIL_PORT", "587")))
+        config.setdefault(
             "MAIL_USE_TLS", os.getenv("MAIL_USE_TLS", "true").lower() == "true"
         )
-        app.config.setdefault(
+        config.setdefault(
             "MAIL_USE_SSL", os.getenv("MAIL_USE_SSL", "false").lower() == "true"
         )
-        app.config.setdefault("MAIL_USERNAME", os.getenv("MAIL_USERNAME"))
-        app.config.setdefault("MAIL_PASSWORD", os.getenv("MAIL_PASSWORD"))
+        config.setdefault("MAIL_USERNAME", os.getenv("MAIL_USERNAME"))
+        config.setdefault("MAIL_PASSWORD", os.getenv("MAIL_PASSWORD"))
 
         # Email content configuration
-        app.config.setdefault(
+        config.setdefault(
             "MAIL_DEFAULT_SENDER", os.getenv("MAIL_DEFAULT_SENDER", DEFAULT_FROM_EMAIL)
         )
-        app.config.setdefault(
+        config.setdefault(
             "MAIL_DEFAULT_SENDER_NAME",
             os.getenv("MAIL_DEFAULT_SENDER_NAME", DEFAULT_FROM_NAME),
         )
 
         # Base URL for email links
-        app.config.setdefault("BASE_URL", os.getenv("BASE_URL", DEFAULT_BASE_URL))
+        config.setdefault("BASE_URL", os.getenv("BASE_URL", DEFAULT_BASE_URL))
 
         # Development mode
-        app.config.setdefault(
+        config.setdefault(
             "MAIL_SUPPRESS_SEND",
             os.getenv("MAIL_SUPPRESS_SEND", "false").lower() == "true",
         )
@@ -402,12 +428,12 @@ class EmailService:
         subject = f"New Assessment Submission: {course_code}"
 
         # Build audit URL (points to Awaiting Approval filter)
-        base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
+        base_url = EmailService._get_base_url()
         audit_url = urljoin(base_url, "/audit-clo?status=awaiting_approval")
 
         # Prepare template context
         clo_text = "CLO" if clo_count == 1 else f"{clo_count} CLOs"
-        template_context = {
+        template_context: Dict[str, Any] = {
             "admin_name": admin_name,
             "instructor_name": instructor_name,
             "course_code": course_code,
@@ -455,9 +481,11 @@ class EmailService:
         try:
             EmailService._last_error_message = None
             # CRITICAL PROTECTION: Block protected domains in non-production environments
-            is_production = current_app.config.get(
-                "ENV"
-            ) == "production" or current_app.config.get("PRODUCTION", False)
+            environment_name = EmailService._get_config_str("ENV", "development")
+            is_production = (
+                environment_name.lower() == "production"
+                or EmailService._get_config_bool("PRODUCTION", False)
+            )
 
             if not is_production and EmailService._is_protected_email(to_email):
                 error_message = (
@@ -466,7 +494,7 @@ class EmailService:
                 )
                 logger.error(
                     f"[Email Service] BLOCKED: Attempted to send email to protected domain in "
-                    f"{current_app.config.get('ENV', 'development')} environment: {to_email}"
+                    f"{environment_name} environment: {to_email}"
                 )
                 raise EmailServiceError(error_message)
 
@@ -537,17 +565,17 @@ class EmailService:
         Determine the log file destination for email previews.
         """
         try:
-            cfg: "Mapping[str, Any]" = current_app.config
+            cfg = EmailService._app_config()
         except RuntimeError:
             cfg = {}
 
         log_override = cfg.get("EMAIL_LOG_PATH")
         if log_override:
-            return Path(log_override)
+            return Path(str(log_override))
 
         log_dir = cfg.get("LOG_DIR")
         if log_dir:
-            return Path(log_dir) / "email.log"
+            return Path(str(log_dir)) / "email.log"
 
         return Path("logs") / "email.log"
 
@@ -595,7 +623,6 @@ class EmailService:
                 f"To: {sanitized_to}",
                 f"Subject: {sanitized_subject}",
             ]
-
             if error_text:
                 lines.append(f"Error: {error_text}")
 
@@ -655,7 +682,7 @@ class EmailService:
 
         Returns API endpoint that frontend JavaScript will handle
         """
-        base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
+        base_url = EmailService._get_base_url()
         return urljoin(base_url, f"/api/auth/verify-email/{token}")
 
     @staticmethod
@@ -665,19 +692,19 @@ class EmailService:
 
         Returns web route that displays password reset form
         """
-        base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
+        base_url = EmailService._get_base_url()
         return urljoin(base_url, f"/reset-password/{token}")
 
     @staticmethod
     def _build_invitation_url(token: str) -> str:
         """Build invitation acceptance URL"""
-        base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
+        base_url = EmailService._get_base_url()
         return urljoin(base_url, f"/register/accept/{token}")
 
     @staticmethod
     def _build_dashboard_url() -> str:
         """Build dashboard URL"""
-        base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
+        base_url = EmailService._get_base_url()
         return urljoin(base_url, "/dashboard")
 
     # Email template methods

@@ -27,7 +27,7 @@ class MailtrapScraper:
         username: Optional[str] = None,
         password: Optional[str] = None,
         inbox_id: Optional[str] = None,
-    ):
+    ) -> None:
         """
         Initialize Mailtrap scraper.
 
@@ -290,9 +290,12 @@ class MailtrapScraper:
             if body_elem.count() > 0:
                 # If it's an iframe, get its content
                 if body_elem.evaluate("el => el.tagName") == "IFRAME":
-                    frame = body_elem.content_frame()
-                    if frame:
-                        body = frame.text_content("body") or ""
+                    body = (
+                        page.frame_locator("iframe")
+                        .first.locator("body")
+                        .text_content()
+                        or ""
+                    )
                 else:
                     body = body_elem.text_content() or ""
 

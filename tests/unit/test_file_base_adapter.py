@@ -14,6 +14,8 @@ from src.adapters.file_base_adapter import (
     FileCompatibilityError,
 )
 
+AdapterPayload = dict[str, list[dict[str, Any]]]
+
 
 class MockAdapter(FileBaseAdapter):
     """Mock adapter implementation for testing"""
@@ -40,9 +42,7 @@ class MockAdapter(FileBaseAdapter):
             "last_updated": "2024-09-25",
         }
 
-    def parse_file(
-        self, file_path: str, options: Dict[str, Any]
-    ) -> Dict[str, List[Dict]]:
+    def parse_file(self, file_path: str, options: Dict[str, Any]) -> AdapterPayload:
         return {
             "mock_data": [
                 {
@@ -54,7 +54,7 @@ class MockAdapter(FileBaseAdapter):
         }
 
     def export_data(
-        self, data: Dict[str, List[Dict]], output_path: str, options: Dict[str, Any]
+        self, data: AdapterPayload, output_path: str, options: Dict[str, Any]
     ) -> Tuple[bool, str, int]:
         # Mock export - just count records
         total_records = sum(len(records) for records in data.values())
@@ -64,12 +64,12 @@ class MockAdapter(FileBaseAdapter):
 class TestFileBaseAdapter:
     """Test suite for FileBaseAdapter abstract base class"""
 
-    def test_cannot_instantiate_abstract_class(self):
+    def test_cannot_instantiate_abstract_class(self) -> None:
         """Test that FileBaseAdapter cannot be instantiated directly"""
         with pytest.raises(TypeError):
-            FileBaseAdapter()
+            FileBaseAdapter()  # type: ignore[abstract]
 
-    def test_mock_adapter_implementation(self):
+    def test_mock_adapter_implementation(self) -> None:
         """Test that mock adapter properly implements abstract methods"""
         adapter = MockAdapter()
 
@@ -84,7 +84,7 @@ class TestFileBaseAdapter:
         assert "mock_data" in data_types
         assert "test_records" in data_types
 
-    def test_file_size_validation(self):
+    def test_file_size_validation(self) -> None:
         """Test file size validation functionality"""
         adapter = MockAdapter()
 
@@ -100,7 +100,7 @@ class TestFileBaseAdapter:
         finally:
             Path(temp_path).unlink()
 
-    def test_file_exists_validation(self):
+    def test_file_exists_validation(self) -> None:
         """Test file existence validation"""
         adapter = MockAdapter()
 
@@ -121,7 +121,7 @@ class TestFileBaseAdapter:
         assert is_valid is False
         assert "File not found" in message
 
-    def test_file_extension_validation(self):
+    def test_file_extension_validation(self) -> None:
         """Test file extension validation"""
         adapter = MockAdapter()
 
@@ -136,13 +136,13 @@ class TestFileBaseAdapter:
         assert "Unsupported file extension" in message
         assert ".txt" in message
 
-    def test_get_supported_extensions(self):
+    def test_get_supported_extensions(self) -> None:
         """Test getting supported extensions from adapter info"""
         adapter = MockAdapter()
         extensions = adapter.get_supported_extensions()
         assert ".txt" in extensions
 
-    def test_default_limits(self):
+    def test_default_limits(self) -> None:
         """Test default file size and record limits"""
         adapter = MockAdapter()
 
@@ -152,7 +152,7 @@ class TestFileBaseAdapter:
         # Test default max records (10000)
         assert adapter.get_max_records() == 10000
 
-    def test_compatibility_validation(self):
+    def test_compatibility_validation(self) -> None:
         """Test file compatibility validation"""
         adapter = MockAdapter()
 
@@ -166,7 +166,7 @@ class TestFileBaseAdapter:
         assert is_compatible is False
         assert "only accepts .txt files" in message
 
-    def test_parse_file_with_options(self):
+    def test_parse_file_with_options(self) -> None:
         """Test file parsing with options"""
         adapter = MockAdapter()
 
@@ -185,7 +185,7 @@ class TestFileBaseAdapter:
 class TestAdapterValidationResult:
     """Test suite for AdapterValidationResult helper class"""
 
-    def test_validation_result_creation(self):
+    def test_validation_result_creation(self) -> None:
         """Test creating validation result object"""
         result = AdapterValidationResult("test_adapter", "/path/file.txt")
 
@@ -195,7 +195,7 @@ class TestAdapterValidationResult:
         assert result.detected_data_types == []
         assert result.validation_errors == []
 
-    def test_add_error_and_warning(self):
+    def test_add_error_and_warning(self) -> None:
         """Test adding errors and warnings"""
         result = AdapterValidationResult("test_adapter", "/path/file.txt")
 
@@ -205,7 +205,7 @@ class TestAdapterValidationResult:
         assert "Test error message" in result.validation_errors
         assert "Test warning message" in result.validation_warnings
 
-    def test_set_compatible(self):
+    def test_set_compatible(self) -> None:
         """Test marking result as compatible"""
         result = AdapterValidationResult("test_adapter", "/path/file.txt")
 
@@ -215,7 +215,7 @@ class TestAdapterValidationResult:
         assert result.compatibility_message == "File is compatible"
         assert result.detected_data_types == ["courses", "faculty"]
 
-    def test_set_incompatible(self):
+    def test_set_incompatible(self) -> None:
         """Test marking result as incompatible"""
         result = AdapterValidationResult("test_adapter", "/path/file.txt")
 
@@ -224,7 +224,7 @@ class TestAdapterValidationResult:
         assert result.is_compatible is False
         assert result.compatibility_message == "File format not supported"
 
-    def test_to_dict(self):
+    def test_to_dict(self) -> None:
         """Test converting result to dictionary"""
         result = AdapterValidationResult("test_adapter", "/full/path/file.txt")
         result.set_compatible("Compatible", ["data"])
@@ -245,7 +245,7 @@ class TestAdapterValidationResult:
 class TestFileCompatibilityError:
     """Test suite for FileCompatibilityError exception"""
 
-    def test_file_compatibility_error(self):
+    def test_file_compatibility_error(self) -> None:
         """Test FileCompatibilityError exception"""
         with pytest.raises(FileCompatibilityError) as exc_info:
             raise FileCompatibilityError("Test compatibility error")

@@ -42,7 +42,7 @@ class MailtrapError(Exception):
     """Base exception for Mailtrap API errors."""
 
 
-def get_mailtrap_auth() -> tuple:
+def get_mailtrap_auth() -> tuple[str, str]:
     """
     Get authentication credentials for Mailtrap API.
 
@@ -410,7 +410,7 @@ def clear_ethereal_inbox() -> bool:
         return False
 
 
-def _extract_body_content(email_message) -> tuple:
+def _extract_body_content(email_message: Any) -> tuple[str, str]:
     """Extract text and HTML body from email message."""
     body = ""
     html_body = ""
@@ -435,7 +435,7 @@ def _extract_body_content(email_message) -> tuple:
     return body, html_body
 
 
-def _check_recipient(email_message, expected_recipient: str) -> bool:
+def _check_recipient(email_message: Any, expected_recipient: str) -> bool:
     """Check if email matches expected recipient."""
     if not expected_recipient:
         return True
@@ -448,7 +448,7 @@ def _check_recipient(email_message, expected_recipient: str) -> bool:
 
 
 def _parse_and_match_email(
-    msg_data,
+    msg_data: Any,
     recipient_email: str,
     subject_substring: Optional[str],
     unique_identifier: Optional[str],
@@ -457,11 +457,23 @@ def _parse_and_match_email(
     Parse email data and check against criteria.
     Returns email dict if match, None otherwise.
     """
-    email_message = email.message_from_bytes(msg_data[0][1])
+    raw_message: Optional[bytes] = None
+
+    # IMAP fetch responses can include mixed entries (tuples, bytes, ints).
+    # Select the first tuple payload that is actual message bytes.
+    for part in msg_data:
+        if isinstance(part, tuple) and len(part) >= 2 and isinstance(part[1], bytes):
+            raw_message = part[1]
+            break
+
+    if raw_message is None:
+        return None
+
+    email_message = email.message_from_bytes(raw_message)
     subject = email_message.get("Subject", "")
 
     # Check subject filter
-    if subject_substring and subject_substring not in subject:
+    if subject_substring and subject_substring.lower() not in subject.lower():
         return None
 
     # Extract content
@@ -469,7 +481,11 @@ def _parse_and_match_email(
 
     # Check unique identifier
     if unique_identifier:
-        if unique_identifier not in subject and unique_identifier not in body:
+        identifier = str(unique_identifier)
+        if (
+            identifier.lower() not in subject.lower()
+            and identifier.lower() not in body.lower()
+        ):
             return None
 
     # Check recipient

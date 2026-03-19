@@ -6,7 +6,7 @@ Tracks bulk email operations for progress monitoring and history.
 
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Any, Optional
 
 from sqlalchemy import JSON, Column, DateTime, Integer, String, Text
 from sqlalchemy.orm import Session
@@ -65,16 +65,22 @@ class BulkEmailJob(Base):  # type: ignore[misc,valid-type]
             f"status={self.status}, sent={self.emails_sent}/{self.recipient_count})>"
         )
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API responses"""
+        created_at = self.created_at if isinstance(self.created_at, datetime) else None
+        started_at = self.started_at if isinstance(self.started_at, datetime) else None
+        completed_at = (
+            self.completed_at if isinstance(self.completed_at, datetime) else None
+        )
+        failed_recipients = self.failed_recipients
         return {
             "id": self.id,
             "job_type": self.job_type,
             "created_by_user_id": self.created_by_user_id,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "started_at": self.started_at.isoformat() if self.started_at else None,
+            "created_at": created_at.isoformat() if created_at is not None else None,
+            "started_at": started_at.isoformat() if started_at is not None else None,
             "completed_at": (
-                self.completed_at.isoformat() if self.completed_at else None
+                completed_at.isoformat() if completed_at is not None else None
             ),
             "recipient_count": self.recipient_count,
             "status": self.status,
@@ -82,24 +88,33 @@ class BulkEmailJob(Base):  # type: ignore[misc,valid-type]
             "emails_failed": self.emails_failed,
             "emails_pending": self.emails_pending,
             "personal_message": self.personal_message,
-            "failed_recipients": self.failed_recipients or [],
+            "failed_recipients": (
+                failed_recipients if isinstance(failed_recipients, list) else []
+            ),
             "error_message": self.error_message,
             "progress_percentage": self._calculate_progress_percentage(),
         }
 
     def _calculate_progress_percentage(self) -> int:
         """Calculate progress as percentage"""
-        if self.recipient_count == 0:
+        recipient_count = (
+            int(self.recipient_count) if isinstance(self.recipient_count, int) else 0
+        )
+        if recipient_count == 0:
             return 0
-        completed = self.emails_sent + self.emails_failed
-        return int((completed / self.recipient_count) * 100)
+        emails_sent = int(self.emails_sent) if isinstance(self.emails_sent, int) else 0
+        emails_failed = (
+            int(self.emails_failed) if isinstance(self.emails_failed, int) else 0
+        )
+        completed = emails_sent + emails_failed
+        return int((completed / recipient_count) * 100)
 
     def update_progress(
         self,
         emails_sent: int,
         emails_failed: int,
         emails_pending: int,
-        failed_recipients: Optional[List[Dict]] = None,
+        failed_recipients: Optional[list[dict[str, Any]]] = None,
     ) -> None:
         """Update job progress"""
         self.emails_sent = emails_sent  # type: ignore[assignment]
@@ -110,12 +125,14 @@ class BulkEmailJob(Base):  # type: ignore[misc,valid-type]
             self.failed_recipients = failed_recipients  # type: ignore[assignment]
 
         # Update status based on progress
-        if self.status == "pending":
+        status = str(self.status)
+        if status == "pending":
             self.status = "running"  # type: ignore[assignment]
             self.started_at = datetime.now(timezone.utc)  # type: ignore[assignment]
+            status = "running"
 
         # Check if completed
-        if emails_pending == 0 and self.status == "running":
+        if emails_pending == 0 and status == "running":
             self.status = "completed"  # type: ignore[assignment]
             self.completed_at = datetime.now(timezone.utc)  # type: ignore[assignment]
             logger.info(
@@ -141,8 +158,8 @@ class BulkEmailJob(Base):  # type: ignore[misc,valid-type]
         db: Session,
         job_type: str,
         created_by_user_id: str,
-        recipients: List[Dict],
-        template_data: Optional[Dict] = None,
+        recipients: list[dict[str, Any]],
+        template_data: Optional[dict[str, Any]] = None,
         personal_message: Optional[str] = None,
     ) -> "BulkEmailJob":
         """
@@ -188,7 +205,7 @@ class BulkEmailJob(Base):  # type: ignore[misc,valid-type]
     @staticmethod
     def get_recent_jobs(
         db: Session, user_id: Optional[str] = None, limit: int = 50
-    ) -> List["BulkEmailJob"]:
+    ) -> list["BulkEmailJob"]:
         """
         Get recent bulk email jobs.
 

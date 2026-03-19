@@ -1,4 +1,5 @@
 # Learning Outcomes Demo - Meeting Outline
+
 **Date:** Friday, October 24, 2024  
 **Time:** 1:00 - 1:30pm  
 **Attendees:** Leslie Jernberg, Matthew Taylor, Will Martin
@@ -10,6 +11,7 @@
 ### Part 1: PowerPoint Overview (5 minutes)
 
 **Slides to prepare:**
+
 1. Project status recap
 2. What we've built (high-level feature list)
 3. What's in scope for this demo
@@ -19,6 +21,7 @@
 ### Part 2: Live Demo - "The Middle Workflow" (10 minutes)
 
 **Demo Setup:**
+
 - Fresh database with ONLY Leslie's account pre-seeded
 - Local dev server running (port 3001)
 - 2024FA test data file ready to upload
@@ -273,6 +276,7 @@
 **Key question:** "Is this the workflow you need?"
 
 **Anticipated questions:**
+
 - Bulk reminders: "How do I remind multiple instructors at once?"
 - Filtering: "Can I filter by term/status/instructor?"
 - Corrections: "What if I need to fix data after submission?"
@@ -284,6 +288,7 @@
 ### Part 4: Next Steps (5 minutes)
 
 **Discuss:**
+
 - Feedback incorporation timeline
 - UAT testing with real CEI data
 - Training plan
@@ -295,6 +300,7 @@
 ## Technical Prep Checklist
 
 **Pre-Demo Setup:**
+
 - [ ] Create fresh dev database and seed Leslie's account (run seed script)
 - [ ] Start local server
 - [ ] Verify email provider is configured for REAL email delivery (not Mailtrap)
@@ -306,6 +312,7 @@
 - [ ] Test full workflow once as rehearsal
 
 **Database Setup Commands:**
+
 ```bash
 # Navigate to project root
 cd /Users/pacey/Documents/SourceCode/course_record_updater
@@ -321,6 +328,7 @@ python scripts/seed_db.py --cei-demo --clear --env dev
 ```
 
 **Demo Account Credentials:**
+
 - Email: `leslie.jernberg@cei.edu`
 - Password: `Demo2024!`
 
@@ -329,12 +337,14 @@ python scripts/seed_db.py --cei-demo --clear --env dev
 ## Known Limitations to Mention
 
 **Out of scope for initial release:**
+
 - Notification timing configuration
 - Course/CLO template management
 - Term/year management interface
 - Some advanced filtering options
 
 **Still need CEI input:**
+
 - Final export format specifications
 - Integration points with institutional systems
 - Production hosting preferences
@@ -344,6 +354,7 @@ python scripts/seed_db.py --cei-demo --clear --env dev
 ## Success Criteria
 
 Demo is successful if:
+
 - Leslie confirms this matches her workflow vision
 - Leslie and Matt identify any critical missing pieces
 - We get actionable feedback on UI/UX improvements
@@ -353,11 +364,10 @@ Demo is successful if:
 
 ## Notes & Action Items
 
-*(To be filled in during/after the meeting)*
+_(To be filled in during/after the meeting)_
 
 **Feedback received:**
 
 **Action items:**
 
 **Follow-up questions:**
-

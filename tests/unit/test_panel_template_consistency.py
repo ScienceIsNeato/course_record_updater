@@ -11,9 +11,11 @@ These tests enforce the standard dashboard panel template pattern:
 import re
 from pathlib import Path
 
+# Valid routes that panel buttons can link to
+from typing import Any
+
 import pytest
 
-# Valid routes that panel buttons can link to
 VALID_MANAGE_ROUTES = [
     "/programs",
     "/courses",
@@ -26,7 +28,7 @@ VALID_MANAGE_ROUTES = [
 ]
 
 
-def find_project_root():
+def find_project_root() -> Any:
     """Find the project root by looking for known markers."""
     current = Path(__file__).resolve().parent
     while current != current.parent:
@@ -40,7 +42,7 @@ class TestPanelTemplateConsistency:
     """Test that dashboard panels follow consistent template patterns."""
 
     @pytest.fixture
-    def templates_dir(self):
+    def templates_dir(self) -> Any:
         """Get the templates directory path."""
         project_root = find_project_root()
         if not project_root:
@@ -48,7 +50,7 @@ class TestPanelTemplateConsistency:
         return project_root / "templates" / "dashboard"
 
     @pytest.fixture
-    def institution_admin_html(self, templates_dir):
+    def institution_admin_html(self, templates_dir: Any) -> Any:
         """Load the institution admin template."""
         template_path = templates_dir / "institution_admin.html"
         if template_path.exists():
@@ -56,7 +58,7 @@ class TestPanelTemplateConsistency:
         pytest.skip("institution_admin.html not found")
 
     @pytest.fixture
-    def program_admin_html(self, templates_dir):
+    def program_admin_html(self, templates_dir: Any) -> Any:
         """Load the program admin template."""
         template_path = templates_dir / "program_admin.html"
         if template_path.exists():
@@ -64,21 +66,21 @@ class TestPanelTemplateConsistency:
         pytest.skip("program_admin.html not found")
 
     @pytest.fixture
-    def instructor_html(self, templates_dir):
+    def instructor_html(self, templates_dir: Any) -> Any:
         """Load the instructor template."""
         template_path = templates_dir / "instructor.html"
         if template_path.exists():
             return template_path.read_text()
         pytest.skip("instructor.html not found")
 
-    def _extract_panels(self, html_content):
+    def _extract_panels(self, html_content: Any) -> Any:
         """Extract all dashboard panels from HTML content."""
         # Match dashboard-panel divs and their content
         panel_pattern = r'<div class="dashboard-panel"[^>]*id="([^"]+)"[^>]*>(.*?)</div>\s*</div>\s*</div>'
         panels = re.findall(panel_pattern, html_content, re.DOTALL)
         return panels
 
-    def _extract_panel_buttons(self, html_content):
+    def _extract_panel_buttons(self, html_content: Any) -> Any:
         """Extract all buttons from panel-actions divs."""
         buttons = []
 
@@ -98,12 +100,14 @@ class TestPanelTemplateConsistency:
 
         return buttons
 
-    def _extract_href_from_onclick(self, onclick):
+    def _extract_href_from_onclick(self, onclick: Any) -> Any:
         """Extract the href from window.location.href='...' onclick handlers."""
         match = re.search(r"window\.location\.href='([^']+)'", onclick)
         return match.group(1) if match else None
 
-    def test_institution_admin_panels_have_toggle_buttons(self, institution_admin_html):
+    def test_institution_admin_panels_have_toggle_buttons(
+        self, institution_admin_html: Any
+    ) -> None:
         """Verify every panel has a panel-toggle button."""
         # Count panels
         panel_count = institution_admin_html.count('class="dashboard-panel"')
@@ -115,8 +119,8 @@ class TestPanelTemplateConsistency:
         )
 
     def test_institution_admin_manage_buttons_have_valid_routes(
-        self, institution_admin_html
-    ):
+        self, institution_admin_html: Any
+    ) -> None:
         """Verify all Manage buttons link to valid routes."""
         buttons = self._extract_panel_buttons(institution_admin_html)
 
@@ -133,8 +137,8 @@ class TestPanelTemplateConsistency:
         )
 
     def test_institution_admin_add_buttons_use_primary_class(
-        self, institution_admin_html
-    ):
+        self, institution_admin_html: Any
+    ) -> None:
         """Verify Add buttons use btn-primary class."""
         buttons = self._extract_panel_buttons(institution_admin_html)
 
@@ -152,8 +156,8 @@ class TestPanelTemplateConsistency:
         )
 
     def test_institution_admin_manage_buttons_use_outline_secondary_class(
-        self, institution_admin_html
-    ):
+        self, institution_admin_html: Any
+    ) -> None:
         """Verify Manage buttons use btn-outline-secondary class."""
         buttons = self._extract_panel_buttons(institution_admin_html)
 
@@ -170,7 +174,9 @@ class TestPanelTemplateConsistency:
             f"{wrong_class_buttons}. All Manage buttons should use btn-outline-secondary."
         )
 
-    def test_no_dead_links_in_onclick_handlers(self, institution_admin_html):
+    def test_no_dead_links_in_onclick_handlers(
+        self, institution_admin_html: Any
+    ) -> None:
         """Verify onclick handlers don't link to non-existent pages."""
         # Known invalid routes that don't exist
         invalid_patterns = [
@@ -182,7 +188,9 @@ class TestPanelTemplateConsistency:
                 pattern not in institution_admin_html
             ), f"Found reference to non-existent route: {pattern}"
 
-    def test_program_admin_panels_follow_template(self, program_admin_html):
+    def test_program_admin_panels_follow_template(
+        self, program_admin_html: Any
+    ) -> None:
         """Verify program admin panels follow the template pattern."""
         panel_count = program_admin_html.count('class="dashboard-panel"')
         toggle_count = program_admin_html.count('class="panel-toggle"')
@@ -191,7 +199,7 @@ class TestPanelTemplateConsistency:
             toggle_count >= panel_count
         ), f"Program admin: {panel_count} panels but only {toggle_count} toggle buttons."
 
-    def test_instructor_panels_follow_template(self, instructor_html):
+    def test_instructor_panels_follow_template(self, instructor_html: Any) -> None:
         """Verify instructor panels follow the template pattern."""
         panel_count = instructor_html.count('class="dashboard-panel"')
         toggle_count = instructor_html.count('class="panel-toggle"')

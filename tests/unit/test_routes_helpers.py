@@ -1,5 +1,6 @@
 """Unit tests for helpers API routes (migrated from test_api_routes.py)."""
 
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -8,7 +9,7 @@ import pytest
 class TestAPIRoutesExtended:
     """Test missing coverage lines in API routes."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test client."""
         from src.app import app
 
@@ -23,7 +24,7 @@ class TestAPIRoutesExtended:
             "institution_id": "test-institution",
         }
 
-    def _login_site_admin(self, overrides=None):
+    def _login_site_admin(self, overrides: Any = None) -> Any:
         from tests.test_utils import create_test_session
 
         user_data = {**self.site_admin_user}
@@ -32,7 +33,7 @@ class TestAPIRoutesExtended:
         create_test_session(self.client, user_data)
         return user_data
 
-    def test_api_error_handler_comprehensive(self):
+    def test_api_error_handler_comprehensive(self) -> None:
         """Test API error handler function directly."""
         from src.api.utils import handle_api_error
         from src.app import app
@@ -59,8 +60,11 @@ class TestAPIRoutesExtended:
     @patch("src.api.utils.get_all_institutions")
     @patch("src.api.utils.get_current_institution_id_safe")
     def test_list_courses_global_scope(
-        self, mock_get_mocku_id, mock_get_institutions, mock_get_all_courses
-    ):
+        self,
+        mock_get_mocku_id: Any,
+        mock_get_institutions: Any,
+        mock_get_all_courses: Any,
+    ) -> None:
         """Site admin without institution context should see system-wide courses."""
         self._login_site_admin()
         mock_get_mocku_id.return_value = None
@@ -84,7 +88,9 @@ class TestAPIRoutesExtended:
 
     @patch("src.api.utils.get_current_institution_id_safe")
     @patch("src.api.routes.courses.get_courses_by_department")
-    def test_list_courses_with_department(self, mock_get_courses, mock_get_inst_id):
+    def test_list_courses_with_department(
+        self, mock_get_courses: Any, mock_get_inst_id: Any
+    ) -> None:
         """Test list_courses with department filter."""
         self._login_site_admin()
         mock_get_inst_id.return_value = "institution123"
@@ -101,8 +107,8 @@ class TestAPIRoutesExtended:
     @patch("src.api.routes.courses.get_current_program_id")
     @patch("src.api.routes.courses.get_courses_by_program")
     def test_list_courses_with_program_override(
-        self, mock_get_by_program, mock_get_program_id, mock_scope
-    ):
+        self, mock_get_by_program: Any, mock_get_program_id: Any, mock_scope: Any
+    ) -> None:
         """Test list_courses with program_id override parameter."""
         self._login_site_admin()
         mock_scope.return_value = (
@@ -128,7 +134,7 @@ class TestAPIRoutesExtended:
 class TestAPIRoutesHelpers:
     """Test helper functions in API routes."""
 
-    def test_resolve_institution_scope_missing_context(self):
+    def test_resolve_institution_scope_missing_context(self) -> None:
         """Test _resolve_institution_scope raises error when context missing and required."""
         from src.api.utils import (
             InstitutionContextMissingError,
@@ -142,7 +148,7 @@ class TestAPIRoutesHelpers:
                 with pytest.raises(InstitutionContextMissingError):
                     resolve_institution_scope(require=True)
 
-    def test_resolve_institution_scope_no_require(self):
+    def test_resolve_institution_scope_no_require(self) -> None:
         """Test _resolve_institution_scope returns empty list when not required."""
         from src.api.utils import resolve_institution_scope
 
@@ -155,7 +161,7 @@ class TestAPIRoutesHelpers:
                 assert institutions == []
                 assert is_global is False
 
-    def test_create_progress_tracker(self):
+    def test_create_progress_tracker(self) -> None:
         """Test create_progress_tracker function."""
         from src.api.routes.imports import create_progress_tracker
 
@@ -163,7 +169,7 @@ class TestAPIRoutesHelpers:
         assert isinstance(progress_id, str)
         assert len(progress_id) > 0
 
-    def test_update_progress(self):
+    def test_update_progress(self) -> None:
         """Test update_progress function."""
         from src.api.routes.imports import create_progress_tracker, update_progress
 
@@ -171,7 +177,7 @@ class TestAPIRoutesHelpers:
         update_progress(progress_id, status="processing", message="Test update")
         # Should not raise an exception
 
-    def test_get_progress(self):
+    def test_get_progress(self) -> None:
         """Test get_progress function."""
         from src.api.routes.imports import (
             create_progress_tracker,
@@ -187,7 +193,7 @@ class TestAPIRoutesHelpers:
         assert progress.get("status") == "processing"
         assert progress.get("message") == "Test message"
 
-    def test_cleanup_progress(self):
+    def test_cleanup_progress(self) -> None:
         """Test cleanup_progress function."""
         from src.api.routes.imports import cleanup_progress, create_progress_tracker
 
@@ -199,7 +205,7 @@ class TestAPIRoutesHelpers:
 class TestAPIRoutesHelperFunctions:
     """Test helper functions for course listing complexity reduction."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test client."""
         from src.app import app
 
@@ -207,7 +213,7 @@ class TestAPIRoutesHelperFunctions:
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
 
-    def test_resolve_courses_scope_success(self):
+    def test_resolve_courses_scope_success(self) -> None:
         """Test _resolve_courses_scope with valid scope."""
         from unittest.mock import patch
 
@@ -226,7 +232,7 @@ class TestAPIRoutesHelperFunctions:
             assert institutions == mock_institutions
             assert is_global == mock_global
 
-    def test_resolve_courses_scope_missing_context(self):
+    def test_resolve_courses_scope_missing_context(self) -> None:
         """Test _resolve_courses_scope with missing institution context."""
         from unittest.mock import patch
 
@@ -241,7 +247,7 @@ class TestAPIRoutesHelperFunctions:
             with pytest.raises(ValueError, match="Institution context required"):
                 _resolve_courses_scope()
 
-    def test_user_can_access_program_site_admin(self):
+    def test_user_can_access_program_site_admin(self) -> None:
         """Test _user_can_access_program for site admin."""
         from src.api.routes.courses import _user_can_access_program
 
@@ -251,7 +257,7 @@ class TestAPIRoutesHelperFunctions:
         result = _user_can_access_program(user, program_id)
         assert result is True
 
-    def test_user_can_access_program_with_access(self):
+    def test_user_can_access_program_with_access(self) -> None:
         """Test _user_can_access_program for user with program access."""
         from src.api.routes.courses import _user_can_access_program
 
@@ -261,7 +267,7 @@ class TestAPIRoutesHelperFunctions:
         result = _user_can_access_program(user, program_id)
         assert result is True
 
-    def test_user_can_access_program_without_access(self):
+    def test_user_can_access_program_without_access(self) -> None:
         """Test _user_can_access_program for user without program access."""
         from src.api.routes.courses import _user_can_access_program
 
@@ -271,14 +277,14 @@ class TestAPIRoutesHelperFunctions:
         result = _user_can_access_program(user, program_id)
         assert result is False
 
-    def test_user_can_access_program_no_user(self):
+    def test_user_can_access_program_no_user(self) -> None:
         """Test _user_can_access_program with no user."""
         from src.api.routes.courses import _user_can_access_program
 
         result = _user_can_access_program(None, "test-program")
         assert result is False
 
-    def test_resolve_program_override_no_override(self):
+    def test_resolve_program_override_no_override(self) -> None:
         """Test _resolve_program_override with no override."""
         from unittest.mock import patch
 
@@ -293,7 +299,7 @@ class TestAPIRoutesHelperFunctions:
                 result = _resolve_program_override({"role": "user"})
                 assert result == "current-program"
 
-    def test_resolve_program_override_with_access(self):
+    def test_resolve_program_override_with_access(self) -> None:
         """Test _resolve_program_override with valid override."""
         from unittest.mock import patch
 
@@ -310,7 +316,7 @@ class TestAPIRoutesHelperFunctions:
                 result = _resolve_program_override(user)
                 assert result == "override-program"
 
-    def test_resolve_program_override_without_access(self):
+    def test_resolve_program_override_without_access(self) -> None:
         """Test _resolve_program_override with invalid override."""
         from unittest.mock import patch
 
@@ -331,7 +337,7 @@ class TestAPIRoutesHelperFunctions:
                 ):
                     _resolve_program_override(user)
 
-    def test_get_global_courses_no_filter(self):
+    def test_get_global_courses_no_filter(self) -> None:
         """Test _get_global_courses without department filter."""
         from unittest.mock import patch
 
@@ -349,7 +355,7 @@ class TestAPIRoutesHelperFunctions:
             assert len(courses) == 2
             assert context == "system-wide"
 
-    def test_get_global_courses_with_filter(self):
+    def test_get_global_courses_with_filter(self) -> None:
         """Test _get_global_courses with department filter."""
         from unittest.mock import patch
 
@@ -368,7 +374,7 @@ class TestAPIRoutesHelperFunctions:
             assert courses[0]["id"] == "c1"
             assert context == "system-wide, department CS"
 
-    def test_get_program_courses_no_filter(self):
+    def test_get_program_courses_no_filter(self) -> None:
         """Test _get_program_courses without department filter."""
         from unittest.mock import patch
 
@@ -388,7 +394,7 @@ class TestAPIRoutesHelperFunctions:
             assert len(courses) == 2
             assert context == f"program {program_id}"
 
-    def test_get_program_courses_with_filter(self):
+    def test_get_program_courses_with_filter(self) -> None:
         """Test _get_program_courses with department filter."""
         from unittest.mock import patch
 
@@ -408,7 +414,7 @@ class TestAPIRoutesHelperFunctions:
             assert len(courses) == 1
             assert courses[0]["id"] == "c1"
 
-    def test_resolve_users_scope_success(self):
+    def test_resolve_users_scope_success(self) -> None:
         """Test _resolve_users_scope with valid scope."""
         from unittest.mock import patch
 
@@ -427,7 +433,7 @@ class TestAPIRoutesHelperFunctions:
             assert institutions == mock_institutions
             assert is_global == mock_global
 
-    def test_resolve_users_scope_missing_context(self):
+    def test_resolve_users_scope_missing_context(self) -> None:
         """Test _resolve_users_scope with missing institution context."""
         from unittest.mock import patch
 
@@ -442,7 +448,7 @@ class TestAPIRoutesHelperFunctions:
             with pytest.raises(ValueError, match="Institution context required"):
                 _resolve_users_scope()
 
-    def test_get_users_by_scope_global(self):
+    def test_get_users_by_scope_global(self) -> None:
         """Test _get_users_by_scope for global scope."""
         from unittest.mock import patch
 
@@ -459,7 +465,7 @@ class TestAPIRoutesHelperFunctions:
             mock_global.assert_called_once_with(institution_ids, role_filter)
             assert result == [{"id": "user1"}]
 
-    def test_get_users_by_scope_institution(self):
+    def test_get_users_by_scope_institution(self) -> None:
         """Test _get_users_by_scope for institution scope."""
         from unittest.mock import patch
 
@@ -476,7 +482,7 @@ class TestAPIRoutesHelperFunctions:
             mock_institution.assert_called_once_with("inst1", role_filter)
             assert result == [{"id": "user1"}]
 
-    def test_get_global_users_with_role_filter(self):
+    def test_get_global_users_with_role_filter(self) -> None:
         """Test _get_global_users with role filter."""
         from unittest.mock import patch
 
@@ -500,7 +506,7 @@ class TestAPIRoutesHelperFunctions:
             assert result[0]["id"] == "user1"
             assert result[1]["id"] == "user3"
 
-    def test_get_global_users_without_role_filter(self):
+    def test_get_global_users_without_role_filter(self) -> None:
         """Test _get_global_users without role filter."""
         from unittest.mock import patch
 
@@ -520,7 +526,7 @@ class TestAPIRoutesHelperFunctions:
             assert result[0]["id"] == "user1"
             assert result[1]["id"] == "user2"
 
-    def test_get_institution_users_with_role_filter(self):
+    def test_get_institution_users_with_role_filter(self) -> None:
         """Test _get_institution_users with role filter."""
         from unittest.mock import patch
 
@@ -542,7 +548,7 @@ class TestAPIRoutesHelperFunctions:
             assert len(result) == 1
             assert result[0]["id"] == "user1"
 
-    def test_get_institution_users_without_role_filter(self):
+    def test_get_institution_users_without_role_filter(self) -> None:
         """Test _get_institution_users without role filter."""
         from unittest.mock import patch
 

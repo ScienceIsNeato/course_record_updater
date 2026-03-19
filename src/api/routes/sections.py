@@ -5,7 +5,7 @@ Provides endpoints for managing course sections (CRUD operations)
 with role-based filtering, instructor assignment, and institution access verification.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
@@ -42,6 +42,12 @@ sections_bp = Blueprint("sections", __name__, url_prefix="/api")
 
 # Initialize logger
 logger = get_logger(__name__)
+
+
+def _get_request_json() -> Dict[str, Any]:
+    """Return a typed JSON object body or an empty dict."""
+    payload = request.get_json(silent=True)
+    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
 
 
 # ========================================
@@ -150,14 +156,15 @@ def create_section() -> ResponseReturnValue:
     - status: Section status (optional, default "open")
     """
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
         # If offering_id is provided, look up course_id and term_id
         if data.get("offering_id"):
-            offering = get_course_offering(data["offering_id"])
+            offering_id = str(data["offering_id"])
+            offering = get_course_offering(offering_id)
             if not offering:
                 return (
                     jsonify(
@@ -186,7 +193,7 @@ def create_section() -> ResponseReturnValue:
                 400,
             )
 
-        section_id = create_course_section(data)
+        section_id = create_course_section(dict(data))
 
         if section_id:
             return (
@@ -247,7 +254,7 @@ def update_section_endpoint(section_id: str) -> ResponseReturnValue:
     - narrative_celebrations, narrative_challenges, narrative_changes (course reflections)
     """
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -283,7 +290,7 @@ def update_section_endpoint(section_id: str) -> ResponseReturnValue:
                     400,
                 )
 
-        success = update_course_section(section_id, data)
+        success = update_course_section(section_id, dict(data))
 
         if success:
             # Fetch updated section
@@ -315,14 +322,14 @@ def assign_instructor_to_section_endpoint(section_id: str) -> ResponseReturnValu
     - instructor_id: Instructor user ID
     """
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data or "instructor_id" not in data:
             return (
                 jsonify({"success": False, "error": "instructor_id is required"}),
                 400,
             )
 
-        instructor_id = data["instructor_id"]
+        instructor_id = str(data["instructor_id"])
 
         # Verify section exists
         section = get_section_by_id(section_id)

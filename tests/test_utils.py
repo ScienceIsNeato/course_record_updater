@@ -3,9 +3,12 @@ Test utilities for LoopCloser tests.
 Provides authentication helpers and test data for consistent testing.
 """
 
+from collections.abc import Generator
 from contextlib import contextmanager
 
 # Standard test user data
+from typing import Any
+
 ADMIN_USER_DATA = {
     "user_id": "test-admin-123",
     "email": "admin@test.edu",
@@ -29,7 +32,7 @@ INSTRUCTOR_USER_DATA = {
 }
 
 
-def require_auth_session(client, user_data):
+def require_auth_session(client: Any, user_data: Any) -> None:
     """
     Create a test session that's compatible with session authentication.
 
@@ -43,7 +46,7 @@ def require_auth_session(client, user_data):
     create_test_session(client, user_data)
 
 
-def create_test_session(client, user_data):
+def create_test_session(client: Any, user_data: Any) -> None:
     """
     Helper function to create a test session with user data.
     Works with both mock and real auth modes.
@@ -76,12 +79,12 @@ def create_test_session(client, user_data):
             pass
 
 
-def setup_admin_auth(client):
+def setup_admin_auth(client: Any) -> None:
     """Quick setup for admin authentication"""
     create_test_session(client, ADMIN_USER_DATA)
 
 
-def setup_instructor_auth(client):
+def setup_instructor_auth(client: Any) -> None:
     """Quick setup for instructor authentication"""
     create_test_session(client, INSTRUCTOR_USER_DATA)
 
@@ -102,7 +105,9 @@ class RealAuthTestMixin:
 
 
 @contextmanager
-def authenticated_test_client(app_instance, user_data):
+def authenticated_test_client(
+    app_instance: Any, user_data: Any
+) -> Generator[Any, None, None]:
     """
     Context manager for authenticated test client.
 
@@ -115,7 +120,7 @@ def authenticated_test_client(app_instance, user_data):
     yield client
 
 
-def get_authenticated_client(app_instance, user_data):
+def get_authenticated_client(app_instance: Any, user_data: Any) -> Any:
     """
     Creates a new Flask test client and authenticates it with the given user data.
     """
@@ -129,7 +134,11 @@ class AuthenticatedTestMixin:
     Mixin that provides authenticated request helpers.
     """
 
-    def make_authenticated_request(self, method, url, user_data=None, **kwargs):
+    app: Any
+
+    def make_authenticated_request(
+        self, method: Any, url: Any, user_data: Any = None, **kwargs: Any
+    ) -> Any:
         """Make an authenticated request"""
         if user_data is None:
             user_data = ADMIN_USER_DATA
@@ -144,7 +153,9 @@ class CommonAuthMixin:
     Provides standardized login methods to avoid duplication across test classes.
     """
 
-    def _get_default_site_admin_user(self):
+    client: Any
+
+    def _get_default_site_admin_user(self) -> Any:
         """Default site admin user data"""
         return {
             "user_id": "admin-456",
@@ -153,7 +164,7 @@ class CommonAuthMixin:
             "institution_id": "inst-123",
         }
 
-    def _login_site_admin(self, overrides=None):
+    def _login_site_admin(self, overrides: Any = None) -> Any:
         """Authenticate requests as a site admin user."""
         user_data = {**self._get_default_site_admin_user()}
         if overrides:
@@ -161,11 +172,11 @@ class CommonAuthMixin:
         create_test_session(self.client, user_data)
         return user_data
 
-    def _login_user(self, overrides=None):
+    def _login_user(self, overrides: Any = None) -> Any:
         """Alias for _login_site_admin for backward compatibility"""
         return self._login_site_admin(overrides)
 
-    def _login_institution_admin(self, overrides=None):
+    def _login_institution_admin(self, overrides: Any = None) -> Any:
         """Authenticate as institution admin"""
         defaults = {
             "user_id": "inst-admin-123",

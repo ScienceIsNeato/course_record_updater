@@ -15,7 +15,8 @@ Estimated Duration: 4-5 minutes
 
 import re
 import time
-from typing import Optional
+from collections.abc import Generator
+from typing import Any, Optional
 
 import pytest
 from playwright.sync_api import Page, expect
@@ -27,9 +28,9 @@ from tests.e2e.email_utils import (
     wait_for_email_via_imap,
 )
 
+pytestmark = [pytest.mark.e2e, pytest.mark.slow, pytest.mark.xdist_group("email")]
 
-@pytest.mark.e2e
-@pytest.mark.slow
+
 class TestAdminInvitationsAndMultiRole:
     """
     E2E: Admin Invitation & Multi-Role User Management Workflow
@@ -52,7 +53,7 @@ class TestAdminInvitationsAndMultiRole:
     PERSONAL_MESSAGE = "Welcome to MockU! Looking forward to working with you."
 
     @pytest.fixture(autouse=True)
-    def setup_and_teardown(self):
+    def setup_and_teardown(self) -> Generator[None, None, None]:
         """Setup and teardown for UAT-002 test."""
         if SKIP_EMAIL_VERIFICATION:
             pytest.skip(
@@ -61,7 +62,7 @@ class TestAdminInvitationsAndMultiRole:
         yield
 
     def extract_invitation_link_from_email(
-        self, email_content: dict, expected_recipient: str
+        self, email_content: dict[str, Any], expected_recipient: str
     ) -> Optional[str]:
         """
         Extract invitation registration link from email body.
@@ -110,7 +111,7 @@ class TestAdminInvitationsAndMultiRole:
         return None
 
     def verify_personal_message_in_email(
-        self, email_content: dict, expected_message: str
+        self, email_content: dict[str, Any], expected_message: str
     ) -> bool:
         """
         Verify that personal message appears in email body.
@@ -130,8 +131,8 @@ class TestAdminInvitationsAndMultiRole:
     def test_complete_admin_invitation_workflow(
         self,
         authenticated_institution_admin_page: Page,
-        browser,
-    ):
+        browser: Any,
+    ) -> None:
         """
         E2E: Complete admin invitation and multi-role user management workflow.
 

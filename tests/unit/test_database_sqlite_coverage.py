@@ -16,7 +16,7 @@ from src.database.database_sqlite import SQLDatabase
 class TestInstitutionCreationMethods:
     """Test institution creation convenience methods."""
 
-    def test_create_new_institution_with_admin_success(self):
+    def test_create_new_institution_with_admin_success(self) -> None:
         """Test creating institution with admin user in one operation."""
         db = SQLDatabase()
 
@@ -54,7 +54,7 @@ class TestInstitutionCreationMethods:
         assert user["institution_id"] == institution_id
         assert user["role"] == "institution_admin"
 
-    def test_create_new_institution_simple_success(self):
+    def test_create_new_institution_simple_success(self) -> None:
         """Test creating institution without admin (site admin workflow)."""
         db = SQLDatabase()
 
@@ -76,7 +76,7 @@ class TestInstitutionCreationMethods:
 class TestSectionInstructorMethods:
     """Test section-instructor relationship methods (big uncovered block)."""
 
-    def test_get_sections_by_instructor_with_data(self):
+    def test_get_sections_by_instructor_with_data(self) -> None:
         """Test retrieving enriched sections for an instructor."""
         db = SQLDatabase()
 
@@ -153,7 +153,7 @@ class TestSectionInstructorMethods:
         assert "instructor_name" in section
         assert "Section Instructor" in section["instructor_name"]
 
-    def test_get_sections_by_instructor_empty(self):
+    def test_get_sections_by_instructor_empty(self) -> None:
         """Test retrieving sections for instructor with no assignments."""
         db = SQLDatabase()
 
@@ -182,7 +182,7 @@ class TestSectionInstructorMethods:
 class TestUserUpdateMethods:
     """Test user update edge cases."""
 
-    def test_update_user_partial_fields(self):
+    def test_update_user_partial_fields(self) -> None:
         """Test updating only some user fields."""
         db = SQLDatabase()
 
@@ -214,7 +214,7 @@ class TestUserUpdateMethods:
 
 
 class TestUserCreation:
-    def test_create_user_duplicate_email(self):
+    def test_create_user_duplicate_email(self) -> None:
         """Test create_user returns None on duplicate email."""
         db = SQLDatabase()
         email = "duplicate@test.edu"

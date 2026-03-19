@@ -238,7 +238,7 @@ class RegistrationService:
                 }
 
             # Activate account
-            user_updates = {
+            user_updates: Dict[str, Any] = {
                 "account_status": "active",
                 "email_verified": True,
                 "email_verified_at": get_current_time(),
@@ -320,7 +320,7 @@ class RegistrationService:
             )
 
             # Update user with new token
-            user_updates = {
+            user_updates: Dict[str, Any] = {
                 "email_verification_token": verification_token,
                 "email_verification_expires_at": verification_expires_at,
                 "updated_at": get_current_time(),

@@ -6,6 +6,7 @@ bidirectional data flow.
 """
 
 import tempfile
+from typing import Any
 from unittest.mock import Mock, patch
 
 from src.services.export_service import ExportConfig, ExportResult, ExportService
@@ -14,7 +15,7 @@ from src.services.export_service import ExportConfig, ExportResult, ExportServic
 class TestExportService:
     """Test cases for ExportService functionality."""
 
-    def test_init(self):
+    def test_init(self) -> None:
         """Test ExportService initialization."""
         service = ExportService()
         assert service.registry is not None
@@ -22,7 +23,7 @@ class TestExportService:
         adapters = service.registry.get_all_adapters()
         assert len(adapters) >= 1  # Should have at least MockU adapter
 
-    def test_export_config_creation(self):
+    def test_export_config_creation(self) -> None:
         """Test ExportConfig dataclass creation."""
         config = ExportConfig(
             institution_id="test-institution",
@@ -35,7 +36,7 @@ class TestExportService:
         assert config.include_metadata is True  # Default value
         assert config.output_format == "xlsx"  # Default value
 
-    def test_export_result_creation(self):
+    def test_export_result_creation(self) -> None:
         """Test ExportResult dataclass creation."""
         result = ExportResult(success=True, records_exported=10)
         assert result.success is True
@@ -44,7 +45,7 @@ class TestExportService:
         assert result.warnings == []
         assert result.export_timestamp is not None
 
-    def test_unsupported_adapter(self):
+    def test_unsupported_adapter(self) -> None:
         """Test export with unsupported adapter."""
         service = ExportService()
         config = ExportConfig(
@@ -60,7 +61,9 @@ class TestExportService:
     @patch("src.services.export_service.get_all_courses")
     @patch("src.services.export_service.get_all_users")
     @patch("src.services.export_service.get_active_terms")
-    def test_fetch_export_data_empty(self, mock_terms, mock_users, mock_courses):
+    def test_fetch_export_data_empty(
+        self, mock_terms: Any, mock_users: Any, mock_courses: Any
+    ) -> None:
         """Test fetching export data when no data exists."""
         # Mock empty data
         mock_courses.return_value = []
@@ -80,7 +83,9 @@ class TestExportService:
     @patch("src.services.export_service.get_all_courses")
     @patch("src.services.export_service.get_all_users")
     @patch("src.services.export_service.get_active_terms")
-    def test_fetch_export_data_with_data(self, mock_terms, mock_users, mock_courses):
+    def test_fetch_export_data_with_data(
+        self, mock_terms: Any, mock_users: Any, mock_courses: Any
+    ) -> None:
         """Test fetching export data when data exists."""
         # Mock data
         mock_courses.return_value = [{"course_id": "1", "course_number": "MATH-101"}]
@@ -97,7 +102,9 @@ class TestExportService:
     @patch("src.services.export_service.get_all_courses")
     @patch("src.services.export_service.get_all_users")
     @patch("src.services.export_service.get_active_terms")
-    def test_export_no_data(self, mock_terms, mock_users, mock_courses):
+    def test_export_no_data(
+        self, mock_terms: Any, mock_users: Any, mock_courses: Any
+    ) -> None:
         """Test export when no data exists."""
         # Mock empty data
         mock_courses.return_value = []
@@ -119,7 +126,7 @@ class TestExportService:
 class TestExportServiceAdapterRegistry:
     """Test cases for ExportService adapter registry integration."""
 
-    def test_validate_export_access_success(self):
+    def test_validate_export_access_success(self) -> None:
         """Test successful export access validation."""
         service = ExportService()
         user = {"role": "site_admin", "institution_id": "mocku_institution_id"}
@@ -131,7 +138,7 @@ class TestExportServiceAdapterRegistry:
         assert has_access is True
         assert message == "Access granted"
 
-    def test_validate_export_access_denied(self):
+    def test_validate_export_access_denied(self) -> None:
         """Test export access denied for invalid user."""
         service = ExportService()
         user = {"role": "instructor", "institution_id": "other_institution"}
@@ -143,7 +150,7 @@ class TestExportServiceAdapterRegistry:
         assert has_access is False
         assert "Access denied" in message
 
-    def test_validate_export_access_adapter_not_found(self):
+    def test_validate_export_access_adapter_not_found(self) -> None:
         """Test export access validation with non-existent adapter."""
         service = ExportService()
         user = {"role": "site_admin", "institution_id": "mocku_institution_id"}
@@ -159,8 +166,8 @@ class TestExportServiceAdapterRegistry:
     @patch("src.services.export_service.get_all_users")
     @patch("src.services.export_service.get_active_terms")
     def test_export_with_adapter_supports_export_false(
-        self, mock_terms, mock_users, mock_courses
-    ):
+        self, mock_terms: Any, mock_users: Any, mock_courses: Any
+    ) -> None:
         """Test export when adapter doesn't support export."""
         # Mock some data
         mock_courses.return_value = [{"course_id": "1", "course_number": "TEST-101"}]
@@ -188,7 +195,9 @@ class TestExportServiceAdapterRegistry:
     @patch("src.services.export_service.get_all_courses")
     @patch("src.services.export_service.get_all_users")
     @patch("src.services.export_service.get_active_terms")
-    def test_export_with_adapter_success(self, mock_terms, mock_users, mock_courses):
+    def test_export_with_adapter_success(
+        self, mock_terms: Any, mock_users: Any, mock_courses: Any
+    ) -> None:
         """Test successful export with adapter."""
         # Mock some data
         mock_courses.return_value = [{"course_id": "1", "course_number": "TEST-101"}]
@@ -215,7 +224,7 @@ class TestExportServiceAdapterRegistry:
             assert result.records_exported == 5
             assert result.file_path == tmp.name
 
-    def test_export_data_with_registry_error(self):
+    def test_export_data_with_registry_error(self) -> None:
         """Test export_data when adapter registry throws an error."""
         service = ExportService()
 
@@ -239,7 +248,7 @@ class TestExportServiceAdapterRegistry:
 class TestCreateExportService:
     """Test the factory function."""
 
-    def test_create_export_service(self):
+    def test_create_export_service(self) -> None:
         """Test the factory function creates a service."""
         from src.services.export_service import create_export_service
 

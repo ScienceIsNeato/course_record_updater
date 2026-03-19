@@ -15,6 +15,8 @@ import zipfile
 from pathlib import Path
 
 # Add parent directory to path
+from typing import Any
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.services.export_service import ExportConfig, create_export_service
@@ -23,7 +25,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def test_export():
+def test_export() -> Any:
     """Test CSV export with real database data."""
     # Note: This function returns 1 on error for script usage, but pytest expects None
     # This is a test helper function, not a pytest test function

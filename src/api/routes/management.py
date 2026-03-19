@@ -9,6 +9,8 @@ Provides REST APIs for administrative CRUD operations:
 Used by demo automation and admin interfaces.
 """
 
+from typing import Any, Dict, List, cast
+
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 
@@ -19,6 +21,12 @@ from src.utils.logging_config import get_logger
 logger = get_logger(__name__)
 
 management_bp = Blueprint("management", __name__, url_prefix="/api/management")
+
+
+def _get_request_json() -> Dict[str, Any]:
+    """Return a typed JSON object body or an empty dict."""
+    payload = request.get_json(silent=True)
+    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
 
 
 @management_bp.route("/programs/<program_id>", methods=["PUT"])
@@ -35,7 +43,7 @@ def update_program(program_id: str) -> ResponseReturnValue:
     }
     """
     try:
-        data = request.get_json()
+        data = _get_request_json()
         if not data:
             return {"success": False, "error": "No data provided"}, 400
 
@@ -45,7 +53,7 @@ def update_program(program_id: str) -> ResponseReturnValue:
             return {"success": False, "error": "Program not found"}, 404
 
         # Update fields if provided
-        updates = {}
+        updates: Dict[str, Any] = {}
         if "name" in data:
             updates["name"] = data["name"]
         if "short_name" in data:
@@ -83,12 +91,26 @@ def duplicate_course(course_id: str) -> ResponseReturnValue:
     }
     """
     try:
-        data = request.get_json()
+        data = _get_request_json()
         if not data or "new_course_number" not in data:
             return {"success": False, "error": "new_course_number required"}, 400
 
-        new_course_number = data["new_course_number"]
-        program_ids = data.get("program_ids", [])
+        new_course_number = str(data["new_course_number"])
+        raw_program_ids = data.get("program_ids")
+        program_id_values: List[Any] = (
+            cast(List[Any], raw_program_ids)
+            if isinstance(raw_program_ids, list)
+            else []
+        )
+        program_ids: List[str] = (
+            [
+                str(program_id_value)
+                for program_id_value in program_id_values
+                if program_id_value
+            ]
+            if program_id_values
+            else []
+        )
 
         # Get source course
         source_course = db.get_course_by_id(course_id)
@@ -103,7 +125,7 @@ def duplicate_course(course_id: str) -> ResponseReturnValue:
             return {"success": False, "error": "Course number already exists"}, 409
 
         # Create new course
-        new_course_data = {
+        new_course_data: Dict[str, Any] = {
             "course_number": new_course_number,
             "course_title": source_course["course_title"],
             "department": source_course.get("department"),
@@ -124,7 +146,7 @@ def duplicate_course(course_id: str) -> ResponseReturnValue:
             # Copy program attachments from source course
             source_programs = db.get_programs_for_course(course_id)
             for program in source_programs:
-                db.add_course_to_program(new_course_id, program["id"])
+                db.add_course_to_program(new_course_id, str(program["id"]))
 
         logger.info(
             f"Course {logger.sanitize(course_id)} duplicated to {logger.sanitize(new_course_number)} via API"
@@ -159,7 +181,7 @@ def update_section(section_id: str) -> ResponseReturnValue:
     }
     """
     try:
-        data = request.get_json()
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": "No data provided"}), 400
 
@@ -169,7 +191,7 @@ def update_section(section_id: str) -> ResponseReturnValue:
             return {"success": False, "error": "Section not found"}, 404
 
         # Build updates dict
-        updates = {}
+        updates: Dict[str, Any] = {}
         if "students_passed" in data:
             updates["students_passed"] = int(data["students_passed"])
         if "students_dfic" in data:

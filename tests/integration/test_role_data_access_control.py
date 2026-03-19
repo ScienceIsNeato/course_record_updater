@@ -39,7 +39,7 @@ class IntegrationTestBase:
     """Base class for integration tests using isolated database fixture."""
 
     @pytest.fixture(autouse=True)
-    def setup_integration_context(self, isolated_integration_db):
+    def setup_integration_context(self, isolated_integration_db: Any) -> None:
         """Set up test client using isolated fixture."""
         from src.app import app
 
@@ -368,7 +368,7 @@ class TestDataFixture:
 class TestSiteAdminAccess(IntegrationTestBase):
     """SCENARIO 1: Site Admin - Full System Access"""
 
-    def test_tc_dac_001_site_admin_dashboard_system_wide_data(self):
+    def test_tc_dac_001_site_admin_dashboard_system_wide_data(self) -> None:
         """
         TC-DAC-001: Site Admin Dashboard API - System-Wide Data
 
@@ -408,7 +408,7 @@ class TestSiteAdminAccess(IntegrationTestBase):
             db_institutions
         ), "API institution count should match database"
 
-    def test_tc_dac_002_site_admin_csv_export_all_institutions(self):
+    def test_tc_dac_002_site_admin_csv_export_all_institutions(self) -> None:
         """
         TC-DAC-002: Site Admin CSV Export - All Institutions
 
@@ -480,7 +480,7 @@ class TestSiteAdminAccess(IntegrationTestBase):
 class TestInstitutionAdminAccess(IntegrationTestBase):
     """SCENARIO 2: Institution Admin - Single Institution Access"""
 
-    def test_tc_dac_101_institution_admin_dashboard_mocku_only(self):
+    def test_tc_dac_101_institution_admin_dashboard_mocku_only(self) -> None:
         """
         TC-DAC-101: Institution Admin Dashboard API - MockU Only
 
@@ -524,7 +524,7 @@ class TestInstitutionAdminAccess(IntegrationTestBase):
             len(hidden_insts) >= 2
         ), f"Should hide 2+ institutions from MockU admin, hiding {len(hidden_insts)}"
 
-    def test_tc_dac_102_institution_admin_csv_export_mocku_only(self):
+    def test_tc_dac_102_institution_admin_csv_export_mocku_only(self) -> None:
         """
         TC-DAC-102: Institution Admin CSV Export - MockU Only
 
@@ -607,7 +607,7 @@ class TestInstitutionAdminAccess(IntegrationTestBase):
                 pattern in all_csv_content for pattern in ["$2b$", "bcrypt", "argon2"]
             ), "Export should not contain hashed passwords"
 
-    def test_tc_dac_103_cross_institution_isolation_mocku_vs_rcc(self):
+    def test_tc_dac_103_cross_institution_isolation_mocku_vs_rcc(self) -> None:
         """
         TC-DAC-103: Cross-Institution Isolation - RCC vs MockU
 
@@ -696,7 +696,7 @@ class TestInstitutionAdminAccess(IntegrationTestBase):
 class TestProgramAdminAccess(IntegrationTestBase):
     """SCENARIO 3: Program Admin - Program-Scoped Access"""
 
-    def test_tc_dac_201_program_admin_dashboard_program_scope(self):
+    def test_tc_dac_201_program_admin_dashboard_program_scope(self) -> None:
         """
         TC-DAC-201: Program Admin Dashboard API - Program Scope
 
@@ -731,7 +731,7 @@ class TestProgramAdminAccess(IntegrationTestBase):
                 or program.get("institution_id") is not None
             ), f"Program admin should only see MockU programs: {program}"
 
-    def test_tc_dac_202_program_admin_export_program_scope(self):
+    def test_tc_dac_202_program_admin_export_program_scope(self) -> None:
         """
         TC-DAC-202: Program Admin CSV Export - Program Scope
 
@@ -766,7 +766,7 @@ class TestProgramAdminAccess(IntegrationTestBase):
 class TestInstructorAccess(IntegrationTestBase):
     """SCENARIO 4: Instructor - Section-Level Access"""
 
-    def test_tc_dac_301_instructor_dashboard_section_scope(self):
+    def test_tc_dac_301_instructor_dashboard_section_scope(self) -> None:
         """
         TC-DAC-301: Instructor Dashboard API - Section Scope
 
@@ -817,7 +817,7 @@ class TestInstructorAccess(IntegrationTestBase):
             summary["sections"] == section_count
         ), f"Section count mismatch: summary={summary['sections']}, counted={section_count}"
 
-    def test_tc_dac_302_instructor_export_section_scope(self):
+    def test_tc_dac_302_instructor_export_section_scope(self) -> None:
         """
         TC-DAC-302: Instructor CSV Export - Section Scope
 
@@ -895,7 +895,7 @@ class TestInstructorAccess(IntegrationTestBase):
 class TestNegativeAccess(IntegrationTestBase):
     """SCENARIO 5: Negative Access Testing"""
 
-    def test_tc_dac_401_unauthenticated_access_denied(self):
+    def test_tc_dac_401_unauthenticated_access_denied(self) -> None:
         """
         TC-DAC-401: Unauthenticated Access Denied
 

@@ -5,6 +5,8 @@ Provides endpoints for user profile management, password changes, and
 password reset workflows.
 """
 
+from typing import Any, Dict, cast
+
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 
@@ -30,6 +32,12 @@ auth_profile_bp = Blueprint("auth_profile", __name__, url_prefix="/api")
 
 # Initialize logger
 logger = get_logger(__name__)
+
+
+def _get_request_json() -> Dict[str, Any]:
+    """Return a typed JSON object body or an empty dict."""
+    payload = request.get_json(silent=True)
+    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
 
 
 # ===== PROFILE MANAGEMENT API ENDPOINTS =====
@@ -63,13 +71,15 @@ def update_profile_api() -> ResponseReturnValue:
             return jsonify({"success": False, "error": "Authentication required"}), 401
 
         # Get request data
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": "No JSON data provided"}), 400
 
         # Filter allowed fields - SECURITY: prevent email/role/institution changes
         allowed_fields = {"first_name", "last_name"}
-        profile_data = {k: v for k, v in data.items() if k in allowed_fields}
+        profile_data: Dict[str, Any] = {
+            k: v for k, v in data.items() if k in allowed_fields
+        }
 
         if not profile_data:
             return (
@@ -97,8 +107,10 @@ def update_profile_api() -> ResponseReturnValue:
             if "last_name" in profile_data:
                 session["last_name"] = profile_data["last_name"]
             # Update display_name in session as well
-            new_first = profile_data.get("first_name", session.get("first_name", ""))
-            new_last = profile_data.get("last_name", session.get("last_name", ""))
+            new_first = str(
+                profile_data.get("first_name", session.get("first_name", ""))
+            )
+            new_last = str(profile_data.get("last_name", session.get("last_name", "")))
             session["display_name"] = f"{new_first} {new_last}".strip()
 
             return (
@@ -144,7 +156,7 @@ def change_password_api() -> ResponseReturnValue:
             return jsonify({"success": False, "error": "Authentication required"}), 401
 
         # Get request data
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": "No JSON data provided"}), 400
 
@@ -181,7 +193,10 @@ def change_password_api() -> ResponseReturnValue:
             return jsonify({"success": False, "error": USER_NOT_FOUND_MSG}), 404
 
         # Verify current password
-        if not verify_password(data["current_password"], user.get("password_hash", "")):
+        current_password = str(data["current_password"])
+        new_password = str(data["new_password"])
+
+        if not verify_password(current_password, user.get("password_hash", "")):
             return (
                 jsonify({"success": False, "error": "Current password is incorrect"}),
                 401,
@@ -189,7 +204,7 @@ def change_password_api() -> ResponseReturnValue:
 
         # Hash new password (validates strength requirements)
         try:
-            new_hash = hash_password(data["new_password"])
+            new_hash = hash_password(new_password)
         except PasswordValidationError as e:
             return jsonify({"success": False, "error": str(e)}), 400
 
@@ -236,7 +251,7 @@ def forgot_password_api() -> ResponseReturnValue:
         from src.services.password_reset_service import PasswordResetService
 
         # Get request data
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -247,7 +262,7 @@ def forgot_password_api() -> ResponseReturnValue:
             )
 
         # Request password reset
-        result = PasswordResetService.request_password_reset(data["email"])
+        result = PasswordResetService.request_password_reset(str(data["email"]))
 
         return jsonify({"success": True, **result}), 200
 
@@ -284,7 +299,7 @@ def reset_password_api() -> ResponseReturnValue:
         from src.services.password_reset_service import PasswordResetService
 
         # Get request data
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -301,7 +316,7 @@ def reset_password_api() -> ResponseReturnValue:
 
         # Reset password
         result = PasswordResetService.reset_password(
-            reset_token=data["reset_token"], new_password=data["new_password"]
+            reset_token=str(data["reset_token"]), new_password=str(data["new_password"])
         )
 
         return jsonify({"success": True, **result}), 200

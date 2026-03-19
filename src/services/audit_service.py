@@ -106,7 +106,7 @@ def get_changed_fields(
     if not old_values or not new_values:
         return []
 
-    changed = []
+    changed: List[str] = []
     all_keys = set(old_values.keys()) | set(new_values.keys())
 
     for key in all_keys:
@@ -176,7 +176,7 @@ class AuditService:
                 request_id = request_context.get("request_id")
                 session_id = request_context.get("session_id")
 
-            audit_entry = {
+            audit_entry: Dict[str, Any] = {
                 "audit_id": audit_id,
                 "timestamp": timestamp,
                 # Who
@@ -279,7 +279,7 @@ class AuditService:
                 request_id = request_context.get("request_id")
                 session_id = request_context.get("session_id")
 
-            audit_entry = {
+            audit_entry: Dict[str, Any] = {
                 "audit_id": audit_id,
                 "timestamp": timestamp,
                 # Who
@@ -376,7 +376,7 @@ class AuditService:
                 request_id = request_context.get("request_id")
                 session_id = request_context.get("session_id")
 
-            audit_entry = {
+            audit_entry: Dict[str, Any] = {
                 "audit_id": audit_id,
                 "timestamp": timestamp,
                 # Who
@@ -438,7 +438,10 @@ class AuditService:
             List of audit log entries in chronological order (newest first)
         """
         try:
-            return db.get_audit_logs_by_entity(entity_type.value, entity_id, limit)
+            logs: List[Dict[str, Any]] = db.get_audit_logs_by_entity(
+                entity_type.value, entity_id, limit
+            )
+            return logs
         except Exception as e:
             logger.error(f"Failed to get entity history: {e}")
             return []
@@ -463,7 +466,10 @@ class AuditService:
             List of audit log entries
         """
         try:
-            return db.get_audit_logs_by_user(user_id, start_date, end_date, limit)
+            logs: List[Dict[str, Any]] = db.get_audit_logs_by_user(
+                user_id, start_date, end_date, limit
+            )
+            return logs
         except Exception as e:
             logger.error(f"Failed to get user activity: {e}")
             return []
@@ -483,7 +489,8 @@ class AuditService:
             List of recent audit log entries
         """
         try:
-            return db.get_recent_audit_logs(institution_id, limit)
+            logs: List[Dict[str, Any]] = db.get_recent_audit_logs(institution_id, limit)
+            return logs
         except Exception as e:
             logger.error(f"Failed to get recent activity: {e}")
             return []

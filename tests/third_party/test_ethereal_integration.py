@@ -22,7 +22,7 @@ import pytest
 
 
 @pytest.mark.third_party
-def test_ethereal_send_and_receive():
+def test_ethereal_send_and_receive() -> None:
     """
     Test complete Ethereal Email send/receive cycle.
 
@@ -106,16 +106,24 @@ def test_ethereal_send_and_receive():
 
                     if status == "OK":
                         # Parse the email
-                        email_message = email.message_from_bytes(msg_data[0][1])
+                        raw_message = msg_data[0][1]
+                        if not isinstance(raw_message, (bytes, bytearray)):
+                            continue
+
+                        email_message = email.message_from_bytes(raw_message)
 
                         # Extract body
                         if email_message.is_multipart():
                             for part in email_message.walk():
                                 if part.get_content_type() == "text/plain":
-                                    email_body = part.get_payload(decode=True).decode()
+                                    payload = part.get_payload(decode=True)
+                                    if isinstance(payload, (bytes, bytearray)):
+                                        email_body = payload.decode()
                                     break
                         else:
-                            email_body = email_message.get_payload(decode=True).decode()
+                            payload = email_message.get_payload(decode=True)
+                            if isinstance(payload, (bytes, bytearray)):
+                                email_body = payload.decode()
 
                         email_found = True
                         print(f"✅ Email found on attempt {attempt}!")

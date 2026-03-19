@@ -89,13 +89,20 @@ def _make_csrf_wrapper(
 
 
 @pytest.fixture(scope="function", autouse=True)
-def _configure_csrf_for_testing() -> Generator[None, None, None]:
+def _configure_csrf_for_testing(
+    request: pytest.FixtureRequest,
+) -> Generator[None, None, None]:
     """
-    Auto-applied fixture that ensures CSRF is enabled for all tests.
+    Auto-applied fixture that enables CSRF for most tests.
 
-    This runs before every test to ensure production-like security validation.
-    It also monkeypatches app.test_client() to return CSRF-aware clients.
+    Smoke-marked tests are intentionally excluded because the smoke rail validates
+    high-level deployment health, not CSRF request semantics. All other tests run
+    with production-like CSRF validation and a CSRF-aware test client wrapper.
     """
+    if request.node.get_closest_marker("smoke") is not None:
+        yield
+        return
+
     from src.app import app
 
     # Store original config and methods

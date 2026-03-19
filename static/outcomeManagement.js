@@ -434,10 +434,12 @@ function renderOutcomesTable(outcomes, container) {
 
 // Helper for status badge
 function getStatusBadge(status) {
-  if (status === "active")
+  if (status === "active") {
     return '<span class="badge bg-success">Active</span>';
-  if (status === "archived")
+  }
+  if (status === "archived") {
     return '<span class="badge bg-secondary">Archived</span>';
+  }
   return `<span class="badge bg-light text-dark border">${status}</span>`;
 }
 

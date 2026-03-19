@@ -7,9 +7,9 @@
 ## Already Resolved (Files Deleted by User) ✅
 
 - [x] Comment #1: Hardcoded API key in `MANUAL_STEPS_REQUIRED.md`  
-      → File deleted by user ✅
+       → File deleted by user ✅
 - [x] Comment #1: Hardcoded API key in `docs/setup/EMAIL_SETUP_CHECKLIST.md`  
-      → File deleted by user ✅
+       → File deleted by user ✅
 
 ## High Severity Issues (Fix First)
 
@@ -20,7 +20,7 @@
 
 - [ ] **Comment #5**: seed_remote_db.sh targets wrong database
       → File: `scripts/seed_remote_db.sh` line 227-244  
-      → Fix: Set DATABASE_URL to local file before calling seed_db.py
+       → Fix: Set DATABASE_URL to local file before calling seed_db.py
       → Impact: Seeds Neon instead of downloaded file
 
 ## Medium Severity Issues
@@ -65,6 +65,7 @@
 ## Commit Strategy
 
 Will make 3 thematic commits:
+
 1. `fix: security issues (SECRET_KEY, seed_remote_db.sh)`
 2. `fix: demo runner compatibility with local-only restart`
 3. `chore: remove duplicate code blocks`

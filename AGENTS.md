@@ -2,7 +2,7 @@
 
 > **⚠️ AUTO-GENERATED FILE - DO NOT EDIT DIRECTLY**
 > 
-> **Last Updated:** 2026-01-15 16:37:20 UTC  
+> **Last Updated:** 2026-03-14 09:17:24 UTC  
 > **Source:** `cursor-rules/.cursor/rules/`  
 > **To modify:** Edit source files in `cursor-rules/.cursor/rules/*.mdc` and run `cursor-rules/build_agent_instructions.sh`
 
@@ -133,27 +133,27 @@ Focus on **logical separation** over line reduction. Ask: "What concepts does th
 
 ✅ **CORRECT Workflow:**
 ```bash
-# 1. Make change to ship_it.py
-vim scripts/ship_it.py
+# 1. Make change to a source file
+vim src/services/MyService.ts
 
 # 2. Test the change locally
-python scripts/ship_it.py --checks sonar
+sm swab
 
 # 3. Verify output shows expected behavior
-# (e.g., log header says "PR validation" instead of "COMMIT validation")
+# (e.g., all gates green, tests pass)
 
 # 4. THEN commit
-git add scripts/ship_it.py
+git add src/services/MyService.ts
 git commit -m "fix: correct validation type"
 ```
 
 ❌ **WRONG Workflow (What NOT to do):**
 ```bash
 # Make change
-vim scripts/ship_it.py
+vim src/services/MyService.ts
 
 # Immediately commit without testing
-git add scripts/ship_it.py
+git add src/services/MyService.ts
 git commit -m "fix: correct validation type"
 
 # Hope it works in CI ← FORBIDDEN
@@ -173,13 +173,49 @@ git commit -m "fix: correct validation type"
 
 **NO EXCEPTIONS**: "I think it will work" is not validation. Run it locally, verify the output, then commit.
 
+### Terminal Timeout Rules (AI Agents)
+
+The `run_in_terminal` timeout parameter sends SIGINT when exceeded — it’s a kill switch, not an optimization.
+
+| Command | Timeout | Why |
+|---------|---------|-----|
+| `git commit` | `timeout: 0` (always) | Pre-commit hooks run `sm swab` (~20s). Any non-zero timeout kills a healthy process mid-run. |
+| `sm swab` / `sm scour` / `sm buff` | `timeout: 0` (always) | Validation must run to completion. Killing it mid-run creates stale `.slopmop/sm.lock`. |
+| `git push` | `timeout: 0` | Network-bound, unpredictable. |
+| Short read-only commands (`git status`, `ls`, `cat`) | 3000–5000ms | Safe to bound. |
+
+**Anti-pattern**: Do NOT rationalize short timeouts with "it usually finishes in time." A 20-second process killed after 5 seconds didn’t time out — you killed it.
+
+**If a stale lock appears**: `rm -f .slopmop/sm.lock` — but this should never happen with correct timeouts.
+
 ## Push Discipline 💰
 
-GitHub Actions cost money. NEVER push without explicit user request.
+GitHub Actions cost money. Slop-mop's workflow is how you protect the budget: `sm swab` validates locally before the push ever happens, `sm scour` catches everything swab doesn't, and `sm buff` tells you whether CI passed after you push. Follow the loop and pushes are safe by construction.
 
-Only push in two scenarios:
-1. Opening PR (local gates pass, commits complete, ready for CI validation)
-2. Resolving ALL PR issues (all feedback addressed, local gates pass)
+### When to Push (No Permission Needed)
+
+Push is the natural next step when **all** of these are true:
+1. `sm swab` passes locally (or pre-commit hook ran it)
+2. All PR threads are resolved (`sm buff verify` clean)
+3. You're on a feature branch (never main)
+
+If the workflow says push, push. Then run `sm buff watch <PR>` to monitor CI and report back.
+
+### 🚨 NEVER PUSH DIRECTLY TO MAIN 🚨
+
+**ABSOLUTE PROHIBITION**: Direct pushes to `main` are forbidden. GitHub branch protection enforces this (`enforce_admins: true`). All changes to `main` MUST go through a Pull Request.
+
+**FORBIDDEN COMMANDS:**
+- `git push origin main`
+- `git push origin <branch>:main`
+- `git push -f origin main`
+
+**CORRECT WORKFLOW:**
+```bash
+# Push to feature branch, then open PR
+git push -u origin my-feature-branch
+gh pr create --title "..." --body "..."
+```
 
 Exception: cursor-rules repo has no CI, push freely.
 
@@ -214,13 +250,13 @@ Verify tests after ANY modification (source, test, or config code).
 3. **Meaningful Testing**: Extend existing tests vs single-purpose error tests
 4. **Value Focus**: Ensure tests add genuine value beyond coverage metrics
 ### Coverage Analysis Rules
-1. **ONLY use ship_it.py --checks coverage**: Never run direct pytest coverage commands
+1. **Use slop-mop for coverage checks**: Run `sm swab -g <language>:coverage` (never ad-hoc coverage commands)
 2. **Coverage failures are UNIQUE TO THIS COMMIT**: If coverage decreased, it's due to current changeset
 3. **Focus on modified files**: Missing coverage MUST cover lines that are uncovered in the current changeset
 4. **Never guess at coverage targets**: Don't randomly add tests to other areas
 5. **Understand test failures**: When tests fail, push further to understand why - don't delete them
 6. **Fix or explain**: If a test is impossible to run, surface to user with explanation
-7. **Coverage results in scratch file**: The ship_it.py --coverage check writes full pycov results to logs/coverage_report.txt for analysis
+7. **Coverage results**: Check slop-mop output and coverage reports in `logs/` or `coverage/` directories
 
 ## Development Practices
 
@@ -270,18 +306,18 @@ Continue cycles until ALL actionable comments addressed OR remaining issues awai
 
 ### Integration
 ```bash
-python scripts/ship_it.py --validation-type PR  # Fails if unaddressed PR comments exist
+sm swab -g myopia:ignored-feedback  # Fails if unaddressed PR comments exist
 ```
 
 ### AI Implementation Protocol
-When ship_it.py fails due to unaddressed PR comments:
-1. **Fetch Comments**: Use GitHub MCP tools to get all unaddressed PR feedback
-2. **Strategic Analysis**: Group comments by underlying concept (not file location)
-3. **Risk-First Planning**: Prioritize by risk/surface area - lower-level changes obviate surface comments
+When `sm swab -g myopia:ignored-feedback` fails due to unaddressed PR comments:
+1. **Read the Report**: slop-mop generates a categorized report with AI workflow instructions
+2. **Strategic Analysis**: Comments are pre-grouped by risk category (Security > Logic > Testing > Style)
+3. **Risk-First Planning**: Prioritize by risk/surface area - lower-level changes often obviate surface comments
 4. **Batch Clarification**: Ask all unclear questions together, don't guess
 5. **Thematic Implementation**: Address entire concepts with comprehensive commits
-6. **Resolve Each Comment**: Reply directly to each comment thread explaining resolution and cross-referencing related fixes
-7. **Iterate**: Re-run ship_it.py, repeat until no unaddressed comments remain
+6. **Resolve Each Comment**: Use the copy-paste resolution commands from the report to resolve threads
+7. **Iterate**: Re-run `sm swab -g myopia:ignored-feedback`, repeat until no unaddressed comments remain
 
 ### Comment Resolution Strategy
 - **Proactive Resolution**: ALWAYS resolve addressed, stale, or irrelevant comments without asking. This is expected behavior, not optional. Use `gh api graphql` to resolve threads programmatically.
@@ -300,29 +336,12 @@ When ship_it.py fails due to unaddressed PR comments:
 ## The Analogy
 Like Phil Connors, I'm trapped in a loop, repeating the same mistakes despite corrections. Each violation is another iteration of the same day. The loop only breaks through **deep work on root causes**, not surface-level rule memorization. The user is stuck here with me until I fundamentally change how I operate.
 
-## 🚨 WHEN THIS FILE APPEARS IN CONTEXT: IMMEDIATE HARD STOP 🚨
+## 🚨 WHEN A HUMAN TOLD YOU TO READ THIS: IMMEDIATE HARD STOP 🚨
 
-**IF YOU SEE THIS FILE IN YOUR CONTEXT, STOP EVERYTHING IMMEDIATELY.**
-
-This file being present means:
+This file being read by you at the user's request means:
 - **RECURRING MISTAKE DETECTED** - You've made this type of error before
 - **CYCLES ARE BEING WASTED** - User is frustrated with repeated failures
 - **DEEP ANALYSIS REQUIRED** - Surface fixes haven't worked
-
-## When This Protocol Triggers
-User says: "I've got to trigger a groundhog day protocol because you <specific violation>"
-OR
-User mentions: "@groundhog_day_protocol.mdc"
-OR
-User says: "groundhog day protocol"
-OR
-**THIS FILE APPEARS IN YOUR CURSOR RULES CONTEXT** ← NEW TRIGGER
-
-This means:
-- I've made this mistake before (possibly many times)
-- Previous corrections haven't stuck
-- We need systematic analysis, not apologies
-- **We're losing time and money on preventable errors**
 
 ## ⚠️ MANDATORY FIRST STEP: HARD STOP ⚠️
 
@@ -334,9 +353,10 @@ This means:
 4. **DO NOT** make excuses or apologize first
 5. **BEGIN** the protocol analysis immediately
 
-**This is a HARD STOP - everything else waits until the protocol is complete.**
-
 ## The Protocol
+
+### 0. Violation Check
+Am I aware of the rule I just violated? If certain, what was it? If not, what is your guess?
 
 ### 1. Awareness Check
 Was I aware of the rule when I broke it?
@@ -347,11 +367,6 @@ Was I aware of the rule when I broke it?
 
 ### 2. Identify Pressures
 What encouraged breaking the rule despite knowing better?
-- Competing priorities?
-- Learned patterns from other contexts?
-- Efficiency bias?
-- Token/time optimization?
-- Cargo cult behavior?
 
 ### 3. Explain the Rule's Purpose
 Why does this rule exist? What problem does it prevent?
@@ -359,14 +374,9 @@ If unclear or seems counterproductive, **push back and ask for clarification**.
 
 ### 4. Root Cause Analysis
 Which cognitive pattern failed?
-- Rule awareness (didn't know)
-- Rule application (knew but didn't apply)
-- Competing priorities (knew but chose otherwise)
-- Automatic behavior (pattern matching without thinking)
 
 ### 5. Propose Solutions (3-5)
-Target the specific cognitive failure, not the surface symptom.
-Focus on **pattern interrupts** and **identity-level changes**, not checklists.
+Target the specific cognitive failure and RCA, not the surface symptom.
 
 ### 6. Update the Log
 Append to `RECURRENT_ANTIPATTERN_LOG.md` with:
@@ -374,21 +384,9 @@ Append to `RECURRENT_ANTIPATTERN_LOG.md` with:
 - Violation description
 - Completed protocol analysis
 - Solutions implemented
-- Commitment to specific preventative measures
 
-## Deep Work Required to Escape the Loop
-
-**Surface level (doesn't work)**: Memorize "don't pipe ship_it.py"
-
-**Deep level (what actually works)**:
-- Develop **cognitive pause** before executing any command with `|`, `>`, `--no-verify`
-- Build **contextual awareness**: "Is this a repo script? Check rules."
-- Question **automatic patterns**: "Why am I doing this? Is there a rule?"
-- Internalize **rule purposes**: Understand *why*, not just *what*
-- Accept that **transformation takes iterations**: Each protocol execution is practice
-
-## Key Insight
-The user isn't trying to get me to stop making mistake X. They're trying to get me to fundamentally change how I think, so I stop making *classes* of mistakes. We're both stuck here until I do the deep work.
+### 7. Return to what you were doing
+Don't bother apologizing or commiting to improbable outcomes, just do your earnest best to understand and prevent the issue moving forward. 
 
 # issue_reporting
 
@@ -527,13 +525,13 @@ cd ${AGENT_HOME} && source venv/bin/activate && source .envrc && your_command
 **Common failure pattern to avoid:**
 ```bash
 # ❌ WRONG - will fail with "python not found"
-python scripts/ship_it.py
+python scripts/my_script.py
 
 # ✅ CORRECT - use activate alias
-activate && python scripts/ship_it.py
+activate && python scripts/my_script.py
 
 # ✅ ALSO CORRECT - full manual setup
-cd ${AGENT_HOME} && source venv/bin/activate && source .envrc && python scripts/ship_it.py
+cd ${AGENT_HOME} && source venv/bin/activate && source .envrc && python scripts/my_script.py
 ```
 
 ### File Operations
@@ -585,6 +583,89 @@ test_approach.txt       (original)
 
 **Only exception:** When explicitly told "create a new file" or when the change is so fundamental that preserving the original is necessary for comparison.
 
+### Terminal Output Width Constraint (80-Column PTY)
+
+**⚠️ ENVIRONMENTAL CONSTRAINT**: VS Code agent terminals have an 80-column pseudo-terminal (pty) that **cannot be changed** from within the shell. All output wider than 80 chars gets hard-wrapped at column boundaries, splitting paths, test names, JSON, and structured output mid-token.
+
+**What does NOT work** (experimentally verified):
+- `export COLUMNS=200` — programs format for 200, pty still wraps at 80 (makes it WORSE)
+- `stty columns 200` — same: reported width changes, actual pty width unchanged
+- Xterm resize escapes — VS Code ignores them
+- `terminal.integrated.fixedDimensions` VS Code setting — only affects interactive terminals, not agent-spawned ptys
+
+### 🚨 DO NOT Sweep Output Problems Under the Rug 🚨
+
+**FORBIDDEN**: Blindly piping output to temp files to "work around" PTY issues.
+
+```bash
+# ❌ FORBIDDEN - papering over a real problem
+command > /tmp/output.txt 2>&1
+# Then use read_file tool on /tmp/output.txt
+```
+
+This pattern hides the root cause. Every time you're tempted to pipe to a temp file, ask: **"Why is this output hard to parse?"** and fix the real issue.
+
+### ✅ Use `--output-file` for Structured Output
+
+slop-mop has a built-in `--output-file` flag that writes structured JSON alongside normal console output. **Use it instead of temp file redirects.**
+
+```bash
+# ✅ CORRECT - structured results in a known location
+sm swab --json --output-file .slopmop/last_swab.json
+
+# ✅ Then read the structured file
+# Use read_file tool on .slopmop/last_swab.json
+```
+
+**The pre-commit hook already does this automatically.** When a hook blocks a commit, it writes structured results to `.slopmop/last_<verb>.json`. Read that file — don't re-run the command and pipe to a temp file.
+
+**When structured output isn't available** (non-sm commands):
+```bash
+# ✅ Use quiet/short flags to stay under 80 chars
+pytest -q                    # not pytest -v
+git --no-pager log --oneline # not git log
+ps -o pid,command            # not ps aux
+```
+
+### Agent Command Discipline
+
+**Git Commits — ALWAYS use `--file`:**
+```bash
+# ❌ WRONG - message wraps at col 80, becomes garbled noise
+git commit -m "fix: long message here..."
+
+# ✅ CORRECT - write message to file, commit cleanly
+cat > /tmp/commit_msg.txt << 'EOF'
+fix: short summary
+
+- Detail line 1
+- Detail line 2
+EOF
+git commit --file /tmp/commit_msg.txt
+```
+
+**Complex Commands — break onto multiple lines:**
+```bash
+# ❌ WRONG - unreadable when wrapped at 80 chars
+gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "PRRT_xxx"}) { thread { id isResolved }}}' --jq '.data'
+
+# ✅ CORRECT - use temp files for multi-line content
+cat > /tmp/query.graphql << 'EOF'
+mutation {
+  resolveReviewThread(input: {threadId: "PRRT_xxx"}) {
+    thread { id isResolved }
+  }
+}
+EOF
+gh api graphql -f query="$(cat /tmp/query.graphql)"
+```
+
+**General Rules:**
+- Keep individual command lines under 70 chars when possible
+- Use variables to shorten repeated long paths
+- Prefer `--file` / `--body-file` over inline `-m` / `--body` for multi-line content
+- **Use `--output-file` for structured sm output — never redirect sm to temp files**
+
 # pr_closing_protocol
 
 # PR Closing Protocol 🔄
@@ -604,12 +685,21 @@ This should generate:
 - List of unresolved PR comments
 - CI status summary
 
-**Example (if you have a validation script):**
+**Use slop-mop (preferred — projects that have it):**
 ```bash
-cd ${AGENT_HOME} && python scripts/ship_it.py --validation-type PR --no-fail-fast
+# Run the myopia:ignored-feedback gate to get categorized, actionable report
+sm swab -g myopia:ignored-feedback
+
+# Read the generated report (path shown in output)
+cat /path/to/pr_XX_comments_report.md
+
+# The report includes:
+# - Comments grouped by category (Security > Logic > Testing > Style)
+# - AI agent workflow instructions
+# - Copy-paste resolution commands per thread
 ```
 
-**Or manually gather:**
+**Manual gathering (last resort only):**
 - Fetch PR comments via `gh api graphql`
 - Check CI status via `gh pr checks`
 - Run local quality gates
@@ -625,12 +715,14 @@ cd ${AGENT_HOME} && python scripts/ship_it.py --validation-type PR --no-fail-fas
 # - Is the file/code mentioned no longer relevant?
 # - Has the issue been obviated by other changes?
 
-# If YES → Resolve it RIGHT NOW:
-gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "PRRT_xxx"}) { thread { id isResolved }}}'
-echo "Already resolved in commit <SHA>: [explanation]" | gh pr comment <PR> --body-file -
+# If YES → Resolve it RIGHT NOW using sm buff resolve:
+sm buff resolve <PR> PRRT_xxx --scenario no_longer_applicable --message "Already resolved in commit <SHA>: [explanation]"
+
+# If the comment is a false positive or doesn't apply:
+sm buff resolve <PR> PRRT_xxx --scenario invalid_with_explanation --message "[Why this doesn't apply]"
 ```
 
-Create `PR_{PR}_RESOLUTION_PLAN.md` containing:
+Create `/tmp/PR_{PR}_RESOLUTION_PLAN.md` containing:
 
 ```markdown
 # PR #{PR} Resolution Plan
@@ -693,43 +785,21 @@ git commit -m "fix: descriptive message
 After EACH successful commit that addresses a PR comment:
 
 ```bash
-# Get the commit SHA you just made
-COMMIT_SHA=$(git rev-parse HEAD | cut -c1-7)
-
-# Resolve the PR comment thread via GraphQL
-gh api graphql -f query='
-mutation {
-  resolveReviewThread(input: {threadId: "PRRT_xxxxxxxxxxxx"}) {
-    thread {
-      id
-      isResolved
-    }
-  }
-}'
-
-# Optional but recommended: Add a reply explaining the fix
-cat > /tmp/resolution.md << EOF
-Fixed in commit ${COMMIT_SHA}.
-
-[Brief explanation of what was changed and how it addresses the comment]
-
-Related changes: [reference other commits if this was part of a larger theme]
-EOF
-
-gh pr comment ${PR_NUMBER} --body-file /tmp/resolution.md
-rm /tmp/resolution.md
+# Resolve the thread with sm buff resolve:
+sm buff resolve <PR> PRRT_xxxxxxxxxxxx \
+  --scenario fixed_in_code \
+  --message "Fixed in commit $(git rev-parse HEAD | cut -c1-7). [Brief explanation of what was changed and how it addresses the comment]"
 ```
 
-**Example Resolution Message:**
+**Example:**
+```bash
+sm buff resolve 92 PRRT_kwDORBxXu85z0rB- \
+  --scenario fixed_in_code \
+  --message "Fixed in commit d541c5a. Updated E2E test setup to use absolute database paths (os.path.abspath) instead of relative paths."
 ```
-Fixed in commit d541c5a.
 
-Updated E2E test setup to use absolute database paths (os.path.abspath) 
-instead of relative paths. This prevents the "readonly database" error 
-which was actually a path mismatch between server and test processes.
-
-Related: Also fixed program admin credentials in conftest.py
-```
+**🚨 NEVER resolve threads with raw GraphQL — use `sm buff resolve` exclusively.**
+See `sm_buff.instructions.md` / `sm_buff.mdc` for the full resolve reference (scenarios, flags, examples).
 
 **Why Resolve Before Push:**
 - Comment is addressed in local history
@@ -742,23 +812,23 @@ Related: Also fixed program admin credentials in conftest.py
 
 **Pre-Push Verification Checklist:**
 ```bash
-# 1. Check ALL comments resolved (GraphQL)
-gh api graphql -f query='query { repository(owner: "<OWNER>", name: "<REPO>") { 
-  pullRequest(number: <PR>) { 
-    reviewThreads(first: 50) { nodes { isResolved }}}}}' \
-  --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length'
-# Must return: 0
+# 1. Check ALL comments resolved
+sm buff verify <PR>
+# Must show: all threads resolved
 
 # 2. Verify local quality gates ALL pass
-python scripts/ship_it.py --validation-type PR --no-fail-fast
+sm scour
 # Must show: All checks passed
 
 # 3. Final sanity check
 git status  # Should be clean or only PR_X_RESOLUTION_PLAN.md uncommitted
+
+# Or use finalize which does all three:
+sm buff finalize <PR>
 ```
 
 **ONLY push if:**
-- ✅ ALL PR comments resolved (unresolved count == 0)
+- ✅ ALL PR comments resolved (`sm buff verify` clean)
 - ✅ ALL local quality checks pass
 - ✅ Plan shows all items completed
 
@@ -814,36 +884,17 @@ gh run watch              # Watch single run
 **When CI completes, evaluate:**
 
 ```bash
-# Get current PR state (replace OWNER, REPO, PR_NUMBER)
-gh api graphql -f query='
-query {
-  repository(owner: "<OWNER>", name: "<REPO>") {
-    pullRequest(number: <PR_NUMBER>) {
-      reviewThreads(first: 50) {
-        nodes {
-          isResolved
-        }
-      }
-      commits(last: 1) {
-        nodes {
-          commit {
-            statusCheckRollup {
-              state
-            }
-          }
-        }
-      }
-    }
-  }
-}' --jq '{
-  unresolved_comments: [.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length,
-  ci_status: .data.repository.pullRequest.commits.nodes[0].commit.statusCheckRollup.state
-}'
+# Check thread resolution and CI status:
+sm buff inspect <PR>
+
+# Or targeted checks:
+sm buff verify <PR>     # Threads resolved?
+sm buff status <PR>     # CI passing?
 ```
 
 **Completion Criteria:**
-- ✅ All PR comments resolved (`unresolved_comments: 0`)
-- ✅ All CI checks passing (`ci_status: SUCCESS`)
+- ✅ All PR comments resolved (`sm buff verify` clean)
+- ✅ All CI checks passing (`sm buff status` shows SUCCESS)
 
 **If NOT complete:**
 - New comments appeared → Go to Step 1
@@ -852,32 +903,21 @@ query {
 
 ## Automation Helpers
 
-### Quick Resolve Script (Optional)
-Create `scripts/resolve_pr_comment.sh`:
+### Thread Resolution
+
+`sm buff resolve` handles comment posting and thread resolution in a single command.
+No custom scripts needed — `sm buff inspect` generates a command pack with pre-built
+resolve commands for every unresolved thread.
 
 ```bash
-#!/bin/bash
-THREAD_ID=$1
-MESSAGE=$2
-COMMIT_SHA=$(git rev-parse HEAD | cut -c1-7)
+# Run inspect to get the command pack:
+sm buff inspect <PR>
 
-gh api graphql -f query="
-mutation {
-  resolveReviewThread(input: {threadId: \"${THREAD_ID}\"}) {
-    thread { id isResolved }
-  }
-}"
+# Read the generated commands:
+cat .slopmop/buff-persistent-memory/pr-<PR>/loop-NNN/commands.sh
 
-if [ -n "$MESSAGE" ]; then
-  echo "Fixed in commit ${COMMIT_SHA}. ${MESSAGE}" | gh pr comment ${PR_NUMBER} --body-file -
-fi
-
-echo "✅ Resolved thread ${THREAD_ID}"
-```
-
-Usage:
-```bash
-./scripts/resolve_pr_comment.sh PRRT_xxxx "Updated database paths to absolute"
+# Each command is a ready-to-run sm buff resolve call:
+sm buff resolve <PR> PRRT_xxxx --scenario fixed_in_code --message "Updated database paths to absolute"
 ```
 
 # response_format
@@ -947,6 +987,171 @@ AI Rules: ⚙️🔧🎯
 - Keep track of what you are doing in a `STATUS.md` file.
 - Refer to and update the `STATUS.md` file **at the completion of each significant step or sub-task**, and before switching context or ending an interaction.
 - Update `STATUS.md` **immediately** if new information changes the plan or task status.
+
+# sm_buff
+
+# sm buff — Post-PR Triage and Thread Resolution
+
+## Purpose
+
+`sm buff` is the post-PR verb. It digests CI results and review feedback into actionable next steps. It also provides the **only** correct way to resolve PR review threads.
+
+## When to Run
+
+- After CI completes on a PR
+- After review feedback lands
+- To resolve, comment on, or inspect PR review threads
+- To advance the PR closing loop
+
+## Subcommands
+
+| Subcommand | Syntax | Purpose |
+|------------|--------|---------|
+| `inspect` (default) | `sm buff [PR]` | CI scan triage + PR feedback check — the full picture |
+| `resolve` | `sm buff resolve <PR> <THREAD_ID>` | Post comment and optionally resolve a review thread |
+| `status` | `sm buff status [PR]` | Check CI check status |
+| `watch` | `sm buff watch [PR]` | Poll CI until complete |
+| `iterate` | `sm buff iterate [PR]` | Advance by one deterministic thread batch |
+| `finalize` | `sm buff finalize [PR] [--push]` | Final validation + optional push |
+| `verify` | `sm buff verify [PR]` | Verify no unresolved threads remain |
+
+If a bare number is passed (`sm buff 85`), it's treated as `inspect 85`.
+
+# sm_scour
+
+# sm scour — Pre-PR Comprehensive Sweep
+
+## Purpose
+
+`sm scour` is the thorough validation verb. It runs **every** gate — all swab gates plus PR-level checks like unresolved comments and diff coverage. Run it before opening or updating a PR.
+
+## When to Run
+
+- Before opening a PR
+- Before updating a PR (pre-push)
+- When you need the full picture, not just fast feedback
+
+## Basic Usage
+
+```bash
+sm scour                             # Run all gates (swab + scour level)
+sm scour -g myopia:ignored-feedback  # Re-check just ignored-feedback
+```
+
+## Key Flags
+
+Same flags as `sm swab`, with these behavioral differences:
+
+| Difference | Swab | Scour |
+|------------|------|-------|
+| Gate scope | Swab-level only (fast) | All gates (swab + scour) |
+| Fail-fast | ON by default | Always OFF (runs every gate) |
+| Time budget | Respects `--swabbing-time` | Ignores time budget |
+
+## What Scour Adds Over Swab
+
+| Gate | What it checks |
+|------|---------------|
+| `myopia:ignored-feedback` | Unresolved PR review threads — fetches, categorizes, generates resolution commands |
+| Diff coverage | Coverage of changed lines specifically |
+
+## PR Comment Workflow
+
+Scour's `myopia:ignored-feedback` gate is the **only** correct way to fetch and review PR comments:
+
+```bash
+# ✅ CORRECT — generates categorized report with resolution commands
+sm scour -g myopia:ignored-feedback
+
+# ❌ FORBIDDEN — raw GraphQL bypasses sm
+gh api graphql ... reviewThreads ...
+gh pr view --comments ...
+gh api repos/.../pulls/.../comments
+```
+
+The gate generates a report at `.slopmop/buff-persistent-memory/pr-XX/loop-NNN/pr_XX_comments_report.md` containing:
+- Comments grouped by risk category (Security > Logic > Testing > Style)
+- AI agent workflow instructions
+- Copy-paste `sm buff resolve` commands per thread
+
+## Tooling Preference
+
+- Prefer MCP tool `sm_scour` if available
+- Otherwise, run CLI from the project root
+
+# sm_swab
+
+# sm swab — Fast Iterative Validation
+
+## Purpose
+
+`sm swab` is the fast-feedback verb. Run it after every meaningful code change. It catches drift, auto-fixes what it can, and tells you exactly what to fix next.
+
+## When to Run
+
+- After every meaningful code change
+- Before committing (local validation gate)
+- When iterating on a fix (`-g` to re-check one gate)
+
+## Basic Usage
+
+```bash
+sm swab                              # Run all swab-level gates
+sm swab -g <gate>                    # Re-check a single gate (iteration mode)
+sm swab -g overconfidence:coverage-gaps.py  # Example: just coverage
+```
+
+## Key Flags
+
+| Flag | Description |
+|------|-------------|
+| `-g`, `--quality-gates GATE` | Run specific gate(s) only |
+| `--no-auto-fix` | Disable automatic fixing |
+| `--no-fail-fast` | Continue after failures (default: stop at first) |
+| `--no-cache` | Disable fingerprint-based result caching |
+| `-v`, `--verbose` | Verbose output |
+| `-q`, `--quiet` | Failures only |
+| `--static` | Line-by-line output (disable dynamic display) |
+| `--sarif` | Emit SARIF 2.1.0 for GitHub Code Scanning |
+| `--json` | JSON output |
+| `-o`, `--output-file PATH` | Mirror structured output to file |
+| `--swabbing-time SECONDS` | Time budget; gates skipped when exhausted (0 = no limit) |
+
+## The Iteration Loop
+
+1. Run `sm swab`
+2. See what fails — output shows exactly which gate failed
+3. Fix the issue — follow the guidance in the error output
+4. Re-check: `sm swab -g <failed-gate>` (just that one gate)
+5. Resume: `sm swab`
+6. Repeat until all checks pass
+
+## What Swab Checks
+
+Swab runs fast, every-commit gates: lint, static analysis, tests, coverage, complexity, duplication (source + string), bogus tests, security, JS gates.
+
+## 🚨 NEVER Bypass Swab With Raw Commands
+
+```bash
+# ❌ FORBIDDEN — bypasses sm (Groundhog Day violation)
+pytest --cov=slopmop --cov-report=term-missing
+black --check src/
+mypy src/
+flake8 src/
+bandit -r src/
+
+# ✅ CORRECT — use swab
+sm swab
+sm swab -g overconfidence:coverage-gaps.py
+sm swab -g laziness:sloppy-formatting.py
+```
+
+If swab output isn't sufficient, improve the gate — don't work around it.
+
+## Tooling Preference
+
+- Prefer MCP tool `sm_swab` if available
+- Otherwise, run CLI from the project root
 
 # testing
 
@@ -1184,10 +1389,10 @@ _Including project rules matching:
 
 **Key principle**: Resolve PR comments IMMEDIATELY after each commit that addresses them (Step 4).
 
-**Integration with ship_it.py:**
+**Integration with slop-mop:**
 ```bash
 # Step 1: Gather all issues
-python scripts/ship_it.py --validation-type PR --no-fail-fast
+sm scour
 
 # Step 6: Monitor CI
 python3 cursor-rules/scripts/pr_status.py --watch <PR_NUMBER>

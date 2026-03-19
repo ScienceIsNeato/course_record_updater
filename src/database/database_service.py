@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from contextlib import AbstractContextManager, nullcontext
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from src.database.database_factory import get_database_service, refresh_database_service
 from src.database.database_interface import DatabaseInterface
@@ -42,8 +42,9 @@ def refresh_connection() -> DatabaseInterface:
 
 def reset_database() -> bool:
     """Drop and recreate all tables for a clean database state."""
-    if hasattr(_db_service, "sql"):
-        engine = _db_service.sql.engine
+    sql_backend = getattr(cast(Any, _db_service), "sql", None)
+    if sql_backend is not None:
+        engine = sql_backend.engine
         Base.metadata.drop_all(engine)
         Base.metadata.create_all(engine)
         return True
@@ -53,8 +54,9 @@ def reset_database() -> bool:
 
 def close_connection() -> None:
     """Close the underlying database connection."""
-    if hasattr(_db_service, "sql"):
-        _db_service.sql.close()
+    sql_backend = getattr(cast(Any, _db_service), "sql", None)
+    if sql_backend is not None:
+        sql_backend.close()
 
 
 def db_operation_timeout() -> AbstractContextManager[Any]:
@@ -469,7 +471,7 @@ def _build_course_duplication_payload(
 
     new_course_data.update(sanitized_overrides)
 
-    extras = new_course_data.get("extras") or {}
+    extras = cast(Dict[str, Any], new_course_data.get("extras") or {})
     extras["duplicated_from_course_id"] = source_course.get(
         "course_id"
     ) or source_course.get("id")

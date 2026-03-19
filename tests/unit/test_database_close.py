@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 class TestSQLiteServiceClose:
     """Tests for SQLiteService.close() method."""
 
-    def test_close_disposes_engine_and_removes_session(self):
+    def test_close_disposes_engine_and_removes_session(self) -> None:
         """Verify close() calls remove() and dispose() in correct order."""
         from src.database.database_sql import SQLService
 
@@ -33,7 +33,7 @@ class TestSQLiteServiceClose:
 class TestDatabaseServiceCloseConnection:
     """Tests for database_service.close_connection() function."""
 
-    def test_close_connection_calls_sqlite_close(self):
+    def test_close_connection_calls_sqlite_close(self) -> None:
         """Verify close_connection() delegates to sqlite.close()."""
         from src.database import database_service
 
@@ -55,7 +55,7 @@ class TestDatabaseServiceCloseConnection:
             # Restore original
             database_service._db_service = original_db_service
 
-    def test_close_connection_handles_missing_sqlite_attribute(self):
+    def test_close_connection_handles_missing_sqlite_attribute(self) -> None:
         """Verify close_connection() handles non-SQLite backends gracefully."""
         from src.database import database_service
 

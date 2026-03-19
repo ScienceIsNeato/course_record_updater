@@ -1453,7 +1453,7 @@ class DemoSeeder(BaselineSeeder):
 
         # Cache CLO lookup by (course_code, clo_number) → outcome_id so we
         # only hit the DB once per course.
-        clo_cache: Dict[tuple, Optional[str]] = {}
+        clo_cache: Dict[tuple[str, str], Optional[str]] = {}
 
         def _lookup_clo(course_code: str, clo_num: str) -> Optional[str]:
             key = (course_code, str(clo_num))
@@ -1642,7 +1642,7 @@ class DemoSeeder(BaselineSeeder):
         Caches offering lookups to avoid N+1 queries.
         """
         sections = database_service.db.get_sections_by_course(course_id)
-        offering_term_cache: dict = {}
+        offering_term_cache: dict[str, Optional[str]] = {}
         for sec in sections or []:
             if sec.get("section_number") != section_number:
                 continue
@@ -1657,7 +1657,7 @@ class DemoSeeder(BaselineSeeder):
     def _section_matches_term(
         sec: Dict[str, Any],
         term_id: str,
-        offering_cache: dict,
+        offering_cache: dict[str, Optional[str]],
     ) -> bool:
         """Check if a section belongs to the given term (with caching)."""
         offering_id = sec.get("offering_id")

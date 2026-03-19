@@ -5,6 +5,8 @@ Tests the complete password reset flow through the API endpoints.
 """
 
 import json
+from collections.abc import Generator
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -13,7 +15,7 @@ from src.app import app
 
 
 @pytest.fixture
-def client():
+def client() -> Generator[Any, None, None]:
     """Create test client"""
     app.config["TESTING"] = True
     app.config["SECRET_KEY"] = "test-secret-key"
@@ -27,7 +29,7 @@ class TestPasswordResetAPI:
     """Test password reset API endpoints"""
 
     @patch("src.services.password_reset_service.PasswordResetService")
-    def test_forgot_password_success(self, mock_service, client):
+    def test_forgot_password_success(self, mock_service: Any, client: Any) -> None:
         """Test successful password reset request"""
         # Setup
         mock_service.request_password_reset.return_value = {
@@ -49,7 +51,7 @@ class TestPasswordResetAPI:
         assert data["request_success"] is True
         mock_service.request_password_reset.assert_called_once_with("test@example.com")
 
-    def test_forgot_password_missing_email(self, client):
+    def test_forgot_password_missing_email(self, client: Any) -> None:
         """Test password reset request with missing email"""
         # Execute - send JSON with other field but no email
         response = client.post(
@@ -64,7 +66,7 @@ class TestPasswordResetAPI:
         assert data["success"] is False
         assert "Missing required field: email" in data["error"]
 
-    def test_forgot_password_no_json(self, client):
+    def test_forgot_password_no_json(self, client: Any) -> None:
         """Test password reset request with no JSON data"""
         # Execute
         response = client.post("/api/auth/forgot-password")
@@ -76,7 +78,7 @@ class TestPasswordResetAPI:
         assert "No JSON data provided" in data["error"]
 
     @patch("src.services.password_reset_service.PasswordResetService")
-    def test_forgot_password_rate_limit(self, mock_service, client):
+    def test_forgot_password_rate_limit(self, mock_service: Any, client: Any) -> None:
         """Test password reset request with rate limit exceeded"""
         # Setup
         mock_service.request_password_reset.side_effect = Exception("Too many requests")
@@ -95,7 +97,9 @@ class TestPasswordResetAPI:
         assert "Too many" in data["error"]
 
     @patch("src.services.password_reset_service.PasswordResetService")
-    def test_forgot_password_development_restriction(self, mock_service, client):
+    def test_forgot_password_development_restriction(
+        self, mock_service: Any, client: Any
+    ) -> None:
         """Test password reset request with development email restriction"""
         # Setup
         mock_service.request_password_reset.side_effect = Exception(
@@ -120,7 +124,7 @@ class TestResetPasswordAPI:
     """Test password reset completion API"""
 
     @patch("src.services.password_reset_service.PasswordResetService")
-    def test_reset_password_success(self, mock_service, client):
+    def test_reset_password_success(self, mock_service: Any, client: Any) -> None:
         """Test successful password reset"""
         # Setup
         mock_service.reset_password.return_value = {
@@ -148,7 +152,7 @@ class TestResetPasswordAPI:
             reset_token="valid-token", new_password="NewSecurePassword123!"
         )
 
-    def test_reset_password_missing_fields(self, client):
+    def test_reset_password_missing_fields(self, client: Any) -> None:
         """Test password reset with missing required fields"""
         # Execute - missing new_password
         response = client.post(
@@ -164,7 +168,7 @@ class TestResetPasswordAPI:
         assert "Missing required field: new_password" in data["error"]
 
     @patch("src.services.password_reset_service.PasswordResetService")
-    def test_reset_password_invalid_token(self, mock_service, client):
+    def test_reset_password_invalid_token(self, mock_service: Any, client: Any) -> None:
         """Test password reset with invalid token"""
         # Setup
         mock_service.reset_password.side_effect = Exception("Invalid token")
@@ -185,7 +189,9 @@ class TestResetPasswordAPI:
         assert "Invalid token" in data["error"]
 
     @patch("src.services.password_reset_service.PasswordResetService")
-    def test_reset_password_validation_failed(self, mock_service, client):
+    def test_reset_password_validation_failed(
+        self, mock_service: Any, client: Any
+    ) -> None:
         """Test password reset with validation failure"""
         # Setup
         mock_service.reset_password.side_effect = Exception("validation failed")
@@ -208,7 +214,7 @@ class TestValidateResetTokenAPI:
     """Test reset token validation API"""
 
     @patch("src.services.password_reset_service.PasswordResetService")
-    def test_validate_token_valid(self, mock_service, client):
+    def test_validate_token_valid(self, mock_service: Any, client: Any) -> None:
         """Test validation of valid token"""
         # Setup
         mock_service.validate_reset_token.return_value = {
@@ -229,7 +235,7 @@ class TestValidateResetTokenAPI:
         mock_service.validate_reset_token.assert_called_once_with("valid-token")
 
     @patch("src.services.password_reset_service.PasswordResetService")
-    def test_validate_token_invalid(self, mock_service, client):
+    def test_validate_token_invalid(self, mock_service: Any, client: Any) -> None:
         """Test validation of invalid token"""
         # Setup
         mock_service.validate_reset_token.return_value = {
@@ -248,7 +254,7 @@ class TestValidateResetTokenAPI:
         assert "invalid" in data["message"]
 
     @patch("src.services.password_reset_service.PasswordResetService")
-    def test_validate_token_error(self, mock_service, client):
+    def test_validate_token_error(self, mock_service: Any, client: Any) -> None:
         """Test token validation with service error"""
         # Setup
         mock_service.validate_reset_token.side_effect = Exception("Service error")
@@ -267,7 +273,7 @@ class TestResetStatusAPI:
     """Test reset status API"""
 
     @patch("src.services.password_reset_service.PasswordResetService")
-    def test_reset_status_pending(self, mock_service, client):
+    def test_reset_status_pending(self, mock_service: Any, client: Any) -> None:
         """Test getting reset status when reset is pending"""
         # Setup
         mock_service.get_reset_status.return_value = {
@@ -288,7 +294,7 @@ class TestResetStatusAPI:
         mock_service.get_reset_status.assert_called_once_with("test@example.com")
 
     @patch("src.services.password_reset_service.PasswordResetService")
-    def test_reset_status_no_pending(self, mock_service, client):
+    def test_reset_status_no_pending(self, mock_service: Any, client: Any) -> None:
         """Test getting reset status when no reset is pending"""
         # Setup
         mock_service.get_reset_status.return_value = {
@@ -307,7 +313,7 @@ class TestResetStatusAPI:
         assert "No pending" in data["message"]
 
     @patch("src.services.password_reset_service.PasswordResetService")
-    def test_reset_status_error(self, mock_service, client):
+    def test_reset_status_error(self, mock_service: Any, client: Any) -> None:
         """Test reset status with service error"""
         # Setup
         mock_service.get_reset_status.side_effect = Exception("Service error")
@@ -326,7 +332,7 @@ class TestPasswordResetFlowIntegration:
     """Integration tests for complete password reset flow"""
 
     @patch("src.services.password_reset_service.PasswordResetService")
-    def test_complete_password_reset_flow(self, mock_service, client):
+    def test_complete_password_reset_flow(self, mock_service: Any, client: Any) -> None:
         """Test complete password reset flow: request -> validate -> reset"""
 
         # Step 1: Request password reset
@@ -382,7 +388,9 @@ class TestPasswordResetFlowIntegration:
         mock_service.reset_password.assert_called_once()
 
     @patch("src.services.password_reset_service.PasswordResetService")
-    def test_password_reset_with_status_check(self, mock_service, client):
+    def test_password_reset_with_status_check(
+        self, mock_service: Any, client: Any
+    ) -> None:
         """Test password reset flow with status checking"""
 
         # Step 1: Check initial status (no pending reset)

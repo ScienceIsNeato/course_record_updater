@@ -32,7 +32,7 @@ from tests.e2e.conftest import BASE_URL
 
 
 @pytest.mark.e2e
-def test_login_page_structure(page: Page, server_running: bool):
+def test_login_page_structure(page: Page, server_running: bool) -> None:
     """
     Validate that login page structure contains all required form elements.
 
@@ -74,7 +74,7 @@ def test_login_page_structure(page: Page, server_running: bool):
 
 
 @pytest.mark.e2e
-def test_login_script_loading(page: Page, server_running: bool):
+def test_login_script_loading(page: Page, server_running: bool) -> None:
     """
     Validate that auth.js loads and event handlers are properly initialized.
 
@@ -195,7 +195,7 @@ def test_login_script_loading(page: Page, server_running: bool):
 def test_tc_ie_003_imported_course_visibility(
     authenticated_page: Page,
     server_running: bool,
-):
+) -> None:
     """
     TC-IE-003: Imported Course Visibility in Courses List
 
@@ -288,7 +288,7 @@ def test_tc_ie_003_imported_course_visibility(
 def test_tc_ie_004_imported_instructor_visibility(
     authenticated_page: Page,
     server_running: bool,
-):
+) -> None:
     """
     TC-IE-004: Imported Instructor Visibility in Users List
 
@@ -368,7 +368,7 @@ def test_tc_ie_004_imported_instructor_visibility(
 def test_tc_ie_005_imported_section_visibility(
     authenticated_page: Page,
     server_running: bool,
-):
+) -> None:
     """
     TC-IE-005: Imported Section Visibility in Sections Table
 

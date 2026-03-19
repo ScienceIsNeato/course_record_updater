@@ -13,7 +13,7 @@ from src.app import app
 class TestAuditAPI:
     """Test audit log API endpoints."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.app = app
         self.app.config["TESTING"] = True
@@ -32,26 +32,26 @@ class TestAuditAPI:
             "institution_id": "inst-123",
         }
 
-    def _login_institution_admin(self):
+    def _login_institution_admin(self) -> None:
         """Create authenticated session for institution admin."""
         from tests.test_utils import create_test_session
 
         create_test_session(self.client, self.institution_admin_user)
 
-    def _login_instructor(self):
+    def _login_instructor(self) -> None:
         """Create authenticated session for instructor."""
         from tests.test_utils import create_test_session
 
         create_test_session(self.client, self.instructor_user)
 
-    def test_get_recent_audit_logs_requires_admin(self):
+    def test_get_recent_audit_logs_requires_admin(self) -> None:
         """Test that non-admins cannot access audit logs."""
         self._login_instructor()
 
         response = self.client.get("/api/audit/recent")
         assert response.status_code == 403
 
-    def test_get_recent_audit_logs_success(self):
+    def test_get_recent_audit_logs_success(self) -> None:
         """Test successful retrieval of recent audit logs."""
         self._login_institution_admin()
 
@@ -79,7 +79,7 @@ class TestAuditAPI:
             # New route uses AuditService.get_recent_activity with keyword args
             mock_get_activity.assert_called_once_with(institution_id=None, limit=50)
 
-    def test_search_audit_logs_success(self):
+    def test_search_audit_logs_success(self) -> None:
         """Test successful search of audit logs."""
         self._login_institution_admin()
 
@@ -119,7 +119,7 @@ class TestAuditAPI:
             assert call_args[1]["start_date"] == "2023-01-01"
             assert call_args[1]["end_date"] == "2023-01-31"
 
-    def test_search_audit_logs_database_error(self):
+    def test_search_audit_logs_database_error(self) -> None:
         """Test audit log search handles database errors."""
         self._login_institution_admin()
 

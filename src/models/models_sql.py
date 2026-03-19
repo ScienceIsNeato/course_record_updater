@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 from sqlalchemy import (
     JSON,
@@ -250,9 +250,11 @@ class Term(Base, TimestampMixin):  # type: ignore[valid-type,misc]
 
     def get_status(self, reference_date: datetime | None = None) -> str:
         """Return computed status for this term."""
-        # Cast Column types to their runtime values for type checker
-        start = str(self.start_date) if self.start_date else None
-        end = str(self.end_date) if self.end_date else None
+        # Read runtime values explicitly to avoid Column truthiness checks.
+        start_raw = cast(Any, self.start_date)
+        end_raw = cast(Any, self.end_date)
+        start = str(start_raw) if start_raw is not None else None
+        end = str(end_raw) if end_raw is not None else None
         return get_term_status(start, end, reference_date)
 
 
@@ -564,34 +566,32 @@ def to_dict(model: Any, extra_fields: Dict[str, Any] | None = None) -> Dict[str,
 
 def _get_model_data(model: Any) -> Dict[str, Any]:
     """Get model-specific data using dispatch pattern."""
-    model_type = type(model)
-
     # Dispatch to appropriate handler
-    if model_type == Institution:
+    if isinstance(model, Institution):
         return _institution_to_dict(model)
-    elif model_type == User:
+    elif isinstance(model, User):
         return _user_to_dict(model)
-    elif model_type == Program:
+    elif isinstance(model, Program):
         return _program_to_dict(model)
-    elif model_type == Course:
+    elif isinstance(model, Course):
         return _course_to_dict(model)
-    elif model_type == Term:
+    elif isinstance(model, Term):
         return _term_to_dict(model)
-    elif model_type == CourseOffering:
+    elif isinstance(model, CourseOffering):
         return _course_offering_to_dict(model)
-    elif model_type == CourseSection:
+    elif isinstance(model, CourseSection):
         return _course_section_to_dict(model)
-    elif model_type == CourseOutcome:
+    elif isinstance(model, CourseOutcome):
         return _course_outcome_to_dict(model)
-    elif model_type == UserInvitation:
+    elif isinstance(model, UserInvitation):
         return _user_invitation_to_dict(model)
-    elif model_type == CourseSectionOutcome:
+    elif isinstance(model, CourseSectionOutcome):
         return _course_section_outcome_to_dict(model)
-    elif model_type == ProgramOutcome:
+    elif isinstance(model, ProgramOutcome):
         return _program_outcome_to_dict(model)
-    elif model_type == PloMapping:
+    elif isinstance(model, PloMapping):
         return _plo_mapping_to_dict(model)
-    elif model_type == PloMappingEntry:
+    elif isinstance(model, PloMappingEntry):
         return _plo_mapping_entry_to_dict(model)
     else:
         return {}
@@ -602,7 +602,7 @@ def _course_section_outcome_to_dict(model: CourseSectionOutcome) -> Dict[str, An
 
     Includes eager-loaded relationships when available to avoid N+1 queries.
     """
-    data = {
+    data: Dict[str, Any] = {
         "id": model.id,
         "section_id": model.section_id,
         "outcome_id": model.outcome_id,
@@ -630,27 +630,36 @@ def _course_section_outcome_to_dict(model: CourseSectionOutcome) -> Dict[str, An
     state = instance_state(model)
 
     # Include template (CourseOutcome) if eager loaded
-    if "outcome" not in state.unloaded and model.outcome:
+    if "outcome" not in state.unloaded and model.outcome is not None:
         data["_template"] = _course_outcome_to_dict(model.outcome)
 
     # Include section with instructor and offering if eager loaded
-    if "section" not in state.unloaded and model.section:
+    if "section" not in state.unloaded and model.section is not None:
         section_dict = _course_section_to_dict(model.section)
         data["_section"] = section_dict
 
         # Include instructor if eager loaded on section
         section_state = instance_state(model.section)
-        if "instructor" not in section_state.unloaded and model.section.instructor:
+        if (
+            "instructor" not in section_state.unloaded
+            and model.section.instructor is not None
+        ):
             data["_instructor"] = _user_to_dict(model.section.instructor)
 
         # Include offering with term if eager loaded on section
-        if "offering" not in section_state.unloaded and model.section.offering:
+        if (
+            "offering" not in section_state.unloaded
+            and model.section.offering is not None
+        ):
             offering_dict = _course_offering_to_dict(model.section.offering)
             data["_offering"] = offering_dict
 
             # Include term if eager loaded on offering
             offering_state = instance_state(model.section.offering)
-            if "term" not in offering_state.unloaded and model.section.offering.term:
+            if (
+                "term" not in offering_state.unloaded
+                and model.section.offering.term is not None
+            ):
                 data["_term"] = _term_to_dict(model.section.offering.term)
 
     # Include history if eager loaded (avoids N+1 query - was causing 100+ extra queries!)
@@ -688,7 +697,7 @@ def _institution_to_dict(model: Institution) -> Dict[str, Any]:
 
 def _user_to_dict(model: User) -> Dict[str, Any]:
     """Convert User model to dictionary."""
-    data = {
+    data: Dict[str, Any] = {
         "id": model.id,  # Primary key (conventional)
         "user_id": model.id,  # Legacy compatibility
         "email": model.email,
@@ -737,7 +746,7 @@ def _user_to_dict(model: User) -> Dict[str, Any]:
 
 def _program_to_dict(model: Program) -> Dict[str, Any]:
     """Convert Program model to dictionary."""
-    data = {
+    data: Dict[str, Any] = {
         "program_id": model.id,
         "name": model.name,
         "short_name": model.short_name,
@@ -751,13 +760,11 @@ def _program_to_dict(model: Program) -> Dict[str, Any]:
     }
     # Add program_admins if not already present
     if "program_admins" not in data:
-        data["program_admins"] = (
-            model.extras.get("program_admins", []) if model.extras else []
-        )
+        extras = cast(Dict[str, Any], model.extras) if model.extras is not None else {}
+        data["program_admins"] = extras.get("program_admins", [])
     # Expose PLO dashboard display setting (stored in extras via update_program)
-    data["assessment_display_mode"] = (
-        model.extras.get("assessment_display_mode", "both") if model.extras else "both"
-    )
+    extras = cast(Dict[str, Any], model.extras) if model.extras is not None else {}
+    data["assessment_display_mode"] = extras.get("assessment_display_mode", "both")
     return data
 
 
@@ -768,7 +775,7 @@ def _course_to_dict(model: Course) -> Dict[str, Any]:
     """
     from sqlalchemy.orm.attributes import instance_state
 
-    data = {
+    data: Dict[str, Any] = {
         "course_id": model.id,
         "course_number": model.course_number,
         "course_title": model.course_title,
@@ -782,7 +789,7 @@ def _course_to_dict(model: Course) -> Dict[str, Any]:
 
     # Include program_ids using eager-loaded programs if available (avoids N+1 query)
     state = instance_state(model)
-    if "programs" not in state.unloaded and model.programs:
+    if "programs" not in state.unloaded and model.programs is not None:
         data["program_ids"] = [program.id for program in model.programs]
         data["_programs"] = [_program_to_dict(program) for program in model.programs]
     else:
@@ -806,7 +813,7 @@ def _term_to_dict(model: Term) -> Dict[str, Any]:
         "institution_id": model.institution_id,
         "created_at": model.created_at,
         "last_modified": model.updated_at,
-        "offerings_count": len(model.offerings) if model.offerings else 0,
+        "offerings_count": len(model.offerings) if model.offerings is not None else 0,
     }
 
 
@@ -829,12 +836,13 @@ def _course_offering_to_dict(model: CourseOffering) -> Dict[str, Any]:
     if term:
         term_start = term.start_date
         term_end = term.end_date
-    elif hasattr(model, "extras") and model.extras:
-        term_start = model.extras.get("term_start_date")
-        term_end = model.extras.get("term_end_date")
+    elif hasattr(model, "extras") and model.extras is not None:
+        extras = cast(Dict[str, Any], model.extras)
+        term_start = extras.get("term_start_date")
+        term_end = extras.get("term_end_date")
 
     status = get_term_status(term_start, term_end)
-    data = {
+    data: Dict[str, Any] = {
         "offering_id": model.id,
         "course_id": model.course_id,
         "term_id": model.term_id,
@@ -864,7 +872,7 @@ def _course_section_to_dict(model: CourseSection) -> Dict[str, Any]:
 
     Includes eager-loaded relationships when available to avoid N+1 queries.
     """
-    data = {
+    data: Dict[str, Any] = {
         "section_id": model.id,
         "offering_id": model.offering_id,
         "instructor_id": model.instructor_id,
@@ -896,11 +904,11 @@ def _course_section_to_dict(model: CourseSection) -> Dict[str, Any]:
     state = instance_state(model)
 
     # Include instructor if eager loaded
-    if "instructor" not in state.unloaded and model.instructor:
+    if "instructor" not in state.unloaded and model.instructor is not None:
         data["_instructor"] = _user_to_dict(model.instructor)
 
     # Include offering if eager loaded
-    if "offering" not in state.unloaded and model.offering:
+    if "offering" not in state.unloaded and model.offering is not None:
         data["_offering"] = _course_offering_to_dict(model.offering)
 
     return data
@@ -908,7 +916,7 @@ def _course_section_to_dict(model: CourseSection) -> Dict[str, Any]:
 
 def _course_outcome_to_dict(model: CourseOutcome) -> Dict[str, Any]:
     """Convert CourseOutcome model to dictionary."""
-    base_dict = {
+    base_dict: Dict[str, Any] = {
         "outcome_id": model.id,
         "course_id": model.course_id,
         "clo_number": model.clo_number,
@@ -936,7 +944,7 @@ def _course_outcome_to_dict(model: CourseOutcome) -> Dict[str, Any]:
     from sqlalchemy.orm.attributes import instance_state
 
     state = instance_state(model)
-    if "course" not in state.unloaded and model.course:
+    if "course" not in state.unloaded and model.course is not None:
         course_dict = _course_to_dict(model.course)
         base_dict["_course"] = course_dict
         base_dict["course_number"] = model.course.course_number
@@ -959,13 +967,23 @@ def _user_invitation_to_dict(model: UserInvitation) -> Dict[str, Any]:
         "institution_id": model.institution_id,
         "token": model.token,
         "invited_by": model.invited_by,
-        "invited_at": model.invited_at.isoformat() if model.invited_at else None,
-        "expires_at": model.expires_at.isoformat() if model.expires_at else None,
+        "invited_at": (
+            model.invited_at.isoformat() if model.invited_at is not None else None
+        ),
+        "expires_at": (
+            model.expires_at.isoformat() if model.expires_at is not None else None
+        ),
         "status": model.status,
-        "accepted_at": model.accepted_at.isoformat() if model.accepted_at else None,
+        "accepted_at": (
+            model.accepted_at.isoformat() if model.accepted_at is not None else None
+        ),
         "personal_message": model.personal_message,
-        "created_at": model.created_at.isoformat() if model.created_at else None,
-        "updated_at": model.updated_at.isoformat() if model.updated_at else None,
+        "created_at": (
+            model.created_at.isoformat() if model.created_at is not None else None
+        ),
+        "updated_at": (
+            model.updated_at.isoformat() if model.updated_at is not None else None
+        ),
     }
 
 
@@ -978,8 +996,12 @@ def _program_outcome_to_dict(model: ProgramOutcome) -> Dict[str, Any]:
         "plo_number": model.plo_number,
         "description": model.description,
         "is_active": model.is_active,
-        "created_at": model.created_at.isoformat() if model.created_at else None,
-        "updated_at": model.updated_at.isoformat() if model.updated_at else None,
+        "created_at": (
+            model.created_at.isoformat() if model.created_at is not None else None
+        ),
+        "updated_at": (
+            model.updated_at.isoformat() if model.updated_at is not None else None
+        ),
     }
 
 
@@ -993,10 +1015,14 @@ def _plo_mapping_to_dict(model: PloMapping) -> Dict[str, Any]:
         "description": model.description,
         "created_by_user_id": model.created_by_user_id,
         "published_at": (
-            model.published_at.isoformat() if model.published_at else None
+            model.published_at.isoformat() if model.published_at is not None else None
         ),
-        "created_at": model.created_at.isoformat() if model.created_at else None,
-        "updated_at": model.updated_at.isoformat() if model.updated_at else None,
+        "created_at": (
+            model.created_at.isoformat() if model.created_at is not None else None
+        ),
+        "updated_at": (
+            model.updated_at.isoformat() if model.updated_at is not None else None
+        ),
     }
     # Include entries if eager-loaded
     if "entries" in model.__dict__:
@@ -1012,8 +1038,12 @@ def _plo_mapping_entry_to_dict(model: PloMappingEntry) -> Dict[str, Any]:
         "program_outcome_id": model.program_outcome_id,
         "course_outcome_id": model.course_outcome_id,
         "plo_description_snapshot": model.plo_description_snapshot,
-        "created_at": model.created_at.isoformat() if model.created_at else None,
-        "updated_at": model.updated_at.isoformat() if model.updated_at else None,
+        "created_at": (
+            model.created_at.isoformat() if model.created_at is not None else None
+        ),
+        "updated_at": (
+            model.updated_at.isoformat() if model.updated_at is not None else None
+        ),
     }
 
 

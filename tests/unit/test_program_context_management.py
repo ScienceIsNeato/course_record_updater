@@ -5,13 +5,14 @@ This module tests the program context switching, validation, and management
 features implemented in auth_service.py and api_routes.py.
 """
 
+from typing import Any
 from unittest.mock import patch
 
 import pytest
 from flask import Flask
 
 
-def _login_test_user(client, overrides=None):
+def _login_test_user(client: Any, overrides: Any = None) -> Any:
     """Populate test client session with authenticated user data"""
     user_data = {
         "user_id": "test-admin",
@@ -45,13 +46,13 @@ from src.services.auth_service import (
 class TestProgramContextUtilities:
     """Test program context utility functions"""
 
-    def test_get_current_program_id_no_user(self):
+    def test_get_current_program_id_no_user(self) -> None:
         """Test get_current_program_id when no user is logged in"""
         with patch("src.services.auth_service.get_current_user", return_value=None):
             result = get_current_program_id()
             assert result is None
 
-    def test_get_current_program_id_no_context(self):
+    def test_get_current_program_id_no_context(self) -> None:
         """Test get_current_program_id when user has no program context"""
         mock_user = {
             "user_id": "test-user",
@@ -64,7 +65,7 @@ class TestProgramContextUtilities:
             result = get_current_program_id()
             assert result is None
 
-    def test_get_current_program_id_with_context(self):
+    def test_get_current_program_id_with_context(self) -> None:
         """Test get_current_program_id when user has active program context"""
         mock_user = {
             "user_id": "test-user",
@@ -78,14 +79,14 @@ class TestProgramContextUtilities:
             result = get_current_program_id()
             assert result == "prog-123"
 
-    def test_set_current_program_id_no_user(self):
+    def test_set_current_program_id_no_user(self) -> None:
         """Test set_current_program_id when no user is logged in"""
         with patch("src.services.auth_service.get_current_user", return_value=None):
             result = set_current_program_id("prog-123")
             assert result is False
 
     @patch("src.services.auth_service.session", {})
-    def test_set_current_program_id_unauthorized_program(self):
+    def test_set_current_program_id_unauthorized_program(self) -> None:
         """Test set_current_program_id with unauthorized program"""
         mock_user = {
             "user_id": "test-user",
@@ -98,7 +99,7 @@ class TestProgramContextUtilities:
             result = set_current_program_id("prog-999")  # Not in accessible list
             assert result is False
 
-    def test_set_current_program_id_success(self):
+    def test_set_current_program_id_success(self) -> None:
         """Test successful program context switching"""
         app = Flask(__name__)
         app.config["SECRET_KEY"] = "test-secret"
@@ -116,13 +117,13 @@ class TestProgramContextUtilities:
                 result = set_current_program_id("prog-123")
                 assert result is True
 
-    def test_clear_current_program_id_no_user(self):
+    def test_clear_current_program_id_no_user(self) -> None:
         """Test clear_current_program_id when no user is logged in"""
         with patch("src.services.auth_service.get_current_user", return_value=None):
             result = clear_current_program_id()
             assert result is False
 
-    def test_clear_current_program_id_success(self):
+    def test_clear_current_program_id_success(self) -> None:
         """Test successful program context clearing"""
         app = Flask(__name__)
         app.config["SECRET_KEY"] = "test-secret"
@@ -146,7 +147,7 @@ class TestProgramContextAPI:
     """Test program context management API endpoints"""
 
     @pytest.fixture
-    def app(self):
+    def app(self) -> Any:
         """Create Flask app for testing"""
         from src.app import app
 
@@ -154,11 +155,11 @@ class TestProgramContextAPI:
         return app
 
     @pytest.fixture
-    def client(self, app):
+    def client(self, app: Any) -> Any:
         """Create test client"""
         return app.test_client()
 
-    def test_get_program_context_success(self, app, client):
+    def test_get_program_context_success(self, app: Any, client: Any) -> None:
         """Test GET /api/context/program success"""
         mock_user = {
             "user_id": "test-user",
@@ -203,7 +204,7 @@ class TestProgramContextAPI:
                 assert len(data["program_ids"]) == 2
                 assert data["has_multiple_programs"] is True
 
-    def test_switch_program_context_success(self, app, client):
+    def test_switch_program_context_success(self, app: Any, client: Any) -> None:
         """Test POST /api/context/program/<program_id> success"""
         mock_user = {
             "user_id": "test-user",
@@ -242,7 +243,7 @@ class TestProgramContextAPI:
                 assert data["current_program_id"] == "prog-123"
                 assert "program" in data
 
-    def test_switch_program_context_unauthorized(self, app, client):
+    def test_switch_program_context_unauthorized(self, app: Any, client: Any) -> None:
         """Test POST /api/context/program/<program_id> with unauthorized program"""
         mock_user = {
             "user_id": "test-user",
@@ -271,7 +272,7 @@ class TestProgramContextAPI:
                 assert data["success"] is False
                 assert "Access denied" in data["error"]
 
-    def test_clear_program_context_success(self, app, client):
+    def test_clear_program_context_success(self, app: Any, client: Any) -> None:
         """Test DELETE /api/context/program success"""
         with app.app_context():
             with (
@@ -298,7 +299,7 @@ class TestUnassignedCoursesAPI:
     """Test unassigned courses management API endpoints"""
 
     @pytest.fixture
-    def app(self):
+    def app(self) -> Any:
         """Create Flask app for testing"""
         from src.app import app
 
@@ -306,11 +307,11 @@ class TestUnassignedCoursesAPI:
         return app
 
     @pytest.fixture
-    def client(self, app):
+    def client(self, app: Any) -> Any:
         """Create test client"""
         return app.test_client()
 
-    def test_list_unassigned_courses_success(self, app, client):
+    def test_list_unassigned_courses_success(self, app: Any, client: Any) -> None:
         """Test GET /api/courses/unassigned success"""
         mock_courses = [
             {"id": "course-1", "name": "Unassigned Course 1", "program_ids": []},
@@ -343,7 +344,7 @@ class TestUnassignedCoursesAPI:
                 assert data["count"] == 2
                 assert len(data["courses"]) == 2
 
-    def test_assign_course_to_default_success(self, app, client):
+    def test_assign_course_to_default_success(self, app: Any, client: Any) -> None:
         """Test POST /api/courses/<course_id>/assign-default success"""
         with app.app_context():
             with (
@@ -375,14 +376,14 @@ class TestContextValidationMiddleware:
     """Test context validation middleware functionality"""
 
     @pytest.fixture
-    def app(self):
+    def app(self) -> Any:
         """Create Flask app for testing"""
         from src.app import app
 
         app.config["TESTING"] = True
         return app
 
-    def test_context_validation_skips_auth_endpoints(self, app):
+    def test_context_validation_skips_auth_endpoints(self, app: Any) -> None:
         """Test that context validation skips auth endpoints"""
         with app.test_request_context("/api/auth/login", method="POST"):
             from src.api.routes.context import validate_context
@@ -391,7 +392,7 @@ class TestContextValidationMiddleware:
             result = validate_context()
             assert result is None
 
-    def test_context_validation_skips_context_endpoints(self, app):
+    def test_context_validation_skips_context_endpoints(self, app: Any) -> None:
         """Test that context validation skips context management endpoints"""
         with app.test_request_context("/api/context/program", method="GET"):
             from src.api.routes.context import validate_context
@@ -400,7 +401,7 @@ class TestContextValidationMiddleware:
             result = validate_context()
             assert result is None
 
-    def test_context_validation_allows_site_admin(self, app):
+    def test_context_validation_allows_site_admin(self, app: Any) -> None:
         """Test that context validation allows site admin without institution context"""
         mock_user = {"user_id": "admin-123", "role": "site_admin"}
 
@@ -413,7 +414,7 @@ class TestContextValidationMiddleware:
                 result = validate_context()
                 assert result is None
 
-    def test_context_validation_logs_missing_institution(self, app):
+    def test_context_validation_logs_missing_institution(self, app: Any) -> None:
         """Test that context validation logs when institution context is missing"""
         mock_user = {"user_id": "user-123", "role": "program_admin"}
 

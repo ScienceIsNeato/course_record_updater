@@ -2,7 +2,7 @@ import importlib
 import os
 from typing import Any, List, Optional
 
-import docx
+from docx.document import Document
 
 from src.utils.logging_config import get_logger
 
@@ -49,7 +49,7 @@ class FileAdapterDispatcher:
         Returns:
             A list of adapter names (filenames without .py).
         """
-        adapter_names = []
+        adapter_names: List[str] = []
         try:
             # Ensure ADAPTER_DIR is relative to this file's location or use absolute path
             # For simplicity, assume it's relative to project root where app runs
@@ -78,7 +78,7 @@ class FileAdapterDispatcher:
         return adapter_names
 
     def process_file(
-        self, document: docx.document.Document, adapter_name: str
+        self, document: Document, adapter_name: str
     ) -> List[dict[str, Any]]:
         """
         Loads the specified adapter, calls its parse function, and optionally validates.
@@ -143,7 +143,7 @@ class FileAdapterDispatcher:
         return adapter_instance
 
     def _parse_document(
-        self, adapter_instance: Any, document: docx.document.Document
+        self, adapter_instance: Any, document: Document
     ) -> List[dict[str, Any]]:
         """Parse the document using the adapter instance."""
         class_name = adapter_instance.__class__.__name__
@@ -162,8 +162,8 @@ class FileAdapterDispatcher:
             return parsed_data_list  # Return raw parsed data
 
         logger.info("Applying base validation...")
-        validated_data_list = []
-        validation_errors = []
+        validated_data_list: List[dict[str, Any]] = []
+        validation_errors: List[str] = []
 
         for i, course_data in enumerate(parsed_data_list):
             try:

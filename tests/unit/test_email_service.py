@@ -5,6 +5,8 @@ Tests email functionality including templates, SMTP integration, and
 CRITICAL PROTECTION against sending emails to real institution/protected domains.
 """
 
+from collections.abc import Generator
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -21,7 +23,7 @@ from src.services.email_service import (
 
 
 @pytest.fixture
-def app():
+def app() -> Any:
     """Create Flask app for testing"""
     app = Flask(__name__)
     app.config["SECRET_KEY"] = "test-secret-key"
@@ -36,7 +38,7 @@ def app():
 
 
 @pytest.fixture
-def app_context(app):
+def app_context(app: Any) -> Generator[Any, None, None]:
     """Create app context for testing"""
     with app.app_context():
         yield app
@@ -45,38 +47,38 @@ def app_context(app):
 class TestEmailProtection:
     """Test critical protection against sending emails to real institution/protected domains"""
 
-    def test_protected_domain_detection_cei_test(self):
+    def test_protected_domain_detection_cei_test(self) -> None:
         """Test detection of cei.test domain"""
         assert EmailService._is_protected_email("test@cei.test") is True
         assert EmailService._is_protected_email("admin@cei.test") is True
         assert EmailService._is_protected_email("student@cei.test") is True
 
-    def test_protected_domain_detection_coastal_domains(self):
+    def test_protected_domain_detection_coastal_domains(self) -> None:
         """Test detection of coastal education domains"""
         assert EmailService._is_protected_email("test@coastaledu.org") is True
         assert EmailService._is_protected_email("admin@coastal.edu") is True
         assert EmailService._is_protected_email("faculty@coastalcarolina.edu") is True
 
-    def test_protected_domain_detection_subdomains(self):
+    def test_protected_domain_detection_subdomains(self) -> None:
         """Test detection of subdomains of protected domains"""
         assert EmailService._is_protected_email("test@mail.cei.test") is True
         assert EmailService._is_protected_email("admin@student.coastal.edu") is True
 
-    def test_safe_domain_detection(self):
+    def test_safe_domain_detection(self) -> None:
         """Test that safe domains are not flagged as protected"""
         assert EmailService._is_protected_email("test@example.com") is False
         assert EmailService._is_protected_email("admin@gmail.com") is False
         assert EmailService._is_protected_email("user@testuniversity.edu") is False
         assert EmailService._is_protected_email("faculty@northernvalley.edu") is False
 
-    def test_invalid_email_handling(self):
+    def test_invalid_email_handling(self) -> None:
         """Test handling of invalid email formats"""
         assert EmailService._is_protected_email("") is False
         assert EmailService._is_protected_email("invalid-email") is False
         assert EmailService._is_protected_email("@cei.test") is False
         assert EmailService._is_protected_email(None) is False
 
-    def test_protected_email_blocking_verification(self, app_context):
+    def test_protected_email_blocking_verification(self, app_context: Any) -> None:
         """Test that verification emails are blocked for protected domains in non-production"""
         with pytest.raises(
             EmailServiceError,
@@ -88,7 +90,7 @@ class TestEmailProtection:
                 user_name="Test User",
             )
 
-    def test_protected_email_blocking_password_reset(self, app_context):
+    def test_protected_email_blocking_password_reset(self, app_context: Any) -> None:
         """Test that password reset emails are blocked for protected domains in non-production"""
         with pytest.raises(
             EmailServiceError,
@@ -100,7 +102,7 @@ class TestEmailProtection:
                 user_name="Admin User",
             )
 
-    def test_protected_email_blocking_invitation(self, app_context):
+    def test_protected_email_blocking_invitation(self, app_context: Any) -> None:
         """Test that invitation emails are blocked for protected domains in non-production"""
         with pytest.raises(
             EmailServiceError,
@@ -114,7 +116,7 @@ class TestEmailProtection:
                 role="instructor",
             )
 
-    def test_protected_email_blocking_welcome(self, app_context):
+    def test_protected_email_blocking_welcome(self, app_context: Any) -> None:
         """Test that welcome emails are blocked for protected domains in non-production"""
         with pytest.raises(
             EmailServiceError,
@@ -127,7 +129,9 @@ class TestEmailProtection:
             )
 
     @patch("src.services.email_service.create_email_provider")
-    def test_safe_email_sending_verification(self, mock_create_provider, app_context):
+    def test_safe_email_sending_verification(
+        self, mock_create_provider: Any, app_context: Any
+    ) -> None:
         """Test that verification emails work for safe domains"""
         # Mock provider
         mock_provider = Mock()
@@ -143,8 +147,8 @@ class TestEmailProtection:
 
     @patch("src.services.email_service.create_email_provider")
     def test_safe_email_sending_convenience_functions(
-        self, mock_create_provider, app_context
-    ):
+        self, mock_create_provider: Any, app_context: Any
+    ) -> None:
         """Test that convenience functions also respect protection"""
         # Mock provider
         mock_provider = Mock()
@@ -170,7 +174,9 @@ class TestEmailProtection:
             send_password_reset_email("test@coastal.edu", "token", "User")
 
     @patch("src.services.email_service.create_email_provider")
-    def test_production_mode_allows_protected_emails(self, mock_create_provider):
+    def test_production_mode_allows_protected_emails(
+        self, mock_create_provider: Any
+    ) -> None:
         """Test that production mode allows emails to protected domains"""
         # Mock the email provider
         mock_provider = Mock()
@@ -200,7 +206,7 @@ class TestEmailProtection:
 class TestEmailConfiguration:
     """Test email service configuration"""
 
-    def test_configure_app_sets_defaults(self, app):
+    def test_configure_app_sets_defaults(self, app: Any) -> None:
         """Test that app configuration sets correct defaults"""
         # Email system now uses provider-based architecture
         # Check that basic config is set
@@ -210,7 +216,7 @@ class TestEmailConfiguration:
         # MAIL_SERVER, MAIL_PORT, etc. are legacy SMTP configs no longer used
         # MAIL_DEFAULT_SENDER can come from env vars, so don't test exact value
 
-    def test_configure_app_with_env_vars(self):
+    def test_configure_app_with_env_vars(self) -> None:
         """Test configuration with environment variables"""
         app = Flask(__name__)
         app.config["TESTING"] = True
@@ -237,7 +243,7 @@ class TestEmailConfiguration:
 class TestEmailTemplates:
     """Test email template generation"""
 
-    def test_verification_email_html_template(self, app_context):
+    def test_verification_email_html_template(self, app_context: Any) -> None:
         """Test HTML verification email template"""
         html = EmailService._render_verification_email_html(
             user_name="John Doe",
@@ -251,7 +257,7 @@ class TestEmailTemplates:
         assert "Verify Email Address" in html
         assert "<!DOCTYPE html>" in html
 
-    def test_verification_email_text_template(self, app_context):
+    def test_verification_email_text_template(self, app_context: Any) -> None:
         """Test text verification email template"""
         text = EmailService._render_verification_email_text(
             user_name="Jane Smith",
@@ -264,7 +270,7 @@ class TestEmailTemplates:
         assert "jane@example.com" in text
         assert "LoopCloser" in text
 
-    def test_password_reset_email_templates(self, app_context):
+    def test_password_reset_email_templates(self, app_context: Any) -> None:
         """Test password reset email templates"""
         html = EmailService._render_password_reset_email_html(
             user_name="Test User",
@@ -286,7 +292,7 @@ class TestEmailTemplates:
         assert "Reset Password" in html
         assert "Password Reset" in text
 
-    def test_invitation_email_templates(self, app_context):
+    def test_invitation_email_templates(self, app_context: Any) -> None:
         """Test invitation email templates"""
         html = EmailService._render_invitation_email_html(
             email="invitee@example.com",
@@ -312,7 +318,7 @@ class TestEmailTemplates:
         assert "Welcome to our team!" in html and "Welcome to our team!" in text
         assert "Accept Invitation" in html
 
-    def test_invitation_email_without_personal_message(self, app_context):
+    def test_invitation_email_without_personal_message(self, app_context: Any) -> None:
         """Test invitation email templates without personal message"""
         html = EmailService._render_invitation_email_html(
             email="invitee@example.com",
@@ -328,7 +334,7 @@ class TestEmailTemplates:
         assert "Program Admin" in html
         assert "Personal message" not in html
 
-    def test_welcome_email_templates(self, app_context):
+    def test_welcome_email_templates(self, app_context: Any) -> None:
         """Test welcome email templates"""
         html = EmailService._render_welcome_email_html(
             user_name="New User",
@@ -354,18 +360,20 @@ class TestEmailTemplates:
 class TestEmailURLBuilding:
     """Test URL building for email links"""
 
-    def test_verification_url_building(self, app_context):
+    def test_verification_url_building(self, app_context: Any) -> None:
         """Test verification URL building"""
         url = EmailService._build_verification_url("test-token-123")
         assert url == "http://localhost:5000/api/auth/verify-email/test-token-123"
 
-    def test_password_reset_url_building(self, app_context):
+    def test_password_reset_url_building(self, app_context: Any) -> None:
         """Test password reset URL building"""
         url = EmailService._build_password_reset_url("reset-token-456")
         assert url == "http://localhost:5000/reset-password/reset-token-456"
 
     @patch("src.services.email_service.EmailService._send_email")
-    def test_send_password_reset_confirmation_email(self, mock_send_email, app_context):
+    def test_send_password_reset_confirmation_email(
+        self, mock_send_email: Any, app_context: Any
+    ) -> None:
         """Test sending password reset confirmation email (covers lines 212-222)"""
         mock_send_email.return_value = True
 
@@ -391,10 +399,10 @@ class TestEmailLogging:
     @patch("src.services.email_service.create_email_provider")
     def test_logs_successful_email_preview(
         self,
-        mock_create_provider,
-        app_context,
-        tmp_path,
-    ):
+        mock_create_provider: Any,
+        app_context: Any,
+        tmp_path: Any,
+    ) -> None:
         """Ensure successful sends append preview entries."""
 
         mock_provider = Mock()
@@ -417,7 +425,7 @@ class TestEmailLogging:
         assert "test@example.com" in contents
         assert "Verify your LoopCloser account" in contents
 
-    def test_logs_blocked_email_preview(self, tmp_path, app_context):
+    def test_logs_blocked_email_preview(self, tmp_path: Any, app_context: Any) -> None:
         """Ensure blocked emails are still recorded for storytelling/demo purposes."""
         log_path = tmp_path / "blocked-emails.log"
         app_context.config["EMAIL_LOG_PATH"] = str(log_path)
@@ -438,17 +446,17 @@ class TestEmailLogging:
         assert "test@cei.test" in contents
         assert "Cannot send emails to protected domain" in contents
 
-    def test_invitation_url_building(self, app_context):
+    def test_invitation_url_building(self, app_context: Any) -> None:
         """Test invitation URL building"""
         url = EmailService._build_invitation_url("invite-token-789")
         assert url == "http://localhost:5000/register/accept/invite-token-789"
 
-    def test_dashboard_url_building(self, app_context):
+    def test_dashboard_url_building(self, app_context: Any) -> None:
         """Test dashboard URL building"""
         url = EmailService._build_dashboard_url()
         assert url == "http://localhost:5000/dashboard"
 
-    def test_url_building_with_custom_base_url(self):
+    def test_url_building_with_custom_base_url(self) -> None:
         """Test URL building with custom base URL"""
         app = Flask(__name__)
         app.config["BASE_URL"] = "https://production.courserecord.app"
@@ -469,7 +477,9 @@ class TestEmailSuppression:
     """Test email suppression in development mode"""
 
     @patch("src.services.email_service.create_email_provider")
-    def test_email_suppression_enabled(self, mock_create_provider, app_context):
+    def test_email_suppression_enabled(
+        self, mock_create_provider: Any, app_context: Any
+    ) -> None:
         """Test that emails are suppressed when MAIL_SUPPRESS_SEND is True"""
 
         # Mock provider
@@ -488,7 +498,9 @@ class TestEmailSuppression:
         assert result is True
 
     @patch("src.services.email_service.create_email_provider")
-    def test_email_suppression_logs_content(self, mock_create_provider, app_context):
+    def test_email_suppression_logs_content(
+        self, mock_create_provider: Any, app_context: Any
+    ) -> None:
         """Test that suppressed emails log their content"""
 
         # Mock provider
@@ -513,7 +525,7 @@ class TestProviderSending:
     """Test provider-based email sending"""
 
     @patch("src.services.email_service.create_email_provider")
-    def test_provider_sending_success(self, mock_create_provider):
+    def test_provider_sending_success(self, mock_create_provider: Any) -> None:
         """Test email sending via provider"""
 
         # Mock provider
@@ -540,7 +552,7 @@ class TestProviderSending:
             mock_provider.send_email.assert_called_once()
 
     @patch("src.services.email_service.create_email_provider")
-    def test_provider_sending_failure(self, mock_create_provider):
+    def test_provider_sending_failure(self, mock_create_provider: Any) -> None:
         """Test email sending failure via provider"""
 
         # Mock provider to fail
@@ -570,7 +582,7 @@ class TestProviderSending:
 class TestConvenienceFunctions:
     """Test convenience functions"""
 
-    def test_convenience_functions_exist(self):
+    def test_convenience_functions_exist(self) -> None:
         """Test that all convenience functions are available"""
         assert callable(send_verification_email)
         assert callable(send_password_reset_email)
@@ -578,7 +590,9 @@ class TestConvenienceFunctions:
         assert callable(send_welcome_email)
 
     @patch("src.services.email_service.create_email_provider")
-    def test_convenience_functions_work(self, mock_create_provider, app_context):
+    def test_convenience_functions_work(
+        self, mock_create_provider: Any, app_context: Any
+    ) -> None:
         """Test that convenience functions work correctly"""
 
         # Mock provider
@@ -602,7 +616,9 @@ class TestCourseReminderEmail:
     """Test course assessment reminder email functionality."""
 
     @patch("src.services.email_service.create_email_provider")
-    def test_send_course_assessment_reminder(self, mock_create_provider, app_context):
+    def test_send_course_assessment_reminder(
+        self, mock_create_provider: Any, app_context: Any
+    ) -> None:
         """Test sending course assessment reminder email."""
 
         # Mock provider
@@ -625,8 +641,8 @@ class TestCourseReminderEmail:
 
     @patch("src.services.email_service.create_email_provider")
     def test_send_course_assessment_reminder_failure(
-        self, mock_create_provider, app_context
-    ):
+        self, mock_create_provider: Any, app_context: Any
+    ) -> None:
         """Test course reminder handles send failure."""
 
         mock_provider = Mock()
@@ -646,8 +662,8 @@ class TestCourseReminderEmail:
 
     @patch("src.services.email_service.create_email_provider")
     def test_send_course_assessment_reminder_with_empty_names(
-        self, mock_create_provider, app_context
-    ):
+        self, mock_create_provider: Any, app_context: Any
+    ) -> None:
         """Test course reminder with minimal data."""
 
         mock_provider = Mock()
@@ -667,8 +683,8 @@ class TestCourseReminderEmail:
 
     @patch("src.services.email_service.create_email_provider")
     def test_send_course_assessment_reminder_exception(
-        self, mock_create_provider, app_context
-    ):
+        self, mock_create_provider: Any, app_context: Any
+    ) -> None:
         """Test course reminder handles exceptions."""
 
         mock_provider = Mock()

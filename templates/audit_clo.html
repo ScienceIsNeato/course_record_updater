@@ -1,353 +1,533 @@
-{% extends "dashboard/base_dashboard.html" %}
-
-{% block title %}Outcome Audit & Approval{% endblock %}
-
-{% block page_header %}{% endblock %}
-
-{% block content %}
+{% extends "dashboard/base_dashboard.html" %} {% block title %}Outcome Audit &
+Approval{% endblock %} {% block page_header %}{% endblock %} {% block content %}
 <div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1>Outcome Audit & Approval</h1>
-            <p class="text-muted">Review and manage Course Learning Outcomes. Outcomes can be managed via program,
-                course, offering or section. Use this page to mark outcomes as Complete, Needs Rework, etc.</p>
-        </div>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1>Outcome Audit & Approval</h1>
+      <p class="text-muted">
+        Review and manage Course Learning Outcomes. Outcomes can be managed via
+        program, course, offering or section. Use this page to mark outcomes as
+        Complete, Needs Rework, etc.
+      </p>
     </div>
+  </div>
 
-    <!-- Summary Stats in full CLO lifecycle with color coding -->
-    <div class="row mb-4">
-        <div class="col">
-            <div class="card" style="border-color: #6c757d; border-width: 2px;">
-                <div class="card-body text-center py-2">
-                    <h4 class="mb-0" id="statUnassigned" style="color: #6c757d;">-</h4>
-                    <p class="mb-0 small" style="color: #6c757d;">Unassigned</p>
-                </div>
-            </div>
+  <!-- Summary Stats in full CLO lifecycle with color coding -->
+  <div class="row mb-4">
+    <div class="col">
+      <div class="card" style="border-color: #6c757d; border-width: 2px">
+        <div class="card-body text-center py-2">
+          <h4 class="mb-0" id="statUnassigned" style="color: #6c757d">-</h4>
+          <p class="mb-0 small" style="color: #6c757d">Unassigned</p>
         </div>
-        <div class="col">
-            <div class="card" style="border-color: #212529; border-width: 2px;">
-                <div class="card-body text-center py-2">
-                    <h4 class="mb-0" id="statAssigned" style="color: #212529;">-</h4>
-                    <p class="mb-0 small" style="color: #212529;">Assigned</p>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="card" style="border-color: #0d6efd; border-width: 2px;">
-                <div class="card-body text-center py-2">
-                    <h4 class="mb-0" id="statInProgress" style="color: #0d6efd;">-</h4>
-                    <p class="mb-0 small" style="color: #0d6efd;">In Progress</p>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="card" style="border-color: #fd7e14; border-width: 2px;">
-                <div class="card-body text-center py-2">
-                    <h4 class="mb-0" id="statNeedsRework" style="color: #fd7e14;">-</h4>
-                    <p class="mb-0 small" style="color: #fd7e14;">Needs Rework</p>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="card" style="border-color: #9acd32; border-width: 2px;">
-                <div class="card-body text-center py-2">
-                    <h4 class="mb-0" id="statAwaitingApproval" style="color: #6b8e23;">-</h4>
-                    <p class="mb-0 small" style="color: #6b8e23;">Awaiting Approval</p>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="card" style="border-color: #198754; border-width: 2px;">
-                <div class="card-body text-center py-2">
-                    <h4 class="mb-0" id="statApproved" style="color: #198754;">-</h4>
-                    <p class="mb-0 small" style="color: #198754;">Approved</p>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="card" style="border-color: #dc3545; border-width: 2px;">
-                <div class="card-body text-center py-2">
-                    <h4 class="mb-0" id="statNCI" style="color: #dc3545;">-</h4>
-                    <p class="mb-0 small" style="color: #dc3545;">NCI</p>
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
+    <div class="col">
+      <div class="card" style="border-color: #212529; border-width: 2px">
+        <div class="card-body text-center py-2">
+          <h4 class="mb-0" id="statAssigned" style="color: #212529">-</h4>
+          <p class="mb-0 small" style="color: #212529">Assigned</p>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card" style="border-color: #0d6efd; border-width: 2px">
+        <div class="card-body text-center py-2">
+          <h4 class="mb-0" id="statInProgress" style="color: #0d6efd">-</h4>
+          <p class="mb-0 small" style="color: #0d6efd">In Progress</p>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card" style="border-color: #fd7e14; border-width: 2px">
+        <div class="card-body text-center py-2">
+          <h4 class="mb-0" id="statNeedsRework" style="color: #fd7e14">-</h4>
+          <p class="mb-0 small" style="color: #fd7e14">Needs Rework</p>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card" style="border-color: #9acd32; border-width: 2px">
+        <div class="card-body text-center py-2">
+          <h4 class="mb-0" id="statAwaitingApproval" style="color: #6b8e23">
+            -
+          </h4>
+          <p class="mb-0 small" style="color: #6b8e23">Awaiting Approval</p>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card" style="border-color: #198754; border-width: 2px">
+        <div class="card-body text-center py-2">
+          <h4 class="mb-0" id="statApproved" style="color: #198754">-</h4>
+          <p class="mb-0 small" style="color: #198754">Approved</p>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card" style="border-color: #dc3545; border-width: 2px">
+        <div class="card-body text-center py-2">
+          <h4 class="mb-0" id="statNCI" style="color: #dc3545">-</h4>
+          <p class="mb-0 small" style="color: #dc3545">NCI</p>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    <!-- Filters: Term, Program, Course, Status -->
-    <div class="card mb-4">
-        <div class="card-body py-3">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-3">
-                    <label for="termFilter" class="form-label mb-1">Term</label>
-                    <select class="form-select form-select-sm" id="termFilter">
-                        <option value="">All Terms</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="programFilter" class="form-label mb-1">Program</label>
-                    <select class="form-select form-select-sm" id="programFilter">
-                        <option value="">All Programs</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="courseFilter" class="form-label mb-1">Course</label>
-                    <select class="form-select form-select-sm" id="courseFilter">
-                        <option value="">All Courses</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="statusFilter" class="form-label mb-1">Status</label>
-                    <select class="form-select form-select-sm" id="statusFilter">
-                        <option value="all" selected>All Statuses</option>
-                        <option value="unassigned">Unassigned</option>
-                        <option value="assigned">Assigned</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="approval_pending">Needs Rework</option>
-                        <option value="awaiting_approval">Awaiting Approval</option>
-                        <option value="approved">Approved</option>
-                        <option value="never_coming_in">Never Coming In</option>
-                    </select>
-                </div>
-            </div>
+  <!-- Filters: Term, Program, Course, Status -->
+  <div class="card mb-4">
+    <div class="card-body py-3">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label for="termFilter" class="form-label mb-1">Term</label>
+          <select class="form-select form-select-sm" id="termFilter">
+            <option value="">All Terms</option>
+          </select>
         </div>
+        <div class="col-md-3">
+          <label for="programFilter" class="form-label mb-1">Program</label>
+          <select class="form-select form-select-sm" id="programFilter">
+            <option value="">All Programs</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="courseFilter" class="form-label mb-1">Course</label>
+          <select class="form-select form-select-sm" id="courseFilter">
+            <option value="">All Courses</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="statusFilter" class="form-label mb-1">Status</label>
+          <select class="form-select form-select-sm" id="statusFilter">
+            <option value="all" selected>All Statuses</option>
+            <option value="unassigned">Unassigned</option>
+            <option value="assigned">Assigned</option>
+            <option value="in_progress">In Progress</option>
+            <option value="approval_pending">Needs Rework</option>
+            <option value="awaiting_approval">Awaiting Approval</option>
+            <option value="approved">Approved</option>
+            <option value="never_coming_in">Never Coming In</option>
+          </select>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <!-- CLO List -->
-    <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Selected Learning Outcomes</h5>
-            <div class="d-flex align-items-center gap-2">
-                <label class="form-label mb-0 small text-muted">Sort by:</label>
-                <select class="form-select form-select-sm" id="sortBy" style="width: auto;">
-                    <option value="course_number">Course</option>
-                    <option value="instructor_name">Instructor</option>
-                    <option value="submitted_at">Submission Date</option>
-                </select>
-                <select class="form-select form-select-sm" id="sortOrder" style="width: auto;">
-                    <option value="asc">A-Z</option>
-                    <option value="desc">Z-A</option>
-                </select>
-            </div>
-        </div>
-        <div class="card-body">
-            <div id="cloListContainer">
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" aria-label="Loading">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p class="text-muted mt-2">Loading Outcomes...</p>
-                </div>
-            </div>
-        </div>
+  <!-- CLO List -->
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Selected Learning Outcomes</h5>
+      <div class="d-flex align-items-center gap-2">
+        <label class="form-label mb-0 small text-muted">Sort by:</label>
+        <select
+          class="form-select form-select-sm"
+          id="sortBy"
+          style="width: auto"
+        >
+          <option value="course_number">Course</option>
+          <option value="instructor_name">Instructor</option>
+          <option value="submitted_at">Submission Date</option>
+        </select>
+        <select
+          class="form-select form-select-sm"
+          id="sortOrder"
+          style="width: auto"
+        >
+          <option value="asc">A-Z</option>
+          <option value="desc">Z-A</option>
+        </select>
+      </div>
     </div>
+    <div class="card-body">
+      <div id="cloListContainer">
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary" aria-label="Loading">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="text-muted mt-2">Loading Outcomes...</p>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- CLO Detail Modal -->
-<div class="modal fade" id="cloDetailModal" tabindex="-1" aria-labelledby="cloDetailModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="cloDetailModalLabel">Outcome Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<div
+  class="modal fade"
+  id="cloDetailModal"
+  tabindex="-1"
+  aria-labelledby="cloDetailModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="cloDetailModalLabel">Outcome Details</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <div id="cloDetailContentMain"></div>
+        <div id="cloReworkSection" class="mt-4" style="display: none">
+          <div class="alert alert-info">
+            <strong>Requesting rework for:</strong>
+            <p class="mb-0" id="reworkCloDescription"></p>
+          </div>
+          <form id="cloReworkForm">
+            <div class="mb-3">
+              <label for="reworkFeedbackComments" class="form-label"
+                >Feedback Comments *</label
+              >
+              <textarea
+                class="form-control"
+                id="reworkFeedbackComments"
+                name="comments"
+                rows="4"
+                required
+                placeholder="Explain what needs to be revised or improved..."
+              ></textarea>
+              <small class="text-muted"
+                >Be specific about what needs to be changed.</small
+              >
             </div>
-            <div class="modal-body">
-                <div id="cloDetailContentMain"></div>
-                <div id="cloReworkSection" class="mt-4" style="display: none;">
-                    <div class="alert alert-info">
-                        <strong>Requesting rework for:</strong>
-                        <p class="mb-0" id="reworkCloDescription"></p>
-                    </div>
-                    <form id="cloReworkForm">
-                        <div class="mb-3">
-                            <label for="reworkFeedbackComments" class="form-label">Feedback Comments *</label>
-                            <textarea class="form-control" id="reworkFeedbackComments" name="comments" rows="4" required
-                                placeholder="Explain what needs to be revised or improved..."></textarea>
-                            <small class="text-muted">Be specific about what needs to be changed.</small>
-                        </div>
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="reworkSendEmail" name="send_email"
-                                checked>
-                            <label class="form-check-label" for="reworkSendEmail">
-                                Send email notification to instructor
-                            </label>
-                        </div>
-                        <div id="reworkAlert" class="alert d-none" role="alert"></div>
-                    </form>
-                </div>
+            <div class="form-check mb-3">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="reworkSendEmail"
+                name="send_email"
+                checked
+              />
+              <label class="form-check-label" for="reworkSendEmail">
+                Send email notification to instructor
+              </label>
             </div>
-            <div class="modal-footer">
-                <div id="cloDetailActionsStandard" class="w-100 justify-content-end gap-2" style="display: flex;">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-warning" id="requestReworkBtn" onclick="openReworkModal()">
-                        Request Rework
-                    </button>
-                    <button type="button" class="btn btn-dark" id="markNCIBtn" onclick="markAsNCI()">
-                        Mark as NCI (Never Coming In)
-                    </button>
-                    <button type="button" class="btn btn-warning" id="reopenBtn" onclick="reopenCLOFromModal()">
-                        Reopen Outcome
-                    </button>
-                    <button type="button" class="btn btn-success" id="approveBtn" onclick="approveCLO()">
-                        Approve
-                    </button>
-                </div>
-                <div id="cloDetailActionsRework" class="w-100 justify-content-end gap-2" style="display: none;">
-                    <button type="button" class="btn btn-secondary" id="cancelReworkBtn">
-                        Cancel
-                    </button>
-                    <button type="submit" class="btn btn-warning" form="cloReworkForm">
-                        Send for Rework
-                    </button>
-                </div>
-            </div>
+            <div id="reworkAlert" class="alert d-none" role="alert"></div>
+          </form>
         </div>
+      </div>
+      <div class="modal-footer">
+        <div
+          id="cloDetailActionsStandard"
+          class="w-100 justify-content-end gap-2"
+          style="display: flex"
+        >
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            class="btn btn-warning"
+            id="requestReworkBtn"
+            onclick="openReworkModal()"
+          >
+            Request Rework
+          </button>
+          <button
+            type="button"
+            class="btn btn-dark"
+            id="markNCIBtn"
+            onclick="markAsNCI()"
+          >
+            Mark as NCI (Never Coming In)
+          </button>
+          <button
+            type="button"
+            class="btn btn-warning"
+            id="reopenBtn"
+            onclick="reopenCLOFromModal()"
+          >
+            Reopen Outcome
+          </button>
+          <button
+            type="button"
+            class="btn btn-success"
+            id="approveBtn"
+            onclick="approveCLO()"
+          >
+            Approve
+          </button>
+        </div>
+        <div
+          id="cloDetailActionsRework"
+          class="w-100 justify-content-end gap-2"
+          style="display: none"
+        >
+          <button type="button" class="btn btn-secondary" id="cancelReworkBtn">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-warning" form="cloReworkForm">
+            Send for Rework
+          </button>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Send Reminder Modal -->
-<div class="modal fade" id="sendReminderModal" tabindex="-1" aria-labelledby="sendReminderModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="sendReminderModalLabel">Send Reminder</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="sendReminderForm">
-                <div class="modal-body">
-                    <div class="alert alert-info mb-3">
-                        <strong>Sending reminder to:</strong>
-                        <p class="mb-0" id="reminderInstructorEmail">—</p>
-                    </div>
+<div
+  class="modal fade"
+  id="sendReminderModal"
+  tabindex="-1"
+  aria-labelledby="sendReminderModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="sendReminderModalLabel">Send Reminder</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <form id="sendReminderForm">
+        <div class="modal-body">
+          <div class="alert alert-info mb-3">
+            <strong>Sending reminder to:</strong>
+            <p class="mb-0" id="reminderInstructorEmail">—</p>
+          </div>
 
-                    <div class="mb-3">
-                        <label for="reminderMessage" class="form-label fw-semibold">Email Preview</label>
-                        <textarea class="form-control" id="reminderMessage" rows="6" required></textarea>
-                        <small class="text-muted">This message is auto-populated and can be edited before
-                            sending.</small>
-                    </div>
+          <div class="mb-3">
+            <label for="reminderMessage" class="form-label fw-semibold"
+              >Email Preview</label
+            >
+            <textarea
+              class="form-control"
+              id="reminderMessage"
+              rows="6"
+              required
+            ></textarea>
+            <small class="text-muted"
+              >This message is auto-populated and can be edited before
+              sending.</small
+            >
+          </div>
 
-                    <div id="reminderIncompleteClOs" class="alert alert-warning" style="display: none;">
-                        <!-- Incomplete CLOs will be listed here -->
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Send Reminder</button>
-                </div>
-            </form>
+          <div
+            id="reminderIncompleteClOs"
+            class="alert alert-warning"
+            style="display: none"
+          >
+            <!-- Incomplete CLOs will be listed here -->
+          </div>
         </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary">Send Reminder</button>
+        </div>
+      </form>
     </div>
+  </div>
 </div>
 
 <!-- Assign Instructor Modal -->
-<div class="modal fade" id="assignInstructorModal" tabindex="-1" aria-labelledby="assignInstructorModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="assignInstructorModalLabel">Assign Instructor</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="assignInstructorForm">
-                <div class="modal-body">
-                    <p class="text-muted mb-3">Assign an instructor to this course section.</p>
-                    <div class="mb-3">
-                        <label for="assignInstructorSelect" class="form-label">Select Instructor</label>
-                        <select class="form-select" id="assignInstructorSelect" required>
-                            <option value="">Loading instructors...</option>
-                        </select>
-                    </div>
-                    <div class="text-center my-3">
-                        <span class="text-muted">— OR —</span>
-                    </div>
-                    <div class="text-center">
-                        <button type="button" class="btn btn-outline-primary" id="inviteNewInstructorBtn">
-                            <i class="fas fa-envelope"></i> Invite New Instructor
-                        </button>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="saveAssignmentBtn">Assign</button>
-                </div>
-            </form>
+<div
+  class="modal fade"
+  id="assignInstructorModal"
+  tabindex="-1"
+  aria-labelledby="assignInstructorModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="assignInstructorModalLabel">
+          Assign Instructor
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <form id="assignInstructorForm">
+        <div class="modal-body">
+          <p class="text-muted mb-3">
+            Assign an instructor to this course section.
+          </p>
+          <div class="mb-3">
+            <label for="assignInstructorSelect" class="form-label"
+              >Select Instructor</label
+            >
+            <select class="form-select" id="assignInstructorSelect" required>
+              <option value="">Loading instructors...</option>
+            </select>
+          </div>
+          <div class="text-center my-3">
+            <span class="text-muted">— OR —</span>
+          </div>
+          <div class="text-center">
+            <button
+              type="button"
+              class="btn btn-outline-primary"
+              id="inviteNewInstructorBtn"
+            >
+              <i class="fas fa-envelope"></i> Invite New Instructor
+            </button>
+          </div>
         </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" id="saveAssignmentBtn">
+            Assign
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
 </div>
 
 <!-- Invite Instructor Modal -->
-<div class="modal fade" id="inviteInstructorModal" tabindex="-1" aria-labelledby="inviteInstructorModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="inviteInstructorModalLabel">Invite New Instructor</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="inviteInstructorForm">
-                <div class="modal-body">
-                    <p class="text-muted mb-3">Send an invitation to a new instructor. They will be assigned to this
-                        section upon accepting.</p>
+<div
+  class="modal fade"
+  id="inviteInstructorModal"
+  tabindex="-1"
+  aria-labelledby="inviteInstructorModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="inviteInstructorModalLabel">
+          Invite New Instructor
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <form id="inviteInstructorForm">
+        <div class="modal-body">
+          <p class="text-muted mb-3">
+            Send an invitation to a new instructor. They will be assigned to
+            this section upon accepting.
+          </p>
 
-                    <div id="inviteInstructorAlert" class="alert d-none" role="alert"></div>
+          <div
+            id="inviteInstructorAlert"
+            class="alert d-none"
+            role="alert"
+          ></div>
 
-                    <div class="mb-3">
-                        <label for="inviteEmail" class="form-label">Email Address *</label>
-                        <input type="email" class="form-control" id="inviteEmail" required
-                            placeholder="instructor@university.edu">
-                    </div>
+          <div class="mb-3">
+            <label for="inviteEmail" class="form-label">Email Address *</label>
+            <input
+              type="email"
+              class="form-control"
+              id="inviteEmail"
+              required
+              placeholder="instructor@university.edu"
+            />
+          </div>
 
-                    <div class="mb-3">
-                        <label for="inviteFirstName" class="form-label">First Name *</label>
-                        <input type="text" class="form-control" id="inviteFirstName" required placeholder="John">
-                    </div>
+          <div class="mb-3">
+            <label for="inviteFirstName" class="form-label">First Name *</label>
+            <input
+              type="text"
+              class="form-control"
+              id="inviteFirstName"
+              required
+              placeholder="John"
+            />
+          </div>
 
-                    <div class="mb-3">
-                        <label for="inviteLastName" class="form-label">Last Name *</label>
-                        <input type="text" class="form-control" id="inviteLastName" required placeholder="Doe">
-                    </div>
+          <div class="mb-3">
+            <label for="inviteLastName" class="form-label">Last Name *</label>
+            <input
+              type="text"
+              class="form-control"
+              id="inviteLastName"
+              required
+              placeholder="Doe"
+            />
+          </div>
 
-                    <div class="alert alert-info">
-                        <small>
-                            <i class="fas fa-info-circle"></i>
-                            The instructor will receive an email invitation and be automatically assigned to this
-                            section after accepting.
-                        </small>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="sendInviteBtn">
-                        <i class="fas fa-paper-plane"></i> Send Invitation
-                    </button>
-                </div>
-            </form>
+          <div class="alert alert-info">
+            <small>
+              <i class="fas fa-info-circle"></i>
+              The instructor will receive an email invitation and be
+              automatically assigned to this section after accepting.
+            </small>
+          </div>
         </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" id="sendInviteBtn">
+            <i class="fas fa-paper-plane"></i> Send Invitation
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
 </div>
 
 <!-- Invite Success Modal -->
-<div class="modal fade" id="inviteSuccessModal" tabindex="-1" aria-labelledby="inviteSuccessModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="inviteSuccessModalLabel">Invitation Sent</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p class="mb-0" id="inviteSuccessMessage">Invitation sent successfully.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
-            </div>
-        </div>
+<div
+  class="modal fade"
+  id="inviteSuccessModal"
+  tabindex="-1"
+  aria-labelledby="inviteSuccessModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="inviteSuccessModalLabel">
+          Invitation Sent
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0" id="inviteSuccessMessage">
+          Invitation sent successfully.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+          OK
+        </button>
+      </div>
     </div>
+  </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
+{% endblock %} {% block extra_js %}
 <script src="{{ url_for('static', filename='audit_clo.js') }}"></script>
 {% endblock %}

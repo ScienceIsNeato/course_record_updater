@@ -4,17 +4,19 @@ Unit tests for Ethereal Provider read_email() method
 
 import email
 import os
-from unittest.mock import MagicMock, patch
-
-import pytest
-
-from src.email_providers.ethereal_provider import EtherealProvider
 
 # TODO(TECH-DEBT): Fix time.time() mock StopIteration in CI
 # These 4 tests fail in CI (Python 3.11 + pytest-xdist) with StopIteration
 # despite working locally. The mock.side_effect list runs out of values.
 # Next time we're in the email space, investigate why CI needs more time.time()
 # calls than local execution and fix properly instead of skipping.
+from typing import Any
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from src.email_providers.ethereal_provider import EtherealProvider
+
 SKIP_IN_CI = pytest.mark.skipif(
     os.getenv("CI") == "true",
     reason="TODO: Fix time.time() mock exhaustion in CI - StopIteration bug",
@@ -25,7 +27,7 @@ class TestEtherealProviderReadEmail:
     """Test Ethereal Provider read_email with mocked IMAP"""
 
     @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
-    def test_read_email_success(self, mock_imap_class):
+    def test_read_email_success(self, mock_imap_class: Any) -> None:
         """Test successful email reading via IMAP"""
         # Setup mock IMAP connection
         mock_mail = MagicMock()
@@ -70,7 +72,7 @@ class TestEtherealProviderReadEmail:
         mock_mail.login.assert_called_once_with("test@ethereal.email", "testpass")
 
     @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
-    def test_read_email_with_unique_identifier(self, mock_imap_class):
+    def test_read_email_with_unique_identifier(self, mock_imap_class: Any) -> None:
         """Test reading email with unique identifier in body"""
         mock_mail = MagicMock()
         mock_imap_class.return_value = mock_mail
@@ -110,7 +112,9 @@ class TestEtherealProviderReadEmail:
     @patch("src.email_providers.ethereal_provider.time.sleep")
     @patch("src.email_providers.ethereal_provider.time.time")
     @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
-    def test_read_email_no_match_found(self, mock_imap_class, mock_time, mock_sleep):
+    def test_read_email_no_match_found(
+        self, mock_imap_class: Any, mock_time: Any, mock_sleep: Any
+    ) -> None:
         """Test reading email when no match is found"""
         # Mock time to avoid real waits - simulate immediate timeout
         # Return 0 on first call, then 100 (way past timeout=1) on subsequent calls
@@ -150,7 +154,7 @@ class TestEtherealProviderReadEmail:
 
         assert result is None
 
-    def test_read_email_without_configuration(self):
+    def test_read_email_without_configuration(self) -> None:
         """Test that reading without configuration fails"""
         provider = EtherealProvider()
 
@@ -159,7 +163,7 @@ class TestEtherealProviderReadEmail:
         assert result is None
 
     @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
-    def test_read_email_wrong_recipient(self, mock_imap_class):
+    def test_read_email_wrong_recipient(self, mock_imap_class: Any) -> None:
         """Test reading email for wrong recipient"""
         provider = EtherealProvider()
         provider.configure(
@@ -183,7 +187,9 @@ class TestEtherealProviderReadEmail:
     @patch("src.email_providers.ethereal_provider.time.sleep")
     @patch("src.email_providers.ethereal_provider.time.time")
     @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
-    def test_read_email_imap_error(self, mock_imap_class, mock_time, mock_sleep):
+    def test_read_email_imap_error(
+        self, mock_imap_class: Any, mock_time: Any, mock_sleep: Any
+    ) -> None:
         """Test handling IMAP connection errors"""
         # Mock time to avoid real waits - simulate immediate timeout
         # Provide plenty of values to avoid StopIteration
@@ -209,7 +215,7 @@ class TestEtherealProviderReadEmail:
         assert result is None
 
     @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
-    def test_read_email_multipart_message(self, mock_imap_class):
+    def test_read_email_multipart_message(self, mock_imap_class: Any) -> None:
         """Test reading multipart email with HTML and text"""
         mock_mail = MagicMock()
         mock_imap_class.return_value = mock_mail
@@ -247,7 +253,9 @@ class TestEtherealProviderReadEmail:
     @patch("src.email_providers.ethereal_provider.time.sleep")
     @patch("src.email_providers.ethereal_provider.time.time")
     @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
-    def test_read_email_empty_inbox(self, mock_imap_class, mock_time, mock_sleep):
+    def test_read_email_empty_inbox(
+        self, mock_imap_class: Any, mock_time: Any, mock_sleep: Any
+    ) -> None:
         """Test reading from empty inbox"""
         # Mock time to avoid real waits - simulate immediate timeout
         # Provide plenty of values to avoid StopIteration
@@ -278,8 +286,8 @@ class TestEtherealProviderReadEmail:
     @patch("src.email_providers.ethereal_provider.time.time")
     @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
     def test_read_email_invalid_fetch_result(
-        self, mock_imap_class, mock_time, mock_sleep
-    ):
+        self, mock_imap_class: Any, mock_time: Any, mock_sleep: Any
+    ) -> None:
         """Test handling invalid fetch results"""
         # Mock time to avoid real waits - simulate immediate timeout
         # Provide plenty of values to avoid StopIteration
@@ -308,7 +316,7 @@ class TestEtherealProviderReadEmail:
         assert result is None
 
     @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
-    def test_read_email_with_subject_filter(self, mock_imap_class):
+    def test_read_email_with_subject_filter(self, mock_imap_class: Any) -> None:
         """Test filtering by subject substring"""
         mock_mail = MagicMock()
         mock_imap_class.return_value = mock_mail
@@ -329,7 +337,7 @@ class TestEtherealProviderReadEmail:
         msg2.set_content("Click here to reset")
 
         # Mock fetch to return different emails
-        def fetch_side_effect(num, spec):
+        def fetch_side_effect(num: Any, spec: Any) -> Any:
             if num == b"2":
                 return (None, [(b"2 (RFC822 {123})", msg1.as_bytes())])
             else:

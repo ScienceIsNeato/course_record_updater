@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, cast
 
 from src.database.database_service import (
     get_active_terms,
@@ -184,13 +184,13 @@ class DashboardService:
         program_index: Optional[Dict[str, Dict[str, Any]]] = None,
     ) -> List[Dict[str, Any]]:
         """Collect all CLOs from courses, enriching them with course metadata."""
-        all_clos = []
+        all_clos: List[Dict[str, Any]] = []
         program_index = program_index or {}
 
         for course in courses:
             # Resolve program name from course's program_ids
-            program_name = None
-            program_ids = course.get("program_ids") or []
+            program_name: Optional[str] = None
+            program_ids = self._course_program_ids(course)
             if program_ids:
                 # Use first associated program for display context
                 pid = program_ids[0]
@@ -211,16 +211,21 @@ class DashboardService:
         self, offerings: List[Dict[str, Any]]
     ) -> Dict[str, str]:
         """Create offering_id -> course_id mapping."""
-        offering_to_course = {}
+        offering_to_course: Dict[str, str] = {}
         for offering in offerings:
             offering_id = offering.get("offering_id") or offering.get("id")
             course_id = offering.get("course_id")
             if offering_id and course_id:
-                offering_to_course[offering_id] = course_id
+                offering_to_course[str(offering_id)] = str(course_id)
         return offering_to_course
 
     def _build_institution_summary(
-        self, programs: List, courses: List, users: List, faculty: List, sections: List
+        self,
+        programs: List[Dict[str, Any]],
+        courses: List[Dict[str, Any]],
+        users: List[Dict[str, Any]],
+        faculty: List[Dict[str, Any]],
+        sections: List[Dict[str, Any]],
     ) -> Dict[str, int]:
         """Build summary statistics for institution."""
         return {
@@ -396,7 +401,7 @@ class DashboardService:
 
     def _process_admin_program_courses(
         self, scoped_programs: List[Dict[str, Any]], institution_id: str
-    ) -> tuple:
+    ) -> tuple[list[Dict[str, Any]], dict[str, list[Dict[str, Any]]]]:
         """Process courses across all programs, handling deduplication."""
         courses_dict: Dict[str, Dict[str, Any]] = (
             {}
@@ -447,17 +452,17 @@ class DashboardService:
         self, courses: List[Dict[str, Any]], scoped_programs: List[Dict[str, Any]]
     ) -> Dict[str, List[Dict[str, Any]]]:
         """Rebuild courses_by_program mapping with enriched course data."""
-        courses_by_program = defaultdict(list)
+        courses_by_program: defaultdict[str, List[Dict[str, Any]]] = defaultdict(list)
         for course in courses:
             for program in scoped_programs:
                 pid = self._get_program_id(program)
-                if pid in course.get("program_ids", []):
+                if pid and pid in self._course_program_ids(course):
                     courses_by_program[pid].append(course)
-        return {str(k): v for k, v in courses_by_program.items() if k is not None}
+        return dict(courses_by_program)
 
     def _get_sections_and_faculty(
         self, institution_id: str, courses: List[Dict[str, Any]], program_ids: List[str]
-    ) -> tuple:
+    ) -> tuple[list[Dict[str, Any]], list[Dict[str, Any]]]:
         """Get sections and faculty data scoped to the programs."""
         # Get scoped sections
         all_sections = get_all_sections(institution_id) or []
@@ -563,13 +568,13 @@ class DashboardService:
         courses_lookup = self._index_by_keys(
             get_all_courses(institution_id) or [], ["course_id", "id"]
         )
-        course_ids = {
-            section.get("course_id")
+        course_ids: set[str] = {
+            str(section["course_id"])
             for section in sections
             if section.get("course_id") in courses_lookup
         }
 
-        courses = []
+        courses: List[Dict[str, Any]] = []
         for cid in course_ids:
             course = courses_lookup[cid]
             program = self._resolve_program_from_course(
@@ -633,7 +638,7 @@ class DashboardService:
         institution_id: str,
         institution_name: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        enriched = []
+        enriched: List[Dict[str, Any]] = []
         for item in items:
             data = dict(item)
             data.setdefault("institution_id", institution_id)
@@ -648,7 +653,7 @@ class DashboardService:
         program: Dict[str, Any],
         institution_id: str,
     ) -> List[Dict[str, Any]]:
-        enriched = []
+        enriched: List[Dict[str, Any]] = []
         for course in courses:
             data = dict(course)
             data.setdefault("program_id", program.get("id"))
@@ -676,20 +681,32 @@ class DashboardService:
     def _get_program_id(self, program: Optional[Dict[str, Any]]) -> Optional[str]:
         if not program:
             return None
-        return program.get("program_id")
+        program_id = program.get("program_id") or program.get("id")
+        return str(program_id) if program_id else None
 
     def _get_course_id(self, course: Optional[Dict[str, Any]]) -> Optional[str]:
         if not course:
             return None
-        return course.get("id") or course.get("course_id")
+        course_id = course.get("id") or course.get("course_id")
+        return str(course_id) if course_id else None
 
     def _course_program_ids(self, course: Dict[str, Any]) -> List[str]:
-        program_ids = course.get("program_ids") or []
+        program_ids: List[str] = []
+        raw_program_ids = course.get("program_ids")
+        if isinstance(raw_program_ids, list):
+            program_id_values: List[Any] = cast(List[Any], raw_program_ids)
+            program_ids = [
+                str(program_id) for program_id in program_id_values if program_id
+            ]
+        elif isinstance(raw_program_ids, str):
+            program_ids = [raw_program_ids]
+
         if not program_ids:
             primary = course.get("program_id")
             if primary:
-                program_ids = [primary]
-        return list({pid for pid in program_ids if pid})
+                program_ids = [str(primary)]
+
+        return list(dict.fromkeys(program_ids))
 
     def _build_faculty_directory(
         self,
@@ -702,30 +719,33 @@ class DashboardService:
             user_id = entry.get("user_id") or entry.get("id")
             if not user_id:
                 continue
+            user_id_str = str(user_id)
             record = dict(entry)
-            record.setdefault("user_id", user_id)
+            record.setdefault("user_id", user_id_str)
             record.setdefault("full_name", self._full_name(record))
-            directory[user_id] = record
+            directory[user_id_str] = record
 
         for user in users:
-            # Include institution_admin so they appear in User Management panel
             if user.get("role") not in {
                 "instructor",
                 "program_admin",
                 "institution_admin",
             }:
                 continue
+
             user_id = user.get("user_id") or user.get("id")
             if not user_id:
                 continue
+
+            user_id_str = str(user_id)
             record = dict(user)
-            record.setdefault("user_id", user_id)
+            record.setdefault("user_id", user_id_str)
             record.setdefault("program_ids", record.get("program_ids") or [])
             record.setdefault("full_name", self._full_name(record))
-            if user_id not in directory:
-                directory[user_id] = record
+            if user_id_str not in directory:
+                directory[user_id_str] = record
             else:
-                directory[user_id].update(record)
+                directory[user_id_str].update(record)
 
         return list(directory.values())
 
@@ -829,13 +849,16 @@ class DashboardService:
         sections_by_course: Dict[str, List[Dict[str, Any]]],
     ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         """Process courses for a program, returning course summaries and all sections."""
-        seen_course_ids = set()
-        course_summaries = []
+        seen_course_ids: set[str] = set()
+        course_summaries: List[Dict[str, Any]] = []
         program_sections: List[Dict[str, Any]] = []
 
         for course in program_courses:
-            course_id = course.get("course_id") or course.get("id")
-            if not course_id or course_id in seen_course_ids:
+            course_id_value = course.get("course_id") or course.get("id")
+            if not course_id_value:
+                continue
+            course_id = str(course_id_value)
+            if course_id in seen_course_ids:
                 continue
             seen_course_ids.add(course_id)
 
@@ -1263,7 +1286,7 @@ class DashboardService:
         Returns:
             List of programs with course_count added
         """
-        programs_with_counts = []
+        programs_with_counts: List[Dict[str, Any]] = []
 
         for program in programs:
             program_copy = program.copy()
@@ -1273,7 +1296,7 @@ class DashboardService:
             course_count = 0
             if program_id:
                 for course in courses:
-                    program_ids = course.get("program_ids", [])
+                    program_ids = self._course_program_ids(course)
                     if program_id in program_ids:
                         course_count += 1
 
@@ -1295,7 +1318,7 @@ class DashboardService:
         Returns:
             List of courses with clo_count added
         """
-        enriched_courses = []
+        enriched_courses: List[Dict[str, Any]] = []
 
         for course in courses:
             course_copy = course.copy()
@@ -1362,24 +1385,24 @@ class DashboardService:
             List of sections enriched with instructor_name and instructor_email
         """
         # Build instructor lookup by user_id
-        instructor_lookup = {}
+        instructor_lookup: Dict[str, Dict[str, str]] = {}
         for user in users:
             user_id = user.get("user_id") or user.get("id")
             if user_id:
-                instructor_lookup[user_id] = {
+                instructor_lookup[str(user_id)] = {
                     "name": f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
                     or user.get("email", ""),
                     "email": user.get("email", ""),
                 }
 
         # Enrich sections
-        enriched_sections = []
+        enriched_sections: List[Dict[str, Any]] = []
         for section in sections:
             section_copy = section.copy()
             instructor_id = section.get("instructor_id")
 
             if instructor_id and instructor_id in instructor_lookup:
-                instructor = instructor_lookup[instructor_id]
+                instructor = instructor_lookup[str(instructor_id)]
                 section_copy["instructor_name"] = instructor["name"]
                 section_copy["instructor_email"] = instructor["email"]
 
@@ -1411,7 +1434,7 @@ class DashboardService:
                 offering_counts[t_key] = offering_counts.get(t_key, 0) + 1
 
         # Add counts to terms
-        enriched_terms = []
+        enriched_terms: List[Dict[str, Any]] = []
         for term in terms:
             raw_term_id = term.get("term_id") or term.get("id")
             enriched_term = dict(term)
@@ -1446,29 +1469,35 @@ class DashboardService:
         self,
         offering: Dict[str, Any],
         course_lookup: Dict[str, Dict[str, Any]],
-    ) -> set:
+    ) -> set[str]:
         """Extract all program IDs associated with an offering."""
-        program_ids = set()
+        program_ids: set[str] = set()
 
         # Get program from offering first
-        if offering.get("program_id"):
-            program_ids.add(offering["program_id"])
+        offering_program_id = offering.get("program_id")
+        if offering_program_id:
+            program_ids.add(str(offering_program_id))
 
         # Fallback to course if no program on offering
         course_id = offering.get("course_id")
-        if course_id and course_id in course_lookup:
-            course = course_lookup[course_id]
+        course_key = str(course_id) if course_id else None
+        if course_key and course_key in course_lookup:
+            course = course_lookup[course_key]
 
             # Handle program_ids list
-            p_ids = course.get("program_ids", [])
+            p_ids = course.get("program_ids")
             if isinstance(p_ids, list):
-                program_ids.update(p_ids)
+                program_id_values: List[Any] = cast(List[Any], p_ids)
+                program_ids.update(
+                    str(program_id) for program_id in program_id_values if program_id
+                )
             elif isinstance(p_ids, str):
                 program_ids.add(p_ids)
 
             # Handle legacy program_id field
-            if course.get("program_id"):
-                program_ids.add(course["program_id"])
+            course_program_id = course.get("program_id")
+            if course_program_id:
+                program_ids.add(str(course_program_id))
 
         return program_ids
 
@@ -1510,7 +1539,7 @@ class DashboardService:
         # Compute context-aware term statuses ("holds active" until successor starts)
         term_statuses = get_all_term_statuses(terms)
 
-        enriched_terms = []
+        enriched_terms: List[Dict[str, Any]] = []
         for term in terms:
             raw_term_id = term.get("term_id") or term.get("id")
             term_copy = dict(term)
@@ -1518,8 +1547,8 @@ class DashboardService:
             term_specific_offerings = term_offerings.get(term_key, [])
 
             # Calculate unique programs and courses
-            unique_program_ids = set()
-            unique_course_ids = set()
+            unique_program_ids: set[str] = set()
+            unique_course_ids: set[str] = set()
 
             for offering in term_specific_offerings:
                 unique_program_ids.update(
@@ -1534,7 +1563,7 @@ class DashboardService:
             term_copy["section_count"] = term_section_counts.get(term_key, 0)
 
             # Apply context-aware status (overrides individual calculation)
-            context_status = term_statuses.get(raw_term_id)
+            context_status = term_statuses.get(term_key)
             if context_status:
                 term_copy["status"] = context_status
                 term_copy["is_active"] = context_status == TERM_STATUS_ACTIVE
@@ -1557,11 +1586,12 @@ class DashboardService:
         for section in sections:
             course_id = section.get("course_id")
             if course_id:
-                course_section_counts[course_id] = (
-                    course_section_counts.get(course_id, 0) + 1
+                course_key = str(course_id)
+                course_section_counts[course_key] = (
+                    course_section_counts.get(course_key, 0) + 1
                 )
 
-        enriched_courses = []
+        enriched_courses: List[Dict[str, Any]] = []
         for course in courses:
             course_copy = course.copy()
             c_id = course.get("course_id") or course.get("id")
@@ -1596,17 +1626,18 @@ class DashboardService:
             for course in courses:
                 course_id = course.get("course_id") or course.get("id")
                 if course_id:
-                    course_lookup[course_id] = course
+                    course_lookup[str(course_id)] = course
 
-        enriched = []
+        enriched: List[Dict[str, Any]] = []
         for offering in offerings:
             enriched_offering = self._apply_offering_section_rollup(
                 offering, offering_data
             )
             # Add program info from course
             course_id = offering.get("course_id")
-            if course_id and course_id in course_lookup:
-                course = course_lookup[course_id]
+            course_key = str(course_id) if course_id else None
+            if course_key and course_key in course_lookup:
+                course = course_lookup[course_key]
                 enriched_offering["program_names"] = course.get("program_names", [])
             else:
                 enriched_offering["program_names"] = []
@@ -1622,8 +1653,9 @@ class DashboardService:
             offering_id = section.get("offering_id")
             if not offering_id:
                 continue
+            offering_key = str(offering_id)
             entry = offering_data.setdefault(
-                offering_id, {"section_count": 0, "total_enrollment": 0}
+                offering_key, {"section_count": 0, "total_enrollment": 0}
             )
             entry["section_count"] += 1
             entry["total_enrollment"] += self._safe_int(
@@ -1722,11 +1754,11 @@ class DashboardService:
         Returns:
             List of courses with program_names added
         """
-        enriched_courses = []
+        enriched_courses: List[Dict[str, Any]] = []
         for course in courses:
             course_copy = course.copy()
-            program_ids = course.get("program_ids") or []
-            program_names = []
+            program_ids = self._course_program_ids(course)
+            program_names: List[str] = []
 
             for pid in program_ids:
                 if pid in program_index:

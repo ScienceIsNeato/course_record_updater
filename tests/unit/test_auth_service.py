@@ -1,5 +1,6 @@
 """Unit tests for auth_service.py implementation."""
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -24,17 +25,17 @@ from src.services.auth_service import (
 class TestAuthService:
     """Test the AuthService class."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.app = Flask(__name__)
         self.app.config["TESTING"] = True
 
-    def test_auth_service_instance_creation(self):
+    def test_auth_service_instance_creation(self) -> None:
         """Test that AuthService instance can be created."""
         service = AuthService()
         assert isinstance(service, AuthService)
 
-    def test_get_current_user_returns_mock_admin(self):
+    def test_get_current_user_returns_mock_admin(self) -> None:
         """Test that get_current_user returns the expected mock admin user."""
         with self.app.app_context():
             service = AuthService()
@@ -48,7 +49,7 @@ class TestAuthService:
             assert user["last_name"] == "Admin"
             assert user["department"] == "IT"
 
-    def test_has_permission_with_site_admin(self):
+    def test_has_permission_with_site_admin(self) -> None:
         """Test that has_permission works correctly for site admin."""
         with self.app.app_context():
             service = AuthService()
@@ -61,7 +62,7 @@ class TestAuthService:
             # Non-existent permission should return False
             assert service.has_permission("nonexistent_permission") is False
 
-    def test_is_authenticated_returns_true_with_user(self):
+    def test_is_authenticated_returns_true_with_user(self) -> None:
         """Test that is_authenticated returns True when user exists."""
         with self.app.app_context():
             service = AuthService()
@@ -71,17 +72,17 @@ class TestAuthService:
 class TestGlobalAuthServiceInstance:
     """Test the global auth_service instance."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.app = Flask(__name__)
         self.app.config["TESTING"] = True
 
-    def test_global_auth_service_exists(self):
+    def test_global_auth_service_exists(self) -> None:
         """Test that global auth_service instance exists."""
         assert auth_service is not None
         assert isinstance(auth_service, AuthService)
 
-    def test_global_auth_service_methods(self):
+    def test_global_auth_service_methods(self) -> None:
         """Test that global auth_service instance methods work."""
         with self.app.app_context():
             user = auth_service.get_current_user()
@@ -95,65 +96,65 @@ class TestAuthDecorators:
     """Test authentication decorators."""
 
     @pytest.fixture
-    def app(self):
+    def app(self) -> Any:
         """Create a Flask app for testing."""
         app = Flask(__name__)
         app.config["TESTING"] = True
         return app
 
-    def test_login_required_decorator(self, app):
+    def test_login_required_decorator(self, app: Any) -> None:
         """Test that login_required decorator works with authenticated user."""
         with app.app_context():
 
             @login_required
-            def test_function(x, y):
+            def test_function(x: Any, y: Any) -> Any:
                 return x + y
 
             # Should execute normally since auth_service returns authenticated user
             result = test_function(2, 3)
             assert result == 5
 
-    def test_role_required_decorator(self, app):
+    def test_role_required_decorator(self, app: Any) -> None:
         """Test that role_required decorator works with site_admin."""
         with app.app_context():
 
             @role_required("site_admin")
-            def test_function(value):
+            def test_function(value: Any) -> Any:
                 return value * 2
 
             # Should execute normally since mock user is site_admin
             result = test_function(5)
             assert result == 10
 
-    def test_permission_required_decorator(self, app):
+    def test_permission_required_decorator(self, app: Any) -> None:
         """Test that permission_required decorator works with valid permission."""
         with app.app_context():
 
             @permission_required("manage_institutions")
-            def test_function(text):
+            def test_function(text: Any) -> Any:
                 return text.upper()
 
             # Should execute normally since site_admin has manage_institutions permission
             result = test_function("hello")
             assert result == "HELLO"
 
-    def test_admin_required_decorator(self, app):
+    def test_admin_required_decorator(self, app: Any) -> None:
         """Test that admin_required decorator works with site_admin."""
         with app.app_context():
 
             @admin_required
-            def test_function():
+            def test_function() -> Any:
                 return "admin_access_granted"
 
             # Should execute normally since mock user is site_admin
             result = test_function()
             assert result == "admin_access_granted"
 
-    def test_decorator_preserves_function_metadata(self):
+    def test_decorator_preserves_function_metadata(self) -> None:
         """Test that decorators preserve original function metadata."""
 
         @login_required
-        def documented_function():
+        def documented_function() -> Any:
             """This is a test function."""
             return "test"
 
@@ -161,14 +162,14 @@ class TestAuthDecorators:
         assert documented_function.__name__ == "documented_function"
         assert "test function" in documented_function.__doc__
 
-    def test_nested_decorators(self):
+    def test_nested_decorators(self) -> None:
         """Test that multiple decorators can be applied together."""
 
         @admin_required
         @role_required("site_admin")
         @permission_required("manage_users")
         @login_required
-        def protected_function(data):
+        def protected_function(data: Any) -> Any:
             return f"processed: {data}"
 
         # Should execute normally with all decorators
@@ -179,46 +180,46 @@ class TestAuthDecorators:
 class TestUtilityFunctions:
     """Test utility/convenience functions."""
 
-    def test_get_current_user_function(self):
+    def test_get_current_user_function(self) -> None:
         """Test get_current_user utility function."""
         user = get_current_user()
         assert user is not None
         assert user["email"] == "admin@mocku.test"
         assert user["role"] == "site_admin"
 
-    def test_has_permission_function(self):
+    def test_has_permission_function(self) -> None:
         """Test has_permission utility function."""
         assert has_permission("manage_institutions") is True
         assert has_permission("manage_users") is True
         assert has_permission("view_all_data") is True
 
-    def test_is_authenticated_function(self):
+    def test_is_authenticated_function(self) -> None:
         """Test is_authenticated utility function."""
         assert is_authenticated() is True
 
-    def test_get_user_role_function(self):
+    def test_get_user_role_function(self) -> None:
         """Test get_user_role utility function."""
         role = get_user_role()
         assert role == "site_admin"
 
-    def test_get_user_department_function(self):
+    def test_get_user_department_function(self) -> None:
         """Test get_user_department utility function."""
         department = get_user_department()
         assert department == "IT"
 
-    def test_get_user_role_with_no_user(self):
+    def test_get_user_role_with_no_user(self) -> None:
         """Test get_user_role when no user is available."""
         with patch("src.services.auth_service.get_current_user", return_value=None):
             role = get_user_role()
             assert role is None
 
-    def test_get_user_department_with_no_user(self):
+    def test_get_user_department_with_no_user(self) -> None:
         """Test get_user_department when no user is available."""
         with patch("src.services.auth_service.get_current_user", return_value=None):
             department = get_user_department()
             assert department is None
 
-    def test_get_user_department_with_no_department_field(self):
+    def test_get_user_department_with_no_department_field(self) -> None:
         """Test get_user_department when user has no department field."""
         mock_user = {"user_id": "123", "email": "test@example.com", "role": "user"}
         with patch(
@@ -231,7 +232,7 @@ class TestUtilityFunctions:
 class TestAuthServiceIntegration:
     """Test integration between different auth service components."""
 
-    def test_utility_functions_use_global_service(self):
+    def test_utility_functions_use_global_service(self) -> None:
         """Test that utility functions use the global auth_service instance."""
         # Mock the global auth_service
         mock_service = MagicMock()
@@ -254,7 +255,7 @@ class TestAuthServiceIntegration:
             mock_service.has_permission.assert_called_once_with("test")
             mock_service.is_authenticated.assert_called_once()
 
-    def test_decorators_work_with_different_function_signatures(self):
+    def test_decorators_work_with_different_function_signatures(self) -> None:
         """Test that decorators work with various function signatures."""
         from flask import Flask
 
@@ -263,19 +264,19 @@ class TestAuthServiceIntegration:
         with app.app_context():
 
             @login_required
-            def no_args():
+            def no_args() -> Any:
                 return "no_args"
 
             @role_required("site_admin")  # Use valid role name
-            def with_args(a, b, c):
+            def with_args(a: Any, b: Any, c: Any) -> Any:
                 return a + b + c
 
             @permission_required("manage_users")  # Use valid permission
-            def with_kwargs(name, age=None, **kwargs):
+            def with_kwargs(name: Any, age: Any = None, **kwargs: Any) -> Any:
                 return f"{name}-{age}-{len(kwargs)}"
 
             @admin_required
-            def with_mixed(*args, **kwargs):
+            def with_mixed(*args: Any, **kwargs: Any) -> Any:
                 return len(args) + len(kwargs)
 
             # All should work normally
@@ -288,7 +289,7 @@ class TestAuthServiceIntegration:
 class TestAuthBehaviorConsistency:
     """Test that auth behavior is consistent across all methods."""
 
-    def test_all_auth_checks_work_with_site_admin(self):
+    def test_all_auth_checks_work_with_site_admin(self) -> None:
         """Test that authentication checks work correctly with site_admin."""
         # Direct service calls
         service = AuthService()
@@ -304,7 +305,7 @@ class TestAuthBehaviorConsistency:
         assert user is not None
         assert user["role"] == "site_admin"
 
-    def test_mock_user_data_consistency(self):
+    def test_mock_user_data_consistency(self) -> None:
         """Test that mock user data is consistent across calls."""
         user1 = get_current_user()
         user2 = auth_service.get_current_user()
@@ -321,8 +322,8 @@ class TestAuthServiceInstitutionFunctions:
     @patch("src.database.database_service.get_institution_by_short_name")
     @patch("src.services.auth_service.get_current_user")
     def test_get_current_institution_id_success(
-        self, mock_get_user, mock_get_institution
-    ):
+        self, mock_get_user: Any, mock_get_institution: Any
+    ) -> None:
         """Test get_current_institution_id returns institution from user context."""
         mock_get_user.return_value = {
             "user_id": "dev-admin-123",
@@ -339,8 +340,8 @@ class TestAuthServiceInstitutionFunctions:
     @patch("src.database.database_service.get_institution_by_short_name")
     @patch("src.services.auth_service.get_current_user")
     def test_get_current_institution_id_short_name_resolution(
-        self, mock_get_user, mock_get_institution
-    ):
+        self, mock_get_user: Any, mock_get_institution: Any
+    ) -> None:
         """Test get_current_institution_id resolves UUID from short name."""
         mock_get_user.return_value = {
             "user_id": "dev-admin-123",
@@ -354,7 +355,9 @@ class TestAuthServiceInstitutionFunctions:
         mock_get_institution.assert_called_once_with("DEMO2025")
 
     @patch("src.services.auth_service.get_current_user")
-    def test_get_current_institution_id_primary_fallback(self, mock_get_user):
+    def test_get_current_institution_id_primary_fallback(
+        self, mock_get_user: Any
+    ) -> None:
         """Test get_current_institution_id uses primary institution when provided."""
         mock_get_user.return_value = {
             "user_id": "dev-admin-123",
@@ -366,7 +369,9 @@ class TestAuthServiceInstitutionFunctions:
         assert get_current_institution_id() == "inst-primary"
 
     @patch("src.services.auth_service.get_current_user")
-    def test_get_current_institution_id_missing_context(self, mock_get_user):
+    def test_get_current_institution_id_missing_context(
+        self, mock_get_user: Any
+    ) -> None:
         """Test get_current_institution_id returns None when no context available."""
         mock_get_user.return_value = {
             "user_id": "dev-admin-123",
@@ -377,7 +382,7 @@ class TestAuthServiceInstitutionFunctions:
 
         assert get_current_institution_id() is None
 
-    def test_permission_decorator_logic(self):
+    def test_permission_decorator_logic(self) -> None:
         """Test permission decorator logic."""
         from flask import Flask
 
@@ -388,14 +393,14 @@ class TestAuthServiceInstitutionFunctions:
         with app.app_context():
             # Test that decorator can be applied
             @permission_required("manage_users")  # Use valid permission
-            def test_function():
+            def test_function() -> Any:
                 return "success"
 
             # Site admin should have manage_users permission
             result = test_function()
             assert result == "success"
 
-    def test_auth_service_comprehensive_functionality(self):
+    def test_auth_service_comprehensive_functionality(self) -> None:
         """Test comprehensive auth service functionality."""
         from src.services.auth_service import auth_service
 
@@ -415,7 +420,7 @@ class TestAuthServiceInstitutionFunctions:
         is_auth = auth_service.is_authenticated()
         assert isinstance(is_auth, bool)
 
-    def test_utility_functions_comprehensive_coverage(self):
+    def test_utility_functions_comprehensive_coverage(self) -> None:
         """Test comprehensive utility function coverage."""
         # Test get_current_user function
         user = get_current_user()
@@ -437,7 +442,7 @@ class TestAuthServiceInstitutionFunctions:
         dept = get_user_department()
         assert dept is None or isinstance(dept, str)
 
-    def test_auth_edge_cases_and_error_handling(self):
+    def test_auth_edge_cases_and_error_handling(self) -> None:
         """Test auth service edge cases and error handling."""
         # Test with various permission strings
         test_permissions = [
@@ -463,7 +468,7 @@ class TestAuthServiceInstitutionFunctions:
 class TestAuthServiceCoverage:
     """Test coverage for new authorization system functionality."""
 
-    def test_scoped_permission_checking(self):
+    def test_scoped_permission_checking(self) -> None:
         """Test scoped permission checking for different roles."""
         from src.services.auth_service import AuthService
 
@@ -495,7 +500,7 @@ class TestAuthServiceCoverage:
                 is False
             )
 
-    def test_program_admin_scoped_permissions(self):
+    def test_program_admin_scoped_permissions(self) -> None:
         """Test program admin scoped permission checking."""
         from src.services.auth_service import AuthService
 
@@ -538,7 +543,7 @@ class TestAuthServiceCoverage:
                 is False
             )
 
-    def test_get_accessible_institutions(self):
+    def test_get_accessible_institutions(self) -> None:
         """Test get_accessible_institutions for different roles."""
         from src.services.auth_service import AuthService
 
@@ -579,7 +584,7 @@ class TestAuthServiceCoverage:
             institutions = service.get_accessible_institutions()
             assert institutions == []
 
-    def test_get_accessible_programs(self):
+    def test_get_accessible_programs(self) -> None:
         """Test get_accessible_programs for different roles."""
         from src.services.auth_service import AuthService
 
@@ -657,7 +662,7 @@ class TestAuthServiceCoverage:
             programs = service.get_accessible_programs()
             assert programs == []
 
-    def test_has_role_hierarchy(self):
+    def test_has_role_hierarchy(self) -> None:
         """Test role hierarchy checking."""
         from src.services.auth_service import AuthService
 
@@ -691,7 +696,7 @@ class TestAuthServiceCoverage:
             mock_get_user.return_value = None
             assert service.has_role("instructor") is False
 
-    def test_decorator_error_conditions(self):
+    def test_decorator_error_conditions(self) -> None:
         """Test decorator error conditions and edge cases."""
         from flask import Flask
 
@@ -707,7 +712,7 @@ class TestAuthServiceCoverage:
                 mock_has_perm.return_value = False
 
                 @permission_required("nonexistent_permission")
-                def test_func():
+                def test_func() -> Any:
                     return "success"
 
                 response = test_func()
@@ -723,7 +728,7 @@ class TestAuthServiceCoverage:
                 mock_has_role.return_value = False
 
                 @role_required("site_admin")
-                def test_func():
+                def test_func() -> Any:
                     return "success"
 
                 response = test_func()
@@ -732,7 +737,7 @@ class TestAuthServiceCoverage:
                 assert len(response) == 2
                 assert response[1] == 403
 
-    def test_utility_function_coverage(self):
+    def test_utility_function_coverage(self) -> None:
         """Test utility functions for coverage."""
         from src.services.auth_service import (
             can_access_institution,
@@ -764,7 +769,7 @@ class TestAuthServiceCoverage:
         except Exception:
             pass  # Expected for non-accessible programs
 
-    def test_role_enum_methods(self):
+    def test_role_enum_methods(self) -> None:
         """Test UserRole enum methods for coverage."""
         from src.services.auth_service import UserRole
 
@@ -780,7 +785,7 @@ class TestAuthServiceCoverage:
         assert UserRole.has_role_or_higher("invalid_role", "instructor") is False
         assert UserRole.has_role_or_higher("instructor", "invalid_role") is False
 
-    def test_context_extraction_in_decorators(self):
+    def test_context_extraction_in_decorators(self) -> None:
         """Test context extraction in permission decorators."""
         from flask import Flask, session
 
@@ -797,14 +802,14 @@ class TestAuthServiceCoverage:
             session["program_ids"] = ["prog-123"]
 
             @permission_required("manage_users", context_keys=["institution_id"])
-            def test_func():
+            def test_func() -> Any:
                 return "success"
 
             # Should extract institution_id from query parameters
             result = test_func()
             assert result == "success"
 
-    def test_get_accessible_programs_fallback_field(self):
+    def test_get_accessible_programs_fallback_field(self) -> None:
         """Test get_accessible_programs supports both program_ids and accessible_programs fields."""
         from src.services.auth_service import AuthService, UserRole
 
@@ -833,7 +838,7 @@ class TestAuthServiceCoverage:
             programs = service.get_accessible_programs()
             assert programs == ["prog-primary-1"]
 
-    def test_get_accessible_programs_no_fields(self):
+    def test_get_accessible_programs_no_fields(self) -> None:
         """Test get_accessible_programs with program_admin user having no program fields."""
         from src.services.auth_service import AuthService, UserRole
 
@@ -850,7 +855,7 @@ class TestAuthServiceCoverage:
             assert programs == []  # Should return empty list as fallback
 
 
-def test_extract_request_value_from_json():
+def test_extract_request_value_from_json() -> None:
     """Test _extract_request_value retrieves from JSON body."""
     from flask import Flask
 
@@ -862,7 +867,7 @@ def test_extract_request_value_from_json():
         assert value == "json_value"
 
 
-def test_extract_request_value_from_form():
+def test_extract_request_value_from_form() -> None:
     """Test _extract_request_value retrieves from form data."""
     from flask import Flask
 
@@ -874,7 +879,7 @@ def test_extract_request_value_from_form():
         assert value == "form_value"
 
 
-def test_extract_request_value_from_args():
+def test_extract_request_value_from_args() -> None:
     """Test _extract_request_value retrieves from query parameters."""
     from flask import Flask
 
@@ -894,12 +899,12 @@ def test_extract_request_value_from_args():
 class TestStaleSessionDetection:
     """Verify that sessions are destroyed when the DB is re-seeded."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         self.app = Flask(__name__)
         self.app.config["TESTING"] = True
         self.app.secret_key = "test-secret"
 
-    def test_stale_session_destroyed_when_generation_changes(self):
+    def test_stale_session_destroyed_when_generation_changes(self) -> None:
         """A session whose _db_generation differs from disk is invalidated."""
         with self.app.test_request_context():
             from flask import session
@@ -923,7 +928,7 @@ class TestStaleSessionDetection:
 
             assert result is None, "Stale session should be rejected"
 
-    def test_session_valid_when_generation_matches(self):
+    def test_session_valid_when_generation_matches(self) -> None:
         """A session whose _db_generation matches disk is accepted."""
         with self.app.test_request_context():
             from flask import session
@@ -943,7 +948,7 @@ class TestStaleSessionDetection:
             assert result is not None
             assert result["email"] == "alice@example.com"
 
-    def test_no_generation_in_session_skips_check(self):
+    def test_no_generation_in_session_skips_check(self) -> None:
         """Sessions without _db_generation are not invalidated (tests, old sessions)."""
         with self.app.test_request_context():
             from flask import session
@@ -957,7 +962,7 @@ class TestStaleSessionDetection:
             result = svc._get_session_user()
             assert result is not None
 
-    def test_no_generation_file_skips_check(self):
+    def test_no_generation_file_skips_check(self) -> None:
         """When the generation file doesn't exist, the check is a no-op."""
         with self.app.test_request_context():
             from flask import session
@@ -976,7 +981,7 @@ class TestStaleSessionDetection:
 
             assert result is not None
 
-    def test_write_and_read_db_generation(self, tmp_path):
+    def test_write_and_read_db_generation(self, tmp_path: Any) -> None:
         """write_db_generation creates a file that _read_db_generation can read."""
         from src.services.auth_service import (
             _read_db_generation,

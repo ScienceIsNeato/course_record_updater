@@ -1,6 +1,7 @@
 """Unit tests for dashboard and health API routes (migrated from test_api_routes.py)."""
 
 import json
+from typing import Any
 from unittest.mock import patch
 
 from src.app import app
@@ -9,13 +10,13 @@ from src.app import app
 class TestDashboardRoutes:
     """Test dashboard routes and user role handling."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.app = app
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
 
-    def test_dashboard_instructor_role(self):
+    def test_dashboard_instructor_role(self) -> None:
         """Test dashboard for instructor role"""
         from tests.test_utils import create_test_session
 
@@ -40,7 +41,7 @@ class TestDashboardRoutes:
             assert call_args[0][0] == "dashboard/instructor.html"
             assert "user" in call_args[1]
 
-    def test_dashboard_program_admin_role(self):
+    def test_dashboard_program_admin_role(self) -> None:
         """Test dashboard for program_admin role"""
         from tests.test_utils import create_test_session
 
@@ -65,7 +66,7 @@ class TestDashboardRoutes:
             assert call_args[0][0] == "dashboard/program_admin.html"
             assert "user" in call_args[1]
 
-    def test_dashboard_site_admin_role(self):
+    def test_dashboard_site_admin_role(self) -> None:
         """Test dashboard for site_admin role"""
         from tests.test_utils import create_test_session
 
@@ -90,7 +91,7 @@ class TestDashboardRoutes:
             assert call_args[0][0] == "dashboard/site_admin.html"
             assert "user" in call_args[1]
 
-    def test_dashboard_unknown_role(self):
+    def test_dashboard_unknown_role(self) -> None:
         """Test dashboard for unknown role"""
         from tests.test_utils import create_test_session
 
@@ -115,7 +116,7 @@ class TestDashboardRoutes:
             mock_flash.assert_called_once()
             mock_redirect.assert_called_once()
 
-    def test_dashboard_no_user(self):
+    def test_dashboard_no_user(self) -> None:
         """Test dashboard when no user is logged in"""
         # No session created - user is unauthenticated
         # Dashboard is now a web route, so it should redirect to login
@@ -129,7 +130,7 @@ class TestDashboardRoutes:
 class TestHealthEndpoint:
     """Test the health check endpoint."""
 
-    def test_health_endpoint_success(self):
+    def test_health_endpoint_success(self) -> None:
         """Test health endpoint returns success."""
         with app.test_client() as client:
             response = client.get("/api/health")
@@ -141,7 +142,7 @@ class TestHealthEndpoint:
             assert data["message"] == "Loopcloser API is running"
             assert data["version"] == "2.0.0"
 
-    def test_health_endpoint_no_auth_required(self):
+    def test_health_endpoint_no_auth_required(self) -> None:
         """Test health endpoint works without authentication."""
         with app.test_client() as client:
             response = client.get("/api/health")
@@ -154,7 +155,7 @@ class TestHealthEndpoint:
 class TestDashboardEndpoint:
     """Test the dashboard endpoint."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.app = app
         self.app.config["TESTING"] = True
@@ -162,7 +163,7 @@ class TestDashboardEndpoint:
         self.client = self.app.test_client()
 
     @patch("src.app.render_template")
-    def test_dashboard_endpoint_exists(self, mock_render):
+    def test_dashboard_endpoint_exists(self, mock_render: Any) -> None:
         """Test that dashboard endpoint is registered."""
         from tests.test_utils import create_test_session
 
@@ -186,7 +187,7 @@ class TestDashboardEndpoint:
 class TestAPIRoutesHealthCheck:
     """Test API health check endpoint."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test client."""
         from src.app import app
 
@@ -195,7 +196,7 @@ class TestAPIRoutesHealthCheck:
         self.app.config["SECRET_KEY"] = "test-secret-key"
         self.client = self.app.test_client()
 
-    def test_health_check_endpoint(self):
+    def test_health_check_endpoint(self) -> None:
         """Test health check endpoint."""
         response = self.client.get("/api/health")
 

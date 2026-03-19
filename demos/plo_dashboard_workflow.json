@@ -46,7 +46,10 @@
         }
       },
       "urls": [
-        {"label": "PLO Dashboard", "url": "http://localhost:3001/plo-dashboard"}
+        {
+          "label": "PLO Dashboard",
+          "url": "http://localhost:3001/plo-dashboard"
+        }
       ],
       "expected_results": [
         "Dashboard loads with BIOL program selected",
@@ -183,9 +186,7 @@
         }
       },
       "urls": [],
-      "expected_results": [
-        "Entry row exists in plo_mapping_entries"
-      ],
+      "expected_results": ["Entry row exists in plo_mapping_entries"],
       "post_commands": [
         {
           "command": "sqlite3 course_records_dev.db \"SELECT COUNT(*) FROM plo_mapping_entries WHERE mapping_id='{{draft_mapping_id}}' AND program_outcome_id='{{new_plo_id}}' AND course_outcome_id='{{target_clo_id}}'\"",
@@ -247,7 +248,10 @@
         }
       },
       "urls": [
-        {"label": "PLO Dashboard (BIOL, all terms)", "url": "http://localhost:3001/plo-dashboard"}
+        {
+          "label": "PLO Dashboard (BIOL, all terms)",
+          "url": "http://localhost:3001/plo-dashboard"
+        }
       ],
       "expected_results": [
         "API returns PLO-5 with 1 mapped CLO",

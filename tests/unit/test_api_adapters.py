@@ -3,6 +3,7 @@ Unit tests for Adapter API endpoints.
 Tests /api/adapters and /api/export/data.
 """
 
+from typing import Any
 from unittest.mock import Mock, patch
 
 from src.app import app
@@ -11,13 +12,13 @@ from tests.test_utils import create_test_session
 
 class TestAdapterEndpoints:
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         self.app = app
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
 
     @patch("src.adapters.adapter_registry.get_adapter_registry")
-    def test_get_available_adapters_success(self, mock_get_registry):
+    def test_get_available_adapters_success(self, mock_get_registry: Any) -> None:
         """Test fetching available adapters."""
         # Setup mock registry
         mock_registry = Mock()
@@ -48,13 +49,13 @@ class TestAdapterEndpoints:
         assert data["adapters"][0]["id"] == "csv_v1"
         assert data["adapters"][0]["supported_formats"] == [".csv"]
 
-    def test_get_available_adapters_unauthorized(self):
+    def test_get_available_adapters_unauthorized(self) -> None:
         """Test fetching adapters without login."""
         response = self.client.get("/api/adapters")
         assert response.status_code == 401  # API returns 401, not 302
 
     @patch("src.api.routes.exports._export_all_institutions")
-    def test_export_data_site_admin(self, mock_export_all):
+    def test_export_data_site_admin(self, mock_export_all: Any) -> None:
         """Test site admin export delegates to _export_all_institutions."""
         create_test_session(
             self.client,
@@ -70,7 +71,9 @@ class TestAdapterEndpoints:
         mock_export_all.assert_called_once()
 
     @patch("src.api.routes.exports.create_export_service")
-    def test_export_data_institution_admin_success(self, mock_create_service):
+    def test_export_data_institution_admin_success(
+        self, mock_create_service: Any
+    ) -> None:
         """Test export data for institution admin."""
         create_test_session(
             self.client,
@@ -115,7 +118,7 @@ class TestAdapterEndpoints:
             # Verify export call
             mock_service.export_data.assert_called_once()
 
-    def test_export_data_missing_institution_context(self):
+    def test_export_data_missing_institution_context(self) -> None:
         """Test export fails if user has no institution ID."""
         create_test_session(
             self.client,
@@ -136,7 +139,7 @@ class TestAdapterEndpoints:
         assert "Institution context required" in data["error"]
 
     @patch("src.api.routes.exports.create_export_service")
-    def test_export_data_adapter_not_found(self, mock_create_service):
+    def test_export_data_adapter_not_found(self, mock_create_service: Any) -> None:
         """Test export fails if adapter is invalid."""
         create_test_session(
             self.client,
@@ -157,7 +160,7 @@ class TestAdapterEndpoints:
 class TestExportHelpers:
     """Test hidden export helper functions for coverage."""
 
-    def test_create_system_manifest(self):
+    def test_create_system_manifest(self) -> None:
         """Test manifest creation."""
         from src.api.routes.exports import _create_system_manifest
 
@@ -176,7 +179,7 @@ class TestExportHelpers:
         assert manifest["total_institutions"] == 1
 
     @patch("src.api.routes.exports._DEFAULT_EXPORT_EXTENSION", ".csv")
-    def test_get_adapter_file_extension(self):
+    def test_get_adapter_file_extension(self) -> None:
         """Test extension resolution."""
         from src.api.routes.exports import _get_adapter_file_extension
 
@@ -199,8 +202,12 @@ class TestExportHelpers:
     @patch("src.api.routes.exports.send_file")
     @patch("src.api.routes.exports.create_export_service")
     def test_export_all_institutions_flow(
-        self, mock_create_service, mock_send_file, mock_create_zip, mock_get_insts
-    ):
+        self,
+        mock_create_service: Any,
+        mock_send_file: Any,
+        mock_create_zip: Any,
+        mock_get_insts: Any,
+    ) -> None:
         """Test the logic within _export_all_institutions."""
         from src.api.routes.exports import _export_all_institutions
 

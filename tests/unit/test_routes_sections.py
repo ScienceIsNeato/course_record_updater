@@ -1,6 +1,7 @@
 """Unit tests for section API routes (migrated from test_api_routes.py)."""
 
 import json
+from typing import Any
 from unittest.mock import patch
 
 from src.app import app
@@ -9,7 +10,7 @@ from src.app import app
 class TestSectionEndpoints:
     """Test section management endpoints."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.app = app
         self.app.config["TESTING"] = True
@@ -22,7 +23,7 @@ class TestSectionEndpoints:
             "institution_id": "riverside-tech-institute",
         }
 
-    def _login_site_admin(self, overrides=None):
+    def _login_site_admin(self, overrides: Any = None) -> Any:
         from tests.test_utils import create_test_session
 
         user_data = {**self.site_admin_user}
@@ -31,14 +32,14 @@ class TestSectionEndpoints:
         create_test_session(self.client, user_data)
         return user_data
 
-    def _login_user(self, overrides=None):
+    def _login_user(self, overrides: Any = None) -> Any:
         return self._login_site_admin(overrides)
 
     @patch("src.api.utils.get_current_institution_id")
     @patch("src.api.routes.sections.get_all_sections")
     def test_get_sections_endpoint_exists(
-        self, mock_get_all_sections, mock_get_current_institution_id
-    ):
+        self, mock_get_all_sections: Any, mock_get_current_institution_id: Any
+    ) -> None:
         """Test that GET /api/sections endpoint exists."""
         self._login_user()
 
@@ -53,7 +54,7 @@ class TestSectionEndpoints:
         assert "sections" in data
         assert isinstance(data["sections"], list)
 
-    def test_create_section_endpoint_exists(self):
+    def test_create_section_endpoint_exists(self) -> None:
         """Test that POST /api/sections endpoint exists."""
         self._login_user()
 

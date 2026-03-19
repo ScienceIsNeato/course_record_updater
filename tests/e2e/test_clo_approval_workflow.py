@@ -14,6 +14,7 @@ Workflow:
 """
 
 import json
+from typing import Any
 
 import pytest
 from playwright.sync_api import Page, expect
@@ -27,7 +28,7 @@ from tests.e2e.test_helpers import (
 )
 
 
-def _setup_approval_test_data(admin_page, institution_id):
+def _setup_approval_test_data(admin_page: Any, institution_id: Any) -> Any:
     """Create all necessary test data via API."""
     csrf_token = admin_page.evaluate(
         "document.querySelector('meta[name=\"csrf-token\"]')?.content"
@@ -191,7 +192,7 @@ def _setup_approval_test_data(admin_page, institution_id):
     return clo_id, csrf_token
 
 
-def _step_perform_approval(admin_page, clo_id, csrf_token):
+def _step_perform_approval(admin_page: Any, clo_id: Any, csrf_token: Any) -> Any:
     """Navigate to audit, verify item exists, and approve it.
 
     Returns:
@@ -250,7 +251,9 @@ def _step_perform_approval(admin_page, clo_id, csrf_token):
     return section_outcome_id
 
 
-def _step_verify_approval_status(admin_page, section_outcome_id, csrf_token):
+def _step_verify_approval_status(
+    admin_page: Any, section_outcome_id: Any, csrf_token: Any
+) -> None:
     """Verify status updated to APPROVED and timestamp set."""
     # Check UI
     admin_page.goto(f"{BASE_URL}/audit-clo")
@@ -287,7 +290,7 @@ def _step_verify_approval_status(admin_page, section_outcome_id, csrf_token):
 
 @pytest.mark.e2e
 @pytest.mark.e2e
-def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
+def test_clo_approval_workflow(authenticated_institution_admin_page: Page) -> None:
     """
     Test admin approval workflow for submitted CLOs.
 

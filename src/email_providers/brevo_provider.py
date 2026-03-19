@@ -109,7 +109,7 @@ class BrevoProvider(EmailProvider):
 
         try:
             # Build request payload
-            payload = {
+            payload: Dict[str, Any] = {
                 "sender": {
                     "name": self._sender_name,
                     "email": self._sender_email,
@@ -125,10 +125,10 @@ class BrevoProvider(EmailProvider):
             }
 
             # Send via Brevo API
-            headers = {
+            headers: Dict[str, str] = {
                 "accept": "application/json",
                 "content-type": "application/json",
-                "api-key": self._api_key,
+                "api-key": str(self._api_key),
             }
 
             response = requests.post(

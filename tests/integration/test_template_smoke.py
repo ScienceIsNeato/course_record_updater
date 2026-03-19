@@ -6,10 +6,12 @@ would cause 500 errors on page load. They should run as part of CI to
 prevent broken templates from being deployed.
 """
 
+from typing import Any
+
 import pytest
 
 
-def test_assessments_template_renders(client, authenticated_client):
+def test_assessments_template_renders(client: Any, authenticated_client: Any) -> None:
     """Assessments page should render without template syntax errors."""
     response = authenticated_client.get("/assessments")
 
@@ -26,7 +28,7 @@ def test_assessments_template_renders(client, authenticated_client):
     ], f"Unexpected status code {response.status_code} for /assessments"
 
 
-def test_dashboard_template_renders(client, authenticated_client):
+def test_dashboard_template_renders(client: Any, authenticated_client: Any) -> None:
     """Dashboard should render without template syntax errors."""
     response = authenticated_client.get("/dashboard")
 
@@ -36,7 +38,7 @@ def test_dashboard_template_renders(client, authenticated_client):
     assert response.status_code in [200, 302]
 
 
-def test_courses_template_renders(client, authenticated_client):
+def test_courses_template_renders(client: Any, authenticated_client: Any) -> None:
     """Courses page should render without template syntax errors."""
     response = authenticated_client.get("/courses")
 
@@ -46,7 +48,7 @@ def test_courses_template_renders(client, authenticated_client):
     assert response.status_code in [200, 302]
 
 
-def test_admin_template_renders(client, authenticated_client):
+def test_admin_template_renders(client: Any, authenticated_client: Any) -> None:
     """Admin page should render without template syntax errors."""
     response = authenticated_client.get("/admin")
 
@@ -61,7 +63,7 @@ def test_admin_template_renders(client, authenticated_client):
     ]  # 403 if not admin, 404 if route doesn't exist
 
 
-def test_audit_template_renders(client, authenticated_client):
+def test_audit_template_renders(client: Any, authenticated_client: Any) -> None:
     """Audit page should render without template syntax errors."""
     response = authenticated_client.get("/audit")
 
@@ -76,7 +78,7 @@ def test_audit_template_renders(client, authenticated_client):
     ]  # 403 if not admin, 404 if route doesn't exist
 
 
-def test_login_template_renders(client):
+def test_login_template_renders(client: Any) -> None:
     """Login page should render without template syntax errors."""
     response = client.get("/login")
 
@@ -86,7 +88,7 @@ def test_login_template_renders(client):
     assert response.status_code == 200
 
 
-def test_register_template_renders(client):
+def test_register_template_renders(client: Any) -> None:
     """Register page should render without template syntax errors."""
     response = client.get("/register")
 
@@ -97,7 +99,7 @@ def test_register_template_renders(client):
 
 
 @pytest.mark.integration
-def test_all_templates_compile(authenticated_client):
+def test_all_templates_compile(authenticated_client: Any) -> None:
     """Test that all Jinja2 templates compile without syntax errors.
 
     This catches issues like:

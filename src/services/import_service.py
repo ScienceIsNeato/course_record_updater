@@ -10,7 +10,7 @@ import os
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, TypedDict
 
 from src.adapters.adapter_registry import AdapterRegistryError, get_adapter_registry
 from src.utils.time_utils import get_current_time
@@ -82,6 +82,35 @@ class ImportResult:
     conflicts: List[ConflictRecord]
     execution_time: float
     dry_run: bool
+
+
+class ImportStats(TypedDict):
+    """Typed structure for mutable import statistics."""
+
+    records_processed: int
+    records_created: int
+    records_updated: int
+    records_skipped: int
+    conflicts_detected: int
+    conflicts_resolved: int
+    errors: List[str]
+    warnings: List[str]
+    conflicts: List[ConflictRecord]
+
+
+def _empty_stats() -> ImportStats:
+    """Create a fresh typed stats container."""
+    return {
+        "records_processed": 0,
+        "records_created": 0,
+        "records_updated": 0,
+        "records_skipped": 0,
+        "conflicts_detected": 0,
+        "conflicts_resolved": 0,
+        "errors": [],
+        "warnings": [],
+        "conflicts": [],
+    }
 
 
 def _convert_datetime_fields(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -157,7 +186,7 @@ class ImportService:
         self,
         institution_id: str,
         verbose: bool = False,
-        progress_callback: Optional[Callable] = None,
+        progress_callback: Optional[Callable[..., None]] = None,
     ) -> None:
         """
         Initialize the ImportService for a specific institution.
@@ -183,22 +212,12 @@ class ImportService:
 
         self.logger = get_import_logger()
 
-        self.stats: Dict[str, Any] = {}
+        self.stats: ImportStats = _empty_stats()
         self.reset_stats()
 
     def reset_stats(self) -> None:
         """Reset import statistics"""
-        self.stats = {
-            "records_processed": 0,
-            "records_created": 0,
-            "records_updated": 0,
-            "records_skipped": 0,
-            "conflicts_detected": 0,
-            "conflicts_resolved": 0,
-            "errors": [],
-            "warnings": [],
-            "conflicts": [],
-        }
+        self.stats = _empty_stats()
 
     def _log(self, message: str, level: str = "info") -> None:
         """Smart logging that respects verbose mode"""
@@ -358,7 +377,7 @@ class ImportService:
             )
 
             # Log what data types were found
-            data_types = []
+            data_types: List[str] = []
             for data_type, records in parsed_data.items():
                 if records:
                     data_types.append(f"{data_type}: {len(records)}")
@@ -380,12 +399,12 @@ class ImportService:
 
     def _process_parsed_data(
         self,
-        parsed_data: Dict[str, List],
+        parsed_data: Dict[str, List[Any]],
         conflict_strategy: ConflictStrategy,
         dry_run: bool,
     ) -> None:
         """Process all parsed data in dependency order."""
-        all_conflicts = []
+        all_conflicts: List[ConflictRecord] = []
         total_records = sum(len(records) for records in parsed_data.values())
         processed_records = 0
 
@@ -424,14 +443,14 @@ class ImportService:
     def _process_data_type_records(
         self,
         data_type: str,
-        records: List,
+        records: List[Any],
         conflict_strategy: ConflictStrategy,
         dry_run: bool,
         processed_records: int,
         total_records: int,
     ) -> List[ConflictRecord]:
         """Process records for a specific data type."""
-        all_conflicts = []
+        all_conflicts: List[ConflictRecord] = []
 
         for record in records:
             processed_records += 1
@@ -478,7 +497,7 @@ class ImportService:
     def _process_single_record(
         self,
         data_type: str,
-        record: Dict,
+        record: Dict[str, Any],
         conflict_strategy: ConflictStrategy,
         dry_run: bool,
     ) -> List[ConflictRecord]:
@@ -592,7 +611,7 @@ class ImportService:
         course_number: str,
     ) -> List[ConflictRecord]:
         """Detect conflicts between import data and existing course."""
-        detected_conflicts = []
+        detected_conflicts: List[ConflictRecord] = []
 
         for field, new_value in course_data.items():
             if field == "course_number":
@@ -797,7 +816,7 @@ class ImportService:
         self, user_data: Dict[str, Any], existing_user: Dict[str, Any], email: str
     ) -> List[ConflictRecord]:
         """Detect conflicts between import data and existing user."""
-        detected_conflicts = []
+        detected_conflicts: List[ConflictRecord] = []
 
         for field, new_value in user_data.items():
             if field == "email":
@@ -1373,7 +1392,7 @@ class ImportService:
             )
 
             # Course prefix to program mapping
-            course_mappings = {
+            course_mappings: Dict[str, Optional[str]] = {
                 "BIOL": "Biological Sciences",
                 "BSN": "Biological Sciences",
                 "ZOOL": "Zoology",
@@ -1384,12 +1403,11 @@ class ImportService:
             }
 
             # Remove None values if no default program found
-            course_mappings = {k: v for k, v in course_mappings.items() if v}
-
-            # Narrow type to Dict[str, str] for mypy
-            from typing import cast
-
-            course_mappings_typed = cast(Dict[str, str], course_mappings)
+            course_mappings_typed: Dict[str, str] = {
+                key: value
+                for key, value in course_mappings.items()
+                if isinstance(value, str)
+            }
 
             linked_count = len(
                 [
@@ -1444,7 +1462,7 @@ def import_excel(
     dry_run: bool = False,
     adapter_id: str = "cei_excel_format_v1",
     verbose: bool = False,
-    progress_callback: Optional[Callable] = None,
+    progress_callback: Optional[Callable[..., Any]] = None,
 ) -> ImportResult:
     """
     Convenience function to import Excel file
@@ -1487,7 +1505,7 @@ def import_excel(
 
 def create_import_report(result: ImportResult) -> str:
     """Create a detailed import report"""
-    report = []
+    report: List[str] = []
     report.append("=" * 60)
     report.append("IMPORT REPORT")
     report.append("=" * 60)

@@ -14,6 +14,7 @@ Hardcoded passwords that should use constants instead:
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 # Actual password patterns to detect (not "Secret Keyword" false positives)
 PASSWORD_PATTERNS = [
@@ -54,7 +55,7 @@ def is_file_allowed(filepath: str) -> bool:
     return False
 
 
-def scan_file_for_passwords(filepath: Path) -> list[dict]:
+def scan_file_for_passwords(filepath: Path) -> list[dict[str, Any]]:
     """Scan a single file for hardcoded password patterns."""
     violations = []
 
@@ -82,7 +83,7 @@ def scan_file_for_passwords(filepath: Path) -> list[dict]:
     return violations
 
 
-def scan_codebase() -> list[dict]:
+def scan_codebase() -> list[dict[str, Any]]:
     """Scan the entire codebase for hardcoded passwords."""
     violations = []
     project_root = Path(".")
@@ -115,7 +116,7 @@ def main() -> int:
         return 0
 
     # Group violations by file for cleaner output
-    files_with_violations: dict[str, list[dict]] = {}
+    files_with_violations: dict[str, list[dict[str, Any]]] = {}
     for v in violations:
         filename = v["file"]
         if filename not in files_with_violations:

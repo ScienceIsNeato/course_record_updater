@@ -7,6 +7,7 @@ Admin only.
 """
 
 from functools import wraps
+from typing import Any, Callable, Dict, List, ParamSpec, TypeVar, cast
 
 from flask import Blueprint, jsonify, request
 from sqlalchemy.orm import Session
@@ -19,8 +20,19 @@ from src.services.auth_service import (  # Still need for mocking in tests
 from src.services.bulk_email_service import BulkEmailService
 from src.utils.logging_config import get_logger
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
-def lazy_permission_required(permission_name: str):
+
+def _get_request_json() -> Dict[str, Any]:
+    """Return a typed JSON object body or an empty dict."""
+    payload = request.get_json(silent=True)
+    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
+
+
+def lazy_permission_required(
+    permission_name: str,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """
     Lazy permission decorator that resolves auth_service at RUNTIME, not import time.
 
@@ -38,12 +50,12 @@ def lazy_permission_required(permission_name: str):
         Decorator function
     """
 
-    def decorator(f):
+    def decorator(f: Callable[P, R]) -> Callable[P, R]:
         # Cache the wrapped function to avoid re-wrapping on every request
-        _wrapped_function = None
+        _wrapped_function: Callable[P, R] | None = None
 
         @wraps(f)
-        def decorated_function(*args, **kwargs):
+        def decorated_function(*args: P.args, **kwargs: P.kwargs) -> R:
             nonlocal _wrapped_function
 
             # Only wrap once (on first request)
@@ -57,7 +69,7 @@ def lazy_permission_required(permission_name: str):
                 actual_decorator = runtime_permission_required(permission_name)
 
                 # Apply it ONCE and cache the result
-                _wrapped_function = actual_decorator(f)
+                _wrapped_function = cast(Callable[P, R], actual_decorator(f))
 
             # Call the cached wrapped function
             return _wrapped_function(*args, **kwargs)
@@ -111,13 +123,22 @@ def send_instructor_reminders():
     """
     try:
         # Get request data (silent=True to handle empty/invalid JSON)
-        data = request.get_json(silent=True)
+        data = _get_request_json()
 
         if not data:
             return jsonify({"success": False, "error": "Request body is required"}), 400
 
         # Validate required fields
-        instructor_ids = data.get("instructor_ids", [])
+        raw_instructor_ids = data.get("instructor_ids")
+        instructor_ids = (
+            [
+                str(instructor_id)
+                for instructor_id in cast(List[Any], raw_instructor_ids)
+                if instructor_id
+            ]
+            if isinstance(raw_instructor_ids, list)
+            else []
+        )
         if not instructor_ids or not isinstance(instructor_ids, list):
             return (
                 jsonify(
@@ -133,9 +154,8 @@ def send_instructor_reminders():
         personal_message = data.get("personal_message")
         term = data.get("term")
         deadline = data.get("deadline")
-        course_id = data.get(
-            "course_id"
-        )  # Optional course ID for deep-linking to assessments
+        course_id_value = data.get("course_id")
+        course_id = str(course_id_value) if course_id_value else None
 
         # Get current user
         current_user = get_current_user()
@@ -155,9 +175,9 @@ def send_instructor_reminders():
                 db=db,
                 instructor_ids=instructor_ids,
                 created_by_user_id=current_user["user_id"],
-                personal_message=personal_message,
-                term=term,
-                deadline=deadline,
+                personal_message=str(personal_message) if personal_message else None,
+                term=str(term) if term else None,
+                deadline=str(deadline) if deadline else None,
                 course_id=course_id,
             )
 

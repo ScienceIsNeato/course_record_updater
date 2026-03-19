@@ -1,554 +1,799 @@
-{% extends "dashboard/base_dashboard.html" %}
-
-{% block title %}Site Administrator Dashboard - MockU Course Admin{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
-{% endblock %}
-
-{% block nav_items %}
-<a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-<button class="nav-link btn btn-link" type="button" onclick="showInstitutions()"><i
-        class="fas fa-university me-1"></i>Institutions</button>
-<button class="nav-link btn btn-link" type="button" onclick="showUsers()"><i
-        class="fas fa-users me-1"></i>Users</button>
-<button class="nav-link btn btn-link" type="button" onclick="showSystemSettings()"><i
-        class="fas fa-cogs me-1"></i>System</button>
-{% endblock %}
-
-{% block page_title %}🏛️ Site Administration{% endblock %}
-{% block page_subtitle %}System-wide oversight and configuration{% endblock %}
-
-{% block content %}
+{% extends "dashboard/base_dashboard.html" %} {% block title %}Site
+Administrator Dashboard - MockU Course Admin{% endblock %} {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}" />
+{% endblock %} {% block nav_items %}
+<a class="nav-link" href="/dashboard"
+  ><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a
+>
+<button
+  class="nav-link btn btn-link"
+  type="button"
+  onclick="showInstitutions()"
+>
+  <i class="fas fa-university me-1"></i>Institutions
+</button>
+<button class="nav-link btn btn-link" type="button" onclick="showUsers()">
+  <i class="fas fa-users me-1"></i>Users
+</button>
+<button
+  class="nav-link btn btn-link"
+  type="button"
+  onclick="showSystemSettings()"
+>
+  <i class="fas fa-cogs me-1"></i>System
+</button>
+{% endblock %} {% block page_title %}🏛️ Site Administration{% endblock %} {%
+block page_subtitle %}System-wide oversight and configuration{% endblock %} {%
+block content %}
 <!-- Panel 1: Institution Overview -->
 <div class="dashboard-panel" id="institution-overview-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">🏛️</span>
-            Institution Management
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-primary" onclick="createInstitution()">
-                <i class="fas fa-plus"></i> Add Institution
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="institutionSettings()">
-                <i class="fas fa-cog"></i> Settings
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">🏛️</span>
+      Institution Management
+    </h5>
+    <div class="panel-actions">
+      <button class="btn btn-sm btn-primary" onclick="createInstitution()">
+        <i class="fas fa-plus"></i> Add Institution
+      </button>
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        onclick="institutionSettings()"
+      >
+        <i class="fas fa-cog"></i> Settings
+      </button>
     </div>
-    <div class="panel-content">
-        <div id="institutionTableContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading institutions...
-            </div>
-        </div>
+    <button class="panel-toggle">▼</button>
+  </div>
+  <div class="panel-content">
+    <div id="institutionTableContainer">
+      <div class="panel-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        Loading institutions...
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Panel 2: System Activity -->
 <div class="dashboard-panel" id="system-activity-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">📊</span>
-            Recent System Activity
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-outline-primary" onclick="viewAllActivity()">
-                <i class="fas fa-list"></i> View All
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="filterActivity()">
-                <i class="fas fa-filter"></i> Filter
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">📊</span>
+      Recent System Activity
+    </h5>
+    <div class="panel-actions">
+      <button
+        class="btn btn-sm btn-outline-primary"
+        onclick="viewAllActivity()"
+      >
+        <i class="fas fa-list"></i> View All
+      </button>
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        onclick="filterActivity()"
+      >
+        <i class="fas fa-filter"></i> Filter
+      </button>
     </div>
-    <div class="panel-content">
-        <div id="activityTableContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading system activity...
-            </div>
-        </div>
+    <button class="panel-toggle">▼</button>
+  </div>
+  <div class="panel-content">
+    <div id="activityTableContainer">
+      <div class="panel-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        Loading system activity...
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Panel 3: User Management -->
 <div class="dashboard-panel" id="user-management-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">👥</span>
-            User Management
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-success" onclick="inviteUser()">
-                <i class="fas fa-user-plus"></i> Add User
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="bulkImport()">
-                <i class="fas fa-upload"></i> Bulk Import
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">👥</span>
+      User Management
+    </h5>
+    <div class="panel-actions">
+      <button class="btn btn-sm btn-success" onclick="inviteUser()">
+        <i class="fas fa-user-plus"></i> Add User
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="bulkImport()">
+        <i class="fas fa-upload"></i> Bulk Import
+      </button>
     </div>
-    <div class="panel-content">
-        <div id="userTableContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading users...
-            </div>
-        </div>
+    <button class="panel-toggle">▼</button>
+  </div>
+  <div class="panel-content">
+    <div id="userTableContainer">
+      <div class="panel-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        Loading users...
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Panel 4: Data Management (Import/Export) -->
-{% include 'components/data_management_panel.html' %}
-{% endblock %}
-
-{% block extra_js %}
+{% include 'components/data_management_panel.html' %} {% endblock %} {% block
+extra_js %}
 <!-- Core JavaScript dependencies -->
 <script src="{{ url_for('static', filename='logger.js') }}"></script>
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 <script src="{{ url_for('static', filename='panels.js') }}"></script>
 <script>
-    const DASHBOARD_REFRESH_MS = 5 * 60 * 1000;
-    let dashboardRefreshTimer = null;
-    let lastDashboardFetch = 0;
-    let dashboardCache = null;
+  const DASHBOARD_REFRESH_MS = 5 * 60 * 1000;
+  let dashboardRefreshTimer = null;
+  let lastDashboardFetch = 0;
+  let dashboardCache = null;
 
-    document.addEventListener('DOMContentLoaded', () => {
-        initializeDashboard();
+  document.addEventListener("DOMContentLoaded", () => {
+    initializeDashboard();
+  });
+
+  function initializeDashboard() {
+    const refreshButton = document.getElementById("refreshDashboardButton");
+    if (refreshButton) {
+      refreshButton.addEventListener("click", () =>
+        loadDashboardData({ silent: false }),
+      );
+    }
+    loadDashboardData();
+    dashboardRefreshTimer = setInterval(
+      () => loadDashboardData({ silent: true }),
+      DASHBOARD_REFRESH_MS,
+    );
+    document.addEventListener("visibilitychange", () => {
+      if (
+        !document.hidden &&
+        Date.now() - lastDashboardFetch > DASHBOARD_REFRESH_MS
+      ) {
+        loadDashboardData({ silent: true });
+      }
     });
+  }
 
-    function initializeDashboard() {
-        const refreshButton = document.getElementById('refreshDashboardButton');
-        if (refreshButton) {
-            refreshButton.addEventListener('click', () => loadDashboardData({ silent: false }));
-        }
-        loadDashboardData();
-        dashboardRefreshTimer = setInterval(() => loadDashboardData({ silent: true }), DASHBOARD_REFRESH_MS);
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && Date.now() - lastDashboardFetch > DASHBOARD_REFRESH_MS) {
-                loadDashboardData({ silent: true });
-            }
-        });
+  async function loadDashboardData(options = {}) {
+    const { silent = false } = options;
+    if (!silent) {
+      setLoadingPlaceholder("institutionTableContainer");
+      setLoadingPlaceholder("userTableContainer");
     }
 
-    async function loadDashboardData(options = {}) {
-        const { silent = false } = options;
-        if (!silent) {
-            setLoadingPlaceholder('institutionTableContainer');
-            setLoadingPlaceholder('userTableContainer');
-        }
+    try {
+      const response = await fetch("/api/dashboard/data", {
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+        },
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || "Unable to load dashboard data");
+      }
 
-        try {
-            const response = await fetch('/api/dashboard/data', {
-                credentials: 'include',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
-            const payload = await response.json();
-            if (!response.ok || !payload.success) {
-                throw new Error(payload.error || 'Unable to load dashboard data');
-            }
-
-            dashboardCache = payload.data || {};
-            window.dashboardDataCache = dashboardCache;
-            lastDashboardFetch = Date.now();
-            renderDashboard(dashboardCache);
-        } catch (error) {
-            console.error('Error loading dashboard data:', error);
-            showPanelError('institutionTableContainer', 'Error loading institutions');
-            showPanelError('userTableContainer', 'Error loading users');
-        }
+      dashboardCache = payload.data || {};
+      window.dashboardDataCache = dashboardCache;
+      lastDashboardFetch = Date.now();
+      renderDashboard(dashboardCache);
+    } catch (error) {
+      console.error("Error loading dashboard data:", error);
+      showPanelError("institutionTableContainer", "Error loading institutions");
+      showPanelError("userTableContainer", "Error loading users");
     }
+  }
 
-    function renderDashboard(data) {
-        updateHeaderStats(data);
-        renderInstitutionTable(data.institutions || []);
-        renderUserTable(data.users || []);
-        renderSystemActivity(data.activity || []);
-        updateLastUpdated(data.metadata && data.metadata.last_updated);
-    }
+  function renderDashboard(data) {
+    updateHeaderStats(data);
+    renderInstitutionTable(data.institutions || []);
+    renderUserTable(data.users || []);
+    renderSystemActivity(data.activity || []);
+    updateLastUpdated(data.metadata && data.metadata.last_updated);
+  }
 
-    function updateHeaderStats(data) {
-        const summary = data.summary || {};
-        const institutions = data.institutions || [];
-        const programs = data.programs || [];
-        const courses = data.courses || [];
-        const users = data.users || [];
+  function updateHeaderStats(data) {
+    const summary = data.summary || {};
+    const institutions = data.institutions || [];
+    const programs = data.programs || [];
+    const courses = data.courses || [];
+    const users = data.users || [];
 
-        document.getElementById('institutionCount').textContent = summary.institutions ?? institutions.length;
-        document.getElementById('programCount').textContent = summary.programs ?? programs.length;
-        document.getElementById('courseCount').textContent = summary.courses ?? courses.length;
-        document.getElementById('userCount').textContent = summary.users ?? users.length;
-    }
+    document.getElementById("institutionCount").textContent =
+      summary.institutions ?? institutions.length;
+    document.getElementById("programCount").textContent =
+      summary.programs ?? programs.length;
+    document.getElementById("courseCount").textContent =
+      summary.courses ?? courses.length;
+    document.getElementById("userCount").textContent =
+      summary.users ?? users.length;
+  }
 
-    function renderInstitutionTable(institutions) {
-        const container = document.getElementById('institutionTableContainer');
-        if (!institutions.length) {
-            container.innerHTML = `
+  function renderInstitutionTable(institutions) {
+    const container = document.getElementById("institutionTableContainer");
+    if (!institutions.length) {
+      container.innerHTML = `
                 <div class="panel-empty">
                     <div class="panel-empty-icon">🏛️</div>
                     <p>No institutions found</p>
                     <button class="btn btn-primary" onclick="createInstitution()">Create First Institution</button>
                 </div>
             `;
-            return;
-        }
-
-        const table = panelManager.createSortableTable({
-            id: 'institutions-table',
-            columns: [
-                { key: 'name', label: 'Institution', sortable: true },
-                { key: 'user_count', label: 'Users', sortable: true },
-                { key: 'program_count', label: 'Programs', sortable: true },
-                { key: 'course_count', label: 'Courses', sortable: true },
-                { key: 'status', label: 'Status', sortable: false },
-                { key: 'actions', label: 'Actions', sortable: false }
-            ],
-            data: institutions.map(inst => ({
-                name: inst.name || inst.institution_id,
-                user_count: inst.user_count || 0,
-                program_count: inst.program_count || 0,
-                course_count: inst.course_count || 0,
-                status: '<span class="status-badge active">Active</span>',
-                actions: `<button class="btn btn-sm btn-outline-primary" onclick="editInstitution('${inst.institution_id}')"><i class="fas fa-edit"></i></button>`
-            }))
-        });
-
-        container.innerHTML = '';
-        container.appendChild(table);
+      return;
     }
 
-    function renderUserTable(users) {
-        const container = document.getElementById('userTableContainer');
-        if (!users.length) {
-            container.innerHTML = `
+    const table = panelManager.createSortableTable({
+      id: "institutions-table",
+      columns: [
+        { key: "name", label: "Institution", sortable: true },
+        { key: "user_count", label: "Users", sortable: true },
+        { key: "program_count", label: "Programs", sortable: true },
+        { key: "course_count", label: "Courses", sortable: true },
+        { key: "status", label: "Status", sortable: false },
+        { key: "actions", label: "Actions", sortable: false },
+      ],
+      data: institutions.map((inst) => ({
+        name: inst.name || inst.institution_id,
+        user_count: inst.user_count || 0,
+        program_count: inst.program_count || 0,
+        course_count: inst.course_count || 0,
+        status: '<span class="status-badge active">Active</span>',
+        actions: `<button class="btn btn-sm btn-outline-primary" onclick="editInstitution('${inst.institution_id}')"><i class="fas fa-edit"></i></button>`,
+      })),
+    });
+
+    container.innerHTML = "";
+    container.appendChild(table);
+  }
+
+  function renderUserTable(users) {
+    const container = document.getElementById("userTableContainer");
+    if (!users.length) {
+      container.innerHTML = `
                 <div class="panel-empty">
                     <div class="panel-empty-icon">👥</div>
                     <p>No users found</p>
                     <button class="btn btn-success" onclick="inviteUser()">Invite First User</button>
                 </div>
             `;
-            return;
-        }
-
-        const table = panelManager.createSortableTable({
-            id: 'users-table',
-            columns: [
-                { key: 'name', label: 'Name', sortable: true },
-                { key: 'email', label: 'Email', sortable: true },
-                { key: 'role', label: 'Role', sortable: true },
-                { key: 'institution_name', label: 'Institution', sortable: true },
-                { key: 'status', label: 'Status', sortable: false }
-            ],
-            data: users.map(user => ({
-                name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email || 'Unknown',
-                email: user.email || 'N/A',
-                role: (user.role || 'unknown').replace(/_/g, ' '),
-                institution_name: user.institution_name || user.institution_id || 'N/A',
-                status: '<span class="status-badge active">Active</span>'
-            }))
-        });
-
-        container.innerHTML = '';
-        container.appendChild(table);
+      return;
     }
 
-    function renderSystemActivity(activityItems) {
-        const container = document.getElementById('activityTableContainer');
-        const data = activityItems.length ? activityItems : [
-            { timestamp: '2:34 PM', institution: 'MockU', user: 'Sarah Johnson', action: 'CLO Assessment', details: 'CS-101' },
-            { timestamp: '1:15 PM', institution: 'RCC', user: 'Mike Admin', action: 'User Created', details: 'New Instructor' },
-            { timestamp: '11:30 AM', institution: 'PTU', user: 'System', action: 'Term Created', details: 'Spring 2026' },
-            { timestamp: '10:45 AM', institution: 'MockU', user: 'John Smith', action: 'CLO Completed', details: 'EE-101.2' }
+    const table = panelManager.createSortableTable({
+      id: "users-table",
+      columns: [
+        { key: "name", label: "Name", sortable: true },
+        { key: "email", label: "Email", sortable: true },
+        { key: "role", label: "Role", sortable: true },
+        { key: "institution_name", label: "Institution", sortable: true },
+        { key: "status", label: "Status", sortable: false },
+      ],
+      data: users.map((user) => ({
+        name:
+          `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
+          user.email ||
+          "Unknown",
+        email: user.email || "N/A",
+        role: (user.role || "unknown").replace(/_/g, " "),
+        institution_name: user.institution_name || user.institution_id || "N/A",
+        status: '<span class="status-badge active">Active</span>',
+      })),
+    });
+
+    container.innerHTML = "";
+    container.appendChild(table);
+  }
+
+  function renderSystemActivity(activityItems) {
+    const container = document.getElementById("activityTableContainer");
+    const data = activityItems.length
+      ? activityItems
+      : [
+          {
+            timestamp: "2:34 PM",
+            institution: "MockU",
+            user: "Sarah Johnson",
+            action: "CLO Assessment",
+            details: "CS-101",
+          },
+          {
+            timestamp: "1:15 PM",
+            institution: "RCC",
+            user: "Mike Admin",
+            action: "User Created",
+            details: "New Instructor",
+          },
+          {
+            timestamp: "11:30 AM",
+            institution: "PTU",
+            user: "System",
+            action: "Term Created",
+            details: "Spring 2026",
+          },
+          {
+            timestamp: "10:45 AM",
+            institution: "MockU",
+            user: "John Smith",
+            action: "CLO Completed",
+            details: "EE-101.2",
+          },
         ];
 
-        const table = panelManager.createSortableTable({
-            id: 'activity-table',
-            columns: [
-                { key: 'timestamp', label: 'Timestamp', sortable: true },
-                { key: 'institution', label: 'Institution', sortable: true },
-                { key: 'user', label: 'User', sortable: true },
-                { key: 'action', label: 'Action', sortable: true },
-                { key: 'details', label: 'Details', sortable: false }
-            ],
-            data: data.map(item => ({
-                ...item,
-                timestamp: window.formatTimestamp ? window.formatTimestamp(item.timestamp) : item.timestamp
-            }))
-        });
+    const table = panelManager.createSortableTable({
+      id: "activity-table",
+      columns: [
+        { key: "timestamp", label: "Timestamp", sortable: true },
+        { key: "institution", label: "Institution", sortable: true },
+        { key: "user", label: "User", sortable: true },
+        { key: "action", label: "Action", sortable: true },
+        { key: "details", label: "Details", sortable: false },
+      ],
+      data: data.map((item) => ({
+        ...item,
+        timestamp: window.formatTimestamp
+          ? window.formatTimestamp(item.timestamp)
+          : item.timestamp,
+      })),
+    });
 
-        container.innerHTML = '';
-        container.appendChild(table);
-    }
+    container.innerHTML = "";
+    container.appendChild(table);
+  }
 
-    function updateLastUpdated(timestamp) {
-        const target = document.getElementById('dashboardLastUpdated');
-        if (!target) return;
+  function updateLastUpdated(timestamp) {
+    const target = document.getElementById("dashboardLastUpdated");
+    if (!target) return;
 
-        const value = timestamp ? new Date(timestamp).toLocaleString() : new Date().toLocaleString();
-        target.textContent = `Last updated: ${value}`;
-    }
+    const value = timestamp
+      ? new Date(timestamp).toLocaleString()
+      : new Date().toLocaleString();
+    target.textContent = `Last updated: ${value}`;
+  }
 
-    function setLoadingPlaceholder(containerId) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        container.innerHTML = `
+  function setLoadingPlaceholder(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = `
             <div class="panel-loading">
                 <div class="spinner-border spinner-border-sm"></div>
                 Loading ...
             </div>
         `;
-    }
+  }
 
-    function showPanelError(containerId, message) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        container.innerHTML = `
+  function showPanelError(containerId, message) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = `
             <div class="alert alert-danger">
                 <i class="fas fa-exclamation-triangle"></i> ${message}
             </div>
         `;
-    }
+  }
 
-    // Action Functions
-    function createInstitution() {
-        const modal = new bootstrap.Modal(document.getElementById('createInstitutionModal'));
-        modal.show();
-    }
+  // Action Functions
+  function createInstitution() {
+    const modal = new bootstrap.Modal(
+      document.getElementById("createInstitutionModal"),
+    );
+    modal.show();
+  }
 
-    function institutionSettings() {
-        alert('Institution Settings feature coming soon!');
-    }
+  function institutionSettings() {
+    alert("Institution Settings feature coming soon!");
+  }
 
-    function editInstitution(id) {
-        // This function is replaced by openEditInstitutionModal in institutionManagement.js
-        alert(`Edit Institution ${id} feature coming soon!`);
-    }
+  function editInstitution(id) {
+    // This function is replaced by openEditInstitutionModal in institutionManagement.js
+    alert(`Edit Institution ${id} feature coming soon!`);
+  }
 
-    function viewAllActivity() {
-        alert('View All Activity feature coming soon!');
-    }
+  function viewAllActivity() {
+    alert("View All Activity feature coming soon!");
+  }
 
-    function filterActivity() {
-        alert('Filter Activity feature coming soon!');
-    }
+  function filterActivity() {
+    alert("Filter Activity feature coming soon!");
+  }
 
-    function inviteUser() {
-        const modal = new bootstrap.Modal(document.getElementById('inviteUserModal'));
-        modal.show();
-    }
+  function inviteUser() {
+    const modal = new bootstrap.Modal(
+      document.getElementById("inviteUserModal"),
+    );
+    modal.show();
+  }
 
-    function bulkImport() {
-        alert('Bulk Import feature coming soon!');
-    }
+  function bulkImport() {
+    alert("Bulk Import feature coming soon!");
+  }
 
-    function quickImport() {
-        alert('Quick Import feature coming soon! Select a specific data type to import.');
-    }
+  function quickImport() {
+    alert(
+      "Quick Import feature coming soon! Select a specific data type to import.",
+    );
+  }
 
-    function importData(type) {
-        alert(`Import ${type} feature coming soon!`);
-    }
+  function importData(type) {
+    alert(`Import ${type} feature coming soon!`);
+  }
 
-    function quickExport() {
-        const format = document.querySelector('input[name="exportFormat"]:checked').value;
-        alert(`Quick Export (${format}) feature coming soon!`);
-    }
+  function quickExport() {
+    const format = document.querySelector(
+      'input[name="exportFormat"]:checked',
+    ).value;
+    alert(`Quick Export (${format}) feature coming soon!`);
+  }
 
-    function exportData(type) {
-        const format = document.querySelector('input[name="exportFormat"]:checked').value;
-        alert(`Export ${type} (${format}) feature coming soon!`);
-    }
+  function exportData(type) {
+    const format = document.querySelector(
+      'input[name="exportFormat"]:checked',
+    ).value;
+    alert(`Export ${type} (${format}) feature coming soon!`);
+  }
 
-    function showInstitutions() {
-        alert('Institutions management feature coming soon!');
-    }
+  function showInstitutions() {
+    alert("Institutions management feature coming soon!");
+  }
 
-    function showUsers() {
-        alert('Users management feature coming soon!');
-    }
+  function showUsers() {
+    alert("Users management feature coming soon!");
+  }
 
-    function showSystemSettings() {
-        alert('System Settings feature coming soon!');
-    }
+  function showSystemSettings() {
+    alert("System Settings feature coming soon!");
+  }
 </script>
 
 <!-- User Management Modals -->
-<div class="modal fade" id="inviteUserModal" tabindex="-1" aria-labelledby="inviteUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="inviteUserModalLabel">Invite New User</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="inviteUserForm">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="userEmail" class="form-label">Email Address *</label>
-                        <input type="email" class="form-control" id="userEmail" name="email" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="userFirstName" class="form-label">First Name *</label>
-                        <input type="text" class="form-control" id="userFirstName" name="first_name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="userLastName" class="form-label">Last Name *</label>
-                        <input type="text" class="form-control" id="userLastName" name="last_name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="userRole" class="form-label">Role *</label>
-                        <select class="form-control" id="userRole" name="role" required>
-                            <option value="">Select Role</option>
-                            <option value="site_admin">Site Admin</option>
-                            <option value="institution_admin">Institution Admin</option>
-                            <option value="program_admin">Program Admin</option>
-                            <option value="instructor">Instructor</option>
-                        </select>
-                    </div>
-                    <div class="mb-3" id="userInstitutionGroup" style="display: none;">
-                        <label for="userInstitutionId" class="form-label">Institution *</label>
-                        <select class="form-control" id="userInstitutionId" name="institution_id">
-                            <option value="">Select Institution</option>
-                        </select>
-                    </div>
-                    <div class="mb-3" id="userProgramGroup" style="display: none;">
-                        <label for="userProgramIds" class="form-label">Programs *</label>
-                        <select class="form-control" id="userProgramIds" name="program_ids" multiple size="5">
-                        </select>
-                        <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple</small>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="inviteUserBtn">
-                        <span class="btn-text">Send Invitation</span>
-                        <span class="btn-spinner d-none">
-                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                            Sending...
-                        </span>
-                    </button>
-                </div>
-            </form>
+<div
+  class="modal fade"
+  id="inviteUserModal"
+  tabindex="-1"
+  aria-labelledby="inviteUserModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="inviteUserModalLabel">Invite New User</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <form id="inviteUserForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="userEmail" class="form-label">Email Address *</label>
+            <input
+              type="email"
+              class="form-control"
+              id="userEmail"
+              name="email"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="userFirstName" class="form-label">First Name *</label>
+            <input
+              type="text"
+              class="form-control"
+              id="userFirstName"
+              name="first_name"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="userLastName" class="form-label">Last Name *</label>
+            <input
+              type="text"
+              class="form-control"
+              id="userLastName"
+              name="last_name"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="userRole" class="form-label">Role *</label>
+            <select class="form-control" id="userRole" name="role" required>
+              <option value="">Select Role</option>
+              <option value="site_admin">Site Admin</option>
+              <option value="institution_admin">Institution Admin</option>
+              <option value="program_admin">Program Admin</option>
+              <option value="instructor">Instructor</option>
+            </select>
+          </div>
+          <div class="mb-3" id="userInstitutionGroup" style="display: none">
+            <label for="userInstitutionId" class="form-label"
+              >Institution *</label
+            >
+            <select
+              class="form-control"
+              id="userInstitutionId"
+              name="institution_id"
+            >
+              <option value="">Select Institution</option>
+            </select>
+          </div>
+          <div class="mb-3" id="userProgramGroup" style="display: none">
+            <label for="userProgramIds" class="form-label">Programs *</label>
+            <select
+              class="form-control"
+              id="userProgramIds"
+              name="program_ids"
+              multiple
+              size="5"
+            ></select>
+            <small class="form-text text-muted"
+              >Hold Ctrl/Cmd to select multiple</small
+            >
+          </div>
         </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" id="inviteUserBtn">
+            <span class="btn-text">Send Invitation</span>
+            <span class="btn-spinner d-none">
+              <span
+                class="spinner-border spinner-border-sm"
+                aria-hidden="true"
+              ></span>
+              Sending...
+            </span>
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
 </div>
 
 <!-- Institution Management Modals -->
-<div class="modal fade" id="createInstitutionModal" tabindex="-1" aria-labelledby="createInstitutionModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="createInstitutionModalLabel">Create New Institution</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="createInstitutionForm">
-                <div class="modal-body">
-                    <h6 class="mb-3">Institution Information</h6>
-                    <div class="mb-3">
-                        <label for="institutionName" class="form-label">Institution Name *</label>
-                        <input type="text" class="form-control" id="institutionName" name="name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="institutionShortName" class="form-label">Short Name *</label>
-                        <input type="text" class="form-control" id="institutionShortName" name="short_name" required>
-                        <small class="form-text text-muted">Abbreviation (e.g., "MockU")</small>
-                    </div>
-                    <div class="mb-3">
-                        <label for="institutionAddress" class="form-label">Address</label>
-                        <input type="text" class="form-control" id="institutionAddress" name="address">
-                    </div>
-                    <div class="mb-3">
-                        <label for="institutionPhone" class="form-label">Phone</label>
-                        <input type="tel" class="form-control" id="institutionPhone" name="phone">
-                    </div>
-                    <div class="mb-3">
-                        <label for="institutionWebsite" class="form-label">Website</label>
-                        <input type="url" class="form-control" id="institutionWebsite" name="website"
-                            placeholder="https://example.edu">
-                    </div>
+<div
+  class="modal fade"
+  id="createInstitutionModal"
+  tabindex="-1"
+  aria-labelledby="createInstitutionModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="createInstitutionModalLabel">
+          Create New Institution
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <form id="createInstitutionForm">
+        <div class="modal-body">
+          <h6 class="mb-3">Institution Information</h6>
+          <div class="mb-3">
+            <label for="institutionName" class="form-label"
+              >Institution Name *</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="institutionName"
+              name="name"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="institutionShortName" class="form-label"
+              >Short Name *</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="institutionShortName"
+              name="short_name"
+              required
+            />
+            <small class="form-text text-muted"
+              >Abbreviation (e.g., "MockU")</small
+            >
+          </div>
+          <div class="mb-3">
+            <label for="institutionAddress" class="form-label">Address</label>
+            <input
+              type="text"
+              class="form-control"
+              id="institutionAddress"
+              name="address"
+            />
+          </div>
+          <div class="mb-3">
+            <label for="institutionPhone" class="form-label">Phone</label>
+            <input
+              type="tel"
+              class="form-control"
+              id="institutionPhone"
+              name="phone"
+            />
+          </div>
+          <div class="mb-3">
+            <label for="institutionWebsite" class="form-label">Website</label>
+            <input
+              type="url"
+              class="form-control"
+              id="institutionWebsite"
+              name="website"
+              placeholder="https://example.edu"
+            />
+          </div>
 
-                    <hr class="my-4">
-                    <h6 class="mb-3">Institution Administrator</h6>
-                    <div class="mb-3">
-                        <label for="adminEmail" class="form-label">Admin Email *</label>
-                        <input type="email" class="form-control" id="adminEmail" name="admin_email" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="adminFirstName" class="form-label">Admin First Name *</label>
-                        <input type="text" class="form-control" id="adminFirstName" name="admin_first_name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="adminLastName" class="form-label">Admin Last Name *</label>
-                        <input type="text" class="form-control" id="adminLastName" name="admin_last_name" required>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="createInstitutionBtn">
-                        <span class="btn-text">Create Institution</span>
-                        <span class="btn-spinner d-none">
-                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                            Creating...
-                        </span>
-                    </button>
-                </div>
-            </form>
+          <hr class="my-4" />
+          <h6 class="mb-3">Institution Administrator</h6>
+          <div class="mb-3">
+            <label for="adminEmail" class="form-label">Admin Email *</label>
+            <input
+              type="email"
+              class="form-control"
+              id="adminEmail"
+              name="admin_email"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="adminFirstName" class="form-label"
+              >Admin First Name *</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="adminFirstName"
+              name="admin_first_name"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="adminLastName" class="form-label"
+              >Admin Last Name *</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="adminLastName"
+              name="admin_last_name"
+              required
+            />
+          </div>
         </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            id="createInstitutionBtn"
+          >
+            <span class="btn-text">Create Institution</span>
+            <span class="btn-spinner d-none">
+              <span
+                class="spinner-border spinner-border-sm"
+                aria-hidden="true"
+              ></span>
+              Creating...
+            </span>
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
 </div>
 
 <!-- Edit Institution Modal -->
-<div class="modal fade" id="editInstitutionModal" tabindex="-1" aria-labelledby="editInstitutionModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editInstitutionModalLabel">Edit Institution</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="editInstitutionForm">
-                <input type="hidden" id="editInstitutionId">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="editInstitutionName" class="form-label">Institution Name *</label>
-                        <input type="text" class="form-control" id="editInstitutionName" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editInstitutionShortName" class="form-label">Short Name *</label>
-                        <input type="text" class="form-control" id="editInstitutionShortName" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editInstitutionAddress" class="form-label">Address</label>
-                        <input type="text" class="form-control" id="editInstitutionAddress">
-                    </div>
-                    <div class="mb-3">
-                        <label for="editInstitutionPhone" class="form-label">Phone</label>
-                        <input type="tel" class="form-control" id="editInstitutionPhone">
-                    </div>
-                    <div class="mb-3">
-                        <label for="editInstitutionWebsite" class="form-label">Website</label>
-                        <input type="url" class="form-control" id="editInstitutionWebsite">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <span class="btn-text">Update</span>
-                        <span class="btn-spinner d-none">
-                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                            Updating...
-                        </span>
-                    </button>
-                </div>
-            </form>
+<div
+  class="modal fade"
+  id="editInstitutionModal"
+  tabindex="-1"
+  aria-labelledby="editInstitutionModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editInstitutionModalLabel">
+          Edit Institution
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <form id="editInstitutionForm">
+        <input type="hidden" id="editInstitutionId" />
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="editInstitutionName" class="form-label"
+              >Institution Name *</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="editInstitutionName"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="editInstitutionShortName" class="form-label"
+              >Short Name *</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="editInstitutionShortName"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="editInstitutionAddress" class="form-label"
+              >Address</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="editInstitutionAddress"
+            />
+          </div>
+          <div class="mb-3">
+            <label for="editInstitutionPhone" class="form-label">Phone</label>
+            <input type="tel" class="form-control" id="editInstitutionPhone" />
+          </div>
+          <div class="mb-3">
+            <label for="editInstitutionWebsite" class="form-label"
+              >Website</label
+            >
+            <input
+              type="url"
+              class="form-control"
+              id="editInstitutionWebsite"
+            />
+          </div>
         </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <span class="btn-text">Update</span>
+            <span class="btn-spinner d-none">
+              <span
+                class="spinner-border spinner-border-sm"
+                aria-hidden="true"
+              ></span>
+              Updating...
+            </span>
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
 </div>
 
 <!-- Load our CRUD management scripts -->

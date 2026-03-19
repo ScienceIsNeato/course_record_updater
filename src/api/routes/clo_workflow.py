@@ -2,6 +2,7 @@
 """CLO Workflow API routes for submission and approval."""
 
 from functools import wraps
+from typing import Any, Callable, Dict, List, ParamSpec, TypeVar, cast
 
 from flask import Blueprint, jsonify, request, session
 
@@ -17,15 +18,26 @@ from src.services.clo_workflow_service import CLOWorkflowService
 from src.utils.constants import OUTCOME_NOT_FOUND_MSG, PERMISSION_DENIED_MSG
 from src.utils.logging_config import get_logger
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
-def lazy_permission_required(permission_name: str):
+
+def _get_request_json() -> Dict[str, Any]:
+    """Return a typed JSON object body or an empty dict."""
+    payload = request.get_json(silent=True)
+    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
+
+
+def lazy_permission_required(
+    permission_name: str,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Resolve auth_service at runtime so tests can mock permission_required."""
 
-    def decorator(f):
-        _wrapped_function = None
+    def decorator(f: Callable[P, R]) -> Callable[P, R]:
+        _wrapped_function: Callable[P, R] | None = None
 
         @wraps(f)
-        def decorated_function(*args, **kwargs):
+        def decorated_function(*args: P.args, **kwargs: P.kwargs) -> R:
             nonlocal _wrapped_function
 
             if _wrapped_function is None:
@@ -33,7 +45,9 @@ def lazy_permission_required(permission_name: str):
                     permission_required as runtime_permission_required,
                 )
 
-                _wrapped_function = runtime_permission_required(permission_name)(f)
+                _wrapped_function = cast(
+                    Callable[P, R], runtime_permission_required(permission_name)(f)
+                )
             return _wrapped_function(*args, **kwargs)
 
         return decorated_function
@@ -45,16 +59,18 @@ clo_workflow_bp = Blueprint("clo_workflow", __name__, url_prefix="/api/outcomes"
 logger = get_logger(__name__)
 
 
-def _resolve_course_id(section_outcome):
+def _resolve_course_id(section_outcome: Dict[str, Any]) -> str | None:
     """Resolve course_id from a section outcome via its template."""
     outcome_id = section_outcome.get("outcome_id")
     if outcome_id:
         course_outcome = get_course_outcome(outcome_id)
         if course_outcome:
-            return course_outcome.get("course_id")
+            course_id = course_outcome.get("course_id")
+            return str(course_id) if course_id else None
 
     # Fallback to course_id if it somehow exists (e.g. if enriched)
-    return section_outcome.get("course_id")
+    course_id = section_outcome.get("course_id")
+    return str(course_id) if course_id else None
 
 
 @clo_workflow_bp.route("/<section_outcome_id>/submit", methods=["POST"])
@@ -112,6 +128,10 @@ def get_clos_for_audit():
     try:
         institution_id = get_current_institution_id()
         user = get_current_user()
+        if not user:
+            return jsonify({"success": False, "error": "User not authenticated"}), 401
+        if not institution_id:
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         status_param = request.args.get("status")
         status = None if status_param in (None, "all") else status_param
@@ -127,7 +147,16 @@ def get_clos_for_audit():
                 term_id = term.get("term_id")
 
         if user.get("role") == "program_admin":
-            user_program_ids = user.get("program_ids", [])
+            raw_program_ids = user.get("program_ids")
+            user_program_ids: List[str] = (
+                [
+                    str(program_id_value)
+                    for program_id_value in cast(List[Any], raw_program_ids)
+                    if program_id_value
+                ]
+                if isinstance(raw_program_ids, list)
+                else []
+            )
             if not user_program_ids:
                 return jsonify({"success": True, "outcomes": [], "count": 0}), 200
 
@@ -136,7 +165,7 @@ def get_clos_for_audit():
             if not program_id:
                 program_id = user_program_ids[0]
 
-        outcomes = CLOWorkflowService.get_clos_by_status(
+        outcomes: List[Dict[str, Any]] = CLOWorkflowService.get_clos_by_status(
             status=status,
             institution_id=institution_id,
             program_id=program_id,
@@ -144,10 +173,14 @@ def get_clos_for_audit():
             course_id=course_id,
         )
 
-        response_data = {"success": True, "outcomes": outcomes, "count": len(outcomes)}
+        response_data: Dict[str, Any] = {
+            "success": True,
+            "outcomes": outcomes,
+            "count": len(outcomes),
+        }
 
         if include_stats and status is None:
-            stats_by_status = {}
+            stats_by_status: Dict[str, int] = {}
             for outcome in outcomes:
                 outcome_status = outcome.get("status", "unassigned")
                 stats_by_status[outcome_status] = (
@@ -208,18 +241,18 @@ def approve_clo(section_outcome_id: str):
 def request_clo_rework(section_outcome_id: str):
     """Request rework on a submitted CLO with feedback comments."""
     try:
-        data = request.get_json(silent=True)
+        data = _get_request_json()
         if not data or "comments" not in data:
             return (
                 jsonify({"success": False, "error": "comments field is required"}),
                 400,
             )
 
-        comments = data.get("comments", "").strip()
+        comments = str(data.get("comments", "")).strip()
         if not comments:
             return jsonify({"success": False, "error": "comments cannot be empty"}), 400
 
-        send_email = data.get("send_email", False)
+        send_email = bool(data.get("send_email", False))
 
         section_outcome = get_section_outcome(section_outcome_id)
         if not section_outcome:
@@ -244,7 +277,7 @@ def request_clo_rework(section_outcome_id: str):
         logger.info(f"[Rework Request] Service returned: {result}")
 
         if result.get("success"):
-            response_data = {
+            response_data: Dict[str, Any] = {
                 "success": True,
                 "message": "Rework requested successfully",
                 "section_outcome_id": section_outcome_id,
@@ -288,8 +321,9 @@ def request_clo_rework(section_outcome_id: str):
 def mark_clo_as_nci(section_outcome_id: str):
     """Mark a CLO as Never Coming In (NCI)."""
     try:
-        data = request.get_json(silent=True)
-        reason = data.get("reason") if data else None
+        data = _get_request_json()
+        reason_value = data.get("reason")
+        reason = str(reason_value).strip() if reason_value else None
 
         user = get_current_user()
         if not user:

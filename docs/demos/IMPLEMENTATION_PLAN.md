@@ -7,7 +7,7 @@ Convert the scattered demo materials (markdown files, standalone scripts, multip
 ## Goals
 
 1. **Single Source of Truth**: One JSON file per demo containing all steps, commands, and instructions
-2. **Dual Execution Modes**: 
+2. **Dual Execution Modes**:
    - `--auto`: Automated agent mode for validation/iteration
    - Default: Human-guided presenter mode with explicit instructions
 3. **Deterministic**: Same steps, same order, every time
@@ -37,6 +37,7 @@ demos/
 ```
 
 **Naming Convention**: `{descriptive_name}.json` (e.g., `full_semester_workflow.json`, `quick_feature_tour.json`)
+
 - Keep demos client-agnostic
 - Specific clients watch generic demos
 
@@ -62,7 +63,7 @@ demos/
       "phase": "Setup",
       "name": "Admin Login",
       "purpose": "Establish admin session for program configuration",
-      
+
       "pre_commands": [
         {
           "command": "curl -s http://localhost:3001/api/health",
@@ -70,7 +71,7 @@ demos/
           "expected_output_contains": "ok"
         }
       ],
-      
+
       "instructions": {
         "human": "Click the link below to navigate to the login page, then sign in with the provided credentials.",
         "automated": {
@@ -81,7 +82,7 @@ demos/
           }
         }
       },
-      
+
       "urls": [
         {
           "label": "Login Page",
@@ -89,18 +90,18 @@ demos/
           "clickable": true
         }
       ],
-      
+
       "inputs": {
         "email": "demo2025.admin@example.com",
         "password": "Admin123!"
       },
-      
+
       "expected_results": [
         "Dashboard loads with welcome message",
         "URL changes to /dashboard",
         "Admin name visible in header"
       ],
-      
+
       "post_commands": [
         {
           "command": "sqlite3 course_records_dev.db \"SELECT COUNT(*) FROM users WHERE email='demo2025.admin@example.com'\"",
@@ -108,18 +109,18 @@ demos/
           "expected_output": "1"
         }
       ],
-      
+
       "verification": {
         "type": "ui_check",
         "expected_url": "/dashboard",
         "expected_text": "Dashboard"
       },
-      
+
       "artifacts": {
         "screenshots": ["01_admin_dashboard.png"],
         "logs": []
       },
-      
+
       "pause_for_human": true
     }
   ]
@@ -164,13 +165,13 @@ python demos/run_demo.py --demo full_semester_workflow.json --verify-only
 
 ### Flag Behavior
 
-| Flag | Purpose | Behavior |
-|------|---------|----------|
-| `--demo <file>` | Specify demo JSON | Required |
-| `--auto` | Automated mode | No pauses, executes automated actions, no human required |
-| `--start-step <N>` | Resume from step N | Skip steps 1 through N-1 |
-| `--fail-fast` | Exit on first failure | Stop immediately when any verification fails |
-| `--verify-only` | Dry-run mode | Show steps, run verifications, don't execute actions |
+| Flag               | Purpose               | Behavior                                                 |
+| ------------------ | --------------------- | -------------------------------------------------------- |
+| `--demo <file>`    | Specify demo JSON     | Required                                                 |
+| `--auto`           | Automated mode        | No pauses, executes automated actions, no human required |
+| `--start-step <N>` | Resume from step N    | Skip steps 1 through N-1                                 |
+| `--fail-fast`      | Exit on first failure | Stop immediately when any verification fails             |
+| `--verify-only`    | Dry-run mode          | Show steps, run verifications, don't execute actions     |
 
 ## Execution Modes
 
@@ -179,6 +180,7 @@ python demos/run_demo.py --demo full_semester_workflow.json --verify-only
 **Purpose**: Agent iterates on demo until it works flawlessly end-to-end
 
 **Behavior**:
+
 - Execute `pre_commands` automatically
 - Perform automated UI actions (browser automation via existing browser tools)
 - Execute `post_commands` automatically
@@ -193,6 +195,7 @@ python demos/run_demo.py --demo full_semester_workflow.json --verify-only
 **Purpose**: Human presenter gives the demo
 
 **Behavior**:
+
 - Execute `pre_commands` automatically (with output explaining what/why)
 - Show **explicit UI instructions** for human to follow
 - Show **clickable URLs** to navigate
@@ -253,6 +256,7 @@ Press Enter to continue to next step...
 ## Implementation Tasks
 
 ### Phase 1: Setup & Structure ✅
+
 - [x] Create `demos/` directory
 - [x] Write `demos/IMPLEMENTATION_PLAN.md` (this file)
 - [ ] Write `demos/README.md` (how to create and run demos)
@@ -260,6 +264,7 @@ Press Enter to continue to next step...
 - [ ] Create `demos/artifacts/` directory structure
 
 ### Phase 2: JSON Conversion
+
 - [ ] Convert `planning/demo_walkthrough.md` → `demos/full_semester_workflow.json`
   - [ ] Phase 1 - Environment Setup (steps 1-3)
   - [ ] Phase 2 - Institution & Program Config (steps 4-10)
@@ -269,6 +274,7 @@ Press Enter to continue to next step...
 - [ ] Add verification commands (database checks, API checks) as post_commands
 
 ### Phase 3: Enhance run_demo.py
+
 - [ ] Add JSON parsing (replace markdown parsing)
 - [ ] Implement `--auto` flag (automated execution)
 - [ ] Implement `--start-step` flag
@@ -282,6 +288,7 @@ Press Enter to continue to next step...
 - [ ] Integrate with browser tools for automated actions
 
 ### Phase 4: Validation
+
 - [ ] Run `--verify-only` to test JSON structure
 - [ ] Run `--auto --fail-fast` to validate automated flow
 - [ ] Iterate on failing steps using `--start-step` + `--fail-fast`
@@ -289,6 +296,7 @@ Press Enter to continue to next step...
 - [ ] Run in human mode (without --auto) to verify instructions are clear
 
 ### Phase 5: Cleanup & Documentation
+
 - [ ] Archive old files:
   - [ ] `planning/demo_walkthrough.md` → archived or deleted
   - [ ] `planning/demo-walkthrough-checklist.md` → archived or deleted
@@ -304,7 +312,7 @@ Press Enter to continue to next step...
 ✅ **Human mode** provides clear, actionable instructions at each step  
 ✅ **Fast iteration** via `--start-step` and `--fail-fast` for development  
 ✅ **Deterministic** - same steps, same order, every time  
-✅ **Maintainable** - easy to add new steps or modify existing ones  
+✅ **Maintainable** - easy to add new steps or modify existing ones
 
 ## Timeline
 
@@ -330,4 +338,3 @@ Press Enter to continue to next step...
 - Browser automation via existing `mcp_cursor-ide-browser_*` tools
 - Keep demos client-agnostic (not "CEI demo", just "demo")
 - Variable substitution enables dynamic IDs (e.g., course_id from previous step)
-

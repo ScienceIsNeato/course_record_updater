@@ -24,13 +24,13 @@ class TestEmailProviderFactory:
         },
         clear=False,
     )
-    def test_create_ethereal_provider_from_environment(self):
+    def test_create_ethereal_provider_from_environment(self) -> None:
         """Test creating Ethereal provider from environment variables"""
         provider = create_email_provider()
         assert isinstance(provider, EtherealProvider)
         assert provider.validate_configuration()
 
-    def test_create_ethereal_provider_explicitly(self):
+    def test_create_ethereal_provider_explicitly(self) -> None:
         """Test creating Ethereal provider explicitly"""
         config = {
             "username": "test@ethereal.email",
@@ -51,13 +51,13 @@ class TestEmailProviderFactory:
         },
         clear=False,
     )
-    def test_create_brevo_provider_from_environment(self):
+    def test_create_brevo_provider_from_environment(self) -> None:
         """Test creating Brevo provider from environment variables"""
         provider = create_email_provider()
         assert isinstance(provider, BrevoProvider)
         assert provider.validate_configuration()
 
-    def test_create_brevo_provider_explicitly(self):
+    def test_create_brevo_provider_explicitly(self) -> None:
         """Test creating Brevo provider explicitly"""
         config = {
             "api_key": "test-api-key",
@@ -79,7 +79,7 @@ class TestEmailProviderFactory:
         },
         clear=False,
     )
-    def test_environment_based_mapping_test_env(self):
+    def test_environment_based_mapping_test_env(self) -> None:
         """Test that ENV=test automatically selects Ethereal"""
         provider = create_email_provider()
         assert isinstance(provider, EtherealProvider)
@@ -93,7 +93,7 @@ class TestEmailProviderFactory:
         },
         clear=False,
     )
-    def test_environment_based_mapping_development_env(self):
+    def test_environment_based_mapping_development_env(self) -> None:
         """Test that ENV=development automatically selects Brevo"""
         provider = create_email_provider()
         assert isinstance(provider, BrevoProvider)
@@ -108,12 +108,12 @@ class TestEmailProviderFactory:
         },
         clear=False,
     )
-    def test_explicit_provider_overrides_environment_mapping(self):
+    def test_explicit_provider_overrides_environment_mapping(self) -> None:
         """Test that EMAIL_PROVIDER overrides environment-based mapping"""
         provider = create_email_provider()
         assert isinstance(provider, EtherealProvider)
 
-    def test_invalid_provider_name(self):
+    def test_invalid_provider_name(self) -> None:
         """Test that invalid provider name raises error"""
         with pytest.raises(ValueError, match="Unknown email provider"):
             create_email_provider("nonexistent")

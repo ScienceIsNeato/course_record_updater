@@ -1,5 +1,6 @@
 """Unit tests for dashboard_service."""
 
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -8,7 +9,7 @@ from src.services.dashboard_service import DashboardService, DashboardServiceErr
 
 
 @pytest.fixture
-def service():
+def service() -> Any:
     return DashboardService()
 
 
@@ -22,15 +23,15 @@ class TestDashboardServiceSiteAdmin:
     @patch("src.services.dashboard_service.get_all_institutions")
     def test_site_admin_aggregation(
         self,
-        mock_institutions,
-        mock_sections,
-        mock_terms,
-        mock_programs,
-        mock_courses,
-        mock_users,
-        mock_instructors,
-        service,
-    ):
+        mock_institutions: Any,
+        mock_sections: Any,
+        mock_terms: Any,
+        mock_programs: Any,
+        mock_courses: Any,
+        mock_users: Any,
+        mock_instructors: Any,
+        service: Any,
+    ) -> None:
         mock_institutions.return_value = [
             {"institution_id": "inst-1", "name": "One"},
             {"institution_id": "inst-2", "name": "Two"},
@@ -67,15 +68,15 @@ class TestDashboardServiceScoped:
     @patch("src.services.dashboard_service.get_all_sections")
     def test_institution_admin_scope(
         self,
-        mock_sections,
-        mock_instructors,
-        mock_terms,
-        mock_programs,
-        mock_courses,
-        mock_users,
-        mock_institution,
-        service,
-    ):
+        mock_sections: Any,
+        mock_instructors: Any,
+        mock_terms: Any,
+        mock_programs: Any,
+        mock_courses: Any,
+        mock_users: Any,
+        mock_institution: Any,
+        service: Any,
+    ) -> None:
         mock_programs.return_value = [
             {"program_id": "prog-1", "institution_id": "inst-1"}
         ]
@@ -127,14 +128,14 @@ class TestDashboardServiceScoped:
     @patch("src.services.dashboard_service.get_active_terms")
     def test_program_admin_scope(
         self,
-        mock_terms,
-        mock_users,
-        mock_programs,
-        mock_courses,
-        mock_sections,
-        mock_instructors,
-        service,
-    ):
+        mock_terms: Any,
+        mock_users: Any,
+        mock_programs: Any,
+        mock_courses: Any,
+        mock_sections: Any,
+        mock_instructors: Any,
+        service: Any,
+    ) -> None:
         mock_programs.return_value = [
             {"program_id": "prog-1", "name": "Program 1", "institution_id": "inst-1"},
             {"program_id": "prog-2", "name": "Program 2", "institution_id": "inst-1"},
@@ -192,12 +193,12 @@ class TestDashboardServiceScoped:
     @patch("src.services.dashboard_service.get_all_sections")
     def test_instructor_scope(
         self,
-        mock_sections,
-        mock_terms,
-        mock_courses,
-        mock_programs,
-        service,
-    ):
+        mock_sections: Any,
+        mock_terms: Any,
+        mock_courses: Any,
+        mock_programs: Any,
+        service: Any,
+    ) -> None:
         mock_sections.return_value = [
             {
                 "section_id": "s1",
@@ -238,8 +239,9 @@ class TestDashboardServiceScoped:
 
 
 class TestDashboardServiceEnrollmentHelpers:
-    def test_total_enrollment_handles_invalid_values(self, service):
+    def test_total_enrollment_handles_invalid_values(self, service: Any) -> None:
         """Covers DashboardService._total_enrollment int() conversion error branches."""
+
         sections = [
             {"enrollment": "10"},
             {"enrollment": 5},
@@ -253,8 +255,8 @@ class TestDashboardServiceEnrollmentHelpers:
 
 class TestDashboardServiceOfferingRollups:
     def test_build_offering_section_rollup_handles_missing_offering_and_invalid_enrollment(
-        self, service
-    ):
+        self, service: Any
+    ) -> None:
         sections = [
             {
                 "section_id": "s-missing",
@@ -271,7 +273,7 @@ class TestDashboardServiceOfferingRollups:
         assert rollup["o2"]["section_count"] == 1
         assert rollup["o2"]["total_enrollment"] == 0
 
-    def test_apply_offering_section_rollup_defaults_to_zero(self, service):
+    def test_apply_offering_section_rollup_defaults_to_zero(self, service: Any) -> None:
         offering_data = {"o1": {"section_count": 2, "total_enrollment": 5}}
         enriched = service._apply_offering_section_rollup(
             {"offering_id": "o2"}, offering_data
@@ -284,7 +286,9 @@ class TestDashboardServiceCLOEnrichment:
     """Test CLO data enrichment functionality."""
 
     @patch("src.services.dashboard_service.get_course_outcomes")
-    def test_enrich_courses_with_clo_data_success(self, mock_get_clos, service):
+    def test_enrich_courses_with_clo_data_success(
+        self, mock_get_clos: Any, service: Any
+    ) -> None:
         """Test successful CLO data enrichment."""
         # Mock CLO data
         mock_clos = [
@@ -312,7 +316,9 @@ class TestDashboardServiceCLOEnrichment:
         mock_get_clos.assert_any_call("course-2")
 
     @patch("src.services.dashboard_service.get_course_outcomes")
-    def test_enrich_courses_with_clo_data_no_clos(self, mock_get_clos, service):
+    def test_enrich_courses_with_clo_data_no_clos(
+        self, mock_get_clos: Any, service: Any
+    ) -> None:
         """Test CLO enrichment when no CLOs exist."""
         mock_get_clos.return_value = []
 
@@ -323,7 +329,9 @@ class TestDashboardServiceCLOEnrichment:
         assert result[0]["clos"] == []
 
     @patch("src.services.dashboard_service.get_course_outcomes")
-    def test_enrich_courses_with_clo_data_error_handling(self, mock_get_clos, service):
+    def test_enrich_courses_with_clo_data_error_handling(
+        self, mock_get_clos: Any, service: Any
+    ) -> None:
         """Test CLO enrichment handles errors gracefully."""
         mock_get_clos.side_effect = Exception("Database error")
 
@@ -333,7 +341,7 @@ class TestDashboardServiceCLOEnrichment:
         assert result[0]["clo_count"] == 0
         assert result[0]["clos"] == []
 
-    def test_enrich_courses_with_clo_data_no_course_id(self, service):
+    def test_enrich_courses_with_clo_data_no_course_id(self, service: Any) -> None:
         """Test CLO enrichment when course has no ID."""
         courses = [{"course_number": "CS-101"}]  # No course_id or id field
         result = service._enrich_courses_with_clo_data(courses)
@@ -343,11 +351,11 @@ class TestDashboardServiceCLOEnrichment:
 
 
 class TestDashboardServiceFailures:
-    def test_missing_user(self, service):
+    def test_missing_user(self, service: Any) -> None:
         with pytest.raises(DashboardServiceError):
             service.get_dashboard_data(None)
 
-    def test_missing_institution_for_admin(self, service):
+    def test_missing_institution_for_admin(self, service: Any) -> None:
         with pytest.raises(DashboardServiceError):
             service.get_dashboard_data({"role": "institution_admin"})
 
@@ -355,30 +363,30 @@ class TestDashboardServiceFailures:
 class TestDashboardServiceHelpers:
     """Test helper methods in DashboardService"""
 
-    def test_get_course_id_with_course_id_field(self, service):
+    def test_get_course_id_with_course_id_field(self, service: Any) -> None:
         """Test _get_course_id with course_id field"""
         course = {"course_id": "course-123", "name": "Test Course"}
         result = service._get_course_id(course)
         assert result == "course-123"
 
-    def test_get_course_id_with_id_field(self, service):
+    def test_get_course_id_with_id_field(self, service: Any) -> None:
         """Test _get_course_id with id field"""
         course = {"id": "course-456", "name": "Test Course"}
         result = service._get_course_id(course)
         assert result == "course-456"
 
-    def test_get_course_id_prefers_id_over_course_id(self, service):
+    def test_get_course_id_prefers_id_over_course_id(self, service: Any) -> None:
         """Test _get_course_id prefers id field when both exist"""
         course = {"id": "course-789", "course_id": "course-123", "name": "Test Course"}
         result = service._get_course_id(course)
         assert result == "course-789"
 
-    def test_get_course_id_with_none_course(self, service):
+    def test_get_course_id_with_none_course(self, service: Any) -> None:
         """Test _get_course_id with None course"""
         result = service._get_course_id(None)
         assert result is None
 
-    def test_get_course_id_with_empty_course(self, service):
+    def test_get_course_id_with_empty_course(self, service: Any) -> None:
         """Test _get_course_id with course missing both id fields"""
         course = {"name": "Test Course"}
         result = service._get_course_id(course)
@@ -388,7 +396,7 @@ class TestDashboardServiceHelpers:
 class TestDashboardServiceHelperMethods:
     """Test helper methods for data organization and processing."""
 
-    def test_group_courses_by_program(self, service):
+    def test_group_courses_by_program(self, service: Any) -> None:
         """Test _group_courses_by_program helper method."""
         courses = [
             {"course_id": "MATH101", "program_ids": ["MATH", "STEM"]},
@@ -412,7 +420,7 @@ class TestDashboardServiceHelperMethods:
             assert result["MATH"][0]["course_id"] == "MATH101"
             assert result["MATH"][1]["course_id"] == "MATH201"
 
-    def test_group_sections_by_course(self, service):
+    def test_group_sections_by_course(self, service: Any) -> None:
         """Test _group_sections_by_course helper method."""
         sections = [
             {"section_id": "001", "course_id": "MATH101"},
@@ -430,7 +438,7 @@ class TestDashboardServiceHelperMethods:
         assert result["MATH101"][1]["section_id"] == "002"
         assert result["ENG101"][0]["section_id"] == "001"
 
-    def test_process_program_courses(self, service):
+    def test_process_program_courses(self, service: Any) -> None:
         """Test _process_program_courses helper method."""
         program_courses = [
             {
@@ -475,7 +483,7 @@ class TestDashboardServiceHelperMethods:
 class TestDashboardServiceErrorHandling:
     """Test error handling and edge cases in DashboardService."""
 
-    def test_get_dashboard_data_unknown_role(self):
+    def test_get_dashboard_data_unknown_role(self) -> None:
         """Test get_dashboard_data with unknown user role."""
         import pytest
 
@@ -488,7 +496,7 @@ class TestDashboardServiceErrorHandling:
         ):
             service.get_dashboard_data(user)
 
-    def test_build_single_faculty_assignment_no_user_id(self):
+    def test_build_single_faculty_assignment_no_user_id(self) -> None:
         """Test _build_single_faculty_assignment returns None when member has no user_id."""
         service = DashboardService()
 
@@ -497,12 +505,12 @@ class TestDashboardServiceErrorHandling:
 
         assert result is None
 
-    def test_build_single_faculty_assignment_no_course_ids(self):
+    def test_build_single_faculty_assignment_no_course_ids(self) -> None:
         """Test _build_single_faculty_assignment returns None when no courses found."""
         service = DashboardService()
 
         member = {"user_id": "user1", "name": "John Doe"}
-        sections_by_instructor = {"user1": []}  # No sections
+        sections_by_instructor: dict[str, list[Any]] = {"user1": []}  # No sections
 
         result = service._build_single_faculty_assignment(
             member, sections_by_instructor, {}, {}
@@ -510,7 +518,7 @@ class TestDashboardServiceErrorHandling:
 
         assert result is None
 
-    def test_build_program_metrics_no_program_id(self):
+    def test_build_program_metrics_no_program_id(self) -> None:
         """Test _build_program_metrics skips programs with no ID."""
         service = DashboardService()
 

@@ -8,6 +8,9 @@ test_hash_consistency uses real bcrypt to verify actual integration.
 """
 
 from datetime import datetime, timedelta, timezone
+
+# Fast bcrypt mock for performance - returns predictable hash based on password
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -26,7 +29,6 @@ from src.services.password_service import (
 )
 from src.utils.constants import GENERIC_PASSWORD
 
-# Fast bcrypt mock for performance - returns predictable hash based on password
 _MOCK_HASH_PREFIX = b"$2b$04$mockhash"
 
 
@@ -57,7 +59,7 @@ class TestPasswordHashing:
 
     @patch("src.services.password_service.bcrypt.gensalt", _mock_gensalt)
     @patch("src.services.password_service.bcrypt.hashpw", _mock_hashpw)
-    def test_hash_password_success(self):
+    def test_hash_password_success(self) -> None:
         """Test successful password hashing"""
         from src.utils.constants import GENERIC_PASSWORD
 
@@ -69,13 +71,13 @@ class TestPasswordHashing:
         assert hashed != password  # Should be hashed, not plain text
         assert hashed.startswith("$2b$")  # bcrypt format
 
-    def test_hash_password_with_weak_password_fails(self):
+    def test_hash_password_with_weak_password_fails(self) -> None:
         """Test that weak passwords are rejected during hashing"""
         with pytest.raises(PasswordValidationError):
             hash_password("weak")
 
     @patch("src.services.password_service.bcrypt.hashpw")
-    def test_hash_password_bcrypt_exception(self, mock_hashpw):
+    def test_hash_password_bcrypt_exception(self, mock_hashpw: Any) -> None:
         """Test hash_password exception handling when bcrypt fails"""
         # Setup mock to raise exception
         mock_hashpw.side_effect = Exception("bcrypt failed")
@@ -87,7 +89,7 @@ class TestPasswordHashing:
     @patch("src.services.password_service.bcrypt.gensalt", _mock_gensalt)
     @patch("src.services.password_service.bcrypt.hashpw", _mock_hashpw)
     @patch("src.services.password_service.bcrypt.checkpw", _mock_checkpw)
-    def test_verify_password_correct(self):
+    def test_verify_password_correct(self) -> None:
         """Test password verification with correct password"""
         from src.utils.constants import GENERIC_PASSWORD
 
@@ -99,7 +101,7 @@ class TestPasswordHashing:
     @patch("src.services.password_service.bcrypt.gensalt", _mock_gensalt)
     @patch("src.services.password_service.bcrypt.hashpw", _mock_hashpw)
     @patch("src.services.password_service.bcrypt.checkpw", _mock_checkpw)
-    def test_verify_password_incorrect(self):
+    def test_verify_password_incorrect(self) -> None:
         """Test password verification with incorrect password"""
         from src.utils.constants import GENERIC_PASSWORD
 
@@ -109,7 +111,7 @@ class TestPasswordHashing:
 
         assert verify_password(wrong_password, hashed) is False
 
-    def test_verify_password_with_invalid_hash(self):
+    def test_verify_password_with_invalid_hash(self) -> None:
         """Test password verification with invalid hash"""
         from src.utils.constants import GENERIC_PASSWORD
 
@@ -119,7 +121,7 @@ class TestPasswordHashing:
         assert verify_password(password, invalid_hash) is False
 
     @pytest.mark.slow
-    def test_hash_consistency(self):
+    def test_hash_consistency(self) -> None:
         """Test that same password produces different hashes (due to salt)
 
         NOTE: This test uses REAL bcrypt to verify actual integration.
@@ -140,22 +142,25 @@ class TestPasswordHashing:
 class TestPasswordValidation:
     """Test password strength validation"""
 
-    def test_valid_password(self):
+    def test_valid_password(self) -> None:
         """Test that valid password passes validation"""
-        # Should not raise exception
-        validate_password_strength(GENERIC_PASSWORD)
+        password = GENERIC_PASSWORD
+        try:
+            validate_password_strength(password)
+        except PasswordValidationError as exc:
+            pytest.fail(f"Expected valid password to pass validation: {exc}")
 
-    def test_empty_password(self):
+    def test_empty_password(self) -> None:
         """Test that empty password fails validation"""
         with pytest.raises(PasswordValidationError, match="cannot be empty"):
             validate_password_strength("")
 
-    def test_too_short_password(self):
+    def test_too_short_password(self) -> None:
         """Test that short password fails validation"""
         with pytest.raises(PasswordValidationError, match="at least 8 characters"):
             validate_password_strength("Test1!")
 
-    def test_too_long_password(self):
+    def test_too_long_password(self) -> None:
         """Test that very long password fails validation"""
         long_password = "A" * 129 + "1!"
         with pytest.raises(
@@ -163,27 +168,27 @@ class TestPasswordValidation:
         ):
             validate_password_strength(long_password)
 
-    def test_no_lowercase(self):
+    def test_no_lowercase(self) -> None:
         """Test that password without lowercase fails validation"""
         with pytest.raises(PasswordValidationError, match="lowercase letter"):
             validate_password_strength("TESTPASS123!")
 
-    def test_no_uppercase(self):
+    def test_no_uppercase(self) -> None:
         """Test that password without uppercase fails validation"""
         with pytest.raises(PasswordValidationError, match="uppercase letter"):
             validate_password_strength("testpass123!")
 
-    def test_no_digit(self):
+    def test_no_digit(self) -> None:
         """Test that password without digit fails validation"""
         with pytest.raises(PasswordValidationError, match="digit"):
             validate_password_strength("TestPassword!")
 
-    def test_no_special_character(self):
+    def test_no_special_character(self) -> None:
         """Test that password without special character fails validation"""
         with pytest.raises(PasswordValidationError, match="special character"):
             validate_password_strength("TestPassword123")
 
-    def test_various_special_characters(self):
+    def test_various_special_characters(self) -> None:
         """Test that various special characters are accepted"""
         special_chars = '!@#$%^&*(),.?":{}|<>'
         for char in special_chars:
@@ -195,7 +200,7 @@ class TestPasswordValidation:
 class TestResetTokens:
     """Test password reset token functionality"""
 
-    def test_generate_reset_token(self):
+    def test_generate_reset_token(self) -> None:
         """Test reset token generation"""
         token = generate_reset_token()
 
@@ -206,7 +211,7 @@ class TestResetTokens:
         token2 = generate_reset_token()
         assert token != token2
 
-    def test_create_reset_token_data(self):
+    def test_create_reset_token_data(self) -> None:
         """Test reset token data creation"""
         user_id = "user123"
         email = "test@example.com"
@@ -223,7 +228,7 @@ class TestResetTokens:
         # Check expiry is in the future
         assert token_data["expires_at"] > datetime.now(timezone.utc)
 
-    def test_reset_token_validation_valid(self):
+    def test_reset_token_validation_valid(self) -> None:
         """Test validation of valid reset token"""
         token_data = {
             "token": "valid_token",
@@ -233,7 +238,7 @@ class TestResetTokens:
 
         assert PasswordService.is_reset_token_valid(token_data) is True
 
-    def test_reset_token_validation_expired(self):
+    def test_reset_token_validation_expired(self) -> None:
         """Test validation of expired reset token"""
         token_data = {
             "token": "expired_token",
@@ -243,7 +248,7 @@ class TestResetTokens:
 
         assert PasswordService.is_reset_token_valid(token_data) is False
 
-    def test_reset_token_validation_used(self):
+    def test_reset_token_validation_used(self) -> None:
         """Test validation of already used reset token"""
         token_data = {
             "token": "used_token",
@@ -253,12 +258,12 @@ class TestResetTokens:
 
         assert PasswordService.is_reset_token_valid(token_data) is False
 
-    def test_reset_token_validation_no_data(self):
+    def test_reset_token_validation_no_data(self) -> None:
         """Test validation with no token data"""
         assert PasswordService.is_reset_token_valid(None) is False
         assert PasswordService.is_reset_token_valid({}) is False
 
-    def test_reset_token_validation_iso_string_expiry(self):
+    def test_reset_token_validation_iso_string_expiry(self) -> None:
         """Test validation with ISO string expiry date"""
         future_time = datetime.now(timezone.utc) + timedelta(hours=1)
         token_data = {
@@ -269,7 +274,7 @@ class TestResetTokens:
 
         assert PasswordService.is_reset_token_valid(token_data) is True
 
-    def test_reset_token_validation_invalid_iso_string(self):
+    def test_reset_token_validation_invalid_iso_string(self) -> None:
         """Test validation with invalid ISO string expiry date format"""
         token_data = {
             "token": "invalid_token",
@@ -283,11 +288,11 @@ class TestResetTokens:
 class TestAccountLockout:
     """Test account lockout functionality"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Clear failed attempts before each test"""
         PasswordService._failed_attempts.clear()
 
-    def test_track_failed_login(self):
+    def test_track_failed_login(self) -> None:
         """Test tracking failed login attempts"""
         email = "test@example.com"
 
@@ -296,7 +301,7 @@ class TestAccountLockout:
         assert email in PasswordService._failed_attempts
         assert PasswordService._failed_attempts[email]["count"] == 1
 
-    def test_multiple_failed_logins(self):
+    def test_multiple_failed_logins(self) -> None:
         """Test multiple failed login attempts"""
         email = "test@example.com"
 
@@ -305,7 +310,7 @@ class TestAccountLockout:
 
         assert PasswordService._failed_attempts[email]["count"] == 3
 
-    def test_account_lockout_after_max_attempts(self):
+    def test_account_lockout_after_max_attempts(self) -> None:
         """Test account gets locked after max failed attempts"""
         email = "test@example.com"
 
@@ -318,7 +323,7 @@ class TestAccountLockout:
         assert locked_until is not None
         assert locked_until > datetime.now(timezone.utc)
 
-    def test_account_not_locked_before_max_attempts(self):
+    def test_account_not_locked_before_max_attempts(self) -> None:
         """Test account is not locked before max attempts"""
         email = "test@example.com"
 
@@ -330,7 +335,7 @@ class TestAccountLockout:
         assert is_locked is False
         assert locked_until is None
 
-    def test_clear_failed_attempts(self):
+    def test_clear_failed_attempts(self) -> None:
         """Test clearing failed login attempts"""
         email = "test@example.com"
 
@@ -340,7 +345,7 @@ class TestAccountLockout:
         PasswordService.clear_failed_attempts(email)
         assert email not in PasswordService._failed_attempts
 
-    def test_check_account_lockout_raises_exception(self):
+    def test_check_account_lockout_raises_exception(self) -> None:
         """Test that locked account raises exception"""
         email = "test@example.com"
 
@@ -351,14 +356,14 @@ class TestAccountLockout:
         with pytest.raises(AccountLockedError, match="Account is locked"):
             PasswordService.check_account_lockout(email)
 
-    def test_check_account_lockout_no_exception_when_not_locked(self):
+    def test_check_account_lockout_no_exception_when_not_locked(self) -> None:
         """Test that unlocked account doesn't raise exception"""
         email = "test@example.com"
 
         # Should not raise exception
         PasswordService.check_account_lockout(email)
 
-    def test_lockout_expiry(self):
+    def test_lockout_expiry(self) -> None:
         """Test that lockout expires after timeout"""
         email = "test@example.com"
         initial_time = datetime.now(timezone.utc)
@@ -389,11 +394,11 @@ class TestAccountLockout:
 class TestRateLimiting:
     """Test password reset rate limiting"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Clear rate limit data before each test"""
         PasswordService._reset_requests.clear()
 
-    def test_rate_limit_within_limit(self):
+    def test_rate_limit_within_limit(self) -> None:
         """Test that requests within limit are allowed"""
         email = "test@example.com"
 
@@ -401,7 +406,7 @@ class TestRateLimiting:
         PasswordService.check_rate_limit(email)
         PasswordService.check_rate_limit(email)
 
-    def test_rate_limit_exceeded(self):
+    def test_rate_limit_exceeded(self) -> None:
         """Test that rate limit is enforced"""
         email = "test@example.com"
 
@@ -413,7 +418,7 @@ class TestRateLimiting:
         with pytest.raises(RateLimitError, match="Too many password reset requests"):
             PasswordService.check_rate_limit(email)
 
-    def test_rate_limit_window_cleanup(self):
+    def test_rate_limit_window_cleanup(self) -> None:
         """Test that old requests are cleaned up"""
         email = "test@example.com"
 
@@ -444,7 +449,7 @@ class TestPasswordServiceIntegration:
     @patch("src.services.password_service.bcrypt.gensalt", _mock_gensalt)
     @patch("src.services.password_service.bcrypt.hashpw", _mock_hashpw)
     @patch("src.services.password_service.bcrypt.checkpw", _mock_checkpw)
-    def test_complete_password_lifecycle(self):
+    def test_complete_password_lifecycle(self) -> None:
         """Test complete password creation and verification cycle"""
         from src.utils.constants import GENERIC_PASSWORD
 
@@ -459,7 +464,7 @@ class TestPasswordServiceIntegration:
         # Verify incorrect password
         assert verify_password("WrongPass123!", hashed) is False
 
-    def test_reset_token_lifecycle(self):
+    def test_reset_token_lifecycle(self) -> None:
         """Test complete reset token creation and validation cycle"""
         user_id = "user123"
         email = "test@example.com"
@@ -476,7 +481,7 @@ class TestPasswordServiceIntegration:
         # Should no longer be valid
         assert PasswordService.is_reset_token_valid(token_data) is False
 
-    def test_failed_login_and_lockout_cycle(self):
+    def test_failed_login_and_lockout_cycle(self) -> None:
         """Test complete failed login tracking and lockout cycle"""
         email = "test@example.com"
 

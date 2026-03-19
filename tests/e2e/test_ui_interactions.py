@@ -149,7 +149,9 @@ def _create_test_course(
 
 
 @pytest.mark.e2e
-def test_course_level_section_visibility(authenticated_institution_admin_page: Page):
+def test_course_level_section_visibility(
+    authenticated_institution_admin_page: Page,
+) -> None:
     """Test that course-level section hides when selection is cleared."""
     admin_page = authenticated_institution_admin_page
     institution_id = get_institution_id_from_user(admin_page)

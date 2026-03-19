@@ -1,9 +1,11 @@
 import os
 import sys
 import unittest
-from unittest.mock import patch
 
 # Add src to path
+from typing import Any
+from unittest.mock import patch
+
 sys.path.append(os.getcwd())
 
 from src.models.models_sql import CourseSectionOutcome, to_dict
@@ -12,13 +14,13 @@ from src.services.clo_workflow_service import CLOWorkflowService
 
 class TestCLOServiceLogic(unittest.TestCase):
     @patch("src.services.clo_workflow_service.db")
-    def test_to_dict_real_model(self, mock_db):
+    def test_to_dict_real_model(self, mock_db: Any) -> None:
         # Create a real model instance
         outcome = CourseSectionOutcome()
-        outcome.id = "test-id"
-        outcome.section_id = "sec-id"
-        outcome.outcome_id = "tmpl-id"
-        outcome.status = "unassigned"
+        setattr(outcome, "id", "test-id")
+        setattr(outcome, "section_id", "sec-id")
+        setattr(outcome, "outcome_id", "tmpl-id")
+        setattr(outcome, "status", "unassigned")
 
         # Test to_dict directly
         d = to_dict(outcome)
@@ -29,7 +31,7 @@ class TestCLOServiceLogic(unittest.TestCase):
         self.assertIn("section_id", d)
 
     @patch("src.services.clo_workflow_service.db")
-    def test_section_id_retention(self, mock_db):
+    def test_section_id_retention(self, mock_db: Any) -> None:
         # Setup mock behavior with a DICT (simulating what db returns)
         outcome_id = "test-outcome-id"
         section_id = "original-section-id"

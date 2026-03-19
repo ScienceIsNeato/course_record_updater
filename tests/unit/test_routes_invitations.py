@@ -1,6 +1,7 @@
 """Unit tests for invitations API routes (migrated from test_api_routes.py)."""
 
 import json
+from typing import Any
 from unittest.mock import patch
 
 from src.app import app
@@ -12,7 +13,7 @@ TEST_PASSWORD = GENERIC_PASSWORD  # Test password for unit tests
 class TestInvitationEndpoints:
     """Test invitation API endpoints (Story 2.2)"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.app = app
         self.app.config["TESTING"] = True
@@ -25,7 +26,7 @@ class TestInvitationEndpoints:
             "institution_id": "inst-123",
         }
 
-    def _login_institution_admin(self, overrides=None):
+    def _login_institution_admin(self, overrides: Any = None) -> Any:
         """Authenticate requests as an institution admin."""
         from tests.test_utils import create_test_session
 
@@ -35,8 +36,8 @@ class TestInvitationEndpoints:
         create_test_session(self.client, user_data)
         return user_data
 
-    @patch("src.services.invitation_service.InvitationService")
-    def test_create_invitation_success(self, mock_invitation_service):
+    @patch("src.api.routes.auth_invitations.InvitationService")
+    def test_create_invitation_success(self, mock_invitation_service: Any) -> None:
         """Test successful invitation creation."""
         self._login_institution_admin()
 
@@ -68,14 +69,14 @@ class TestInvitationEndpoints:
         mock_invitation_service.create_invitation.assert_called_once()
         mock_invitation_service.send_invitation.assert_called_once()
 
-    def test_create_invitation_no_json(self):
+    def test_create_invitation_no_json(self) -> None:
         """Test invitation creation with no JSON data."""
         response = self.client.post("/api/auth/invite")
 
         # Real auth returns 401 for unauthenticated requests
         assert response.status_code == 401
 
-    def test_create_invitation_missing_email(self):
+    def test_create_invitation_missing_email(self) -> None:
         """Test invitation creation with missing email."""
         response = self.client.post(
             "/api/auth/invite",
@@ -85,7 +86,7 @@ class TestInvitationEndpoints:
         # Real auth returns 401 for unauthenticated requests
         assert response.status_code == 401
 
-    def test_create_invitation_missing_role(self):
+    def test_create_invitation_missing_role(self) -> None:
         """Test invitation creation with missing role."""
         response = self.client.post(
             "/api/auth/invite",
@@ -98,8 +99,10 @@ class TestInvitationEndpoints:
         # Real auth returns 401 for unauthenticated requests
         assert response.status_code == 401
 
-    @patch("src.services.invitation_service.InvitationService")
-    def test_create_invitation_invalid_email(self, mock_invitation_service):
+    @patch("src.api.routes.auth_invitations.InvitationService")
+    def test_create_invitation_invalid_email(
+        self, mock_invitation_service: Any
+    ) -> None:
         """Test invitation creation with invalid email format."""
         from src.services.invitation_service import InvitationError
 
@@ -123,8 +126,10 @@ class TestInvitationEndpoints:
         assert data["success"] is False
         assert "Invalid email format" in data["error"]
 
-    @patch("src.services.invitation_service.InvitationService")
-    def test_create_invitation_service_error(self, mock_invitation_service):
+    @patch("src.api.routes.auth_invitations.InvitationService")
+    def test_create_invitation_service_error(
+        self, mock_invitation_service: Any
+    ) -> None:
         """Test invitation creation with service error."""
         from src.services.invitation_service import InvitationError
 
@@ -147,8 +152,8 @@ class TestInvitationEndpoints:
         assert data["success"] is False
         assert "User already exists" in data["error"]
 
-    @patch("src.services.invitation_service.InvitationService")
-    def test_create_invitation_server_error(self, mock_invitation_service):
+    @patch("src.api.routes.auth_invitations.InvitationService")
+    def test_create_invitation_server_error(self, mock_invitation_service: Any) -> None:
         """Test invitation creation with unexpected server error."""
         self._login_institution_admin()
 
@@ -169,8 +174,10 @@ class TestInvitationEndpoints:
         assert data["success"] is False
         assert "Failed to create invitation" in data["error"]
 
-    @patch("src.services.invitation_service.InvitationService")
-    def test_create_invitation_with_program_ids(self, mock_invitation_service):
+    @patch("src.api.routes.auth_invitations.InvitationService")
+    def test_create_invitation_with_program_ids(
+        self, mock_invitation_service: Any
+    ) -> None:
         """Test invitation creation with program IDs for program_admin role."""
         self._login_institution_admin()
 
@@ -200,8 +207,10 @@ class TestInvitationEndpoints:
         call_args = mock_invitation_service.create_invitation.call_args[1]
         assert call_args["program_ids"] == ["prog-123", "prog-456"]
 
-    @patch("src.services.invitation_service.InvitationService")
-    def test_create_invitation_public_api_alias_fields(self, mock_invitation_service):
+    @patch("src.api.routes.auth_invitations.InvitationService")
+    def test_create_invitation_public_api_alias_fields(
+        self, mock_invitation_service: Any
+    ) -> None:
         """Ensure /api/invitations accepts email/role aliases and returns 201."""
         self._login_institution_admin()
 
@@ -237,8 +246,8 @@ class TestInvitationEndpoints:
 class TestAcceptInvitationEndpoints:
     """Test accept invitation API endpoints (Story 2.2)"""
 
-    @patch("src.services.invitation_service.InvitationService")
-    def test_accept_invitation_success(self, mock_invitation_service):
+    @patch("src.api.routes.auth_invitations.InvitationService")
+    def test_accept_invitation_success(self, mock_invitation_service: Any) -> None:
         """Test successful invitation acceptance."""
         # Mock successful invitation acceptance
         mock_invitation_service.accept_invitation.return_value = {
@@ -275,7 +284,7 @@ class TestAcceptInvitationEndpoints:
                 display_name="John Doe",
             )
 
-    def test_accept_invitation_no_json(self):
+    def test_accept_invitation_no_json(self) -> None:
         """Test invitation acceptance with no JSON data."""
         with app.test_client() as client:
             response = client.post("/api/auth/accept-invitation")
@@ -286,7 +295,7 @@ class TestAcceptInvitationEndpoints:
             assert data["success"] is False
             assert "No JSON data provided" in data["error"]
 
-    def test_accept_invitation_missing_token(self):
+    def test_accept_invitation_missing_token(self) -> None:
         """Test invitation acceptance with missing token."""
         with app.test_client() as client:
             response = client.post(
@@ -299,7 +308,7 @@ class TestAcceptInvitationEndpoints:
             assert data["success"] is False
             assert "Missing required field: invitation_token" in data["error"]
 
-    def test_accept_invitation_missing_password(self):
+    def test_accept_invitation_missing_password(self) -> None:
         """Test invitation acceptance with missing password."""
         with app.test_client() as client:
             response = client.post(
@@ -315,8 +324,10 @@ class TestAcceptInvitationEndpoints:
             assert data["success"] is False
             assert "Missing required field: password" in data["error"]
 
-    @patch("src.services.invitation_service.InvitationService")
-    def test_accept_invitation_invalid_token(self, mock_invitation_service):
+    @patch("src.api.routes.auth_invitations.InvitationService")
+    def test_accept_invitation_invalid_token(
+        self, mock_invitation_service: Any
+    ) -> None:
         """Test invitation acceptance with invalid token."""
         from src.services.invitation_service import InvitationError
 
@@ -338,8 +349,10 @@ class TestAcceptInvitationEndpoints:
             assert data["success"] is False
             assert "Invalid or expired invitation token" in data["error"]
 
-    @patch("src.services.invitation_service.InvitationService")
-    def test_accept_invitation_expired_token(self, mock_invitation_service):
+    @patch("src.api.routes.auth_invitations.InvitationService")
+    def test_accept_invitation_expired_token(
+        self, mock_invitation_service: Any
+    ) -> None:
         """Test invitation acceptance with expired token."""
         from src.services.invitation_service import InvitationError
 
@@ -361,8 +374,10 @@ class TestAcceptInvitationEndpoints:
             assert data["success"] is False
             assert "Invitation has expired" in data["error"]
 
-    @patch("src.services.invitation_service.InvitationService")
-    def test_accept_invitation_weak_password(self, mock_invitation_service):
+    @patch("src.api.routes.auth_invitations.InvitationService")
+    def test_accept_invitation_weak_password(
+        self, mock_invitation_service: Any
+    ) -> None:
         """Test invitation acceptance with weak password."""
         from src.services.invitation_service import InvitationError
 
@@ -386,8 +401,8 @@ class TestAcceptInvitationEndpoints:
             assert data["success"] is False
             assert "Invalid password" in data["error"]
 
-    @patch("src.services.invitation_service.InvitationService")
-    def test_accept_invitation_server_error(self, mock_invitation_service):
+    @patch("src.api.routes.auth_invitations.InvitationService")
+    def test_accept_invitation_server_error(self, mock_invitation_service: Any) -> None:
         """Test invitation acceptance with server error."""
         mock_invitation_service.accept_invitation.side_effect = Exception(
             "Database connection failed"
@@ -407,8 +422,10 @@ class TestAcceptInvitationEndpoints:
             assert data["success"] is False
             assert "Failed to accept invitation" in data["error"]
 
-    @patch("src.services.invitation_service.InvitationService")
-    def test_accept_invitation_without_display_name(self, mock_invitation_service):
+    @patch("src.api.routes.auth_invitations.InvitationService")
+    def test_accept_invitation_without_display_name(
+        self, mock_invitation_service: Any
+    ) -> None:
         """Test invitation acceptance without optional display name."""
         mock_invitation_service.accept_invitation.return_value = {
             "id": "user-123",
@@ -443,7 +460,7 @@ class TestAcceptInvitationEndpoints:
 class TestListInvitationsEndpoints:
     """Test list invitations API endpoints (Story 2.2)"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.app = app
         self.app.config["TESTING"] = True
@@ -456,7 +473,7 @@ class TestListInvitationsEndpoints:
             "institution_id": "inst-123",
         }
 
-    def _login_institution_admin(self, overrides=None):
+    def _login_institution_admin(self, overrides: Any = None) -> Any:
         from tests.test_utils import create_test_session
 
         user_data = {**self.institution_admin_user}
@@ -465,8 +482,8 @@ class TestListInvitationsEndpoints:
         create_test_session(self.client, user_data)
         return user_data
 
-    @patch("src.services.invitation_service.InvitationService")
-    def test_list_invitations_success(self, mock_invitation_service):
+    @patch("src.api.routes.auth_invitations.InvitationService")
+    def test_list_invitations_success(self, mock_invitation_service: Any) -> None:
         """Test successful invitation listing."""
         self._login_institution_admin()
         mock_invitation_service.list_invitations.return_value = [
@@ -499,8 +516,8 @@ class TestListInvitationsEndpoints:
             institution_id="inst-123", status=None, limit=50, offset=0
         )
 
-    @patch("src.services.invitation_service.InvitationService")
-    def test_list_invitations_with_filters(self, mock_invitation_service):
+    @patch("src.api.routes.auth_invitations.InvitationService")
+    def test_list_invitations_with_filters(self, mock_invitation_service: Any) -> None:
         """Test invitation listing with filters."""
         self._login_institution_admin()
         mock_invitation_service.list_invitations.return_value = []
@@ -518,7 +535,7 @@ class TestListInvitationsEndpoints:
             institution_id="inst-123", status="pending", limit=10, offset=5
         )
 
-    def test_list_invitations_no_institution(self):
+    def test_list_invitations_no_institution(self) -> None:
         """Test invitation listing without institution context."""
         # Don't create session - test unauthenticated request
         response = self.client.get("/api/auth/invitations")
@@ -526,8 +543,10 @@ class TestListInvitationsEndpoints:
         # Real auth returns 401 for unauthenticated requests
         assert response.status_code == 401
 
-    @patch("src.services.invitation_service.InvitationService")
-    def test_list_invitations_limit_clamping(self, mock_invitation_service):
+    @patch("src.api.routes.auth_invitations.InvitationService")
+    def test_list_invitations_limit_clamping(
+        self, mock_invitation_service: Any
+    ) -> None:
         """Test invitation listing with limit over 100 gets clamped."""
         self._login_institution_admin()
         mock_invitation_service.list_invitations.return_value = []
@@ -544,8 +563,8 @@ class TestListInvitationsEndpoints:
             institution_id="inst-123", status=None, limit=100, offset=0  # Clamped
         )
 
-    @patch("src.services.invitation_service.InvitationService")
-    def test_list_invitations_service_error(self, mock_invitation_service):
+    @patch("src.api.routes.auth_invitations.InvitationService")
+    def test_list_invitations_service_error(self, mock_invitation_service: Any) -> None:
         """Test invitation listing with service error."""
         self._login_institution_admin()
         mock_invitation_service.list_invitations.side_effect = Exception(
@@ -559,8 +578,8 @@ class TestListInvitationsEndpoints:
         assert data["success"] is False
         assert "Failed to list invitations" in data["error"]
 
-    @patch("src.services.invitation_service.InvitationService")
-    def test_list_invitations_empty_result(self, mock_invitation_service):
+    @patch("src.api.routes.auth_invitations.InvitationService")
+    def test_list_invitations_empty_result(self, mock_invitation_service: Any) -> None:
         """Test invitation listing with empty results."""
         self._login_institution_admin()
         mock_invitation_service.list_invitations.return_value = []

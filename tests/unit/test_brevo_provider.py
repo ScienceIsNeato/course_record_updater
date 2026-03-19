@@ -2,6 +2,7 @@
 Unit tests for BrevoProvider
 """
 
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -12,12 +13,12 @@ from src.email_providers.brevo_provider import BrevoProvider
 class TestBrevoProviderConfiguration:
     """Test BrevoProvider configuration and validation"""
 
-    def test_initialization(self):
+    def test_initialization(self) -> None:
         """Test provider initialization"""
         provider = BrevoProvider()
         assert not provider.validate_configuration()
 
-    def test_configuration(self):
+    def test_configuration(self) -> None:
         """Test provider configuration"""
         provider = BrevoProvider()
         config = {
@@ -29,7 +30,7 @@ class TestBrevoProviderConfiguration:
         assert provider.validate_configuration()
 
     @patch.dict("os.environ", {"BREVO_API_KEY": ""}, clear=False)
-    def test_configuration_requires_api_key(self):
+    def test_configuration_requires_api_key(self) -> None:
         """Test that configuration requires API key"""
         provider = BrevoProvider()
         config = {
@@ -39,7 +40,7 @@ class TestBrevoProviderConfiguration:
         with pytest.raises(ValueError, match="api_key"):
             provider.configure(config)
 
-    def test_configuration_requires_sender_email(self):
+    def test_configuration_requires_sender_email(self) -> None:
         """Test that configuration requires sender email"""
         provider = BrevoProvider()
         config = {
@@ -54,7 +55,7 @@ class TestBrevoProviderSending:
     """Test BrevoProvider email sending (with mocked API)"""
 
     @patch("src.email_providers.brevo_provider.requests.post")
-    def test_send_email_success(self, mock_post):
+    def test_send_email_success(self, mock_post: Any) -> None:
         """Test successful email sending"""
         mock_post.return_value = Mock(
             status_code=201, json=lambda: {"messageId": "test-id"}
@@ -80,7 +81,7 @@ class TestBrevoProviderSending:
         mock_post.assert_called_once()
 
     @patch("src.email_providers.brevo_provider.requests.post")
-    def test_send_email_api_error(self, mock_post):
+    def test_send_email_api_error(self, mock_post: Any) -> None:
         """Test email sending with API error"""
         mock_post.return_value = Mock(status_code=400, text="Bad Request")
 
@@ -102,7 +103,7 @@ class TestBrevoProviderSending:
 
         assert result is False
 
-    def test_send_email_without_configuration(self):
+    def test_send_email_without_configuration(self) -> None:
         """Test that sending email without configuration fails"""
         provider = BrevoProvider()
 
@@ -115,7 +116,7 @@ class TestBrevoProviderSending:
 
         assert result is False
 
-    def test_read_email_not_implemented(self):
+    def test_read_email_not_implemented(self) -> None:
         """Test that read_email raises NotImplementedError"""
         provider = BrevoProvider()
 

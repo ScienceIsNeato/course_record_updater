@@ -1,7 +1,3 @@
-from playwright.sync_api import Page
-
-from src.utils.constants import GENERIC_PASSWORD
-
 """
 E2E Test Helper Functions
 
@@ -10,21 +6,24 @@ Tests use these helpers to create exactly the data they need.
 """
 
 import json
+from typing import Any
 
 from playwright.sync_api import Page
+
+from src.utils.constants import GENERIC_PASSWORD
 
 
 def create_test_user_via_api(
     admin_page: Page,
-    base_url: str,
+    base_url: Any,
     email: str,
     first_name: str,
     last_name: str,
     role: str,
     institution_id: str,
     password: str = GENERIC_PASSWORD,
-    program_ids: list = None,
-) -> dict:
+    program_ids: list[str] | None = None,
+) -> dict[str, Any]:
     """
     Create a test user via admin API.
 
@@ -159,7 +158,9 @@ def get_institution_id_from_user(user_page: Page) -> str:
     response = user_page.request.get(f"{base_url}/api/me")
     if response.ok:
         user_data = response.json()
-        return user_data.get("institution_id")
+        institution_id = user_data.get("institution_id")
+        assert isinstance(institution_id, str)
+        return institution_id
 
     # Fallback: MockU for tests (most tests use MockU)
     # This is safe since we control the test data
@@ -167,7 +168,7 @@ def get_institution_id_from_user(user_page: Page) -> str:
 
 
 def get_program_id(
-    admin_page: Page, base_url: str, program_code: str, institution_id: str
+    admin_page: Page, base_url: Any, program_code: str, institution_id: str
 ) -> str:
     """
     Get program ID by code and institution.
@@ -200,14 +201,12 @@ def get_program_id(
 
 def assign_user_to_program(
     admin_page: Page,
-    base_url: str,
+    base_url: Any,
     user_id: str,
     program_id: str,
     role: str = "program_admin",
 ) -> None:
     """
-        password: str = GENERIC_PASSWORD,
-
     Args:
         admin_page: Authenticated admin page
         base_url: Base URL
@@ -243,12 +242,12 @@ def assign_user_to_program(
 
 def create_test_section_via_api(
     admin_page: Page,
-    base_url: str,
+    base_url: Any,
     course_id: str,
     term_id: str,
     section_code: str,
-    instructor_id: str = None,
-) -> dict:
+    instructor_id: str | None = None,
+) -> dict[str, Any]:
     """
     Create a test section via API.
 
@@ -299,7 +298,7 @@ def create_test_section_via_api(
 
 
 def get_term_id(
-    admin_page: Page, base_url: str, term_code: str, institution_id: str
+    admin_page: Page, base_url: Any, term_code: str, institution_id: str
 ) -> str:
     """
     Get term ID by code and institution.
@@ -331,7 +330,7 @@ def get_term_id(
 
 
 def get_course_id(
-    admin_page: Page, base_url: str, course_code: str, program_id: str
+    admin_page: Page, base_url: Any, course_code: str, program_id: str
 ) -> str:
     """
     Get course ID by code and program.

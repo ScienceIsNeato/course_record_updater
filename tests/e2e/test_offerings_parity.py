@@ -12,7 +12,7 @@ from playwright.sync_api import Page, expect
 from .conftest import BASE_URL
 
 
-def test_offerings_dashboard_parity(authenticated_institution_admin_page: Page):
+def test_offerings_dashboard_parity(authenticated_institution_admin_page: Page) -> None:
     """
     Test that Course Offerings dedicated page shows same count as dashboard.
 

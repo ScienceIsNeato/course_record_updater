@@ -5,7 +5,7 @@ Provides endpoints for managing course offerings (CRUD operations)
 with program enrichment, term status annotation, and section statistics.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
@@ -29,6 +29,12 @@ from src.utils.term_utils import TERM_STATUS_ACTIVE, get_term_status
 
 offerings_bp = Blueprint("offerings", __name__, url_prefix="/api")
 logger = get_logger(__name__)
+
+
+def _get_request_json() -> Dict[str, Any]:
+    """Return a typed JSON object body or an empty dict."""
+    payload = request.get_json(silent=True)
+    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
 
 
 def _filter_sections_by_params(
@@ -65,10 +71,19 @@ def _build_course_program_map(
     courses: List[Dict[str, Any]], program_map: Dict[str, str]
 ) -> Dict[str, Dict[str, List[Any]]]:
     """Build mapping of course_id to list of program names and IDs"""
-    course_program_map = {}
+    course_program_map: Dict[str, Dict[str, List[Any]]] = {}
     for course in courses:
-        p_ids = course.get("program_ids") or []
-        p_names = [program_map[pid] for pid in p_ids if pid in program_map]
+        raw_program_ids = course.get("program_ids")
+        p_ids: List[str] = (
+            [
+                str(program_id_value)
+                for program_id_value in cast(List[Any], raw_program_ids)
+                if program_id_value
+            ]
+            if isinstance(raw_program_ids, list)
+            else []
+        )
+        p_names: List[str] = [program_map[pid] for pid in p_ids if pid in program_map]
         course_id = course.get("course_id") or course.get("id")
         if course_id:
             course_program_map[str(course_id)] = {"names": p_names, "ids": p_ids}
@@ -90,10 +105,10 @@ def _enrich_offerings_with_programs(
             ids = [program_id]
         elif offering.get("course_id"):
             course_data = course_program_map.get(
-                offering["course_id"], {"names": [], "ids": []}
+                str(offering["course_id"]), {"names": [], "ids": []}
             )
-            names = course_data.get("names", [])
-            ids = course_data.get("ids", [])
+            names = [str(name) for name in course_data.get("names", [])]
+            ids = [str(pid) for pid in course_data.get("ids", [])]
         offering["program_names"] = names
         offering["program_ids"] = ids
 
@@ -256,7 +271,7 @@ def _log_offering_program_enrichment(offerings: List[Dict[str, Any]]) -> None:
 def create_course_offering_endpoint() -> ResponseReturnValue:
     """Create a new course offering from JSON body (course_id, term_id required)."""
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -274,14 +289,28 @@ def create_course_offering_endpoint() -> ResponseReturnValue:
                 400,
             )
 
-        offering_payload = {
-            "course_id": data["course_id"],
-            "term_id": data["term_id"],
-            "program_id": data.get("program_id"),
+        offering_payload: Dict[str, Any] = {
+            "course_id": str(data["course_id"]),
+            "term_id": str(data["term_id"]),
+            "program_id": (
+                str(data.get("program_id")) if data.get("program_id") else None
+            ),
             "institution_id": get_current_institution_id(),
         }
 
-        sections_data = data.get("sections")
+        sections_value = data.get("sections")
+        section_values: List[Any] = (
+            cast(List[Any], sections_value) if isinstance(sections_value, list) else []
+        )
+        sections_data: List[Dict[str, Any]] = (
+            [
+                cast(Dict[str, Any], section)
+                for section in section_values
+                if isinstance(section, dict)
+            ]
+            if section_values
+            else []
+        )
         if not sections_data:
             sections_data = [{"section_number": "001"}]
 
@@ -289,17 +318,17 @@ def create_course_offering_endpoint() -> ResponseReturnValue:
         offering_id = database_service.create_course_offering(offering_payload)
 
         if offering_id:
-            failed_sections = []
+            failed_sections: List[str] = []
             for sec in sections_data:
-                section_payload = {
+                section_payload: Dict[str, Any] = {
                     "offering_id": offering_id,
-                    "section_number": sec.get("section_number", "001"),
+                    "section_number": str(sec.get("section_number", "001")),
                     "enrollment": 0,
                     "status": "assigned",
                 }
                 section_id = database_service.create_course_section(section_payload)
                 if not section_id:
-                    failed_sections.append(sec.get("section_number", "001"))
+                    failed_sections.append(str(sec.get("section_number", "001")))
 
             if failed_sections:
                 logger.warning(
@@ -398,7 +427,7 @@ def get_course_offering_endpoint(offering_id: str) -> ResponseReturnValue:
 def update_course_offering_endpoint(offering_id: str) -> ResponseReturnValue:
     """Update course offering details."""
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 

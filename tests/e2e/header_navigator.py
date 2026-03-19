@@ -9,7 +9,7 @@ class HeaderNavigator:
     NAV_CONTAINER = ".navbar-nav.me-auto"
     NAV_LINKS_SELECTOR = f"{NAV_CONTAINER} .nav-link"
 
-    def __init__(self, page: Page):
+    def __init__(self, page: Page) -> None:
         self.page = page
         self._wait_for_nav()
 

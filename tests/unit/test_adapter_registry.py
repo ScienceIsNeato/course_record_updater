@@ -14,6 +14,8 @@ from src.adapters.adapter_registry import (
 )
 from src.adapters.file_base_adapter import FileBaseAdapter
 
+AdapterPayload = dict[str, list[dict[str, Any]]]
+
 
 class MockAdapterA(FileBaseAdapter):
     """Mock adapter for testing - Institution A"""
@@ -35,13 +37,11 @@ class MockAdapterA(FileBaseAdapter):
             "version": "1.0.0",
         }
 
-    def parse_file(
-        self, file_path: str, options: Dict[str, Any]
-    ) -> Dict[str, List[Dict]]:
+    def parse_file(self, file_path: str, options: dict[str, Any]) -> AdapterPayload:
         return {"courses": [{"id": "1", "name": "Test Course"}]}
 
     def export_data(
-        self, data: Dict[str, List[Dict]], output_path: str, options: Dict[str, Any]
+        self, data: AdapterPayload, output_path: str, options: dict[str, Any]
     ) -> Tuple[bool, str, int]:
         return True, "Mock export successful", 1
 
@@ -66,13 +66,11 @@ class MockAdapterB(FileBaseAdapter):
             "version": "2.0.0",
         }
 
-    def parse_file(
-        self, file_path: str, options: Dict[str, Any]
-    ) -> Dict[str, List[Dict]]:
+    def parse_file(self, file_path: str, options: dict[str, Any]) -> AdapterPayload:
         return {"students": [{"id": "1", "name": "Test Student"}]}
 
     def export_data(
-        self, data: Dict[str, List[Dict]], output_path: str, options: Dict[str, Any]
+        self, data: AdapterPayload, output_path: str, options: dict[str, Any]
     ) -> Tuple[bool, str, int]:
         return True, "Mock export successful", 1
 
@@ -98,13 +96,11 @@ class MockPublicAdapter(FileBaseAdapter):
             "public": True,
         }
 
-    def parse_file(
-        self, file_path: str, options: Dict[str, Any]
-    ) -> Dict[str, List[Dict]]:
+    def parse_file(self, file_path: str, options: dict[str, Any]) -> AdapterPayload:
         return {"courses": [{"id": "1", "name": "Public Course"}]}
 
     def export_data(
-        self, data: Dict[str, List[Dict]], output_path: str, options: Dict[str, Any]
+        self, data: AdapterPayload, output_path: str, options: dict[str, Any]
     ) -> Tuple[bool, str, int]:
         return True, "Mock export successful", 1
 
@@ -130,13 +126,11 @@ class MockInstitutionSpecificAdapter(FileBaseAdapter):
             "public": False,
         }
 
-    def parse_file(
-        self, file_path: str, options: Dict[str, Any]
-    ) -> Dict[str, List[Dict]]:
+    def parse_file(self, file_path: str, options: dict[str, Any]) -> AdapterPayload:
         return {"courses": [{"id": "1", "name": "Custom Course"}]}
 
     def export_data(
-        self, data: Dict[str, List[Dict]], output_path: str, options: Dict[str, Any]
+        self, data: AdapterPayload, output_path: str, options: dict[str, Any]
     ) -> Tuple[bool, str, int]:
         return True, "Mock export successful", 1
 
@@ -157,13 +151,11 @@ class MockInvalidAdapter(FileBaseAdapter):
             # Missing: id, institution_id, supported_formats, data_types
         }
 
-    def parse_file(
-        self, file_path: str, options: Dict[str, Any]
-    ) -> Dict[str, List[Dict]]:
+    def parse_file(self, file_path: str, options: dict[str, Any]) -> AdapterPayload:
         return {}
 
     def export_data(
-        self, data: Dict[str, List[Dict]], output_path: str, options: Dict[str, Any]
+        self, data: AdapterPayload, output_path: str, options: dict[str, Any]
     ) -> Tuple[bool, str, int]:
         return False, "Invalid adapter export", 0
 
@@ -171,7 +163,7 @@ class MockInvalidAdapter(FileBaseAdapter):
 class TestAdapterRegistry:
     """Test suite for AdapterRegistry"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test environment"""
         self.registry = AdapterRegistry()
         # Clear any cached state
@@ -182,7 +174,9 @@ class TestAdapterRegistry:
     @patch("src.adapters.adapter_registry.importlib.import_module")
     @patch("src.adapters.adapter_registry.inspect.getmembers")
     @patch("src.adapters.adapter_registry.Path.glob")
-    def test_discover_adapters_success(self, mock_glob, mock_getmembers, mock_import):
+    def test_discover_adapters_success(
+        self, mock_glob: Any, mock_getmembers: Any, mock_import: Any
+    ) -> None:
         """Test successful adapter discovery"""
         # Mock file discovery
         mock_file = Mock()
@@ -206,7 +200,9 @@ class TestAdapterRegistry:
 
     @patch("src.adapters.adapter_registry.importlib.import_module")
     @patch("src.adapters.adapter_registry.Path.glob")
-    def test_discover_adapters_import_error(self, mock_glob, mock_import):
+    def test_discover_adapters_import_error(
+        self, mock_glob: Any, mock_import: Any
+    ) -> None:
         """Test adapter discovery with import error"""
         # Mock file discovery
         mock_file = Mock()
@@ -223,7 +219,7 @@ class TestAdapterRegistry:
         assert len(self.registry._adapters) == 0
         assert self.registry._discovery_complete is True
 
-    def test_register_adapter_class_valid(self):
+    def test_register_adapter_class_valid(self) -> None:
         """Test registering a valid adapter class"""
         self.registry._register_adapter_class(MockAdapterA, "mock_module")
 
@@ -233,7 +229,7 @@ class TestAdapterRegistry:
         assert registration["active"] is True
         assert registration["info"]["name"] == "Mock Adapter A"
 
-    def test_register_adapter_class_invalid(self):
+    def test_register_adapter_class_invalid(self) -> None:
         """Test registering an adapter with invalid metadata"""
         # Should not raise error, just log warning and skip
         self.registry._register_adapter_class(MockInvalidAdapter, "invalid_module")
@@ -241,7 +237,7 @@ class TestAdapterRegistry:
         # Should not be registered due to missing required fields
         assert len(self.registry._adapters) == 0
 
-    def test_get_all_adapters(self):
+    def test_get_all_adapters(self) -> None:
         """Test getting all registered adapters"""
         # Manually register adapters for testing
         self.registry._adapters = {
@@ -265,7 +261,7 @@ class TestAdapterRegistry:
         assert "mock_adapter_a" in adapter_ids
         assert "mock_adapter_b" in adapter_ids
 
-    def test_get_adapters_for_institution(self):
+    def test_get_adapters_for_institution(self) -> None:
         """Test getting adapters for specific institution"""
         # Manually register adapters
         self.registry._adapters = {
@@ -296,7 +292,7 @@ class TestAdapterRegistry:
         adapters_none = self.registry.get_adapters_for_institution("nonexistent")
         assert len(adapters_none) == 0
 
-    def test_get_adapters_for_user_site_admin(self):
+    def test_get_adapters_for_user_site_admin(self) -> None:
         """Test adapter access for site admin"""
         # Manually register adapters
         self.registry._adapters = {
@@ -317,7 +313,7 @@ class TestAdapterRegistry:
         adapters = self.registry.get_adapters_for_user("site_admin", "any_institution")
         assert len(adapters) == 2
 
-    def test_get_adapters_for_user_institution_admin(self):
+    def test_get_adapters_for_user_institution_admin(self) -> None:
         """Test adapter access for institution admin"""
         # Manually register adapters
         self.registry._adapters = {
@@ -341,7 +337,7 @@ class TestAdapterRegistry:
         assert len(adapters) == 1
         assert adapters[0]["id"] == "mock_adapter_a"
 
-    def test_get_adapters_for_user_instructor(self):
+    def test_get_adapters_for_user_instructor(self) -> None:
         """Test adapter access for instructor (should be empty)"""
         # Manually register adapters
         self.registry._adapters = {
@@ -357,7 +353,7 @@ class TestAdapterRegistry:
         adapters = self.registry.get_adapters_for_user("instructor", "institution_a")
         assert len(adapters) == 0
 
-    def test_institution_specific_adapter_overrides_public(self):
+    def test_institution_specific_adapter_overrides_public(self) -> None:
         """
         Test that institution-specific adapters take precedence over public adapters
         when adapter IDs collide (fixes bug where institution-specific adapters
@@ -401,7 +397,7 @@ class TestAdapterRegistry:
             assert "institution_a" in warning_call
             assert "overrides public adapter" in warning_call
 
-    def test_get_adapter_by_id_success(self):
+    def test_get_adapter_by_id_success(self) -> None:
         """Test getting adapter instance by ID"""
         # Manually register adapter
         self.registry._adapters = {
@@ -425,14 +421,14 @@ class TestAdapterRegistry:
         adapter2 = self.registry.get_adapter_by_id("mock_adapter_a")
         assert adapter is adapter2
 
-    def test_get_adapter_by_id_not_found(self):
+    def test_get_adapter_by_id_not_found(self) -> None:
         """Test getting non-existent adapter"""
         self.registry._discovery_complete = True
 
         adapter = self.registry.get_adapter_by_id("nonexistent")
         assert adapter is None
 
-    def test_get_adapter_by_id_inactive(self):
+    def test_get_adapter_by_id_inactive(self) -> None:
         """Test getting inactive adapter"""
         # Register inactive adapter
         self.registry._adapters = {
@@ -447,7 +443,7 @@ class TestAdapterRegistry:
         adapter = self.registry.get_adapter_by_id("mock_adapter_a")
         assert adapter is None
 
-    def test_validate_adapter_access_allowed(self):
+    def test_validate_adapter_access_allowed(self) -> None:
         """Test adapter access validation - allowed"""
         # Manually register adapter
         self.registry._adapters = {
@@ -465,7 +461,7 @@ class TestAdapterRegistry:
         )
         assert has_access is True
 
-    def test_validate_adapter_access_denied(self):
+    def test_validate_adapter_access_denied(self) -> None:
         """Test adapter access validation - denied"""
         # Manually register adapter
         self.registry._adapters = {
@@ -483,7 +479,7 @@ class TestAdapterRegistry:
         )
         assert has_access is False
 
-    def test_get_adapter_info(self):
+    def test_get_adapter_info(self) -> None:
         """Test getting adapter metadata"""
         # Manually register adapter
         self.registry._adapters = {
@@ -502,7 +498,7 @@ class TestAdapterRegistry:
         assert info["name"] == "Mock Adapter A"
         assert info["active"] is True
 
-    def test_deactivate_reactivate_adapter(self):
+    def test_deactivate_reactivate_adapter(self) -> None:
         """Test deactivating and reactivating adapters"""
         # Manually register adapter
         self.registry._adapters = {
@@ -528,7 +524,7 @@ class TestAdapterRegistry:
         result = self.registry.deactivate_adapter("nonexistent")
         assert result is False
 
-    def test_get_supported_formats(self):
+    def test_get_supported_formats(self) -> None:
         """Test getting supported file formats"""
         # Manually register adapters
         self.registry._adapters = {
@@ -552,7 +548,7 @@ class TestAdapterRegistry:
         assert ".xlsx" in formats["mock_adapter_a"]
         assert ".csv" in formats["mock_adapter_b"]
 
-    def test_find_adapters_for_format(self):
+    def test_find_adapters_for_format(self) -> None:
         """Test finding adapters by file format"""
         # Manually register adapters
         self.registry._adapters = {
@@ -583,7 +579,7 @@ class TestAdapterRegistry:
         pdf_adapters = self.registry.find_adapters_for_format(".pdf")
         assert len(pdf_adapters) == 0
 
-    def test_clear_cache(self):
+    def test_clear_cache(self) -> None:
         """Test clearing registry cache"""
         # Set up some cached state
         self.registry._adapters = {"test": {}}
@@ -599,8 +595,8 @@ class TestAdapterRegistry:
     @patch.object(AdapterRegistry, "_get_public_adapters")
     @patch.object(AdapterRegistry, "get_adapters_for_institution")
     def test_public_adapters_returned_when_no_institution(
-        self, mock_get_institution, mock_get_public
-    ):
+        self, mock_get_institution: Any, mock_get_public: Any
+    ) -> None:
         """Ensure public adapters are returned when institution_id is missing."""
         mock_get_public.return_value = [
             {"id": "shared_adapter", "public": True, "name": "Public"}
@@ -615,7 +611,7 @@ class TestAdapterRegistry:
 class TestAdapterRegistrySingleton:
     """Test suite for adapter registry singleton"""
 
-    def test_get_adapter_registry_singleton(self):
+    def test_get_adapter_registry_singleton(self) -> None:
         """Test that get_adapter_registry returns the same instance"""
         registry1 = get_adapter_registry()
         registry2 = get_adapter_registry()
@@ -627,14 +623,14 @@ class TestAdapterRegistrySingleton:
 class TestAdapterRegistryError:
     """Test suite for AdapterRegistryError"""
 
-    def test_adapter_registry_error(self):
+    def test_adapter_registry_error(self) -> None:
         """Test AdapterRegistryError exception"""
         with pytest.raises(AdapterRegistryError) as exc_info:
             raise AdapterRegistryError("Test registry error")
 
         assert "Test registry error" in str(exc_info.value)
 
-    def test_get_adapter_instance_creation_failure(self):
+    def test_get_adapter_instance_creation_failure(self) -> None:
         """Test get_adapter raises AdapterRegistryError when adapter instantiation fails."""
 
         from src.adapters.adapter_registry import AdapterRegistry, AdapterRegistryError

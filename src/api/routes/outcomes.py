@@ -5,6 +5,8 @@ Provides endpoints for managing course learning outcomes (CLOs),
 including CRUD operations, assessment data updates, and submission workflows.
 """
 
+from typing import Any, Dict, cast
+
 from flask import Blueprint, jsonify, request, session
 from flask.typing import ResponseReturnValue
 
@@ -33,6 +35,12 @@ from src.utils.logging_config import get_logger
 
 outcomes_bp = Blueprint("outcomes", __name__, url_prefix="/api")
 logger = get_logger(__name__)
+
+
+def _get_request_json() -> Dict[str, Any]:
+    """Return a typed JSON object body or an empty dict."""
+    payload = request.get_json(silent=True)
+    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
 
 
 @outcomes_bp.route("/outcomes", methods=["GET"])
@@ -73,18 +81,21 @@ def list_all_outcomes_endpoint() -> ResponseReturnValue:
 def create_outcome_endpoint() -> ResponseReturnValue:
     """Create a new course outcome. Requires course_id in body."""
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data or "course_id" not in data:
             return jsonify({"success": False, "error": "course_id is required"}), 400
         if "description" not in data:
             return jsonify({"success": False, "error": "description is required"}), 400
 
-        course = get_course_by_id(data["course_id"])
+        course_id = str(data["course_id"])
+        course = get_course_by_id(course_id)
         institution_id = get_current_institution_id_safe()
         if not course or course.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
 
-        outcome_id = database_service.create_course_outcome(data)
+        outcome_payload = dict(data)
+        outcome_payload["course_id"] = course_id
+        outcome_id = database_service.create_course_outcome(outcome_payload)
 
         if outcome_id:
             return (
@@ -197,7 +208,7 @@ def get_course_outcomes_endpoint_get(course_id: str) -> ResponseReturnValue:
 def create_course_outcome_endpoint(course_id: str) -> ResponseReturnValue:
     """Create a new course outcome for the given course."""
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data or "description" not in data:
             return jsonify({"success": False, "error": "description is required"}), 400
 
@@ -206,9 +217,10 @@ def create_course_outcome_endpoint(course_id: str) -> ResponseReturnValue:
         if not course:
             return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
 
-        data["course_id"] = course_id
+        outcome_payload = dict(data)
+        outcome_payload["course_id"] = course_id
 
-        outcome_id = database_service.create_course_outcome(data)
+        outcome_id = database_service.create_course_outcome(outcome_payload)
 
         if outcome_id:
             # Get section outcomes that were auto-created for this course outcome
@@ -258,8 +270,9 @@ def submit_course_for_approval_endpoint(course_id: str) -> ResponseReturnValue:
             return jsonify({"success": False, "error": "User not authenticated"}), 401
 
         # Get optional section_id from request body
-        data = request.get_json(silent=True) or {} or {}
-        section_id = data.get("section_id")
+        data = _get_request_json()
+        section_id_value = data.get("section_id")
+        section_id = str(section_id_value) if section_id_value else None
         alert_program_admins = bool(data.get("alert_program_admins"))
 
         # Submit course (validates first)
@@ -328,7 +341,7 @@ def get_outcome_audit_details_endpoint(outcome_id: str) -> ResponseReturnValue:
 def update_course_outcome_endpoint(outcome_id: str) -> ResponseReturnValue:
     """Update course outcome details."""
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -374,7 +387,7 @@ def update_outcome_assessment_endpoint(outcome_id: str) -> ResponseReturnValue:
     from src.database.database_service import get_section_by_id
 
     try:
-        data = request.get_json(silent=True) or {}
+        data = _get_request_json()
 
         logger.info(f"update_outcome_assessment for ID: {outcome_id}")
 
@@ -408,7 +421,7 @@ def update_outcome_assessment_endpoint(outcome_id: str) -> ResponseReturnValue:
             "feedback_comments",
             "status",
         ]
-        updates = {k: v for k, v in data.items() if k in allowed_fields}
+        updates: Dict[str, Any] = {k: v for k, v in data.items() if k in allowed_fields}
 
         success = update_section_outcome(outcome_id, updates)
         if not success:

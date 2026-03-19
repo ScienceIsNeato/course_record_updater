@@ -1,14 +1,14 @@
 /**
  * Tests for offering filtering logic
- * 
+ *
  * BUG: Filtering by program doesn't work because offerings have program_names (array)
  * but the filter checks program_id (singular, doesn't exist on offerings from API)
  */
 
-const { applyFilters } = require('../../../static/offeringManagement');
-const { setBody } = require('../helpers/dom');
+const { applyFilters } = require("../../../static/offeringManagement");
+const { setBody } = require("../helpers/dom");
 
-describe('offeringManagement filtering', () => {
+describe("offeringManagement filtering", () => {
   beforeEach(() => {
     // Set up a mock offerings table with multiple offerings
     setBody(`
@@ -56,96 +56,96 @@ describe('offeringManagement filtering', () => {
     `);
   });
 
-  describe('term filtering', () => {
-    it('shows all offerings when no term is selected', () => {
-      document.getElementById('filterTerm').value = '';
+  describe("term filtering", () => {
+    it("shows all offerings when no term is selected", () => {
+      document.getElementById("filterTerm").value = "";
       applyFilters();
-      
-      const rows = document.querySelectorAll('.offering-row');
-      expect(rows[0].style.display).not.toBe('none');
-      expect(rows[1].style.display).not.toBe('none');
-      expect(rows[2].style.display).not.toBe('none');
-      expect(rows[3].style.display).not.toBe('none');
+
+      const rows = document.querySelectorAll(".offering-row");
+      expect(rows[0].style.display).not.toBe("none");
+      expect(rows[1].style.display).not.toBe("none");
+      expect(rows[2].style.display).not.toBe("none");
+      expect(rows[3].style.display).not.toBe("none");
     });
 
-    it('filters offerings by term correctly', () => {
-      document.getElementById('filterTerm').value = 'term-1';
+    it("filters offerings by term correctly", () => {
+      document.getElementById("filterTerm").value = "term-1";
       applyFilters();
-      
-      const rows = document.querySelectorAll('.offering-row');
-      expect(rows[0].style.display).not.toBe('none'); // Fall 2025
-      expect(rows[1].style.display).not.toBe('none'); // Fall 2025
-      expect(rows[2].style.display).toBe('none');     // Spring 2025 - hidden
-      expect(rows[3].style.display).not.toBe('none'); // Fall 2025
+
+      const rows = document.querySelectorAll(".offering-row");
+      expect(rows[0].style.display).not.toBe("none"); // Fall 2025
+      expect(rows[1].style.display).not.toBe("none"); // Fall 2025
+      expect(rows[2].style.display).toBe("none"); // Spring 2025 - hidden
+      expect(rows[3].style.display).not.toBe("none"); // Fall 2025
     });
   });
 
-  describe('program filtering', () => {
-    it('shows all offerings when no program is selected', () => {
-      document.getElementById('filterProgram').value = '';
+  describe("program filtering", () => {
+    it("shows all offerings when no program is selected", () => {
+      document.getElementById("filterProgram").value = "";
       applyFilters();
-      
-      const rows = document.querySelectorAll('.offering-row');
-      expect(rows[0].style.display).not.toBe('none');
-      expect(rows[1].style.display).not.toBe('none');
-      expect(rows[2].style.display).not.toBe('none');
-      expect(rows[3].style.display).not.toBe('none');
+
+      const rows = document.querySelectorAll(".offering-row");
+      expect(rows[0].style.display).not.toBe("none");
+      expect(rows[1].style.display).not.toBe("none");
+      expect(rows[2].style.display).not.toBe("none");
+      expect(rows[3].style.display).not.toBe("none");
     });
 
-    it('filters offerings by single program correctly', () => {
-      document.getElementById('filterProgram').value = 'prog-1';
+    it("filters offerings by single program correctly", () => {
+      document.getElementById("filterProgram").value = "prog-1";
       applyFilters();
-      
-      const rows = document.querySelectorAll('.offering-row');
-      expect(rows[0].style.display).not.toBe('none'); // Biological Sciences
-      expect(rows[1].style.display).toBe('none');     // Zoology - hidden
-      expect(rows[2].style.display).not.toBe('none'); // Has Biological Sciences (multi-program)
-      expect(rows[3].style.display).toBe('none');     // No program - hidden
+
+      const rows = document.querySelectorAll(".offering-row");
+      expect(rows[0].style.display).not.toBe("none"); // Biological Sciences
+      expect(rows[1].style.display).toBe("none"); // Zoology - hidden
+      expect(rows[2].style.display).not.toBe("none"); // Has Biological Sciences (multi-program)
+      expect(rows[3].style.display).toBe("none"); // No program - hidden
     });
 
-    it('shows offerings that belong to multiple programs when filtering by one', () => {
+    it("shows offerings that belong to multiple programs when filtering by one", () => {
       // BUG REPRODUCTION: This test will FAIL with current code
       // HIST-101 belongs to both Biological Sciences and Zoology
       // When filtering by Zoology, it should appear
-      document.getElementById('filterProgram').value = 'prog-2';
+      document.getElementById("filterProgram").value = "prog-2";
       applyFilters();
-      
-      const rows = document.querySelectorAll('.offering-row');
-      expect(rows[0].style.display).toBe('none');     // Biological Sciences only - hidden
-      expect(rows[1].style.display).not.toBe('none'); // Zoology
-      expect(rows[2].style.display).not.toBe('none'); // Has Zoology (multi-program) - SHOULD BE VISIBLE
-      expect(rows[3].style.display).toBe('none');     // No program - hidden
+
+      const rows = document.querySelectorAll(".offering-row");
+      expect(rows[0].style.display).toBe("none"); // Biological Sciences only - hidden
+      expect(rows[1].style.display).not.toBe("none"); // Zoology
+      expect(rows[2].style.display).not.toBe("none"); // Has Zoology (multi-program) - SHOULD BE VISIBLE
+      expect(rows[3].style.display).toBe("none"); // No program - hidden
     });
   });
 
-  describe('combined filtering', () => {
-    it('filters by both term and program correctly', () => {
-      document.getElementById('filterTerm').value = 'term-1';
-      document.getElementById('filterProgram').value = 'prog-1';
+  describe("combined filtering", () => {
+    it("filters by both term and program correctly", () => {
+      document.getElementById("filterTerm").value = "term-1";
+      document.getElementById("filterProgram").value = "prog-1";
       applyFilters();
-      
-      const rows = document.querySelectorAll('.offering-row');
-      expect(rows[0].style.display).not.toBe('none'); // Fall 2025 + Biological Sciences
-      expect(rows[1].style.display).toBe('none');     // Fall 2025 but Zoology - hidden
-      expect(rows[2].style.display).toBe('none');     // Spring 2025 - hidden by term
-      expect(rows[3].style.display).toBe('none');     // Fall 2025 but no program - hidden
+
+      const rows = document.querySelectorAll(".offering-row");
+      expect(rows[0].style.display).not.toBe("none"); // Fall 2025 + Biological Sciences
+      expect(rows[1].style.display).toBe("none"); // Fall 2025 but Zoology - hidden
+      expect(rows[2].style.display).toBe("none"); // Spring 2025 - hidden by term
+      expect(rows[3].style.display).toBe("none"); // Fall 2025 but no program - hidden
     });
   });
 
-  describe('edge cases', () => {
-    it('handles offerings with no program gracefully', () => {
-      document.getElementById('filterProgram').value = 'prog-1';
+  describe("edge cases", () => {
+    it("handles offerings with no program gracefully", () => {
+      document.getElementById("filterProgram").value = "prog-1";
       applyFilters();
-      
-      const rows = document.querySelectorAll('.offering-row');
-      expect(rows[3].style.display).toBe('none'); // No program - should be hidden
+
+      const rows = document.querySelectorAll(".offering-row");
+      expect(rows[3].style.display).toBe("none"); // No program - should be hidden
     });
 
-    it('handles missing filter elements gracefully', () => {
+    it("handles missing filter elements gracefully", () => {
       // Remove filter elements
-      document.getElementById('filterTerm').remove();
-      document.getElementById('filterProgram').remove();
-      
+      document.getElementById("filterTerm").remove();
+      document.getElementById("filterProgram").remove();
+
       // Should not throw error
       expect(() => applyFilters()).not.toThrow();
     });

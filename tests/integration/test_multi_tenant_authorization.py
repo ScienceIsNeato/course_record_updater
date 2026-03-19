@@ -12,6 +12,7 @@ Test Categories:
 5. Context-aware API endpoint security
 """
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 from flask import Flask
@@ -22,7 +23,7 @@ from src.services.auth_service import UserRole
 class TestInstitutionDataIsolation:
     """Test that users can only access data from their own institution"""
 
-    def test_institution_admin_cannot_access_other_institutions(self):
+    def test_institution_admin_cannot_access_other_institutions(self) -> None:
         """Test that institution admin can only access their own institution's data"""
         app = Flask(__name__)
 
@@ -74,7 +75,7 @@ class TestInstitutionDataIsolation:
                                 )
                                 mock_jsonify.assert_called_once()
 
-    def test_program_admin_cannot_access_other_institutions_programs(self):
+    def test_program_admin_cannot_access_other_institutions_programs(self) -> None:
         """Test that program admin cannot access programs from other institutions"""
         app = Flask(__name__)
 
@@ -131,7 +132,7 @@ class TestInstitutionDataIsolation:
                                     "institution-a"
                                 )
 
-    def test_instructor_cannot_access_other_institutions_sections(self):
+    def test_instructor_cannot_access_other_institutions_sections(self) -> None:
         """Test that instructor cannot access sections from other institutions"""
         app = Flask(__name__)
 
@@ -185,7 +186,7 @@ class TestInstitutionDataIsolation:
 class TestProgramScopedAccess:
     """Test that program admins can only access their assigned programs"""
 
-    def test_program_admin_scoped_to_assigned_programs(self):
+    def test_program_admin_scoped_to_assigned_programs(self) -> None:
         """Test that program admin can only access their assigned programs"""
         from src.services.auth_service import AuthService
 
@@ -227,7 +228,7 @@ class TestProgramScopedAccess:
                 is False
             )
 
-    def test_program_admin_cannot_access_programs_from_other_institutions(self):
+    def test_program_admin_cannot_access_programs_from_other_institutions(self) -> None:
         """Test that program admin cannot access programs from other institutions even if program IDs match"""
         from src.services.auth_service import AuthService
 
@@ -255,7 +256,7 @@ class TestProgramScopedAccess:
 class TestCrossTenantAccessPrevention:
     """Test that cross-tenant data access is properly blocked"""
 
-    def test_api_endpoints_validate_institution_context(self):
+    def test_api_endpoints_validate_institution_context(self) -> None:
         """Test that API endpoints validate institution context in URL parameters"""
         app = Flask(__name__)
 
@@ -277,7 +278,7 @@ class TestCrossTenantAccessPrevention:
                 @permission_required(
                     "view_institution_data", context_keys=["institution_id"]
                 )
-                def test_endpoint(institution_id):
+                def test_endpoint(institution_id: Any) -> Any:
                     return f"Accessing {institution_id}"
 
                 with patch(
@@ -295,7 +296,7 @@ class TestCrossTenantAccessPrevention:
                         assert isinstance(result, tuple)
                         assert result[1] == 403
 
-    def test_program_context_validation_in_api_endpoints(self):
+    def test_program_context_validation_in_api_endpoints(self) -> None:
         """Test that program-scoped API endpoints validate program context"""
         app = Flask(__name__)
 
@@ -314,7 +315,7 @@ class TestCrossTenantAccessPrevention:
                 from src.services.auth_service import permission_required
 
                 @permission_required("view_program_data", context_keys=["program_id"])
-                def test_program_endpoint(program_id):
+                def test_program_endpoint(program_id: Any) -> Any:
                     return f"Accessing program {program_id}"
 
                 with patch(
@@ -336,7 +337,7 @@ class TestCrossTenantAccessPrevention:
 class TestRoleHierarchyAccess:
     """Test role hierarchy access patterns"""
 
-    def test_site_admin_can_access_all_institutions(self):
+    def test_site_admin_can_access_all_institutions(self) -> None:
         """Test that site admin can access data from any institution"""
         from src.services.auth_service import AuthService
 
@@ -359,7 +360,7 @@ class TestRoleHierarchyAccess:
                 assert "inst-456" in institutions
                 assert len(institutions) >= 2
 
-    def test_institution_admin_hierarchy_over_program_admin(self):
+    def test_institution_admin_hierarchy_over_program_admin(self) -> None:
         """Test that institution admin can access all programs in their institution"""
         from src.services.auth_service import AuthService
 
@@ -386,7 +387,7 @@ class TestRoleHierarchyAccess:
                 assert "prog-456" in programs
                 assert len(programs) >= 2
 
-    def test_role_hierarchy_permission_inheritance(self):
+    def test_role_hierarchy_permission_inheritance(self) -> None:
         """Test that higher roles inherit permissions from lower roles"""
         from src.services.auth_service import ROLE_PERMISSIONS
 
@@ -413,7 +414,7 @@ class TestRoleHierarchyAccess:
 class TestContextAwareAPIEndpoints:
     """Test context validation in API endpoints with institution_id and program_id"""
 
-    def test_institution_context_extraction_from_request(self):
+    def test_institution_context_extraction_from_request(self) -> None:
         """Test that institution context is properly extracted from request parameters"""
         app = Flask(__name__)
 
@@ -423,7 +424,7 @@ class TestContextAwareAPIEndpoints:
             from src.services.auth_service import permission_required
 
             @permission_required("view_program_data", context_keys=["institution_id"])
-            def test_endpoint():
+            def test_endpoint() -> Any:
                 return "success"
 
             # Mock the permission checking
@@ -445,7 +446,7 @@ class TestContextAwareAPIEndpoints:
                     _ = call_args[0][1] if len(call_args[0]) > 1 else {}
                     # Note: In real implementation, this would extract from request.view_args
 
-    def test_program_context_extraction_from_json_body(self):
+    def test_program_context_extraction_from_json_body(self) -> None:
         """Test that program context is extracted from JSON request body"""
         app = Flask(__name__)
 
@@ -458,7 +459,7 @@ class TestContextAwareAPIEndpoints:
             from src.services.auth_service import permission_required
 
             @permission_required("manage_courses", context_keys=["program_id"])
-            def test_create_course():
+            def test_create_course() -> Any:
                 return "course created"
 
             with patch(
@@ -475,7 +476,7 @@ class TestContextAwareAPIEndpoints:
                     # Should extract program_id from JSON body
                     mock_has_perm.assert_called_once()
 
-    def test_context_validation_with_multiple_parameters(self):
+    def test_context_validation_with_multiple_parameters(self) -> None:
         """Test context validation when multiple context parameters are provided"""
         app = Flask(__name__)
 
@@ -487,7 +488,7 @@ class TestContextAwareAPIEndpoints:
             @permission_required(
                 "manage_courses", context_keys=["program_id", "course_id"]
             )
-            def test_update_course(program_id, course_id):
+            def test_update_course(program_id: Any, course_id: Any) -> Any:
                 return f"Updated course {course_id} in program {program_id}"
 
             with patch(
@@ -508,7 +509,7 @@ class TestContextAwareAPIEndpoints:
 class TestAuthorizationSystemIntegration:
     """Integration tests for complete authorization system"""
 
-    def test_complete_multi_tenant_workflow(self):
+    def test_complete_multi_tenant_workflow(self) -> None:
         """Test complete workflow: login -> dashboard -> data access -> logout"""
         # This would be a comprehensive end-to-end test
         # For now, we'll test the key integration points
@@ -530,7 +531,7 @@ class TestAuthorizationSystemIntegration:
         assert hierarchy.index("institution_admin") < hierarchy.index("program_admin")
         assert hierarchy.index("program_admin") < hierarchy.index("instructor")
 
-    def test_permission_system_completeness(self):
+    def test_permission_system_completeness(self) -> None:
         """Test that permission system covers all required scenarios"""
         from src.services.auth_service import ROLE_PERMISSIONS
 
@@ -561,7 +562,7 @@ class TestAuthorizationSystemIntegration:
         for perm in key_permissions:
             assert perm in all_permissions, f"Missing key permission: {perm}"
 
-    def test_authorization_decorators_integration(self):
+    def test_authorization_decorators_integration(self) -> None:
         """Test that authorization decorators integrate properly with Flask"""
         from src.services.auth_service import (
             login_required,
@@ -574,15 +575,15 @@ class TestAuthorizationSystemIntegration:
         with app.app_context():
             # Test that decorators can be applied
             @login_required
-            def test_login_required():
+            def test_login_required() -> Any:
                 return "authenticated"
 
             @permission_required("manage_users")
-            def test_permission_required():
+            def test_permission_required() -> Any:
                 return "authorized"
 
             @role_required("site_admin")
-            def test_role_required():
+            def test_role_required() -> Any:
                 return "admin access"
 
             # Test that decorators are callable

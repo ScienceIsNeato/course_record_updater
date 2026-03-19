@@ -13,8 +13,9 @@ import shutil
 import subprocess
 import sys
 import time
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
+from typing import Any, Generator
 
 import pytest
 from playwright.sync_api import (
@@ -37,17 +38,18 @@ from src.utils.constants import (
     PROGRAM_ADMIN_EMAIL,
     SITE_ADMIN_EMAIL,
 )
+from src.utils.constants import SITE_ADMIN_PASSWORD as SITE_ADMIN_PASSWORD_CONST
 from tests.conftest import get_worker_id
 
-# All test accounts use GENERIC_PASSWORD
-SITE_ADMIN_PASSWORD = GENERIC_PASSWORD
+# Site admin uses dedicated baseline credential; other roles use generic password.
+SITE_ADMIN_PASSWORD = SITE_ADMIN_PASSWORD_CONST
 INSTITUTION_ADMIN_PASSWORD = GENERIC_PASSWORD
 PROGRAM_ADMIN_PASSWORD = GENERIC_PASSWORD
 
 # E2E environment runs on dedicated port (worker-aware for parallel execution)
 
 
-def get_worker_port():
+def get_worker_port() -> int:
     """Get port number for current worker (3002 + worker_id)"""
     worker_id = get_worker_id()
     if worker_id is None:
@@ -65,29 +67,30 @@ class _DynamicBaseURL:
     Now when tests use BASE_URL, they get the correct URL for their worker.
     """
 
-    def __str__(self):
-        return f"http://localhost:{get_worker_port()}"
+    def __str__(self) -> str:
+        # Use explicit IPv4 loopback to avoid flaky localhost -> ::1 resolution.
+        return f"http://127.0.0.1:{get_worker_port()}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
     # Make it work directly with string operations
-    def __add__(self, other):
-        return str(self) + other
+    def __add__(self, other: object) -> str:
+        return str(self) + str(other)
 
-    def __radd__(self, other):
-        return other + str(self)
+    def __radd__(self, other: object) -> str:
+        return str(other) + str(self)
 
 
 # BASE_URL is now dynamic - evaluates at runtime, not import time
-BASE_URL = _DynamicBaseURL()
+BASE_URL: Any = _DynamicBaseURL()
 
 # Use generic adapter test data (institution-agnostic)
 TEST_DATA_DIR = Path(__file__).parent / "fixtures"
 TEST_FILE = TEST_DATA_DIR / "generic_test_data.zip"
 
 
-def _clean_stale_db(db_path):
+def _clean_stale_db(db_path: Any) -> None:
     """Remove stale database files."""
     for ext in ["", "-shm", "-wal"]:
         f = "{}{}".format(db_path, ext)
@@ -98,7 +101,7 @@ def _clean_stale_db(db_path):
                 print(f"   ⚠️  Could not remove {f}: {e}")
 
 
-def _seed_database(db_name: str):
+def _seed_database(db_name: str) -> None:
     """Run database seeding script."""
     import subprocess
 
@@ -124,7 +127,9 @@ def _seed_database(db_name: str):
     print("   ✓ Baseline data seeded")
 
 
-def _start_e2e_server(worker_port, db_path, env_overrides, log_file=None):
+def _start_e2e_server(
+    worker_port: Any, db_path: Any, env_overrides: Any, log_file: Any = None
+) -> Any:
     """Start Flask server in subprocess."""
     import urllib.error
     import urllib.request
@@ -134,7 +139,7 @@ def _start_e2e_server(worker_port, db_path, env_overrides, log_file=None):
     env["DATABASE_URL"] = f"sqlite:///{db_abs_path}"
     env["DATABASE_TYPE"] = "sqlite"
     env["PORT"] = str(worker_port)
-    env["BASE_URL"] = f"http://localhost:{worker_port}"
+    env["BASE_URL"] = f"http://127.0.0.1:{worker_port}"
 
     # Common overrides
     env.pop("EMAIL_PROVIDER", None)
@@ -142,8 +147,8 @@ def _start_e2e_server(worker_port, db_path, env_overrides, log_file=None):
     # Apply specific overrides
     env.update(env_overrides)
 
-    stdout_dest = subprocess.DEVNULL
-    stderr_dest = subprocess.DEVNULL
+    stdout_dest: Any = subprocess.DEVNULL
+    stderr_dest: Any = subprocess.DEVNULL
 
     if log_file:
         stdout_dest = open(log_file, "w")
@@ -166,7 +171,7 @@ def _start_e2e_server(worker_port, db_path, env_overrides, log_file=None):
                 f"Port {worker_port} might be in use."
             )
         try:
-            urllib.request.urlopen(f"http://localhost:{worker_port}/login", timeout=1)
+            urllib.request.urlopen(f"http://127.0.0.1:{worker_port}/login", timeout=1)
             print(
                 f"   ✓ Server ready on port {worker_port} (PID: {server_process.pid})"
             )
@@ -180,7 +185,7 @@ def _start_e2e_server(worker_port, db_path, env_overrides, log_file=None):
     return server_process
 
 
-def _setup_serial_environment(worker_port):
+def _setup_serial_environment(worker_port: int) -> tuple[Any, str]:
     """Setup logic for serial execution."""
     print(f"\n🔧 E2E Setup: Configuring test environment on port {worker_port}")
     worker_db = "course_records_e2e.db"
@@ -201,7 +206,7 @@ def _setup_serial_environment(worker_port):
     return proc, worker_db
 
 
-def _setup_parallel_environment(worker_id, worker_port):
+def _setup_parallel_environment(worker_id: int, worker_port: int) -> tuple[Any, str]:
     """Setup logic for parallel execution."""
     base_db = "course_records_e2e.db"
     worker_db = f"course_records_e2e_worker{worker_id}.db"
@@ -224,15 +229,23 @@ def _setup_parallel_environment(worker_id, worker_port):
         "WTF_CSRF_ENABLED": "true",
     }
 
-    proc = _start_e2e_server(worker_port, worker_db, env_overrides, log_file=None)
+    os.makedirs("logs", exist_ok=True)
+    worker_log = f"logs/e2e_worker{worker_id}.log"
+
+    proc = _start_e2e_server(worker_port, worker_db, env_overrides, log_file=worker_log)
     return proc, worker_db
 
 
 @pytest.fixture(scope="session", autouse=True)
-def setup_worker_environment(tmp_path_factory):
+def setup_worker_environment(tmp_path_factory: Any) -> Generator[None, None, None]:
     """
     Setup E2E environment with proper database isolation and server management.
     """
+    if os.getenv("E2E_EXTERNAL_SERVER") == "1":
+        print("\n🔧 E2E Setup: using externally managed server/database")
+        yield
+        return
+
     worker_id = get_worker_id()
     worker_port = get_worker_port()
 
@@ -270,7 +283,7 @@ def setup_worker_environment(tmp_path_factory):
 
 
 @pytest.fixture(scope="session")
-def browser_type_launch_args(pytestconfig):
+def browser_type_launch_args(pytestconfig: Any) -> Any:
     """
     Configure Playwright browser launch arguments.
 
@@ -328,7 +341,7 @@ def browser_type_launch_args(pytestconfig):
 
 @pytest.fixture(scope="session")
 def browser(
-    playwright: Playwright, browser_type_launch_args, pytestconfig
+    playwright: Playwright, browser_type_launch_args: Any, pytestconfig: Any
 ) -> Generator[Browser, None, None]:
     """Launch Playwright browser with graceful fallback when sandboxed."""
 
@@ -369,7 +382,7 @@ def page(context: BrowserContext) -> Generator[Page, None, None]:
     page = context.new_page()
     console_errors = []
 
-    def handle_console_message(msg):
+    def handle_console_message(msg: Any) -> None:
         if msg.type == "error":
             error_text = msg.text
             # Filter out expected HTTP errors (401, 403, 404, 500, etc)
@@ -571,7 +584,7 @@ def program_admin_authenticated_page(page: Page) -> Page:
 
 
 @pytest.fixture(scope="function", autouse=True)
-def reset_account_locks():
+def reset_account_locks() -> Generator[None, None, None]:
     """
     Clear any failed login attempts before each test.
 
@@ -620,13 +633,13 @@ def reset_account_locks():
 
 
 @pytest.fixture(scope="function")
-def test_data_file():
+def test_data_file() -> Any:
     """Provide path to test data file"""
     return TEST_FILE
 
 
 @pytest.fixture(scope="function")
-def server_running():
+def server_running() -> Any:
     """
     Verify E2E server is running and accessible.
 

@@ -23,7 +23,7 @@
 #    export LOG_LEVEL="INFO"
 #
 # ✅ DO: Comment out variables that require user-specific values
-#    # export BREVO_API_KEY="your-api-key-here"
+#    # export BREVO_MAILER_TOKEN="your-api-token-here"
 #    # export ETHEREAL_USER="your-username@ethereal.email"
 #
 # ❌ DON'T: Export placeholder values that would break if used
@@ -46,15 +46,15 @@
 #    # Then edit .envrc:
 #    export ETHEREAL_USER="real-user@ethereal.email"
 #    export ETHEREAL_PASS="real-password"
-#    export BREVO_API_KEY="real-brevo-api-key"
+#    export BREVO_API_KEY="real-brevo-api-token"  # pragma: allowlist secret
 #
 # 2. CI/CD (GitHub Secrets):
-#    Add secrets via: GitHub repo → Settings → Secrets and variables → Actions
+#    Add secrets via: GitHub repo → Settings → Secrets and variables → Actions  # pragma: allowlist secret
 #    Then reference in workflow YAML:
 #    
 #    env:
-#      ETHEREAL_USER: ${{ secrets.ETHEREAL_USER }}
-#      ETHEREAL_PASS: ${{ secrets.ETHEREAL_PASS }}
+#      ETHEREAL_USER: ${{ secrets.ETHEREAL_USER }}  # pragma: allowlist secret
+#      ETHEREAL_PASS: ${{ secrets.ETHEREAL_PASS }}  # pragma: allowlist secret
 #    
 #    CI exports these BEFORE sourcing .envrc.template (order matters!)
 #
@@ -105,7 +105,7 @@ esac
 # =============================================================================
 # FLASK CONFIGURATION
 # =============================================================================
-# export SECRET_KEY="your-secret-key-here-change-in-production"
+# export SECRET_KEY="your-secret-key-here-change-in-production"  # pragma: allowlist secret
 
 # Base URL configuration (environment-specific)
 export BASE_URL_DEV="http://localhost:3001"
@@ -126,13 +126,13 @@ export EMAIL_PROVIDER="brevo"  # Options: "brevo" (production), "ethereal" (test
 # =============================================================================
 # Create account and get API key from: https://app.brevo.com/settings/keys/api
 # LOCAL: Uncomment and set in .envrc (not committed):
-#   export BREVO_API_KEY="your-brevo-api-key"
+#   export BREVO_API_KEY="your-brevo-api-key"  # pragma: allowlist secret
 #   export BREVO_SENDER_EMAIL="noreply@yourdomain.com"
 #   export BREVO_SENDER_NAME="Your App Name"
 #
-# CI: Add as GitHub secrets (BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME)
+# CI: Add as GitHub secrets (BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME)  # pragma: allowlist secret
 #
-# export BREVO_API_KEY="<set-in-.envrc-or-ci-secrets>"
+# export BREVO_API_KEY="<set-in-.envrc-or-ci-secrets>"  # pragma: allowlist secret
 # export BREVO_SENDER_EMAIL="<set-in-.envrc-or-ci-secrets>"
 # export BREVO_SENDER_NAME="<set-in-.envrc-or-ci-secrets>"
 
@@ -143,14 +143,14 @@ export EMAIL_PROVIDER="brevo"  # Options: "brevo" (production), "ethereal" (test
 # Only used in automated tests for email verification
 #
 # LOCAL: Uncomment and set in .envrc (not committed):
-#   export ETHEREAL_USER="your-ethereal-username@ethereal.email"
-#   export ETHEREAL_PASS="your-ethereal-password"
+#   export ETHEREAL_USER="your-ethereal-username@ethereal.email"  # pragma: allowlist secret
+#   export ETHEREAL_PASS="your-ethereal-password"  # pragma: allowlist secret
 #
-# CI: Add as GitHub secrets (ETHEREAL_USER, ETHEREAL_PASS)
+# CI: Add as GitHub secrets (ETHEREAL_USER, ETHEREAL_PASS)  # pragma: allowlist secret
 #   GitHub workflow exports these BEFORE sourcing this template
 #
-# export ETHEREAL_USER="<set-in-.envrc-or-ci-secrets>"
-# export ETHEREAL_PASS="<set-in-.envrc-or-ci-secrets>"
+# export ETHEREAL_USER="<set-in-.envrc-or-ci-secrets>"  # pragma: allowlist secret
+# export ETHEREAL_PASS="<set-in-.envrc-or-ci-secrets>"  # pragma: allowlist secret
 export ETHEREAL_SMTP_HOST="smtp.ethereal.email"
 export ETHEREAL_SMTP_PORT="587"
 export ETHEREAL_IMAP_HOST="imap.ethereal.email"

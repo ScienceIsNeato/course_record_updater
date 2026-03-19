@@ -316,7 +316,6 @@ describe("PanelManager", () => {
       ).map((cell) => cell.getAttribute("data-sort"));
       expect(sortedValues).toEqual(["2", "10", "100"]);
     });
-
   });
 });
 
@@ -501,7 +500,6 @@ describe("Audit Log Functions", () => {
               <p>No recent activity to display</p>
             </div>
           `;
-          return;
         }
       };
 
@@ -865,7 +863,7 @@ describe("createAuditLogRow - ACTUAL INTEGRATION", () => {
         </div>
       `);
 
-      const manager = new PanelManager();
+      new PanelManager();
 
       // Create an event with a target that doesn't have closest
       const mockTarget = document.createElement("div");
@@ -910,6 +908,5 @@ describe("createAuditLogRow - ACTUAL INTEGRATION", () => {
         toggleBtn.click();
       }).not.toThrow();
     });
-
   });
 });

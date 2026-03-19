@@ -31,15 +31,19 @@ global.Chart = jest.fn().mockImplementation(() => ({
   chartArea: { left: 0, right: 100 },
 }));
 
+const Chart = global.Chart;
+
 // Chart.getChart returns the instance attached to a canvas (used by _destroyCharts)
 const _chartInstances = new Map();
 const _origImpl = global.Chart.getMockImplementation();
-global.Chart.mockImplementation(function (canvas, ...args) {
+global.Chart.mockImplementation((canvas, ...args) => {
   const inst = _origImpl(canvas, ...args);
   _chartInstances.set(canvas, inst);
   return inst;
 });
-global.Chart.getChart = jest.fn((canvas) => _chartInstances.get(canvas) || null);
+global.Chart.getChart = jest.fn(
+  (canvas) => _chartInstances.get(canvas) || null,
+);
 
 // Execute requestAnimationFrame callbacks synchronously so Chart.js
 // rendering code is exercised for coverage.
@@ -73,9 +77,9 @@ describe("getTrendDirection", () => {
   });
 
   test("returns 'none' when all pass_rates are null", () => {
-    expect(
-      getTrendDirection([{ pass_rate: null }, { pass_rate: null }])
-    ).toBe("none");
+    expect(getTrendDirection([{ pass_rate: null }, { pass_rate: null }])).toBe(
+      "none",
+    );
   });
 
   test("returns 'up' when last > first by 2–9 pp", () => {
@@ -114,11 +118,7 @@ describe("getTrendDirection", () => {
   });
 
   test("skips entries with null pass_rate", () => {
-    const points = [
-      { pass_rate: 80 },
-      { pass_rate: null },
-      { pass_rate: 75 },
-    ];
+    const points = [{ pass_rate: 80 }, { pass_rate: null }, { pass_rate: 75 }];
     expect(getTrendDirection(points)).toBe("down");
   });
 });
@@ -203,7 +203,12 @@ describe("getTrendDelta", () => {
   });
 
   test("skips null points", () => {
-    const pts = [{ pass_rate: 60 }, null, { pass_rate: null }, { pass_rate: 80 }];
+    const pts = [
+      { pass_rate: 60 },
+      null,
+      { pass_rate: null },
+      { pass_rate: 80 },
+    ];
     expect(getTrendDelta(pts)).toBe(20);
   });
 });
@@ -365,10 +370,7 @@ describe("computeYRange", () => {
   });
 
   test("handles multiple datasets", () => {
-    const result = computeYRange([
-      { data: [60, 70] },
-      { data: [50, 90] },
-    ]);
+    const result = computeYRange([{ data: [60, 70] }, { data: [50, 90] }]);
     expect(result.min).toBeLessThanOrEqual(44);
     expect(result.max).toBeGreaterThanOrEqual(96);
   });
@@ -576,7 +578,9 @@ describe("createTrendPanel with CLO overlays", () => {
     ];
     createTrendPanel(points, terms, { discontinuities: discs });
     const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
-    const discPlugin = chartCall[1].plugins.find((p) => p.id === "discontinuityLines");
+    const discPlugin = chartCall[1].plugins.find(
+      (p) => p.id === "discontinuityLines",
+    );
     expect(discPlugin).toBeDefined();
     // Execute the afterDraw to verify it doesn't call fillText (no text labels)
     const mockCtx = {
@@ -630,9 +634,7 @@ describe("createTrendPanel with CLO overlays", () => {
 
   test("tooltip afterBody returns empty string at non-discontinuity terms", () => {
     Chart.mockClear();
-    const discs = [
-      { term_index: 1, added: [], removed: [] },
-    ];
+    const discs = [{ term_index: 1, added: [], removed: [] }];
     createTrendPanel(points, terms, { discontinuities: discs });
     const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
     const afterBody = chartCall[1].options.plugins.tooltip.callbacks.afterBody;
@@ -696,9 +698,15 @@ describe("createTrendPanel with CLO overlays", () => {
     createTrendPanel(points, terms, {});
     const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
     const onClick = chartCall[1].options.onClick;
-    // Should not throw
-    onClick({}, []);
-    onClick({}, null);
+    const changeSpy = jest.fn();
+    const termFilter = document.createElement("select");
+    termFilter.id = "ploTermFilter";
+    document.body.appendChild(termFilter);
+    termFilter.addEventListener("change", changeSpy);
+
+    expect(() => onClick({}, [])).not.toThrow();
+    expect(() => onClick({}, null)).not.toThrow();
+    expect(changeSpy).not.toHaveBeenCalled();
   });
 
   test("tooltip label callback shows PLO data with student counts", () => {
@@ -798,7 +806,7 @@ describe("PloTrend controller", () => {
         expect.objectContaining({
           credentials: "include",
           headers: { Accept: "application/json" },
-        })
+        }),
       );
     });
 
@@ -847,8 +855,7 @@ describe("PloTrend controller", () => {
     test("stores selectedTermId when provided", async () => {
       global.fetch.mockResolvedValue({
         ok: true,
-        json: () =>
-          Promise.resolve({ success: true, terms: [], plos: [] }),
+        json: () => Promise.resolve({ success: true, terms: [], plos: [] }),
       });
 
       await PloTrend.loadTrend("prog-123", "term-42");
@@ -859,8 +866,7 @@ describe("PloTrend controller", () => {
       PloTrend.selectedTermId = "term-old";
       global.fetch.mockResolvedValue({
         ok: true,
-        json: () =>
-          Promise.resolve({ success: true, terms: [], plos: [] }),
+        json: () => Promise.resolve({ success: true, terms: [], plos: [] }),
       });
 
       await PloTrend.loadTrend("prog-123");
@@ -871,7 +877,8 @@ describe("PloTrend controller", () => {
   describe("injectSparklines", () => {
     test("does nothing when trendData is null", () => {
       PloTrend.trendData = null;
-      PloTrend.injectSparklines(); // should not throw
+      expect(() => PloTrend.injectSparklines()).not.toThrow();
+      expect(document.querySelectorAll(".plo-trend-indicator")).toHaveLength(0);
     });
 
     test("does nothing when fewer than 2 terms", () => {
@@ -879,19 +886,18 @@ describe("PloTrend controller", () => {
         terms: [{ term_name: "Fall 2024" }],
         plos: [],
       };
-      PloTrend.injectSparklines(); // should not throw
+      expect(() => PloTrend.injectSparklines()).not.toThrow();
+      expect(document.querySelectorAll(".plo-trend-indicator")).toHaveLength(0);
     });
 
     test("does nothing when ploTreeContainer is missing", () => {
       PloTrend.trendData = {
-        terms: [
-          { term_name: "Fall 2024" },
-          { term_name: "Spring 2025" },
-        ],
+        terms: [{ term_name: "Fall 2024" }, { term_name: "Spring 2025" }],
         plos: [],
       };
-      // No DOM container
-      PloTrend.injectSparklines(); // should not throw
+      expect(document.getElementById("ploTreeContainer")).toBeNull();
+      expect(() => PloTrend.injectSparklines()).not.toThrow();
+      expect(document.querySelectorAll(".plo-trend-indicator")).toHaveLength(0);
     });
 
     test("injects trend indicator into PLO node", () => {
@@ -1197,11 +1203,7 @@ describe("PloTrend controller", () => {
             id: "plo-1",
             plo_number: 1,
             description: "PLO One",
-            trend: [
-              { pass_rate: 70 },
-              { pass_rate: 80 },
-              { pass_rate: 85 },
-            ],
+            trend: [{ pass_rate: 70 }, { pass_rate: 80 }, { pass_rate: 85 }],
             clos: [],
           },
         ],
@@ -1244,11 +1246,7 @@ describe("PloTrend controller", () => {
             id: "plo-1",
             plo_number: 1,
             description: "PLO One",
-            trend: [
-              { pass_rate: 70 },
-              { pass_rate: 65 },
-              { pass_rate: 80 },
-            ],
+            trend: [{ pass_rate: 70 }, { pass_rate: 65 }, { pass_rate: 80 }],
             clos: [],
           },
         ],
@@ -1302,11 +1300,7 @@ describe("PloTrend controller", () => {
             id: "plo-1",
             plo_number: 1,
             description: "PLO One",
-            trend: [
-              { pass_rate: 70 },
-              { pass_rate: 65 },
-              { pass_rate: 80 },
-            ],
+            trend: [{ pass_rate: 70 }, { pass_rate: 65 }, { pass_rate: 80 }],
             clos: [],
           },
         ],
@@ -1356,11 +1350,7 @@ describe("PloTrend controller", () => {
             id: "plo-1",
             plo_number: 1,
             description: "PLO One",
-            trend: [
-              { pass_rate: 80 },
-              { pass_rate: 75 },
-              { pass_rate: 90 },
-            ],
+            trend: [{ pass_rate: 80 }, { pass_rate: 75 }, { pass_rate: 90 }],
             clos: [
               {
                 outcome_id: "clo-1",

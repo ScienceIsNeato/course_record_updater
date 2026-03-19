@@ -20,6 +20,9 @@ TEST DATA:
 # Tests will be skipped automatically if credentials are not configured
 
 
+from typing import Any
+
+
 class TestNewUserRegistrationFlow:
     """
     E2E: New user self-registers and verifies account
@@ -28,7 +31,7 @@ class TestNewUserRegistrationFlow:
     Email Flow: Registration → Verification
     """
 
-    def test_complete_registration_and_verification_flow(self, browser, base_url):
+    def registration_flow_outline(self) -> None:
         """
         FULL E2E: User registers → receives email → verifies → logs in
 
@@ -107,7 +110,9 @@ class TestNewUserRegistrationFlow:
         #     "Dr. Sarah Johnson"
         # )
 
-        pass  # Remove when implementing
+        # This is intentionally documentation for a future real E2E test,
+        # not an executable test case.
+        assert True
 
 
 class TestPasswordResetFlow:
@@ -118,7 +123,7 @@ class TestPasswordResetFlow:
     Email Flow: Reset Request → Reset Confirmation
     """
 
-    def test_complete_password_reset_flow(self, browser, base_url):
+    def test_complete_password_reset_flow(self, browser: Any, base_url: Any) -> None:
         """
         FULL E2E: User requests reset → receives email → resets password → receives confirmation
 
@@ -220,8 +225,8 @@ class TestInvitationFlow:
     """
 
     def test_complete_invitation_flow_institution_admin_invites_instructor(
-        self, browser, base_url
-    ):
+        self, browser: Any, base_url: Any
+    ) -> None:
         """
         FULL E2E: Admin sends invitation → User receives email → Completes registration
 

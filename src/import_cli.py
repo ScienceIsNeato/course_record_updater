@@ -15,6 +15,7 @@ Usage:
 import argparse
 import os
 import sys
+from typing import Any
 
 # Unused imports removed
 
@@ -34,7 +35,23 @@ from src.utils.logging_config import get_logger
 logger = get_logger("ImportCLI")
 
 
-def parse_arguments():
+class CLIArgs(argparse.Namespace):
+    """Typed argparse namespace for the import CLI."""
+
+    file: str
+    institution_id: str
+    use_mine: bool
+    use_theirs: bool
+    merge: bool
+    manual_review: bool
+    dry_run: bool
+    adapter: str
+    verbose: bool
+    report_file: str | None
+    validate_only: bool
+
+
+def parse_arguments() -> CLIArgs:
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
         description="Import course data with conflict resolution",
@@ -118,10 +135,10 @@ Options:
         help="Delete all existing data before import (DESTRUCTIVE - use with caution)",
     )
 
-    return parser.parse_args()
+    return parser.parse_args(namespace=CLIArgs())
 
 
-def determine_conflict_strategy(args) -> str:
+def determine_conflict_strategy(args: CLIArgs) -> str:
     """Determine conflict strategy from arguments"""
     if args.use_mine:
         return "use_mine"
@@ -157,14 +174,14 @@ def validate_file(file_path: str) -> bool:
     return True
 
 
-def _print_header():
+def _print_header() -> None:
     """Print summary header."""
     print("\n" + "=" * 60)
     print("IMPORT SUMMARY")
     print("=" * 60)
 
 
-def _print_status_info(result: ImportResult):
+def _print_status_info(result: ImportResult) -> None:
     """Print import status and basic info."""
     # Status indicator
     if result.success:
@@ -177,7 +194,7 @@ def _print_status_info(result: ImportResult):
     print()
 
 
-def _print_statistics(result: ImportResult):
+def _print_statistics(result: ImportResult) -> None:
     """Print import statistics."""
     print("📈 STATISTICS:")
     print(f"   Records processed: {result.records_processed}")
@@ -187,7 +204,7 @@ def _print_statistics(result: ImportResult):
     print()
 
 
-def _print_conflict_details(conflicts: list, verbose: bool):
+def _print_conflict_details(conflicts: list[Any], verbose: bool):
     """Print detailed conflict information."""
     if not verbose or not conflicts:
         return
@@ -218,7 +235,7 @@ def _print_conflicts_section(result: ImportResult, verbose: bool):
     print()
 
 
-def _print_list_section(items: list, title: str, emoji: str, max_items: int):
+def _print_list_section(items: list[Any], title: str, emoji: str, max_items: int):
     """Print a section with a list of items (errors, warnings)."""
     if not items:
         return
@@ -248,7 +265,7 @@ def print_summary(result: ImportResult, verbose: bool = False):
     _print_footer()
 
 
-def save_report(result: ImportResult, report_file: str):
+def save_report(result: ImportResult, report_file: str) -> None:
     """Save detailed report to file"""
     try:
         report_content = create_import_report(result)
@@ -262,7 +279,7 @@ def save_report(result: ImportResult, report_file: str):
         print(f"❌ Error saving report: {str(e)}")
 
 
-def print_configuration(args, conflict_strategy):
+def print_configuration(args: CLIArgs, conflict_strategy: str) -> None:
     """Print import configuration."""
     print(f"📁 File: {args.file}")
     print(f"🏢 Institution ID: {args.institution_id}")
@@ -279,7 +296,7 @@ def print_configuration(args, conflict_strategy):
     print()
 
 
-def confirm_execution():
+def confirm_execution() -> None:
     """Prompt user to confirm execution."""
     print("⚠️  This will modify the database!")
     response = input("Continue? (y/N): ")
@@ -288,7 +305,7 @@ def confirm_execution():
         sys.exit(0)
 
 
-def handle_validate_only_mode(args):
+def handle_validate_only_mode(args: CLIArgs) -> None:
     """Handle validate-only mode."""
     print("🔍 Validation mode: Checking file format only...")
     service = ImportService(institution_id=args.institution_id, verbose=args.verbose)
@@ -304,7 +321,7 @@ def handle_validate_only_mode(args):
         sys.exit(1)
 
 
-def execute_import(args, conflict_strategy):
+def execute_import(args: CLIArgs, conflict_strategy: str) -> None:
     """Execute the import operation."""
     print("🔄 Starting import...")
     print()
@@ -344,7 +361,7 @@ def execute_import(args, conflict_strategy):
         sys.exit(1)
 
 
-def main():
+def main() -> None:
     """Main CLI function"""
     args = parse_arguments()
 

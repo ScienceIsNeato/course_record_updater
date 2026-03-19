@@ -1,6 +1,7 @@
 """Unit tests for authentication API routes (migrated from test_api_routes.py)."""
 
 import json
+from typing import Any
 from unittest.mock import patch
 
 from src.app import app
@@ -12,7 +13,7 @@ TEST_PASSWORD = GENERIC_PASSWORD  # Test password for unit tests
 class TestLoginAPI:
     """Test login API error handling."""
 
-    def test_login_api_account_locked_error(self, client, csrf_token):
+    def test_login_api_account_locked_error(self, client: Any, csrf_token: Any) -> None:
         """Test login API handles AccountLockedError correctly."""
         with patch("src.services.login_service.LoginService") as mock_login_service:
             mock_login_service.authenticate_user.side_effect = Exception(
@@ -30,7 +31,7 @@ class TestLoginAPI:
 
             assert response.status_code == 500  # Should handle the exception
 
-    def test_login_api_login_error(self, client, csrf_token):
+    def test_login_api_login_error(self, client: Any, csrf_token: Any) -> None:
         """Test login API handles LoginError correctly."""
         with patch("src.services.login_service.LoginService") as mock_login_service:
             mock_login_service.authenticate_user.side_effect = Exception("LoginError")
@@ -46,7 +47,9 @@ class TestLoginAPI:
 
             assert response.status_code == 500  # Should handle the exception
 
-    def test_login_api_with_next_url_in_session(self, client, csrf_token):
+    def test_login_api_with_next_url_in_session(
+        self, client: Any, csrf_token: Any
+    ) -> None:
         """Test login API includes next_url from session in response."""
         with patch("src.services.login_service.LoginService") as mock_login_service:
             mock_login_service.authenticate_user.return_value = {
@@ -82,7 +85,7 @@ class TestRegistrationEndpoints:
     """Test registration API endpoints (Story 2.1)"""
 
     @patch("src.api.routes.auth.register_institution_admin")
-    def test_register_institution_admin_success(self, mock_register):
+    def test_register_institution_admin_success(self, mock_register: Any) -> None:
         """Test successful registration of institution admin."""
         # Setup successful registration response
         mock_register.return_value = {
@@ -124,7 +127,7 @@ class TestRegistrationEndpoints:
                 website_url="https://testuniv.edu",
             )
 
-    def test_register_institution_admin_missing_fields(self):
+    def test_register_institution_admin_missing_fields(self) -> None:
         """Test registration with missing required fields."""
         with app.test_client() as client:
             # Missing email and password
@@ -144,7 +147,7 @@ class TestRegistrationEndpoints:
             assert "email" in data["error"]
             assert "password" in data["error"]
 
-    def test_register_institution_admin_invalid_email(self):
+    def test_register_institution_admin_invalid_email(self) -> None:
         """Test registration with invalid email format."""
         with app.test_client() as client:
             response = client.post(
@@ -164,7 +167,9 @@ class TestRegistrationEndpoints:
             assert "Invalid email format" in data["error"]
 
     @patch("src.api.routes.auth.register_institution_admin")
-    def test_register_institution_admin_registration_error(self, mock_register):
+    def test_register_institution_admin_registration_error(
+        self, mock_register: Any
+    ) -> None:
         """Test registration with RegistrationError exception."""
         from src.services.registration_service import RegistrationError
 
@@ -188,7 +193,7 @@ class TestRegistrationEndpoints:
             assert "Email already exists" in data["error"]
 
     @patch("src.api.routes.auth.register_institution_admin")
-    def test_register_institution_admin_server_error(self, mock_register):
+    def test_register_institution_admin_server_error(self, mock_register: Any) -> None:
         """Test registration with unexpected server error."""
         mock_register.side_effect = Exception("Database connection failed")
 
@@ -209,7 +214,7 @@ class TestRegistrationEndpoints:
             assert data["success"] is False
             assert "Registration failed due to server error" in data["error"]
 
-    def test_register_institution_admin_optional_website(self):
+    def test_register_institution_admin_optional_website(self) -> None:
         """Test registration without optional website_url field."""
         with patch("src.api.routes.auth.register_institution_admin") as mock_register:
             mock_register.return_value = {
@@ -250,7 +255,7 @@ class TestResendVerificationEndpoints:
     """Test resend verification email API endpoints (Story 2.1)"""
 
     @patch("src.services.registration_service.RegistrationService")
-    def test_resend_verification_success(self, mock_registration_service):
+    def test_resend_verification_success(self, mock_registration_service: Any) -> None:
         """Test successful verification email resend."""
         # Mock successful resend
         mock_registration_service.resend_verification_email.return_value = {
@@ -275,7 +280,7 @@ class TestResendVerificationEndpoints:
                 "admin@testuniv.edu"
             )
 
-    def test_resend_verification_no_json(self):
+    def test_resend_verification_no_json(self) -> None:
         """Test resend verification with no JSON data."""
         with app.test_client() as client:
             response = client.post("/api/auth/resend-verification")
@@ -285,7 +290,7 @@ class TestResendVerificationEndpoints:
             assert data["success"] is False
             assert "Email address is required" in data["error"]
 
-    def test_resend_verification_missing_email(self):
+    def test_resend_verification_missing_email(self) -> None:
         """Test resend verification with missing email."""
         with app.test_client() as client:
             response = client.post("/api/auth/resend-verification", json={})
@@ -295,7 +300,7 @@ class TestResendVerificationEndpoints:
             assert data["success"] is False
             assert "Email address is required" in data["error"]
 
-    def test_resend_verification_empty_email(self):
+    def test_resend_verification_empty_email(self) -> None:
         """Test resend verification with empty email."""
         with app.test_client() as client:
             response = client.post(
@@ -308,7 +313,7 @@ class TestResendVerificationEndpoints:
             assert data["success"] is False
             assert "Email address is required" in data["error"]
 
-    def test_resend_verification_invalid_email(self):
+    def test_resend_verification_invalid_email(self) -> None:
         """Test resend verification with invalid email format."""
         with app.test_client() as client:
             response = client.post(
@@ -322,7 +327,9 @@ class TestResendVerificationEndpoints:
             assert "Invalid email format" in data["error"]
 
     @patch("src.services.registration_service.RegistrationService")
-    def test_resend_verification_user_not_found(self, mock_registration_service):
+    def test_resend_verification_user_not_found(
+        self, mock_registration_service: Any
+    ) -> None:
         """Test resend verification for non-existent user."""
         from src.services.registration_service import RegistrationError
 
@@ -341,7 +348,9 @@ class TestResendVerificationEndpoints:
             assert USER_NOT_FOUND_MSG in data["error"]
 
     @patch("src.services.registration_service.RegistrationService")
-    def test_resend_verification_already_verified(self, mock_registration_service):
+    def test_resend_verification_already_verified(
+        self, mock_registration_service: Any
+    ) -> None:
         """Test resend verification for already verified user."""
         from src.services.registration_service import RegistrationError
 
@@ -360,7 +369,9 @@ class TestResendVerificationEndpoints:
             assert "User is already verified" in data["error"]
 
     @patch("src.services.registration_service.RegistrationService")
-    def test_resend_verification_server_error(self, mock_registration_service):
+    def test_resend_verification_server_error(
+        self, mock_registration_service: Any
+    ) -> None:
         """Test resend verification with server error."""
         mock_registration_service.resend_verification_email.side_effect = Exception(
             "Email service unavailable"
@@ -378,8 +389,8 @@ class TestResendVerificationEndpoints:
 
     @patch("src.services.registration_service.RegistrationService")
     def test_resend_verification_email_case_normalization(
-        self, mock_registration_service
-    ):
+        self, mock_registration_service: Any
+    ) -> None:
         """Test resend verification normalizes email to lowercase."""
         mock_registration_service.resend_verification_email.return_value = {
             "success": True,
@@ -404,7 +415,7 @@ class TestResendVerificationEndpoints:
 class TestAuthenticationIntegration:
     """Test authentication integration across endpoints."""
 
-    def test_auth_service_integration(self):
+    def test_auth_service_integration(self) -> None:
         """Test that auth service is integrated with API routes."""
         # Test that auth functions are imported and available
         from src.services.auth_service import get_current_user, has_permission

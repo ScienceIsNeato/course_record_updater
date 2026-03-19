@@ -5,6 +5,7 @@ Tests the secondary admin workflows for CLOs.
 """
 
 import json
+from typing import Any
 
 import pytest
 from playwright.sync_api import Page, expect
@@ -22,7 +23,9 @@ from tests.e2e.test_helpers import (
 # ----------------------------------------------------------------------
 
 
-def _setup_clo_data(admin_page, institution_id, clo_status="assigned"):
+def _setup_clo_data(
+    admin_page: Any, institution_id: Any, clo_status: Any = "assigned"
+) -> Any:
     """
     Create a complete hierarchy: Program -> Course -> Term -> Offering -> Section -> CLO.
 
@@ -190,7 +193,7 @@ def _setup_clo_data(admin_page, institution_id, clo_status="assigned"):
     }
 
 
-def _submit_clo_as_instructor(admin_page, setup_data):
+def _submit_clo_as_instructor(admin_page: Any, setup_data: Any) -> None:
     """Log in as instructor and submit the CLO to move it to 'awaiting_approval'."""
     # Create new context for instructor
     context = admin_page.context.browser.new_context()
@@ -230,7 +233,7 @@ def _submit_clo_as_instructor(admin_page, setup_data):
 
 
 @pytest.mark.e2e
-def test_clo_rework_workflow(authenticated_institution_admin_page: Page):
+def test_clo_rework_workflow(authenticated_institution_admin_page: Page) -> None:
     """
     Test 'Request Rework' workflow.
     1. Setup CLO in 'Awaiting Approval'.
@@ -279,7 +282,7 @@ def test_clo_rework_workflow(authenticated_institution_admin_page: Page):
 
 
 @pytest.mark.e2e
-def test_clo_nci_workflow(authenticated_institution_admin_page: Page):
+def test_clo_nci_workflow(authenticated_institution_admin_page: Page) -> None:
     """
     Test 'Mark as NCI' workflow.
     1. Setup CLO in 'Awaiting Approval'.
@@ -300,7 +303,7 @@ def test_clo_nci_workflow(authenticated_institution_admin_page: Page):
 
     # Handle Prompt (Playwright handles prompt automatically by returning default if not configured,
     # but we should intercept it to provide a value)
-    def handle_prompt(dialog):
+    def handle_prompt(dialog: Any) -> None:
         assert "Never Coming In" in dialog.message
         dialog.accept("Instructor unavailable")
 
@@ -324,7 +327,7 @@ def test_clo_nci_workflow(authenticated_institution_admin_page: Page):
 
 
 @pytest.mark.e2e
-def test_clo_reopen_workflow(authenticated_institution_admin_page: Page):
+def test_clo_reopen_workflow(authenticated_institution_admin_page: Page) -> None:
     """
     Test 'Reopen Outcome' workflow.
     1. Setup CLO and Approve it.

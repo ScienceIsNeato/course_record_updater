@@ -9,6 +9,7 @@ User Personas:
 - 3 Instructors (currently all valid; failure scenarios to be added)
 """
 
+import pytest
 from playwright.sync_api import Page, expect
 
 from tests.e2e.conftest import BASE_URL
@@ -16,6 +17,8 @@ from tests.e2e.test_helpers import (
     create_test_user_via_api,
     get_institution_id_from_user,
 )
+
+pytestmark = [pytest.mark.e2e, pytest.mark.xdist_group("email")]
 
 
 class TestBulkRemindersFailureHandling:
@@ -35,7 +38,7 @@ class TestBulkRemindersFailureHandling:
 
     def test_complete_bulk_reminder_failure_workflow(
         self, authenticated_institution_admin_page: Page
-    ):
+    ) -> None:
         """
         STEP 1: Setup - Use seeded instructors (for now, all valid)
         STEP 2: Send Bulk Reminders

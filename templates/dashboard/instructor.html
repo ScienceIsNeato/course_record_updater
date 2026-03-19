@@ -1,49 +1,46 @@
-{% extends "dashboard/base_dashboard.html" %}
-
-{% block title %}Instructor Dashboard - Loopcloser{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
-{% endblock %}
-
-{% block nav_items %}
-<a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-<a class="nav-link" href="/assessments"><i class="fas fa-tasks me-1"></i>Assessments</a>
-{% endblock %}
-
-{% block page_title %}👨‍🏫 Instructor Dashboard{% endblock %}
-{% block page_subtitle %}Complete course assessments and monitor progress{% endblock %}
-
-{% block content %}
+{% extends "dashboard/base_dashboard.html" %} {% block title %}Instructor
+Dashboard - Loopcloser{% endblock %} {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}" />
+{% endblock %} {% block nav_items %}
+<a class="nav-link" href="/dashboard"
+  ><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a
+>
+<a class="nav-link" href="/assessments"
+  ><i class="fas fa-tasks me-1"></i>Assessments</a
+>
+{% endblock %} {% block page_title %}👨‍🏫 Instructor Dashboard{% endblock %} {%
+block page_subtitle %}Complete course assessments and monitor progress{%
+endblock %} {% block content %}
 <!-- Panel 2: Assessment Tasks -->
 <div class="dashboard-panel" id="instructor-assessment-panel">
-    <div class="panel-header">
-        <h5 class="panel-title">
-            <span class="panel-icon">⏰</span>
-            Assessment Tasks
-        </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/assessments'">
-                <i class="fas fa-tasks"></i> Complete Assessments
-            </button>
-        </div>
-        <button class="panel-toggle">▼</button>
+  <div class="panel-header">
+    <h5 class="panel-title">
+      <span class="panel-icon">⏰</span>
+      Assessment Tasks
+    </h5>
+    <div class="panel-actions">
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        onclick="window.location.href='/assessments'"
+      >
+        <i class="fas fa-tasks"></i> Complete Assessments
+      </button>
     </div>
-    <div class="panel-content">
-        <div id="instructorAssessmentContainer">
-            <div class="panel-loading">
-                <div class="spinner-border spinner-border-sm"></div>
-                Loading assessment tasks...
-            </div>
-        </div>
+    <button class="panel-toggle">▼</button>
+  </div>
+  <div class="panel-content">
+    <div id="instructorAssessmentContainer">
+      <div class="panel-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        Loading assessment tasks...
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Panel 5: Data Management (Export Only) -->
-{% include 'components/data_management_panel.html' %}
-{% endblock %}
-
-{% block extra_js %}
+{% include 'components/data_management_panel.html' %} {% endblock %} {% block
+extra_js %}
 <script src="{{ url_for('static', filename='logger.js') }}"></script>
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 <script src="{{ url_for('static', filename='panels.js') }}"></script>
@@ -51,16 +48,20 @@
 <script src="{{ url_for('static', filename='dashboard_navigation.js') }}"></script>
 <script src="{{ url_for('static', filename='instructor_dashboard.js') }}"></script>
 <script>
-    // Configure dashboard navigation for Instructor role
-    // Instructor Data Management Functions (Export Only)
-    function instructorQuickExport() {
-        const format = document.querySelector('input[name="instructorExportFormat"]:checked').value;
-        alert(`Quick Export (${format}) feature coming soon!`);
-    }
+  // Configure dashboard navigation for Instructor role
+  // Instructor Data Management Functions (Export Only)
+  function instructorQuickExport() {
+    const format = document.querySelector(
+      'input[name="instructorExportFormat"]:checked',
+    ).value;
+    alert(`Quick Export (${format}) feature coming soon!`);
+  }
 
-    function instructorExportData(type) {
-        const format = document.querySelector('input[name="instructorExportFormat"]:checked').value;
-        alert(`Export ${type} (${format}) feature coming soon!`);
-    }
+  function instructorExportData(type) {
+    const format = document.querySelector(
+      'input[name="instructorExportFormat"]:checked',
+    ).value;
+    alert(`Export ${type} (${format}) feature coming soon!`);
+  }
 </script>
 {% endblock %}

@@ -3,9 +3,11 @@
 **Instructions:** Please check (✓) the abilities that would be useful for each role at your institution.
 
 ## SITE_ADMIN Abilities
-*Global access across all institutions*
+
+_Global access across all institutions_
 
 ### System Management
+
 - [ ] View all institutions and their data
 - [ ] Create/edit/delete any institution
 - [ ] Access system analytics and usage reports
@@ -14,6 +16,7 @@
 - [ ] Perform database maintenance and backups
 
 ### User Management (Global)
+
 - [ ] View all users across all institutions
 - [ ] Reset passwords for any user
 - [ ] Suspend or ban user accounts
@@ -21,6 +24,7 @@
 - [ ] Export user data for compliance requests
 
 ### Billing & Business
+
 - [ ] View all subscription and payment data
 - [ ] Process refunds and billing adjustments
 - [ ] Generate revenue reports
@@ -30,9 +34,11 @@
 ---
 
 ## INSTITUTION_ADMIN Abilities
-*Limited to their institution's data only*
+
+_Limited to their institution's data only_
 
 ### Course & Program Management
+
 - [ ] Create new courses
 - [ ] Edit any course within the institution
 - [ ] Delete courses (with confirmation)
@@ -47,6 +53,7 @@
 - [ ] Manage course-to-program associations institution-wide
 
 ### User Management (Institution-Level)
+
 - [ ] View all users within their institution
 - [ ] Send email invitations to new users
 - [ ] Assign users to departments/programs
@@ -56,6 +63,7 @@
 - [ ] View user activity logs
 
 ### Reporting & Analytics
+
 - [ ] Generate institution-wide reports
 - [ ] Create custom report templates
 - [ ] Schedule automated report delivery
@@ -64,6 +72,7 @@
 - [ ] Access historical trend data
 
 ### Settings & Configuration
+
 - [ ] Configure institution profile (name, logo, contact info)
 - [ ] Set up department/program structure
 - [ ] Customize data fields for courses
@@ -71,6 +80,7 @@
 - [ ] Set academic calendar dates
 
 ### Billing & Subscription
+
 - [ ] View current subscription details
 - [ ] Update payment methods
 - [ ] Download invoices and receipts
@@ -82,9 +92,11 @@
 ---
 
 ## PROGRAM_ADMIN Abilities
-*Limited to their assigned program(s) only*
+
+_Limited to their assigned program(s) only_
 
 ### Course Management
+
 - [ ] View courses in assigned programs
 - [ ] Edit courses in assigned programs
 - [ ] Add existing courses to their programs
@@ -94,6 +106,7 @@
 - [ ] Export course data for their programs
 
 ### User Management (Program-Level)
+
 - [ ] View instructors in their programs
 - [ ] Send email invitations to instructors
 - [ ] Assign instructors to courses in their programs
@@ -102,12 +115,14 @@
 - [ ] Cannot create other program administrators
 
 ### Program Settings
+
 - [ ] Edit their assigned program information
 - [ ] Update program descriptions and settings
 - [ ] Cannot delete programs
 - [ ] Cannot create new programs
 
 ### Reporting & Analytics
+
 - [ ] Generate reports for their assigned programs
 - [ ] View program-specific analytics and metrics
 - [ ] Export program data to Excel/CSV
@@ -115,6 +130,7 @@
 - [ ] Cannot access other programs' data
 
 ### Multi-Program Access
+
 - [ ] Switch between assigned programs if managing multiple
 - [ ] View combined analytics across their assigned programs
 - [ ] Manage courses across all their assigned programs
@@ -122,9 +138,11 @@
 ---
 
 ## INSTRUCTOR Abilities
-*Limited to courses they are assigned to*
+
+_Limited to courses they are assigned to_
 
 ### Course Data Management
+
 - [ ] View assigned course information
 - [ ] Edit course data for assigned courses
 - [ ] Submit assessment data and outcomes
@@ -132,6 +150,7 @@
 - [ ] Export data for their assigned courses
 
 ### Personal Management
+
 - [ ] Update personal profile information
 - [ ] Change password and account settings
 - [ ] View their course assignment history

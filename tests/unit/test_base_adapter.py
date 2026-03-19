@@ -61,28 +61,28 @@ EXTRA_FIELD_DATA = {
 # --- Tests for parse_and_validate ---
 
 
-def test_parse_and_validate_success():
+def test_parse_and_validate_success() -> None:
     """Test successful parsing and validation of valid form data."""
     adapter = BaseAdapter()
     result = adapter.parse_and_validate(VALID_FORM_DATA)
     assert result == EXPECTED_VALID_OUTPUT
 
 
-def test_parse_and_validate_missing_required_field():
+def test_parse_and_validate_missing_required_field() -> None:
     """Test failure when a required field (term) is missing."""
     adapter = BaseAdapter()
     with pytest.raises(ValidationError, match="Missing required field: term"):
         adapter.parse_and_validate(MISSING_REQUIRED_FIELD_DATA)
 
 
-def test_parse_and_validate_invalid_term():
+def test_parse_and_validate_invalid_term() -> None:
     """Test failure when term is not in allowed terms."""
     adapter = BaseAdapter()
     with pytest.raises(ValidationError, match="Invalid value for term"):
         adapter.parse_and_validate(INVALID_TERM_DATA)
 
 
-def test_parse_and_validate_invalid_students_type():
+def test_parse_and_validate_invalid_students_type() -> None:
     """Test failure when num_students cannot be converted to int."""
     data = VALID_FORM_DATA.copy()  # Start with valid data
     data["num_students"] = "thirty"  # Make it non-numeric
@@ -91,7 +91,7 @@ def test_parse_and_validate_invalid_students_type():
         adapter.parse_and_validate(data)
 
 
-def test_parse_and_validate_invalid_students_value():
+def test_parse_and_validate_invalid_students_value() -> None:
     """Test failure when num_students violates validator (e.g., negative)."""
     adapter = BaseAdapter()
     # INVALID_STUDENTS_DATA already has num_students = '-5'
@@ -99,7 +99,7 @@ def test_parse_and_validate_invalid_students_value():
         adapter.parse_and_validate(INVALID_STUDENTS_DATA)
 
 
-def test_parse_and_validate_extra_fields_ignored():
+def test_parse_and_validate_extra_fields_ignored() -> None:
     """Test that extra fields in input are ignored."""
     adapter = BaseAdapter()
     result = adapter.parse_and_validate(EXTRA_FIELD_DATA)
@@ -107,7 +107,7 @@ def test_parse_and_validate_extra_fields_ignored():
     assert result == EXPECTED_VALID_OUTPUT
 
 
-def test_parse_and_validate_empty_input():
+def test_parse_and_validate_empty_input() -> None:
     """Test handling of completely empty input."""
     adapter = BaseAdapter()
     # Check for one of the required fields it should complain about first
@@ -115,7 +115,7 @@ def test_parse_and_validate_empty_input():
         adapter.parse_and_validate({})
 
 
-def test_parse_and_validate_empty_dict():
+def test_parse_and_validate_empty_dict() -> None:
     """Test parse_and_validate with empty dict input."""
     adapter = BaseAdapter()
     try:
@@ -127,7 +127,7 @@ def test_parse_and_validate_empty_dict():
         pass
 
 
-def test_parse_and_validate_boundary_students_values():
+def test_parse_and_validate_boundary_students_values() -> None:
     """Test parse_and_validate with boundary students values."""
     adapter = BaseAdapter()
 
@@ -152,7 +152,7 @@ def test_parse_and_validate_boundary_students_values():
         pass
 
 
-def test_parse_and_validate_whitespace_handling():
+def test_parse_and_validate_whitespace_handling() -> None:
     """Test parse_and_validate handles whitespace correctly."""
     adapter = BaseAdapter()
 
@@ -171,7 +171,7 @@ def test_parse_and_validate_whitespace_handling():
     assert "course_number" in result
 
 
-def test_parse_and_validate_multiple_records_with_errors():
+def test_parse_and_validate_multiple_records_with_errors() -> None:
     """Test parse_and_validate with multiple records where some have errors."""
     adapter = BaseAdapter()
 
@@ -210,7 +210,7 @@ def test_parse_and_validate_multiple_records_with_errors():
     assert isinstance(result, dict)
 
 
-def test_base_adapter_constants_and_attributes():
+def test_base_adapter_constants_and_attributes() -> None:
     """Test BaseAdapter constants and attributes."""
     adapter = BaseAdapter()
 

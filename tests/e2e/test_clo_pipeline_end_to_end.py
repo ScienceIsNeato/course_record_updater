@@ -15,6 +15,7 @@ Full lifecycle test:
 """
 
 import json
+from typing import Any
 
 import pytest
 from playwright.sync_api import Page, expect
@@ -28,7 +29,9 @@ from tests.e2e.test_helpers import (
 )
 
 
-def _step_1_create_structure(admin_page, institution_id, csrf_token):
+def _step_1_create_structure(
+    admin_page: Any, institution_id: Any, csrf_token: Any
+) -> Any:
     """Create program, course, term, section, and CLO."""
     # Create program
     program_response = admin_page.request.post(
@@ -143,14 +146,14 @@ def _step_1_create_structure(admin_page, institution_id, csrf_token):
 
 
 def _step_2_assign_instructor(
-    admin_page,
-    institution_id,
-    program_id,
-    section_id,
-    clo_id,
-    section_outcome_id,
-    csrf_token,
-):
+    admin_page: Any,
+    institution_id: Any,
+    program_id: Any,
+    section_id: Any,
+    clo_id: Any,
+    section_outcome_id: Any,
+    csrf_token: Any,
+) -> Any:
     """Create instructor and assign to section."""
     # Create instructor
     instructor = create_test_user_via_api(
@@ -198,8 +201,13 @@ def _step_2_assign_instructor(
 
 
 def _step_3_instructor_edits(
-    instructor_page, course_id, clo_id, section_outcome_id, admin_page, csrf_token
-):
+    instructor_page: Any,
+    course_id: Any,
+    clo_id: Any,
+    section_outcome_id: Any,
+    admin_page: Any,
+    csrf_token: Any,
+) -> None:
     """Instructor edits CLO (IN_PROGRESS)."""
     instructor_page.goto(f"{BASE_URL}/assessments")
     # Select course - wait for option to be present first
@@ -239,8 +247,13 @@ def _step_3_instructor_edits(
 
 
 def _step_4_instructor_submits(
-    instructor_page, clo_id, section_outcome_id, instructor_id, admin_page, csrf_token
-):
+    instructor_page: Any,
+    clo_id: Any,
+    section_outcome_id: Any,
+    instructor_id: Any,
+    admin_page: Any,
+    csrf_token: Any,
+) -> None:
     """Instructor submits CLO (AWAITING_APPROVAL)."""
     instructor_csrf = instructor_page.evaluate(
         "document.querySelector('meta[name=\"csrf-token\"]')?.content"
@@ -268,7 +281,9 @@ def _step_4_instructor_submits(
     assert outcome_data["submitted_by_user_id"] == instructor_id
 
 
-def _step_5_admin_rework(admin_page, clo_id, section_outcome_id, csrf_token):
+def _step_5_admin_rework(
+    admin_page: Any, clo_id: Any, section_outcome_id: Any, csrf_token: Any
+) -> None:
     """Admin requests rework (APPROVAL_PENDING)."""
     admin_page.goto(f"{BASE_URL}/audit-clo")
     admin_page.wait_for_load_state("networkidle")
@@ -320,8 +335,13 @@ def _step_5_admin_rework(admin_page, clo_id, section_outcome_id, csrf_token):
 
 
 def _step_6_instructor_resubmits(
-    instructor_page, course_id, clo_id, section_outcome_id, admin_page, csrf_token
-):
+    instructor_page: Any,
+    course_id: Any,
+    clo_id: Any,
+    section_outcome_id: Any,
+    admin_page: Any,
+    csrf_token: Any,
+) -> None:
     """Instructor addresses feedback and resubmits (AWAITING_APPROVAL)."""
     instructor_page.goto(f"{BASE_URL}/assessments")
     # Robust selection
@@ -372,7 +392,9 @@ def _step_6_instructor_resubmits(
     assert outcome.json()["outcome"]["status"] == "awaiting_approval"
 
 
-def _step_7_admin_approves(admin_page, clo_id, section_outcome_id):
+def _step_7_admin_approves(
+    admin_page: Any, clo_id: Any, section_outcome_id: Any
+) -> None:
     """Admin approves (APPROVED)."""
     admin_page.goto(f"{BASE_URL}/audit-clo")
     admin_page.wait_for_load_state("networkidle")
@@ -399,8 +421,12 @@ def _step_7_admin_approves(admin_page, clo_id, section_outcome_id):
 
 
 def _verify_audit_trail(
-    admin_page, clo_id, section_outcome_id, instructor_id, csrf_token
-):
+    admin_page: Any,
+    clo_id: Any,
+    section_outcome_id: Any,
+    instructor_id: Any,
+    csrf_token: Any,
+) -> None:
     """Verify final state and audit trail."""
     outcome = admin_page.request.get(
         f"{BASE_URL}/api/outcomes/{section_outcome_id}/audit-details",
@@ -434,7 +460,7 @@ def _verify_audit_trail(
 )
 @pytest.mark.e2e
 @pytest.mark.e2e
-def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
+def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page) -> None:
     """
     Test complete CLO lifecycle through all states.
 

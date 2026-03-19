@@ -22,7 +22,7 @@ from tests.e2e.test_helpers import (
 @pytest.mark.e2e
 def test_tc_crud_inst_001_update_own_profile(
     authenticated_institution_admin_page: Page, page: Page
-):
+) -> None:
     """
     TC-CRUD-INST-001: Instructor updates own profile via UI
 
@@ -112,7 +112,7 @@ def test_tc_crud_inst_001_update_own_profile(
 @pytest.mark.e2e
 def test_tc_crud_inst_002_cannot_delete_users(
     authenticated_institution_admin_page: Page, page: Page
-):
+) -> None:
     """
     TC-CRUD-INST-002: Instructor cannot delete other users
 
@@ -174,7 +174,7 @@ def test_tc_crud_inst_002_cannot_delete_users(
 @pytest.mark.e2e
 def test_tc_crud_inst_003_cannot_edit_other_users(
     authenticated_institution_admin_page: Page, page: Page
-):
+) -> None:
     """
     TC-CRUD-INST-003: Instructor cannot edit other users' profiles
 

@@ -20,7 +20,7 @@ class TestAssessmentsPageDataLoad:
 
     def test_assessments_page_loads_with_courses_for_institution_admin(
         self, authenticated_institution_admin_page: Page
-    ):
+    ) -> None:
         """
         Verify that the assessments page loads with courses in the dropdown
         for an institution admin.
@@ -84,7 +84,7 @@ class TestAssessmentsPageDataLoad:
 
     def test_selecting_course_loads_outcomes_section(
         self, authenticated_institution_admin_page: Page
-    ):
+    ) -> None:
         """
         Verify that selecting a course populates the outcomes section and
         shows the course-level assessment form.
@@ -125,7 +125,7 @@ class TestAssessmentsAPIResponses:
 
     def test_sections_api_returns_data(
         self, authenticated_institution_admin_page: Page
-    ):
+    ) -> None:
         """
         Verify that /api/sections returns sections for the institution admin.
 
@@ -149,7 +149,9 @@ class TestAssessmentsAPIResponses:
             "No sections returned from API. " "E2E seed data should include sections."
         )
 
-    def test_courses_api_returns_data(self, authenticated_institution_admin_page: Page):
+    def test_courses_api_returns_data(
+        self, authenticated_institution_admin_page: Page
+    ) -> None:
         """
         Verify that /api/courses returns courses for the institution.
         """

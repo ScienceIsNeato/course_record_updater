@@ -8,6 +8,7 @@ adapter registry system for bidirectional data flow.
 import json
 import tempfile
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import pytest
@@ -28,7 +29,7 @@ from src.services.import_service import ConflictStrategy, ImportService
 class TestAdapterWorkflows:
     """Integration tests for complete adapter workflows."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test environment."""
         self.registry = get_adapter_registry()
 
@@ -39,7 +40,9 @@ class TestAdapterWorkflows:
         self.import_service = ImportService(self.institution_id)
         self.export_service = ExportService()
 
-    def create_test_excel_file(self, file_path: str, data: list) -> None:
+    def create_test_excel_file(
+        self, file_path: str, data: list[dict[str, Any]]
+    ) -> None:
         """Create a test Excel file with MockU format data."""
         workbook = Workbook()
         worksheet = workbook.active
@@ -70,7 +73,7 @@ class TestAdapterWorkflows:
 
         workbook.save(file_path)
 
-    def test_site_admin_full_import_export_workflow(self):
+    def test_site_admin_full_import_export_workflow(self) -> None:
         """Test complete import/export workflow for site admin."""
         # Create test data (using correct term format 2024FA)
         test_data = [
@@ -141,7 +144,7 @@ class TestAdapterWorkflows:
             assert "email" in exported_df.columns
             assert len(exported_df) > 0
 
-    def test_institution_admin_adapter_access(self):
+    def test_institution_admin_adapter_access(self) -> None:
         """Test that institution admin can only access their institution's adapters."""
         # Use the actual MockU institution ID
         user = {
@@ -163,7 +166,7 @@ class TestAdapterWorkflows:
         assert has_access is False
         assert "Access denied" in message
 
-    def test_instructor_export_restrictions(self):
+    def test_instructor_export_restrictions(self) -> None:
         """Test that instructors cannot export data."""
         user = {"role": "instructor", "institution_id": self.institution_id}
 
@@ -174,7 +177,7 @@ class TestAdapterWorkflows:
         assert has_access is False
         assert "Access denied" in message
 
-    def test_adapter_registry_discovery(self):
+    def test_adapter_registry_discovery(self) -> None:
         """Test that adapter registry correctly discovers available adapters."""
         # Get all adapters
         adapters = self.registry.get_all_adapters()
@@ -191,7 +194,7 @@ class TestAdapterWorkflows:
         assert mocku_adapter is not None
         assert mocku_adapter.supports_export() is True
 
-    def test_roundtrip_data_consistency(self):
+    def test_roundtrip_data_consistency(self) -> None:
         """Test that import->export->import maintains data consistency."""
         # Original test data (using correct term format 2024SP)
         original_data = [
@@ -256,7 +259,7 @@ class TestAdapterWorkflows:
             assert einstein is not None
             assert einstein.get("email") == "einstein@mocku.test"
 
-    def test_adapter_error_handling(self):
+    def test_adapter_error_handling(self) -> None:
         """Test adapter error handling for invalid files."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             # Create invalid file (wrong format)
@@ -288,7 +291,7 @@ class TestAdapterWorkflows:
             assert import_result.success is False
             assert len(import_result.errors) > 0
 
-    def test_multiple_adapter_support(self):
+    def test_multiple_adapter_support(self) -> None:
         """Test system support for multiple adapters (extensibility)."""
         # Get supported formats (returns dict mapping adapter_id -> formats)
         supported_formats = self.registry.get_supported_formats()
@@ -321,7 +324,7 @@ class TestAdapterWorkflows:
         # Instructors should see no adapters (no import/export permissions)
         assert len(instructor_adapters) == 0
 
-    def _setup_generic_csv_test_data(self, db):
+    def _setup_generic_csv_test_data(self, db: Any) -> Any:
         """Create specialized data for CSV adapter test."""
         institution_id = db.create_institution(
             {
@@ -388,7 +391,7 @@ class TestAdapterWorkflows:
         )
         return institution_id
 
-    def _verify_zip_content(self, output_file):
+    def _verify_zip_content(self, output_file: Any) -> None:
         """Verify ZIP structure and manifest."""
         import zipfile
 
@@ -407,7 +410,7 @@ class TestAdapterWorkflows:
             assert manifest["entity_counts"]["users"] == 2
             assert manifest["entity_counts"]["courses"] == 1
 
-    def _verify_parsed_csv_data(self, parsed_data):
+    def _verify_parsed_csv_data(self, parsed_data: Any) -> None:
         """Verify integrity of parsed data."""
         # Verify parsed data structure
         assert "institutions" in parsed_data
@@ -433,7 +436,7 @@ class TestAdapterWorkflows:
         assert cs101["course_number"] == "CS101"
         assert cs101["credit_hours"] == "3"  # String from CSV
 
-    def test_generic_csv_adapter_export_and_parse_with_database(self):
+    def test_generic_csv_adapter_export_and_parse_with_database(self) -> None:
         """
         Integration test: Generic CSV adapter export and parse with real database.
 

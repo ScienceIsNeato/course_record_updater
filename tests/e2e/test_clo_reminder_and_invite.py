@@ -7,6 +7,7 @@ Tests:
 """
 
 import re
+from typing import Any
 
 import pytest
 from playwright.sync_api import expect
@@ -14,7 +15,7 @@ from playwright.sync_api import expect
 from tests.e2e.conftest import BASE_URL
 
 
-def test_reminder_autopopulates_context(admin_page, csrf_token):
+def test_reminder_autopopulates_context(admin_page: Any, csrf_token: Any) -> None:
     """Test that reminder modal auto-populates instructor name, course, section, and due date."""
 
     # Navigate to audit CLO page
@@ -35,7 +36,7 @@ def test_reminder_autopopulates_context(admin_page, csrf_token):
     reminder_button.click()
 
     # Wait for reminder modal to open
-    admin_page.wait_for_selector("#sendReminderModal.show", timeout=5000)
+    expect(admin_page.locator("#sendReminderModal")).to_be_visible(timeout=5000)
 
     # Check that description is populated
     description = admin_page.locator("#reminderCloDescription").text_content()
@@ -60,7 +61,9 @@ def test_reminder_autopopulates_context(admin_page, csrf_token):
     admin_page.locator("#sendReminderModal button.btn-close").click()
 
 
-def test_invite_instructor_from_assignment_modal(admin_page, csrf_token):
+def test_invite_instructor_from_assignment_modal(
+    admin_page: Any, csrf_token: Any
+) -> None:
     """Test inviting a new instructor from the assignment modal."""
 
     # Navigate to audit CLO page
@@ -81,7 +84,7 @@ def test_invite_instructor_from_assignment_modal(admin_page, csrf_token):
     assign_button.click()
 
     # Wait for assignment modal to open
-    admin_page.wait_for_selector("#assignInstructorModal.show", timeout=5000)
+    expect(admin_page.locator("#assignInstructorModal")).to_be_visible(timeout=5000)
 
     # Verify "Invite New Instructor" button is present
     invite_button = admin_page.locator("#inviteNewInstructorBtn")
@@ -94,7 +97,7 @@ def test_invite_instructor_from_assignment_modal(admin_page, csrf_token):
     invite_button.click()
 
     # Wait for invite modal to open
-    admin_page.wait_for_selector("#inviteInstructorModal.show", timeout=5000)
+    expect(admin_page.locator("#inviteInstructorModal")).to_be_visible(timeout=5000)
 
     # Verify assignment modal is closed
     assign_modal = admin_page.locator("#assignInstructorModal")
@@ -113,7 +116,7 @@ def test_invite_instructor_from_assignment_modal(admin_page, csrf_token):
     admin_page.locator("#inviteInstructorModal button.btn-close").click()
 
 
-def test_invite_submission_validates_fields(admin_page, csrf_token):
+def test_invite_submission_validates_fields(admin_page: Any, csrf_token: Any) -> None:
     """Test that invite form validates required fields."""
 
     # Navigate to audit CLO page
@@ -129,28 +132,30 @@ def test_invite_submission_validates_fields(admin_page, csrf_token):
         pytest.skip("No unassigned CLOs available")
 
     assign_button.click()
-    admin_page.wait_for_selector("#assignInstructorModal.show", timeout=5000)
+    expect(admin_page.locator("#assignInstructorModal")).to_be_visible(timeout=5000)
 
     # Click invite button
     admin_page.locator("#inviteNewInstructorBtn").click()
-    admin_page.wait_for_selector("#inviteInstructorModal.show", timeout=5000)
+    expect(admin_page.locator("#inviteInstructorModal")).to_be_visible(timeout=5000)
 
     # Try to submit without filling fields
     admin_page.locator("#sendInviteBtn").click()
 
     # HTML5 validation should prevent submission
     # Check that modal is still visible (form didn't submit)
-    expect(admin_page.locator("#inviteInstructorModal.show")).to_be_visible()
+    expect(admin_page.locator("#inviteInstructorModal")).to_be_visible()
 
     # Fill in only email
     admin_page.locator("#inviteEmail").fill("newprof@university.edu")
     admin_page.locator("#sendInviteBtn").click()
 
     # Should still be visible (missing first/last name)
-    expect(admin_page.locator("#inviteInstructorModal.show")).to_be_visible()
+    expect(admin_page.locator("#inviteInstructorModal")).to_be_visible()
 
 
-def test_reminder_includes_due_date_when_available(admin_page, csrf_token):
+def test_reminder_includes_due_date_when_available(
+    admin_page: Any, csrf_token: Any
+) -> None:
     """Test that reminder message includes due date when section has one."""
 
     # This test would require setting up a section with a due date
@@ -165,7 +170,7 @@ def test_reminder_includes_due_date_when_available(admin_page, csrf_token):
         pytest.skip("No CLOs with reminder button available")
 
     reminder_button.click()
-    admin_page.wait_for_selector("#sendReminderModal.show", timeout=5000)
+    expect(admin_page.locator("#sendReminderModal")).to_be_visible(timeout=5000)
 
     # Get the message
     message = admin_page.locator("#reminderMessage").input_value()

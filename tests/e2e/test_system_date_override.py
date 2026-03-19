@@ -12,7 +12,7 @@ from tests.e2e.conftest import BASE_URL
 logger = logging.getLogger(__name__)
 
 
-def test_system_date_override_flow(authenticated_site_admin_page: Page):
+def test_system_date_override_flow(authenticated_site_admin_page: Page) -> None:
     """
     Test the full system date override flow:
     1. Login as Site Admin (handled by fixture)

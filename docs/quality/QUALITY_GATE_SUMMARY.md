@@ -2,7 +2,7 @@
 
 ## 🎯 Enterprise Quality Gate for LoopCloser
 
-We've successfully implemented a comprehensive quality gate system based on FogOfDog's approach, adapted for our Python/Flask project.
+LoopCloser is moving to slop-mop as the primary quality gate interface for routine validation.
 
 ### ✅ **Key Features Implemented:**
 
@@ -29,13 +29,6 @@ We've successfully implemented a comprehensive quality gate system based on FogO
 5. **🔧 Type Checking**
    - mypy static type analysis
 
-6. **📊 SonarCloud Analysis** ⚠️ **LIMITED ON FREE TIER**
-   - Comprehensive code quality analysis
-   - **IMPORTANT**: Only analyzes `main` branch (free tier limitation)
-   - Branch analysis requires $40/month paid plan
-   - See `SONAR_ANALYSIS_RESULTS.md` for detailed workflow
-   - Configurable strictness levels
-
 ### ⚡ **Performance Optimizations:**
 
 - **Parallel execution** (3 workers max for stability)
@@ -47,33 +40,34 @@ We've successfully implemented a comprehensive quality gate system based on FogO
 ### 🚀 **Usage:**
 
 ```bash
-# Default: Fast commit validation (excludes slow security & sonar)
-python scripts/ship_it.py
+# Fast routine validation
+sm swab
 
-# Full PR validation (all checks including security & sonar)
-python scripts/ship_it.py --checks PR
+# Deep validation
+sm scour
 
 # Specific checks
-python scripts/ship_it.py --checks format lint
-
-# Run specific checks with PR validation
-python scripts/ship_it.py --checks PR --checks format lint tests security types
+sm swab -g laziness:sloppy-formatting.py --verbose
+sm swab -g overconfidence:untested-code.py --verbose
+sm swab -g overconfidence:frontend-sanity --verbose
+sm scour -g overconfidence:smoke --verbose
 ```
 
 ### ⏱️ **Performance Results:**
 
 **Commit Validation (Default):**
+
 - **Format Check**: ~5-10 seconds
 - **Lint Check**: ~5-30 seconds
 - **Test Suite**: ~60-180 seconds (depends on coverage)
 - **Total (commit validation)**: ~2-3 minutes
 
 **PR Validation (Full Suite):**
+
 - **Security Audit**: ~30-45 seconds
-- **SonarCloud Analysis**: ~45-60 seconds
 - **Total (PR validation)**: ~3-5 minutes
 
-**Time Savings**: Commit validation saves ~78s by excluding security and sonar checks
+**Migration Note**: Legacy wrappers remain in-tree temporarily, but the target interface is slop-mop.
 
 ### 🎯 **80% Coverage Gate:**
 

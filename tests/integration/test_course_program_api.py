@@ -8,6 +8,7 @@ Tests the complete course-program association functionality including:
 - Complete workflow scenarios
 """
 
+from typing import Any
 from unittest.mock import patch
 
 from src.app import app
@@ -17,7 +18,7 @@ from tests.test_utils import CommonAuthMixin
 class TestCourseProgramAPIIntegration(CommonAuthMixin):
     """Test course-program association API endpoints with full Flask app context"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.app = app
         self.app.config["TESTING"] = True
@@ -26,7 +27,9 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
 
     @patch("src.api.routes.programs.get_program_by_id")
     @patch("src.api.routes.programs.get_courses_by_program")
-    def test_get_program_courses_integration(self, mock_get_courses, mock_get_program):
+    def test_get_program_courses_integration(
+        self, mock_get_courses: Any, mock_get_program: Any
+    ) -> None:
         """Test program courses retrieval endpoint integration"""
         mock_get_program.return_value = {
             "id": "cs-program",
@@ -63,8 +66,8 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
     @patch("src.api.routes.programs.get_course_by_number")
     @patch("src.api.routes.programs.add_course_to_program")
     def test_add_course_to_program_integration(
-        self, mock_add, mock_get_course, mock_get_program
-    ):
+        self, mock_add: Any, mock_get_course: Any, mock_get_program: Any
+    ) -> None:
         """Test course addition to program endpoint integration"""
         mock_get_program.return_value = {"id": "cs-program", "name": "Computer Science"}
         mock_get_course.return_value = {
@@ -94,8 +97,12 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
     @patch("src.api.routes.programs.get_programs_by_institution")
     @patch("src.api.routes.programs.remove_course_from_program")
     def test_remove_course_from_program_integration(
-        self, mock_remove, mock_get_programs, mock_get_institution, mock_get_program
-    ):
+        self,
+        mock_remove: Any,
+        mock_get_programs: Any,
+        mock_get_institution: Any,
+        mock_get_program: Any,
+    ) -> None:
         """Test course removal from program endpoint integration"""
         mock_get_program.return_value = {
             "id": "cs-program",
@@ -122,7 +129,9 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
 
     @patch("src.api.routes.programs.get_program_by_id")
     @patch("src.api.routes.programs.bulk_add_courses_to_program")
-    def test_bulk_add_courses_integration(self, mock_bulk_add, mock_get_program):
+    def test_bulk_add_courses_integration(
+        self, mock_bulk_add: Any, mock_get_program: Any
+    ) -> None:
         """Test bulk course addition endpoint integration"""
         mock_get_program.return_value = {"id": "cs-program", "name": "Computer Science"}
         mock_bulk_add.return_value = {
@@ -157,11 +166,11 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
     @patch("src.api.routes.programs.bulk_remove_courses_from_program")
     def test_bulk_remove_courses_integration(
         self,
-        mock_bulk_remove,
-        mock_get_programs,
-        mock_get_institution,
-        mock_get_program,
-    ):
+        mock_bulk_remove: Any,
+        mock_get_programs: Any,
+        mock_get_institution: Any,
+        mock_get_program: Any,
+    ) -> None:
         """Test bulk course removal endpoint integration"""
         mock_get_program.return_value = {"id": "cs-program", "name": "Computer Science"}
         mock_get_institution.return_value = "test-institution"
@@ -190,7 +199,9 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
 
     @patch("src.api.routes.programs.get_course_by_number")
     @patch("src.api.routes.programs.get_program_by_id")
-    def test_get_course_programs_integration(self, mock_get_program, mock_get_course):
+    def test_get_course_programs_integration(
+        self, mock_get_program: Any, mock_get_course: Any
+    ) -> None:
         """Test course programs retrieval endpoint integration"""
         mock_get_course.return_value = {
             "course_id": "course1",
@@ -214,7 +225,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         assert len(data["programs"]) == 2
         assert data["count"] == 2
 
-    def test_bulk_manage_invalid_action_integration(self):
+    def test_bulk_manage_invalid_action_integration(self) -> None:
         """Test bulk course management with invalid action"""
         bulk_data = {"action": "invalid_action", "course_ids": ["course1"]}
 
@@ -230,7 +241,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         assert data["success"] is False
         assert "Invalid or missing action" in data["error"]
 
-    def test_bulk_manage_missing_course_ids_integration(self):
+    def test_bulk_manage_missing_course_ids_integration(self) -> None:
         """Test bulk course management with missing course IDs"""
         bulk_data = {
             "action": "add"
@@ -250,7 +261,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         assert "Missing or invalid course_ids array" in data["error"]
 
     @patch("src.api.routes.programs.get_program_by_id")
-    def test_program_not_found_integration(self, mock_get_program):
+    def test_program_not_found_integration(self, mock_get_program: Any) -> None:
         """Test endpoints when program doesn't exist"""
         mock_get_program.return_value = None
 
@@ -267,7 +278,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
 class TestCourseProgramWorkflow(CommonAuthMixin):
     """Test complete course-program association workflow"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.app = app
         self.app.config["TESTING"] = True
@@ -283,14 +294,14 @@ class TestCourseProgramWorkflow(CommonAuthMixin):
     @patch("src.api.routes.programs.get_programs_by_institution")
     def test_complete_course_program_lifecycle(
         self,
-        mock_get_programs,
-        mock_get_institution,
-        mock_remove,
-        mock_get_courses,
-        mock_add,
-        mock_get_course,
-        mock_get_program,
-    ):
+        mock_get_programs: Any,
+        mock_get_institution: Any,
+        mock_remove: Any,
+        mock_get_courses: Any,
+        mock_add: Any,
+        mock_get_course: Any,
+        mock_get_program: Any,
+    ) -> None:
         """Test complete course-program lifecycle: add -> view -> remove"""
 
         # Setup mocks
@@ -357,12 +368,12 @@ class TestCourseProgramWorkflow(CommonAuthMixin):
     @patch("src.api.routes.programs.get_programs_by_institution")
     def test_bulk_operations_workflow(
         self,
-        mock_get_programs,
-        mock_get_institution,
-        mock_bulk_remove,
-        mock_bulk_add,
-        mock_get_program,
-    ):
+        mock_get_programs: Any,
+        mock_get_institution: Any,
+        mock_bulk_remove: Any,
+        mock_bulk_add: Any,
+        mock_get_program: Any,
+    ) -> None:
         """Test bulk course management workflow"""
 
         # Setup mocks

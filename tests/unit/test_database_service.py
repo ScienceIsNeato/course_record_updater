@@ -6,7 +6,7 @@ import src.database.database_service as database_service
 from src.utils.term_utils import get_term_status
 
 
-def test_create_and_get_institution():
+def test_create_and_get_institution() -> None:
     payload = {
         "name": "Test University",
         "short_name": "TU",
@@ -21,7 +21,7 @@ def test_create_and_get_institution():
     assert fetched["short_name"] == "TU"
 
 
-def test_create_user_and_lookup_by_email():
+def test_create_user_and_lookup_by_email() -> None:
     institution_id = database_service.create_institution(
         {
             "name": "Email University",
@@ -48,7 +48,7 @@ def test_create_user_and_lookup_by_email():
     assert fetched["institution_id"] == institution_id
 
 
-def test_update_user_active_status():
+def test_update_user_active_status() -> None:
     inst_id = database_service.create_institution(
         {
             "name": "Status College",
@@ -74,7 +74,7 @@ def test_update_user_active_status():
     assert fetched["account_status"] == "active"
 
 
-def test_course_and_program_association():
+def test_course_and_program_association() -> None:
     inst_id = database_service.create_institution(
         {
             "name": "Course College",
@@ -107,7 +107,7 @@ def test_course_and_program_association():
     assert courses[0]["course_id"] == course_id
 
 
-def test_term_and_section_workflow():
+def test_term_and_section_workflow() -> None:
     inst_id = database_service.create_institution(
         {
             "name": "Term College",
@@ -150,7 +150,7 @@ def test_term_and_section_workflow():
     assert any(section["section_id"] == section_id for section in sections)
 
 
-def test_invitation_lifecycle():
+def test_invitation_lifecycle() -> None:
     inst_id = database_service.create_institution(
         {
             "name": "Invite University",
@@ -178,13 +178,13 @@ def test_invitation_lifecycle():
     assert len(invitations) == 1
 
 
-def test_database_connection_check():
+def test_database_connection_check() -> None:
     """Test database connectivity check."""
     # Should return True for working database
     assert database_service.check_db_connection() is True
 
 
-def test_sanitize_for_logging():
+def test_sanitize_for_logging() -> None:
     """Test input sanitization for safe logging."""
     # Test None value
     result = database_service.sanitize_for_logging(None)
@@ -206,7 +206,7 @@ def test_sanitize_for_logging():
     assert len(result) == 50
 
 
-def test_get_all_institutions():
+def test_get_all_institutions() -> None:
     """Test getting all institutions."""
     # Create test institution
     inst_data = {
@@ -227,7 +227,7 @@ def test_get_all_institutions():
     assert test_inst["name"] == "All Institutions Test"
 
 
-def test_get_all_users():
+def test_get_all_users() -> None:
     """Test getting all users for an institution."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -270,7 +270,7 @@ def test_get_all_users():
     assert user2_id in user_ids
 
 
-def test_get_all_courses():
+def test_get_all_courses() -> None:
     """Test getting all courses for an institution."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -302,7 +302,7 @@ def test_get_all_courses():
     assert test_course["course_code"] == "TEST101"
 
 
-def test_get_all_programs():
+def test_get_all_programs() -> None:
     """Test getting all programs for an institution."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -341,7 +341,7 @@ def _make_active_term_dates(buffer_days: int = 7) -> tuple[str, str]:
     return start_date.isoformat(), end_date.isoformat()
 
 
-def test_get_all_terms():
+def test_get_all_terms() -> None:
     """Test getting all terms for an institution."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -376,7 +376,7 @@ def test_get_all_terms():
     assert test_term["is_active"] is True
 
 
-def test_refresh_connection():
+def test_refresh_connection() -> None:
     """Test database connection refresh."""
     # Should not raise an exception
     result = database_service.refresh_connection()
@@ -386,7 +386,7 @@ def test_refresh_connection():
     assert database_service.check_db_connection() is True
 
 
-def test_reset_database():
+def test_reset_database() -> None:
     """Test database reset functionality."""
     # Create some test data first
     inst_id = database_service.create_institution(
@@ -411,7 +411,7 @@ def test_reset_database():
     assert len(institutions) == 0
 
 
-def test_db_operation_timeout():
+def test_db_operation_timeout() -> None:
     """Test database operation timeout context manager."""
     # Should return a context manager that doesn't raise exceptions
     # Note: timeout parameter removed as it's now handled internally
@@ -421,7 +421,7 @@ def test_db_operation_timeout():
         assert isinstance(institutions, list)
 
 
-def test_get_all_instructors():
+def test_get_all_instructors() -> None:
     """Test getting all instructors for an institution."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -456,7 +456,7 @@ def test_get_all_instructors():
     assert test_instructor["role"] == "instructor"
 
 
-def test_get_all_sections():
+def test_get_all_sections() -> None:
     """Test getting all sections for an institution."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -473,7 +473,7 @@ def test_get_all_sections():
     assert isinstance(sections, list)
 
 
-def test_get_all_course_offerings():
+def test_get_all_course_offerings() -> None:
     """Test getting all course offerings for an institution."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -490,7 +490,7 @@ def test_get_all_course_offerings():
     assert isinstance(offerings, list)
 
 
-def test_get_program_by_id():
+def test_get_program_by_id() -> None:
     """Test getting a program by ID."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -518,7 +518,7 @@ def test_get_program_by_id():
     assert program["program_id"] == program_id
 
 
-def test_add_and_remove_course_from_program():
+def test_add_and_remove_course_from_program() -> None:
     """Test adding and removing courses from programs."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -568,7 +568,7 @@ def test_add_and_remove_course_from_program():
     assert course_id not in course_ids
 
 
-def test_bulk_course_program_operations():
+def test_bulk_course_program_operations() -> None:
     """Test bulk adding and removing courses from programs."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -625,7 +625,7 @@ def test_bulk_course_program_operations():
         assert course_id not in program_course_ids
 
 
-def test_create_term_and_lookup():
+def test_create_term_and_lookup() -> None:
     """Test creating and looking up terms."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -655,7 +655,7 @@ def test_create_term_and_lookup():
     assert term["term_code"] == "SP2025"
 
 
-def test_update_program():
+def test_update_program() -> None:
     """Test updating program information."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -691,7 +691,7 @@ def test_update_program():
     assert updated_program["code"] == "ORIGINAL"  # Should remain unchanged
 
 
-def test_get_program_by_name_and_institution():
+def test_get_program_by_name_and_institution() -> None:
     """Test getting a program by name and institution."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -727,7 +727,7 @@ def test_get_program_by_name_and_institution():
     assert nonexistent is None
 
 
-def test_get_sections_by_term():
+def test_get_sections_by_term() -> None:
     """Test getting sections by term."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -754,7 +754,7 @@ def test_get_sections_by_term():
     assert isinstance(sections, list)
 
 
-def test_get_sections_by_instructor_enrichment():
+def test_get_sections_by_instructor_enrichment() -> None:
     """Test that get_sections_by_instructor returns enriched data with course info."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -845,7 +845,7 @@ def test_get_sections_by_instructor_enrichment():
     assert section["enrollment"] == 25
 
 
-def test_assign_course_to_default_program():
+def test_assign_course_to_default_program() -> None:
     """Test assigning a course to the default program."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -873,7 +873,7 @@ def test_assign_course_to_default_program():
     assert isinstance(result, bool)
 
 
-def test_error_handling_with_invalid_ids():
+def test_error_handling_with_invalid_ids() -> None:
     """Test error handling with invalid IDs."""
     # Test getting non-existent institution
     nonexistent_inst = database_service.get_institution_by_id("invalid-id")
@@ -892,7 +892,7 @@ def test_error_handling_with_invalid_ids():
     assert result is False
 
 
-def test_user_operations_comprehensive():
+def test_user_operations_comprehensive() -> None:
     """Test comprehensive user operations including edge cases."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -935,7 +935,7 @@ def test_user_operations_comprehensive():
     assert updated_user is not None
 
 
-def test_calculate_and_update_active_users():
+def test_calculate_and_update_active_users() -> None:
     """Test calculating and updating active users count."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -953,7 +953,7 @@ def test_calculate_and_update_active_users():
     assert count >= 0
 
 
-def test_database_service_edge_cases():
+def test_database_service_edge_cases() -> None:
     """Test various edge cases and error conditions."""
     # Test with invalid institution ID
     empty_users = database_service.get_all_users("invalid-institution-id")
@@ -973,7 +973,7 @@ def test_database_service_edge_cases():
     assert len(empty_program_courses) == 0
 
 
-def test_additional_database_operations():
+def test_additional_database_operations() -> None:
     """Test additional database operations for coverage."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -1006,7 +1006,7 @@ def test_additional_database_operations():
     assert isinstance(terms, list)
 
 
-def test_comprehensive_database_operations():
+def test_comprehensive_database_operations() -> None:
     """Test comprehensive database operations to maximize coverage."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -1068,7 +1068,7 @@ def test_comprehensive_database_operations():
     assert isinstance(result, bool)
 
 
-def test_error_conditions_and_edge_cases():
+def test_error_conditions_and_edge_cases() -> None:
     """Test error conditions and edge cases for better coverage."""
     # Test operations with None/invalid parameters
     result = database_service.get_user_by_email("")
@@ -1082,11 +1082,11 @@ def test_error_conditions_and_edge_cases():
     assert result is None
 
     # Test update operations with invalid IDs
-    result = database_service.update_user_active_status("", True)
-    assert result is False
+    update_user_result = database_service.update_user_active_status("", True)
+    assert update_user_result is False
 
-    result = database_service.update_program("", {"name": "Test"})
-    assert result is False
+    update_program_result = database_service.update_program("", {"name": "Test"})
+    assert update_program_result is False
 
     # Test list operations with invalid institution IDs
     users = database_service.get_all_users("")
@@ -1106,7 +1106,7 @@ def test_error_conditions_and_edge_cases():
     assert len(terms) == 0
 
 
-def test_final_coverage_push():
+def test_final_coverage_push() -> None:
     """Final test to push coverage over 80% threshold."""
     # Create test institution
     inst_id = database_service.create_institution(
@@ -1158,19 +1158,19 @@ def test_final_coverage_push():
     assert result is False
 
     # Test bulk operations with invalid IDs
-    result = database_service.bulk_add_courses_to_program(
+    bulk_add_result = database_service.bulk_add_courses_to_program(
         ["invalid1", "invalid2"], "invalid-program"
     )
-    assert isinstance(result, dict)
-    assert "added" in result
-    assert "failed" in result
+    assert isinstance(bulk_add_result, dict)
+    assert "added" in bulk_add_result
+    assert "failed" in bulk_add_result
 
-    result = database_service.bulk_remove_courses_from_program(
+    bulk_remove_result = database_service.bulk_remove_courses_from_program(
         ["invalid1", "invalid2"], "invalid-program"
     )
-    assert isinstance(result, dict)
-    assert "removed" in result
-    assert "failed" in result
+    assert isinstance(bulk_remove_result, dict)
+    assert "removed" in bulk_remove_result
+    assert "failed" in bulk_remove_result
 
     # Test get_courses_by_program with invalid program ID
     courses = database_service.get_courses_by_program("invalid-program")
@@ -1183,7 +1183,7 @@ def test_final_coverage_push():
     assert count == 0
 
 
-def test_uncovered_database_functions():
+def test_uncovered_database_functions() -> None:
     """Test specific uncovered functions to reach 80% threshold."""
     # Create test institution
     inst_data = {
@@ -1260,7 +1260,7 @@ def test_uncovered_database_functions():
     assert len(courses) == 0
 
 
-def test_user_crud_operations():
+def test_user_crud_operations() -> None:
     """Test Users CRUD: update_user_profile, update_user_role, deactivate_user, delete_user"""
     # Setup institution
     inst_id = database_service.create_institution(
@@ -1319,7 +1319,7 @@ def test_user_crud_operations():
     assert user is None
 
 
-def test_institution_crud_operations():
+def test_institution_crud_operations() -> None:
     """Test Institutions CRUD: update_institution, delete_institution"""
     # Create test institution
     inst_data = {
@@ -1351,7 +1351,7 @@ def test_institution_crud_operations():
     assert inst is None
 
 
-def test_course_crud_operations():
+def test_course_crud_operations() -> None:
     """Test Courses CRUD: update_course, update_course_programs, delete_course"""
     # Setup
     inst_id = database_service.create_institution(
@@ -1407,7 +1407,7 @@ def test_course_crud_operations():
     assert course is None
 
 
-def test_duplicate_course_record_preserves_metadata():
+def test_duplicate_course_record_preserves_metadata() -> None:
     """Duplicate an existing course and ensure metadata/programs copy over."""
     inst_id = database_service.create_institution(
         {
@@ -1462,7 +1462,7 @@ def test_duplicate_course_record_preserves_metadata():
     assert override_course.get("program_ids") == []
 
 
-def test_term_crud_operations():
+def test_term_crud_operations() -> None:
     """Test Terms CRUD: update_term and delete_term"""
     # Setup
     inst_id = database_service.create_institution(
@@ -1503,7 +1503,7 @@ def test_term_crud_operations():
     assert term is None
 
 
-def test_offering_crud_operations():
+def test_offering_crud_operations() -> None:
     """Test Offerings CRUD: update_course_offering, delete_course_offering"""
     # Setup
     inst_id = database_service.create_institution(
@@ -1566,7 +1566,7 @@ def test_offering_crud_operations():
     assert offering is None
 
 
-def test_section_crud_operations():
+def test_section_crud_operations() -> None:
     """Test Sections CRUD: update_course_section, assign_instructor, delete_course_section"""
     # Setup
     inst_id = database_service.create_institution(
@@ -1653,7 +1653,7 @@ def test_section_crud_operations():
     assert len(sections) == 0
 
 
-def test_outcome_crud_operations():
+def test_outcome_crud_operations() -> None:
     """Test Outcomes CRUD: update_course_outcome, update_outcome_assessment, delete_course_outcome"""
     # Setup
     inst_id = database_service.create_institution(
@@ -1723,7 +1723,7 @@ def test_outcome_crud_operations():
     assert len(outcomes) == 0
 
 
-def test_get_outcomes_by_status():
+def test_get_outcomes_by_status() -> None:
     """Test get_outcomes_by_status function coverage."""
     # Simple test to cover the function call
     # Returns empty list for non-existent institution
@@ -1737,7 +1737,7 @@ def test_get_outcomes_by_status():
     assert isinstance(outcomes_with_program, list)
 
 
-def test_get_sections_by_course():
+def test_get_sections_by_course() -> None:
     """Test get_sections_by_course function coverage."""
     # Create a simple course
     institution_id = database_service.create_institution(
@@ -1762,7 +1762,7 @@ def test_get_sections_by_course():
     assert isinstance(sections, list)
 
 
-def test_audit_log_retrieval_by_entity():
+def test_audit_log_retrieval_by_entity() -> None:
     """Test retrieving audit logs filtered by entity type and ID"""
     inst_id = database_service.create_institution(
         {
@@ -1797,7 +1797,7 @@ def test_audit_log_retrieval_by_entity():
     # Should find the log we just created (or at least not error)
 
 
-def test_audit_log_retrieval_by_user():
+def test_audit_log_retrieval_by_user() -> None:
     """Test retrieving all audit logs for a specific user"""
     inst_id = database_service.create_institution(
         {
@@ -1825,7 +1825,7 @@ def test_audit_log_retrieval_by_user():
     # The logs should exist (even if empty, at least doesn't error)
 
 
-def test_recent_audit_logs_respects_limit():
+def test_recent_audit_logs_respects_limit() -> None:
     """Test that recent audit logs honors the limit parameter"""
     inst_id = database_service.create_institution(
         {
@@ -1842,7 +1842,7 @@ def test_recent_audit_logs_respects_limit():
     assert len(logs) <= 5
 
 
-def test_get_all_institutions_returns_multiple():
+def test_get_all_institutions_returns_multiple() -> None:
     """Test that get_all_institutions returns all created institutions"""
     # Create multiple institutions
     inst1 = database_service.create_institution(
@@ -1871,7 +1871,7 @@ def test_get_all_institutions_returns_multiple():
     assert inst2 in inst_ids
 
 
-def test_get_all_instructors_for_empty_institution():
+def test_get_all_instructors_for_empty_institution() -> None:
     """Test that get_all_instructors returns empty list for institution with no instructors"""
     inst_id = database_service.create_institution(
         {
@@ -1888,7 +1888,7 @@ def test_get_all_instructors_for_empty_institution():
     assert len(instructors) >= 0
 
 
-def test_get_all_sections_and_offerings_consistency():
+def test_get_all_sections_and_offerings_consistency() -> None:
     """Test that sections and offerings can be retrieved for an institution"""
     inst_id = database_service.create_institution(
         {
@@ -1906,14 +1906,14 @@ def test_get_all_sections_and_offerings_consistency():
     assert isinstance(offerings, list)
 
 
-def test_get_course_by_id_returns_none_for_nonexistent():
+def test_get_course_by_id_returns_none_for_nonexistent() -> None:
     """Test that get_course_by_id returns None for courses that don't exist"""
     # Try to get a course with a fake ID
     course = database_service.get_course_by_id("nonexistent-course-id-12345")
     assert course is None
 
 
-def test_get_course_by_id_returns_correct_course():
+def test_get_course_by_id_returns_correct_course() -> None:
     """Test that get_course_by_id returns the correct course data"""
     inst_id = database_service.create_institution(
         {
@@ -1940,7 +1940,7 @@ def test_get_course_by_id_returns_correct_course():
     assert course["course_name"] == "Advanced Biology"
 
 
-def test_create_new_institution_simple_vs_full():
+def test_create_new_institution_simple_vs_full() -> None:
     """Test that simple institution creation doesn't create admin user"""
     # Create institution the simple way (site admin workflow)
     simple_inst_id = database_service.create_new_institution_simple(
@@ -1960,7 +1960,7 @@ def test_create_new_institution_simple_vs_full():
     assert len(users) == 0
 
 
-def test_get_audit_logs_filtered_with_date_range():
+def test_get_audit_logs_filtered_with_date_range() -> None:
     """Test that audit log filtering respects date ranges"""
     inst_id = database_service.create_institution(
         {
@@ -1993,7 +1993,7 @@ def test_get_audit_logs_filtered_with_date_range():
     # Should not error even with tight filters
 
 
-def test_generate_unique_course_number_increments_suffix_when_collisions():
+def test_generate_unique_course_number_increments_suffix_when_collisions() -> None:
     """Covers _generate_unique_course_number loop when -V2/-V3 already exist."""
     from unittest.mock import patch
 
@@ -2009,7 +2009,7 @@ def test_generate_unique_course_number_increments_suffix_when_collisions():
     assert result == "BIOL-201-V4"
 
 
-def test_generate_unique_course_number_normalizes_base_number():
+def test_generate_unique_course_number_normalizes_base_number() -> None:
     """Covers base_number normalization and default fallback."""
     from unittest.mock import patch
 
@@ -2023,7 +2023,7 @@ def test_generate_unique_course_number_normalizes_base_number():
         )
 
 
-def test_get_outcomes_by_status_with_program_and_term_filters():
+def test_get_outcomes_by_status_with_program_and_term_filters() -> None:
     """Covers database_sqlite.DatabaseService.get_outcomes_by_status program_id + term_id branches."""
     inst_id = database_service.create_institution(
         {

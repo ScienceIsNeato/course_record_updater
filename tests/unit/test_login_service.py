@@ -5,6 +5,7 @@ Tests the LoginService class and its methods for user authentication functionali
 """
 
 from datetime import datetime, timedelta
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -21,8 +22,8 @@ class TestLoginServiceAuthentication:
     @patch("src.services.login_service.PasswordService")
     @patch("src.services.login_service.db")
     def test_authenticate_user_success(
-        self, mock_db, mock_password_service, mock_session
-    ):
+        self, mock_db: Any, mock_password_service: Any, mock_session: Any
+    ) -> None:
         """Test successful user authentication"""
         # Setup
         mock_password_service.check_account_lockout.return_value = None
@@ -69,7 +70,9 @@ class TestLoginServiceAuthentication:
 
     @patch("src.services.login_service.PasswordService")
     @patch("src.services.login_service.db")
-    def test_authenticate_user_invalid_email(self, mock_db, mock_password_service):
+    def test_authenticate_user_invalid_email(
+        self, mock_db: Any, mock_password_service: Any
+    ) -> None:
         """Test authentication with invalid email"""
         # Setup
         mock_password_service.check_account_lockout.return_value = None
@@ -86,7 +89,9 @@ class TestLoginServiceAuthentication:
 
     @patch("src.services.login_service.PasswordService")
     @patch("src.services.login_service.db")
-    def test_authenticate_user_invalid_password(self, mock_db, mock_password_service):
+    def test_authenticate_user_invalid_password(
+        self, mock_db: Any, mock_password_service: Any
+    ) -> None:
         """Test authentication with invalid password"""
         # Setup
         mock_password_service.check_account_lockout.return_value = None
@@ -110,7 +115,9 @@ class TestLoginServiceAuthentication:
 
     @patch("src.services.login_service.PasswordService")
     @patch("src.services.login_service.db")
-    def test_authenticate_user_pending_account(self, mock_db, mock_password_service):
+    def test_authenticate_user_pending_account(
+        self, mock_db: Any, mock_password_service: Any
+    ) -> None:
         """Test authentication with pending account"""
         # Setup
         mock_password_service.check_account_lockout.return_value = None
@@ -127,7 +134,9 @@ class TestLoginServiceAuthentication:
 
     @patch("src.services.login_service.PasswordService")
     @patch("src.services.login_service.db")
-    def test_authenticate_user_suspended_account(self, mock_db, mock_password_service):
+    def test_authenticate_user_suspended_account(
+        self, mock_db: Any, mock_password_service: Any
+    ) -> None:
         """Test authentication with suspended account"""
         # Setup
         mock_password_service.check_account_lockout.return_value = None
@@ -143,7 +152,7 @@ class TestLoginServiceAuthentication:
             LoginService.authenticate_user("test@example.com", INVALID_PASSWORD)
 
     @patch("src.services.login_service.PasswordService")
-    def test_authenticate_user_account_locked(self, mock_password_service):
+    def test_authenticate_user_account_locked(self, mock_password_service: Any) -> None:
         """Test authentication with locked account"""
         # Setup
         mock_password_service.check_account_lockout.side_effect = AccountLockedError(
@@ -156,7 +165,9 @@ class TestLoginServiceAuthentication:
 
     @patch("src.services.login_service.PasswordService")
     @patch("src.services.login_service.db")
-    def test_authenticate_user_no_password_hash(self, mock_db, mock_password_service):
+    def test_authenticate_user_no_password_hash(
+        self, mock_db: Any, mock_password_service: Any
+    ) -> None:
         """Test authentication when user has no password hash"""
         # Setup
         mock_password_service.check_account_lockout.return_value = None
@@ -178,8 +189,8 @@ class TestLoginServiceAuthentication:
     @patch("src.services.login_service.PasswordService")
     @patch("src.services.login_service.db")
     def test_authenticate_user_remember_me(
-        self, mock_db, mock_password_service, mock_session
-    ):
+        self, mock_db: Any, mock_password_service: Any, mock_session: Any
+    ) -> None:
         """Test authentication with remember me option"""
         # Setup
         mock_password_service.check_account_lockout.return_value = None
@@ -214,8 +225,8 @@ class TestLoginServiceAuthentication:
     @patch("src.services.login_service.db")
     @patch("src.services.login_service.PasswordService")
     def test_login_user_generic_exception(
-        self, mock_password_service, mock_db, mock_session
-    ):
+        self, mock_password_service: Any, mock_db: Any, mock_session: Any
+    ) -> None:
         """Test authentication with generic exception (not credentials/account related)"""
         # Setup
         mock_password_service.check_account_lockout.return_value = None
@@ -245,7 +256,7 @@ class TestLoginServiceLogout:
     """Test logout functionality"""
 
     @patch("src.services.login_service.SessionService")
-    def test_logout_user_success(self, mock_session):
+    def test_logout_user_success(self, mock_session: Any) -> None:
         """Test successful user logout"""
         # Setup
         mock_session.get_session_info.return_value = {"email": "test@example.com"}
@@ -260,7 +271,7 @@ class TestLoginServiceLogout:
         mock_session.destroy_session.assert_called_once()
 
     @patch("src.services.login_service.SessionService")
-    def test_logout_user_with_error(self, mock_session):
+    def test_logout_user_with_error(self, mock_session: Any) -> None:
         """Test logout when error occurs"""
         # Setup
         mock_session.get_session_info.side_effect = Exception("Session error")
@@ -279,7 +290,7 @@ class TestLoginServiceStatus:
     """Test login status functionality"""
 
     @patch("src.services.login_service.SessionService")
-    def test_get_login_status_logged_in(self, mock_session):
+    def test_get_login_status_logged_in(self, mock_session: Any) -> None:
         """Test getting login status when user is logged in"""
         # Setup
         mock_session.is_user_logged_in.return_value = True
@@ -304,7 +315,7 @@ class TestLoginServiceStatus:
         assert result["message"] == "User is logged in"
 
     @patch("src.services.login_service.SessionService")
-    def test_get_login_status_not_logged_in(self, mock_session):
+    def test_get_login_status_not_logged_in(self, mock_session: Any) -> None:
         """Test getting login status when user is not logged in"""
         # Setup
         mock_session.is_user_logged_in.return_value = False
@@ -317,7 +328,7 @@ class TestLoginServiceStatus:
         assert result["message"] == "Not logged in"
 
     @patch("src.services.login_service.SessionService")
-    def test_get_login_status_invalid_session(self, mock_session):
+    def test_get_login_status_invalid_session(self, mock_session: Any) -> None:
         """Test getting login status when session is invalid"""
         # Setup
         mock_session.is_user_logged_in.return_value = True
@@ -335,7 +346,7 @@ class TestLoginServiceSessionManagement:
     """Test session management functionality"""
 
     @patch("src.services.login_service.SessionService")
-    def test_refresh_session_success(self, mock_session):
+    def test_refresh_session_success(self, mock_session: Any) -> None:
         """Test successful session refresh"""
         # Setup
         mock_session.is_user_logged_in.return_value = True
@@ -350,7 +361,7 @@ class TestLoginServiceSessionManagement:
         mock_session.refresh_session.assert_called_once()
 
     @patch("src.services.login_service.SessionService")
-    def test_refresh_session_no_active_session(self, mock_session):
+    def test_refresh_session_no_active_session(self, mock_session: Any) -> None:
         """Test session refresh when no active session"""
         # Setup
         mock_session.is_user_logged_in.return_value = False
@@ -360,7 +371,7 @@ class TestLoginServiceSessionManagement:
             LoginService.refresh_session()
 
     @patch("src.services.login_service.SessionService")
-    def test_refresh_session_error(self, mock_session):
+    def test_refresh_session_error(self, mock_session: Any) -> None:
         """Test session refresh with error"""
         # Setup
         mock_session.is_user_logged_in.return_value = True
@@ -375,7 +386,9 @@ class TestLoginServiceAccountLockout:
     """Test account lockout functionality"""
 
     @patch("src.services.login_service.PasswordService")
-    def test_check_account_lockout_status_not_locked(self, mock_password_service):
+    def test_check_account_lockout_status_not_locked(
+        self, mock_password_service: Any
+    ) -> None:
         """Test checking lockout status when account is not locked"""
         # Setup
         mock_password_service.is_account_locked.return_value = (False, None)
@@ -388,7 +401,9 @@ class TestLoginServiceAccountLockout:
         assert result["message"] == "Account is not locked"
 
     @patch("src.services.login_service.PasswordService")
-    def test_check_account_lockout_status_locked(self, mock_password_service):
+    def test_check_account_lockout_status_locked(
+        self, mock_password_service: Any
+    ) -> None:
         """Test checking lockout status when account is locked"""
         # Setup
         unlock_time = datetime.now() + timedelta(minutes=30)
@@ -403,7 +418,7 @@ class TestLoginServiceAccountLockout:
         assert "Account is locked until" in result["message"]
 
     @patch("src.services.login_service.PasswordService")
-    def test_unlock_account_success(self, mock_password_service):
+    def test_unlock_account_success(self, mock_password_service: Any) -> None:
         """Test successful account unlock"""
         # Setup
         mock_password_service.clear_failed_attempts.return_value = None
@@ -419,7 +434,7 @@ class TestLoginServiceAccountLockout:
         )
 
     @patch("src.services.login_service.PasswordService")
-    def test_unlock_account_error(self, mock_password_service):
+    def test_unlock_account_error(self, mock_password_service: Any) -> None:
         """Test account unlock with error"""
         # Setup
         mock_password_service.clear_failed_attempts.side_effect = Exception(
@@ -435,7 +450,7 @@ class TestLoginServiceNotifications:
     """Test notification functionality"""
 
     @patch("src.services.login_service.db")
-    def test_send_account_locked_notification_success(self, mock_db):
+    def test_send_account_locked_notification_success(self, mock_db: Any) -> None:
         """Test sending account locked notification"""
         # Setup
         mock_db.get_user_by_email.return_value = {
@@ -452,7 +467,9 @@ class TestLoginServiceNotifications:
         assert result is True
 
     @patch("src.services.login_service.db")
-    def test_send_account_locked_notification_user_not_found(self, mock_db):
+    def test_send_account_locked_notification_user_not_found(
+        self, mock_db: Any
+    ) -> None:
         """Test sending notification when user not found"""
         # Setup
         mock_db.get_user_by_email.return_value = None
@@ -468,7 +485,7 @@ class TestLoginServiceConvenienceFunctions:
     """Test convenience functions"""
 
     @patch("src.services.login_service.LoginService.authenticate_user")
-    def test_login_user_convenience(self, mock_authenticate):
+    def test_login_user_convenience(self, mock_authenticate: Any) -> None:
         """Test login_user convenience function"""
         # Setup
         expected_result = {"login_success": True}
@@ -486,7 +503,7 @@ class TestLoginServiceConvenienceFunctions:
         )
 
     @patch("src.services.login_service.LoginService.logout_user")
-    def test_logout_user_convenience(self, mock_logout):
+    def test_logout_user_convenience(self, mock_logout: Any) -> None:
         """Test logout_user convenience function"""
         # Setup
         expected_result = {"logout_success": True}
@@ -502,7 +519,7 @@ class TestLoginServiceConvenienceFunctions:
         mock_logout.assert_called_once()
 
     @patch("src.services.login_service.LoginService.get_login_status")
-    def test_is_user_logged_in_convenience(self, mock_get_status):
+    def test_is_user_logged_in_convenience(self, mock_get_status: Any) -> None:
         """Test is_user_logged_in convenience function"""
         # Setup
         mock_get_status.return_value = {"logged_in": True}
@@ -516,7 +533,9 @@ class TestLoginServiceConvenienceFunctions:
         assert result is True
 
     @patch("src.services.login_service.LoginService.get_login_status")
-    def test_get_current_user_info_convenience_logged_in(self, mock_get_status):
+    def test_get_current_user_info_convenience_logged_in(
+        self, mock_get_status: Any
+    ) -> None:
         """Test get_current_user_info when logged in"""
         # Setup
         mock_get_status.return_value = {
@@ -537,7 +556,9 @@ class TestLoginServiceConvenienceFunctions:
         assert result["email"] == "test@example.com"
 
     @patch("src.services.login_service.LoginService.get_login_status")
-    def test_get_current_user_info_convenience_not_logged_in(self, mock_get_status):
+    def test_get_current_user_info_convenience_not_logged_in(
+        self, mock_get_status: Any
+    ) -> None:
         """Test get_current_user_info when not logged in"""
         # Setup
         mock_get_status.return_value = {"logged_in": False}
@@ -558,8 +579,8 @@ class TestLoginServiceIntegration:
     @patch("src.services.login_service.PasswordService")
     @patch("src.services.login_service.db")
     def test_complete_login_logout_flow(
-        self, mock_db, mock_password_service, mock_session
-    ):
+        self, mock_db: Any, mock_password_service: Any, mock_session: Any
+    ) -> None:
         """Test complete login and logout flow"""
         # Setup for login
         mock_password_service.check_account_lockout.return_value = None

@@ -8,6 +8,7 @@ Tests the complete program management functionality including:
 - Default program protection
 """
 
+from typing import Any
 from unittest.mock import patch
 
 from src.app import app
@@ -17,7 +18,7 @@ from tests.test_utils import CommonAuthMixin
 class TestProgramAPIIntegration(CommonAuthMixin):
     """Test program API endpoints with full Flask app context"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.app = app
         self.app.config["TESTING"] = True
@@ -26,7 +27,9 @@ class TestProgramAPIIntegration(CommonAuthMixin):
 
     @patch("src.api.routes.programs.get_current_institution_id_safe")
     @patch("src.api.routes.programs.get_programs_by_institution")
-    def test_list_programs_integration(self, mock_get_programs, mock_get_institution):
+    def test_list_programs_integration(
+        self, mock_get_programs: Any, mock_get_institution: Any
+    ) -> None:
         """Test program listing endpoint integration"""
         mock_get_institution.return_value = "test-institution"
         mock_get_programs.return_value = [
@@ -59,8 +62,8 @@ class TestProgramAPIIntegration(CommonAuthMixin):
     @patch("src.api.routes.programs.get_current_user_safe")
     @patch("src.api.routes.programs.create_program")
     def test_create_program_integration(
-        self, mock_create, mock_get_user, mock_get_institution
-    ):
+        self, mock_create: Any, mock_get_user: Any, mock_get_institution: Any
+    ) -> None:
         """Test program creation endpoint integration"""
         mock_get_institution.return_value = "test-institution"
         mock_get_user.return_value = {"user_id": "test-user"}
@@ -84,7 +87,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
         assert data["message"] == "Program created successfully"
 
     @patch("src.api.routes.programs.get_program_by_id")
-    def test_get_program_integration(self, mock_get_program):
+    def test_get_program_integration(self, mock_get_program: Any) -> None:
         """Test program retrieval endpoint integration"""
         mock_get_program.return_value = {
             "id": "cs-program",
@@ -104,7 +107,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
         assert data["program"]["short_name"] == "CS"
 
     @patch("src.api.routes.programs.get_program_by_id")
-    def test_get_program_not_found_integration(self, mock_get_program):
+    def test_get_program_not_found_integration(self, mock_get_program: Any) -> None:
         """Test program retrieval when program doesn't exist"""
         mock_get_program.return_value = None
 
@@ -118,7 +121,9 @@ class TestProgramAPIIntegration(CommonAuthMixin):
 
     @patch("src.api.routes.programs.get_program_by_id")
     @patch("src.api.routes.programs.update_program")
-    def test_update_program_integration(self, mock_update, mock_get_program):
+    def test_update_program_integration(
+        self, mock_update: Any, mock_get_program: Any
+    ) -> None:
         """Test program update endpoint integration"""
         mock_get_program.return_value = {
             "id": "cs-program",
@@ -147,8 +152,12 @@ class TestProgramAPIIntegration(CommonAuthMixin):
     @patch("src.api.routes.programs.get_programs_by_institution")
     @patch("src.api.routes.programs.delete_program")
     def test_delete_program_integration(
-        self, mock_delete, mock_get_programs, mock_get_institution, mock_get_program
-    ):
+        self,
+        mock_delete: Any,
+        mock_get_programs: Any,
+        mock_get_institution: Any,
+        mock_get_program: Any,
+    ) -> None:
         """Test program deletion endpoint integration"""
         mock_get_program.return_value = {
             "id": "cs-program",
@@ -174,7 +183,9 @@ class TestProgramAPIIntegration(CommonAuthMixin):
         assert data["message"] == "Program deleted successfully and courses reassigned"
 
     @patch("src.api.routes.programs.get_program_by_id")
-    def test_delete_default_program_prevented_integration(self, mock_get_program):
+    def test_delete_default_program_prevented_integration(
+        self, mock_get_program: Any
+    ) -> None:
         """Test that default program deletion is prevented"""
         mock_get_program.return_value = {
             "id": "default-program",
@@ -192,7 +203,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
         assert data["success"] is False
         assert data["error"] == "Cannot delete default program"
 
-    def test_create_program_missing_data_integration(self):
+    def test_create_program_missing_data_integration(self) -> None:
         """Test program creation with missing required data"""
         incomplete_data = {
             "name": "Mathematics"
@@ -209,7 +220,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
         assert data["success"] is False
         assert "Missing required field" in data["error"]
 
-    def test_create_program_no_data_integration(self):
+    def test_create_program_no_data_integration(self) -> None:
         """Test program creation with no JSON data"""
         with patch(
             "src.api.routes.programs.permission_required", lambda perm: lambda f: f
@@ -221,7 +232,9 @@ class TestProgramAPIIntegration(CommonAuthMixin):
         # The error is handled by the exception handler, so we get a generic error response
 
     @patch("src.api.routes.programs.get_current_institution_id_safe")
-    def test_list_programs_no_institution_integration(self, mock_get_institution):
+    def test_list_programs_no_institution_integration(
+        self, mock_get_institution: Any
+    ) -> None:
         """Test program listing when no institution context available - should return system-wide programs for site admin"""
         mock_get_institution.return_value = None
 
@@ -238,7 +251,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
 class TestProgramWorkflow(CommonAuthMixin):
     """Test complete program management workflow"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.app = app
         self.app.config["TESTING"] = True
@@ -254,14 +267,14 @@ class TestProgramWorkflow(CommonAuthMixin):
     @patch("src.api.routes.programs.delete_program")
     def test_complete_program_lifecycle(
         self,
-        mock_delete,
-        mock_get_programs,
-        mock_update,
-        mock_get_program,
-        mock_create,
-        mock_get_user,
-        mock_get_institution,
-    ):
+        mock_delete: Any,
+        mock_get_programs: Any,
+        mock_update: Any,
+        mock_get_program: Any,
+        mock_create: Any,
+        mock_get_user: Any,
+        mock_get_institution: Any,
+    ) -> None:
         """Test complete program lifecycle: create -> read -> update -> delete"""
 
         # Setup mocks

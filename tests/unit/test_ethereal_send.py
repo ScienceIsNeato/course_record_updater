@@ -2,6 +2,7 @@
 Unit tests for Ethereal Provider send_email (mocked SMTP)
 """
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,7 +14,7 @@ class TestEtherealProviderSending:
     """Test Ethereal Provider email sending with mocked SMTP"""
 
     @patch("src.email_providers.ethereal_provider.smtplib.SMTP")
-    def test_send_email_success(self, mock_smtp_class):
+    def test_send_email_success(self, mock_smtp_class: Any) -> None:
         """Test successful email sending via Ethereal"""
         # Setup mock
         mock_server = MagicMock()
@@ -42,7 +43,7 @@ class TestEtherealProviderSending:
         mock_server.login.assert_called_once_with("test@ethereal.email", "testpass")
         mock_server.send_message.assert_called_once()
 
-    def test_send_email_without_configuration(self):
+    def test_send_email_without_configuration(self) -> None:
         """Test that sending without configuration fails"""
         provider = EtherealProvider()
 
@@ -56,7 +57,7 @@ class TestEtherealProviderSending:
         assert result is False
 
     @patch("src.email_providers.ethereal_provider.smtplib.SMTP")
-    def test_send_email_smtp_error(self, mock_smtp_class):
+    def test_send_email_smtp_error(self, mock_smtp_class: Any) -> None:
         """Test email sending with SMTP error"""
         # Setup mock to raise exception
         mock_smtp_class.return_value.__enter__.side_effect = Exception("SMTP Error")

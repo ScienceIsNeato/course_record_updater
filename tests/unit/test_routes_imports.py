@@ -1,6 +1,7 @@
 """Unit tests for import API routes (migrated from test_api_routes.py)."""
 
 import json
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -14,7 +15,7 @@ TEST_PASSWORD = GENERIC_PASSWORD  # Test password for unit tests
 class TestImportEndpoints:
     """Test import functionality endpoints."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.app = app
         self.app.config["TESTING"] = True
@@ -27,7 +28,7 @@ class TestImportEndpoints:
             "institution_id": "riverside-tech-institute",
         }
 
-    def _login_site_admin(self, overrides=None):
+    def _login_site_admin(self, overrides: Any = None) -> Any:
         from tests.test_utils import create_test_session
 
         user_data = {**self.site_admin_user}
@@ -36,7 +37,7 @@ class TestImportEndpoints:
         create_test_session(self.client, user_data)
         return user_data
 
-    def test_excel_import_endpoint_exists(self):
+    def test_excel_import_endpoint_exists(self) -> None:
         """Test that POST /api/import/excel endpoint exists."""
         self._login_site_admin()
 
@@ -45,7 +46,7 @@ class TestImportEndpoints:
         assert response.status_code != 404
 
     @patch("src.services.auth_service.has_permission")
-    def test_excel_import_missing_file(self, mock_has_permission):
+    def test_excel_import_missing_file(self, mock_has_permission: Any) -> None:
         """Test POST /api/import/excel without file."""
         self._login_site_admin()
 
@@ -65,7 +66,7 @@ class TestImportEndpoints:
 class TestAPIRoutesProgressTracking:
     """Test API progress tracking functionality."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test client."""
         from src.app import app
 
@@ -77,8 +78,8 @@ class TestAPIRoutesProgressTracking:
     @patch("src.api.routes.imports.create_progress_tracker")
     @patch("src.api.routes.imports.update_progress")
     def test_progress_tracking_coverage(
-        self, mock_update_progress, mock_create_progress
-    ):
+        self, mock_update_progress: Any, mock_create_progress: Any
+    ) -> None:
         """Test progress tracking functions are called."""
         mock_create_progress.return_value = "progress123"
 
@@ -94,7 +95,7 @@ class TestAPIRoutesProgressTracking:
             "progress123", status="running", message="Test"
         )
 
-    def test_import_progress_stub_response(self):
+    def test_import_progress_stub_response(self) -> None:
         """Test import progress endpoint stub response."""
         response = self.client.get("/api/import/progress/test123")
 
@@ -110,7 +111,7 @@ class TestAPIRoutesProgressTracking:
 class TestExcelImportHelpers:
     """Test helper functions for excel_import_api."""
 
-    def test_check_excel_import_permissions_site_admin(self):
+    def test_check_excel_import_permissions_site_admin(self) -> None:
         """Test _check_excel_import_permissions for site admin - must have institution_id."""
         from unittest.mock import patch
 
@@ -135,7 +136,7 @@ class TestExcelImportHelpers:
             ):
                 _check_excel_import_permissions("courses")
 
-    def test_check_excel_import_permissions_no_user(self):
+    def test_check_excel_import_permissions_no_user(self) -> None:
         """Test _check_excel_import_permissions raises when no user."""
         from unittest.mock import patch
 
@@ -153,7 +154,7 @@ class TestExcelImportHelpers:
     # Site admins now follow the same rules as all other users:
     # They must have an institution_id and can only import into their own institution
 
-    def test_determine_target_institution_institution_admin(self):
+    def test_determine_target_institution_institution_admin(self) -> None:
         """Test _determine_target_institution for institution admin."""
         from src.api.routes.imports import _determine_target_institution
 
@@ -161,7 +162,7 @@ class TestExcelImportHelpers:
 
         assert result == "inst123"
 
-    def test_determine_target_institution_no_institution(self):
+    def test_determine_target_institution_no_institution(self) -> None:
         """Test _determine_target_institution when user has no institution."""
         import pytest
 
@@ -170,14 +171,14 @@ class TestExcelImportHelpers:
         with pytest.raises(PermissionError, match="User has no associated institution"):
             _determine_target_institution(None)
 
-    def test_validate_import_permissions_site_admin_courses(self):
+    def test_validate_import_permissions_site_admin_courses(self) -> None:
         """Test _validate_import_permissions for site admin importing courses."""
         from src.api.routes.imports import _validate_import_permissions
 
         # Should not raise
         _validate_import_permissions("site_admin", "courses")
 
-    def test_validate_import_permissions_invalid_role(self):
+    def test_validate_import_permissions_invalid_role(self) -> None:
         """Test _validate_import_permissions with invalid role."""
         import pytest
 
@@ -186,7 +187,7 @@ class TestExcelImportHelpers:
         with pytest.raises(PermissionError, match="Invalid user role"):
             _validate_import_permissions("invalid_role", "courses")
 
-    def test_validate_import_permissions_forbidden_data_type(self):
+    def test_validate_import_permissions_forbidden_data_type(self) -> None:
         """Test _validate_import_permissions when user cannot import data type."""
         import pytest
 
@@ -200,7 +201,7 @@ class TestExcelImportHelpers:
 
 
 class TestValidateExcelImportRequest:
-    def test_validate_excel_import_request_adapter_not_found(self):
+    def test_validate_excel_import_request_adapter_not_found(self) -> None:
         """Covers adapter-not-found branch in _validate_excel_import_request."""
         from src.api.routes.imports import _validate_excel_import_request
 
@@ -225,7 +226,7 @@ class TestValidateExcelImportRequest:
                 with pytest.raises(ValueError, match="Adapter not found"):
                     _validate_excel_import_request()
 
-    def test_validate_excel_import_request_adapter_info_missing(self):
+    def test_validate_excel_import_request_adapter_info_missing(self) -> None:
         """Covers adapter-info-missing branch in _validate_excel_import_request."""
         from src.api.routes.imports import _validate_excel_import_request
 
@@ -258,7 +259,7 @@ class TestValidateExcelImportRequest:
                 with pytest.raises(ValueError, match="Adapter info not available"):
                     _validate_excel_import_request()
 
-    def test_validate_excel_import_request_no_supported_formats(self):
+    def test_validate_excel_import_request_no_supported_formats(self) -> None:
         """Covers supported_formats empty branch in _validate_excel_import_request."""
         from src.api.routes.imports import _validate_excel_import_request
 
@@ -291,7 +292,7 @@ class TestValidateExcelImportRequest:
                 with pytest.raises(ValueError, match="No supported formats defined"):
                     _validate_excel_import_request()
 
-    def test_validate_excel_import_request_file_has_no_extension(self):
+    def test_validate_excel_import_request_file_has_no_extension(self) -> None:
         """Covers file extension empty branch in _validate_excel_import_request."""
         from src.api.routes.imports import _validate_excel_import_request
 
@@ -324,7 +325,7 @@ class TestValidateExcelImportRequest:
                 with pytest.raises(ValueError, match="File has no extension"):
                     _validate_excel_import_request()
 
-    def test_validate_excel_import_request_file_extension_not_supported(self):
+    def test_validate_excel_import_request_file_extension_not_supported(self) -> None:
         """Covers invalid extension branch in _validate_excel_import_request."""
         from src.api.routes.imports import _validate_excel_import_request
 
@@ -361,7 +362,7 @@ class TestValidateExcelImportRequest:
 class TestExcelImportEdgeCases:
     """Test edge cases in excel_import_api function."""
 
-    def test_unsafe_filename_sanitization(self):
+    def test_unsafe_filename_sanitization(self) -> None:
         """Test filename sanitization fallback for unsafe names."""
         import re
 

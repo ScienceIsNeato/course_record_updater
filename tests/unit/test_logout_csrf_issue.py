@@ -6,6 +6,8 @@ fails because it doesn't include CSRF tokens in the request headers.
 """
 
 import json
+from collections.abc import Generator
+from typing import Any
 
 import pytest
 
@@ -16,7 +18,7 @@ class TestLogoutCSRFIssue:
     """Test logout CSRF token handling"""
 
     @pytest.fixture
-    def client_with_csrf(self):
+    def client_with_csrf(self) -> Generator[Any, None, None]:
         """Create test client with CSRF protection enabled"""
         # Store original config
         original_csrf_enabled = app.config.get("WTF_CSRF_ENABLED")
@@ -37,7 +39,7 @@ class TestLogoutCSRFIssue:
             else:
                 app.config.pop("WTF_CSRF_ENABLED", None)
 
-    def test_logout_without_csrf_token_should_fail(self, client_with_csrf):
+    def test_logout_without_csrf_token_should_fail(self, client_with_csrf: Any) -> None:
         """Test that logout fails without CSRF token (CSRF is now required)"""
         # Create a session with a logged in user
         with client_with_csrf.session_transaction() as sess:
@@ -60,7 +62,7 @@ class TestLogoutCSRFIssue:
         # Flask-WTF returns HTML error pages for CSRF failures
         assert b"CSRF" in response.data or b"Bad Request" in response.data
 
-    def test_logout_with_csrf_token_should_succeed(self, client_with_csrf):
+    def test_logout_with_csrf_token_should_succeed(self, client_with_csrf: Any) -> None:
         """Test that logout succeeds when CSRF token is included"""
         # Create a session with a logged in user
         with client_with_csrf.session_transaction() as sess:
@@ -112,7 +114,7 @@ class TestLogoutCSRFIssue:
         assert data["success"] is True
         assert data["logout_success"] is True
 
-    def test_dashboard_logout_function_includes_csrf_token(self):
+    def test_dashboard_logout_function_includes_csrf_token(self) -> None:
         """Test that the dashboard logout function now includes CSRF token (after fix)"""
         import os
 
@@ -133,8 +135,8 @@ class TestLogoutCSRFIssue:
         assert "async function logout()" in template_content
 
         # Check that it makes a POST request to /api/auth/logout
-        assert "'/api/auth/logout'" in template_content
-        assert "method: 'POST'" in template_content
+        assert '"/api/auth/logout"' in template_content
+        assert 'method: "POST"' in template_content
 
         # Extract the logout function (find the end of the complete function)
         logout_function_start = template_content.find("async function logout()")
