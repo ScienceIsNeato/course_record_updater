@@ -430,6 +430,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pip-audit bandit detect-secrets
+          # Use binary-only semgrep wheel to avoid resolver fallback to legacy source builds in CI.
+          pip install --only-binary=:all: semgrep==1.156.0
+          semgrep --version
           pip install --no-cache-dir slopmop==0.9.0
       - name: Fix slopmop template dirs
         run: python scripts/ci_fix_slopmop_templates.py
