@@ -33,6 +33,10 @@ Preflight:
 - confirm cloud auth is not pinned to old repo-slug OIDC conditions
 - confirm any repo-linked package publishing or badges can be updated immediately after rename
 
+Verified from checked-in repo state:
+- remaining checked-in repo-slug references are concentrated in `README.md`, `docs/RUNBOOK.md`, and `docs/setup/CI_SETUP_GUIDE.md`
+- these references are links/badges, not runtime config
+
 Rename-day actions:
 - rename repository in GitHub settings
 - update local git remotes
@@ -62,6 +66,10 @@ Preflight:
 - inspect any OIDC or policy conditions that include `ScienceIsNeato/course_record_updater`
 - confirm whether auth is static key only or partially repo-slug-sensitive
 - verify `GCP_RUN_SECRETS_ARG` contents match the intended production secret mapping
+
+Verified from checked-in workflows:
+- `.github/workflows/build.yml`, `.github/workflows/deploy.yml`, and `.github/workflows/release.yml` authenticate with static `GCP_SA_KEY` credentials
+- no checked-in workflow currently uses repo-slug-bound OIDC/workload-identity claims for GCP auth
 
 Rename-day actions:
 - update any repo-slug-based auth policies if they exist
@@ -168,6 +176,10 @@ Post-cutover verification:
 
 Current docs still reference the old repo slug in badges and links.
 
+Known checked-in references:
+- `docs/setup/CI_SETUP_GUIDE.md`
+- badge section examples that mirror `README.md`
+
 Preflight:
 - verify whether Codecov project slug must be manually updated after repo rename
 
@@ -190,7 +202,10 @@ Recommendation:
 3. Confirm GitHub cloud auth assumptions are repo-rename safe.
 4. Land repo-local rename changes first.
 5. Rename the GitHub repository.
-6. Update repo-slug-linked docs, badges, remotes, and integrations.
+6. Update repo-slug-linked docs, badges, remotes, and integrations:
+  - `README.md`
+  - `docs/RUNBOOK.md`
+  - `docs/setup/CI_SETUP_GUIDE.md`
 7. Run CI.
 8. Verify deploy workflows and email flows.
 

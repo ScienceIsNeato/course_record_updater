@@ -5,9 +5,10 @@
 The repository is already in mixed state.
 
 - Public/product branding is mostly `LoopCloser`.
-- The GitHub repo slug and many docs still use `course_record_updater`.
-- Local and CI database defaults still use `course_records*` names.
+- The GitHub repo slug and a small set of GitHub-linked docs still use `course_record_updater`.
+- Local and CI database defaults have been normalized to `loopcloser*` in active repo-local files.
 - Deployment and hosted identity are already mostly `loopcloser`.
+- GitHub cloud auth currently uses static `GCP_SA_KEY` credentials rather than repo-slug-bound OIDC trust.
 
 This means the rename must be treated as a staged migration, not a text-only cleanup.
 
@@ -25,11 +26,10 @@ These still point at the old repository slug and will need to move when the repo
 
 - `README.md`
   - GitHub badge URLs still use `ScienceIsNeato/course_record_updater`
-  - clone instructions still say `cd course_record_updater`
 - `docs/setup/CI_SETUP_GUIDE.md`
 - `docs/RUNBOOK.md`
-- `config/.safety-project.ini`
-- `.safety-project.ini`
+
+Repo-local clone/path examples and safety project identifiers have already been normalized.
 
 ### 2. Public Branding Already On LoopCloser
 
@@ -45,21 +45,20 @@ These are already aligned with the new product identity and should be preserved 
 
 ### 3. Local And CI Database Naming Still Legacy
 
-These are operational, not cosmetic, and need a controlled pass.
+This pass is complete in active repo-local files.
 
 - `.envrc.template`
-  - `sqlite:///course_records_dev.db`
-  - `sqlite:///course_records_e2e.db`
-  - `sqlite:///course_records_smoke.db`
-  - production fallback `sqlite:///course_records.db`
+  - normalized to `loopcloser_dev.db`, `loopcloser_e2e.db`, `loopcloser_smoke.db`, and `loopcloser.db`
 - `.github/workflows/quality-gate.yml`
-  - legacy database filenames in CI setup
+  - normalized to `loopcloser*` database filenames in CI setup
 - `src/database/database_sql.py`
 - `scripts/seed_db.py`
 - `scripts/restart_server.sh`
 - `scripts/run_uat.sh`
 - `scripts/run_smoke.sh`
 - `tests/e2e/conftest.py`
+
+Residual `course_records*` references now live mainly in planning/history material rather than active defaults.
 
 ### 4. Deployment And Hosted Identity Already LoopCloser
 
@@ -86,7 +85,9 @@ These produce user-facing links and should be cut over carefully.
 
 - `src/services/email_service.py`
   - branding name already `LoopCloser`
-  - default sender email still `noreply@courserecord.app`
+  - default sender email normalized to `noreply@loopcloser.io`
+- `src/email_providers/factory.py`
+  - default sender fallback normalized to `noreply@loopcloser.io`
 - `src/api/routes/reminders.py`
 - any `BASE_URL` usage in deploy/runtime config
 
@@ -104,6 +105,12 @@ These must be tracked explicitly because they may not auto-redirect or may fail 
 - Neon connection-string consumers
 - Codecov/project slug style tooling
 - Ethereal/Mailtrap docs and auxiliary test setup
+
+Audit result:
+
+- `.github/workflows/build.yml`, `.github/workflows/deploy.yml`, and `.github/workflows/release.yml` currently authenticate to GCP with static `GCP_SA_KEY` JSON credentials.
+- No repo-slug-bound OIDC/workload-identity condition is currently configured in the checked-in workflows.
+- The remaining active repo-slug dependencies are documentation/badge/integration references rather than deploy auth.
 
 ## Risk Notes
 
@@ -131,12 +138,12 @@ These must be tracked explicitly because they may not auto-redirect or may fail 
 These are the safest first implementation steps.
 
 1. Keep this inventory updated as the cutover source of truth.
-2. Create an external-system cutover matrix from the deployment and workflow files.
-3. Start a repo-local normalization pass for legacy DB names and old repo slug references only after the matrix is complete.
+2. Prepare the post-repo-rename patch set for GitHub badges, repository links, and Codecov slug references.
+3. Audit external integrations outside the repo that may still assume the old slug or old domain.
 
 ## Deferred Until External Readiness Is Confirmed
 
 1. GitHub repository rename
 2. Any Cloud Run service-name replacement
 3. Any bucket or secret-name migration
-4. Any sender/domain cutover that affects live email links
+4. Any repo-slug-linked badge or repository URL updates that should happen immediately after the actual rename event

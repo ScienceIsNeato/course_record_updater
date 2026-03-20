@@ -47,6 +47,11 @@ Complete the migration from legacy `course_record_updater` / `course-record-upda
    - Codecov/project slug references
    - email sender/domain configuration
 
+Verified current-state finding:
+
+- Checked-in GitHub workflows currently authenticate to GCP with static `GCP_SA_KEY` credentials, not repo-slug-bound OIDC/workload identity.
+- Repo rename still requires integration verification, but checked-in deploy auth is not currently blocked on GitHub slug claims.
+
 ## Phase 3: Runtime And Deploy Config
 
 1. Update deployment workflows, runtime env templates, and deploy scripts to the canonical LoopCloser identifiers.
@@ -58,8 +63,8 @@ Complete the migration from legacy `course_record_updater` / `course-record-upda
 
 1. Update repo-local references:
    - badges
-   - clone URLs
-   - path examples
+   - repository links
+   - Codecov slug references
    - package metadata
    - safety/project config
    - docs and runbooks
@@ -68,7 +73,7 @@ Complete the migration from legacy `course_record_updater` / `course-record-upda
    - Git remotes
    - Actions execution
    - package/image publishing
-   - OIDC/cloud auth
+   - OIDC/cloud auth if the auth architecture changes later
    - branch protections
    - repo-slug-based integrations
 
@@ -86,7 +91,7 @@ Complete the migration from legacy `course_record_updater` / `course-record-upda
 1. Maintain inventory and cutover matrix.
 2. Prepare external systems and domain/sender readiness.
 3. Update runtime/deploy configuration in the repo.
-4. Update repo-local docs/tooling references.
+4. Prepare the post-rename repo-link patch set while leaving current GitHub URLs valid.
 5. Rename the GitHub repository.
 6. Run post-rename verification.
 7. Remove leftovers only after confidence is high.
