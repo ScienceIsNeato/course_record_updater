@@ -127,7 +127,7 @@ Edit these exact locations:
 Make these replacements:
 
 ```text
-https://github.com/ScienceIsNeato/loopcloser
+https://github.com/ScienceIsNeato/course_record_updater
 ->
 https://github.com/ScienceIsNeato/loopcloser
 ```
@@ -139,20 +139,20 @@ https://codecov.io/gh/ScienceIsNeato/loopcloser
 ```
 
 ```text
-https://github.com/ScienceIsNeato/loopcloser/workflows/...
+https://github.com/ScienceIsNeato/course_record_updater/workflows/...
 ->
 https://github.com/ScienceIsNeato/loopcloser/workflows/...
 ```
 
-After editing, run this verification sweep:
+After editing, run this verification sweep for references that must be gone:
 
 ```bash
-rg -n "ScienceIsNeato/course_record_updater|codecov\.io/gh/ScienceIsNeato/course_record_updater|https://github.com/ScienceIsNeato/loopcloser" README.md docs .github --glob '!docs/planning/**'
+rg -n "ScienceIsNeato/course_record_updater|codecov\.io/gh/ScienceIsNeato/course_record_updater|https://github.com/ScienceIsNeato/course_record_updater/workflows/" README.md docs .github --glob '!docs/planning/**'
 ```
 
 Expected result:
 
-- no matches in active docs or repo guidance
+- no matches in active docs or repo guidance for the old GitHub slug, old Codecov path, or old workflow URL
 
 ## Step 7: Commit The Post-Rename Link Patch
 

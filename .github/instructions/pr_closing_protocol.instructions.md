@@ -183,10 +183,10 @@ git push origin <branch-name>
 ```
 
 ### Step 6: Monitor CI Until Complete (AUTOMATED)
-**🔑 CRITICAL: Use watch mode - it runs unattended until CI finishes (even if it takes hours/days)**
+**🔑 CRITICAL: Use GitHub CLI watch mode - it runs unattended until CI finishes (even if it takes hours/days)**
 
 ```bash
-cd ${AGENT_HOME} && python3 cursor-rules/scripts/pr_status.py --watch ${PR_NUMBER}
+gh pr checks ${PR_NUMBER} --watch
 ```
 
 **What watch mode does:**
@@ -203,10 +203,11 @@ cd ${AGENT_HOME} && python3 cursor-rules/scripts/pr_status.py --watch ${PR_NUMBE
 - Script handles the waiting, you handle the fixing
 - Clear signal when ready for next iteration
 
-**Alternative (if watch script not available):**
+**Alternative (if you need to follow one specific workflow run):**
 ```bash
-gh pr checks ${PR_NUMBER}  # Manual check
-gh run watch              # Watch single run
+gh pr checks ${PR_NUMBER}              # Manual check
+gh run list --branch <HEAD_BRANCH> --limit 5
+gh run watch <RUN_ID>                 # Watch single run
 ```
 
 **Do NOT:**

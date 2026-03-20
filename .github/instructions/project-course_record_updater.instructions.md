@@ -6,7 +6,7 @@ applyTo: "**"
 
 ## 🔄 PR Closing Protocol
 
-**CRITICAL**: When working on PRs, follow the **PR Closing Protocol** defined in `pr_closing_protocol.mdc`.
+**CRITICAL**: When working on PRs, follow the checked-in **PR Closing Protocol** in `.github/instructions/pr_closing_protocol.instructions.md`.
 
 **Key principle**: Resolve PR comments IMMEDIATELY after each commit that addresses them (Step 4).
 
@@ -16,10 +16,16 @@ applyTo: "**"
 sm scour
 
 # Step 6: Monitor CI
-python3 cursor-rules/scripts/pr_status.py --watch <PR_NUMBER>
+gh pr checks <PR_NUMBER> --watch
 ```
 
-See `pr_closing_protocol.mdc` for the complete 7-step loop.
+If you need to follow one specific run instead of the PR-level summary:
+```bash
+gh run list --branch <HEAD_BRANCH> --limit 5
+gh run watch <RUN_ID>
+```
+
+See `.github/instructions/pr_closing_protocol.instructions.md` for the complete 7-step loop.
 
 ---
 

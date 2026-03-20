@@ -1,5 +1,23 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR 70 Buff Loop (2026-03-20)
+
+**Status**: 🚧 IN PROGRESS - PR `#70` has green CI but still has four unresolved review threads
+
+**What I Verified**:
+
+- `./venv/bin/sm buff status 70` reports the current PR checks passing.
+- `./venv/bin/sm buff verify 70` reports four unresolved threads across architecture, general, documentation, and testing.
+- The doc threads point at real stale guidance in checked-in `.github/instructions/*` files.
+- The testing thread is also valid: `tests/unit/test_app.py` still hardcodes `PORT` -> `3001`, while `src/app.py` falls back through `DEFAULT_PORT` and `LOOPCLOSER_DEFAULT_PORT_DEV` before `3001`.
+
+**Next Steps**:
+
+- Fix the rename checklist so its replacements and verification sweep target only old-slug references.
+- Repair PR-closing and CI-watch instructions to reference real checked-in docs and executable `gh` commands.
+- Extract a shared app-port helper and update unit tests to validate the same runtime logic used at startup.
+- Re-run validation, commit, resolve the review threads with `sm buff resolve`, then push and watch CI.
+
 ## Latest Work: Rename Finalization Scour Recovery (2026-03-20)
 
 **Status**: ✅ PASSING - full `sm scour` green after fixing E2E session invalidation cross-talk

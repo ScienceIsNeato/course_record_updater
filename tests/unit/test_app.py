@@ -539,20 +539,41 @@ class TestPortConfiguration:
     @patch.dict(os.environ, {"PORT": "5000"})
     def test_port_from_port_env_var(self) -> None:
         """Test port configuration from PORT environment variable."""
-        # Test the port resolution logic
-        port = int(os.environ.get("PORT", 3001))
+        from src.app import resolve_app_port
+
+        port = resolve_app_port()
         assert port == 5000
 
     @patch.dict(os.environ, {"PORT": "8080"}, clear=True)
     def test_port_from_port_env_var_with_clean_environment(self) -> None:
         """Test port configuration from PORT with no fallback environment."""
-        port = int(os.environ.get("PORT", 3001))
+        from src.app import resolve_app_port
+
+        port = resolve_app_port()
         assert port == 8080
+
+    @patch.dict(os.environ, {"DEFAULT_PORT": "4567"}, clear=True)
+    def test_port_uses_default_port_fallback(self) -> None:
+        """Test port configuration falls back to DEFAULT_PORT before 3001."""
+        from src.app import resolve_app_port
+
+        port = resolve_app_port()
+        assert port == 4567
+
+    @patch.dict(os.environ, {"LOOPCLOSER_DEFAULT_PORT_DEV": "3456"}, clear=True)
+    def test_port_uses_loopcloser_dev_fallback(self) -> None:
+        """Test port configuration falls back to LOOPCLOSER_DEFAULT_PORT_DEV before 3001."""
+        from src.app import resolve_app_port
+
+        port = resolve_app_port()
+        assert port == 3456
 
     @patch.dict(os.environ, {}, clear=True)
     def test_port_default_value(self) -> None:
         """Test default port value when no environment variables are set."""
-        port = int(os.environ.get("PORT", 3001))
+        from src.app import resolve_app_port
+
+        port = resolve_app_port()
         assert port == 3001
 
     @patch.dict(os.environ, {"FLASK_DEBUG": "true"})
@@ -579,12 +600,18 @@ class TestMainExecution:
 
     def test_main_execution_logic(self) -> None:
         """Test the main execution logic without actually running the server."""
+        from src.app import resolve_app_port
+
         # Test the logic that would run in if __name__ == "__main__":
 
         # Test port resolution
-        with patch.dict(os.environ, {"PORT": "4000"}):
-            port = int(os.environ.get("PORT", 3001))
+        with patch.dict(os.environ, {"PORT": "4000"}, clear=True):
+            port = resolve_app_port()
             assert port == 4000
+
+        with patch.dict(os.environ, {"DEFAULT_PORT": "4100"}, clear=True):
+            port = resolve_app_port()
+            assert port == 4100
 
         # Test debug flag resolution
         with patch.dict(os.environ, {"FLASK_DEBUG": "true"}):
