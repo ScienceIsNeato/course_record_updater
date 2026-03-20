@@ -170,7 +170,7 @@ unset EMAIL_PROVIDER
 echo -e "${BLUE}🔄 Restarting server for fresh E2E test environment...${NC}"
 
 # Clear E2E database to ensure fresh state (restart_server.sh will select correct DB)
-E2E_DB="${DATABASE_URL_E2E:-sqlite:///course_records_e2e.db}"
+E2E_DB="${DATABASE_URL_E2E:-sqlite:///loopcloser_e2e.db}"
 E2E_DB_FILE="${E2E_DB#sqlite:///}"
 echo -e "${BLUE}🗑️  Clearing E2E database: $E2E_DB_FILE${NC}"
 rm -f "$E2E_DB_FILE" "${E2E_DB_FILE}-"* 2>/dev/null || true
@@ -209,7 +209,7 @@ else
 fi
 
 # Set DATABASE_URL for pytest so it doesn't create a temp database
-export DATABASE_URL="${DATABASE_URL_E2E:-sqlite:///course_records_e2e.db}"
+export DATABASE_URL="${DATABASE_URL_E2E:-sqlite:///loopcloser_e2e.db}"
 
 # Ensure pytest fixtures manage server/database setup.
 unset E2E_EXTERNAL_SERVER

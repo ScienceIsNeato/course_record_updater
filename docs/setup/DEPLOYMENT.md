@@ -4,6 +4,11 @@
 > **Platform:** Google Cloud Run  
 > **Database:** SQLite with GCS persistence
 
+> Warning: This document is not fully aligned with current deployment automation.
+> The current GitHub Actions deploy path uses Neon for `dev` and ephemeral `/tmp/loopcloser.db`
+> for `staging` and `prod`, while this document still describes GCS-backed SQLite persistence.
+> Resolve that architecture choice before executing rename-day infrastructure changes.
+
 ---
 
 ## Table of Contents

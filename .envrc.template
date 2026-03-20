@@ -19,7 +19,7 @@
 # This template follows a strict pattern to prevent credential override issues:
 #
 # ✅ DO: Export variables with valid default values
-#    export DATABASE_URL="sqlite:///course_records.db"
+#    export DATABASE_URL="sqlite:///loopcloser.db"
 #    export LOG_LEVEL="INFO"
 #
 # ✅ DO: Comment out variables that require user-specific values
@@ -77,9 +77,9 @@ export PRODUCTION="false"  # Set to "true" only in production
 # DATABASE (environment-specific)
 # =============================================================================
 export DATABASE_TYPE="sqlite"
-export DATABASE_URL_DEV="sqlite:///course_records_dev.db"
-export DATABASE_URL_E2E="sqlite:///course_records_e2e.db"
-export DATABASE_URL_SMOKE="sqlite:///course_records_smoke.db"
+export DATABASE_URL_DEV="sqlite:///loopcloser_dev.db"
+export DATABASE_URL_E2E="sqlite:///loopcloser_e2e.db"
+export DATABASE_URL_SMOKE="sqlite:///loopcloser_smoke.db"
 
 # Automatically set DATABASE_URL based on ENV
 case "${ENV}" in
@@ -94,7 +94,7 @@ case "${ENV}" in
         ;;
     production)
         # Production should set DATABASE_URL explicitly
-        export DATABASE_URL="${DATABASE_URL:-sqlite:///course_records.db}"
+        export DATABASE_URL="${DATABASE_URL:-sqlite:///loopcloser.db}"
         ;;
     *)
         # Default to dev

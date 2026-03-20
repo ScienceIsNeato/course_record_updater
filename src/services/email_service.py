@@ -36,7 +36,7 @@ from src.utils.time_utils import get_current_time
 logger = get_logger(__name__)
 
 # Email configuration
-DEFAULT_FROM_EMAIL = "noreply@courserecord.app"
+DEFAULT_FROM_EMAIL = "noreply@loopcloser.io"
 DEFAULT_FROM_NAME = "LoopCloser"
 
 

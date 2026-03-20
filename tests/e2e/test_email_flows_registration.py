@@ -52,7 +52,7 @@ class TestNewUserRegistrationFlow:
         - Email contains valid verification link
         - Link format: {BASE_URL}/verify?token=<token>
         - Email subject: "Verify your LoopCloser account"
-        - From: LoopCloser <noreply@courserecord.app>
+        - From: LoopCloser <noreply@loopcloser.io>
         """
         # 1. Navigate to registration page
         # browser.goto(f"{base_url}/register")

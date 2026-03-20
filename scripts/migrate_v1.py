@@ -60,5 +60,5 @@ def migrate(db_path: str) -> None:
 
 
 if __name__ == "__main__":
-    db = sys.argv[1] if len(sys.argv) > 1 else "course_records.db"
+    db = sys.argv[1] if len(sys.argv) > 1 else "loopcloser.db"
     migrate(db)

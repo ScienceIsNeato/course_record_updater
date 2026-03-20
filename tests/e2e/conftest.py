@@ -188,7 +188,7 @@ def _start_e2e_server(
 def _setup_serial_environment(worker_port: int) -> tuple[Any, str]:
     """Setup logic for serial execution."""
     print(f"\n🔧 E2E Setup: Configuring test environment on port {worker_port}")
-    worker_db = "course_records_e2e.db"
+    worker_db = "loopcloser_e2e.db"
 
     _clean_stale_db(worker_db)
     _clean_stale_db(worker_db)
@@ -208,8 +208,8 @@ def _setup_serial_environment(worker_port: int) -> tuple[Any, str]:
 
 def _setup_parallel_environment(worker_id: int, worker_port: int) -> tuple[Any, str]:
     """Setup logic for parallel execution."""
-    base_db = "course_records_e2e.db"
-    worker_db = f"course_records_e2e_worker{worker_id}.db"
+    base_db = "loopcloser_e2e.db"
+    worker_db = f"loopcloser_e2e_worker{worker_id}.db"
     print(f"\n🔧 Worker {worker_id}: Setting up environment on port {worker_port}")
 
     if not os.path.exists(base_db):
@@ -598,13 +598,13 @@ def reset_account_locks() -> Generator[None, None, None]:
     worker_id = get_worker_id()
     if worker_id is not None:
         # Parallel mode: Use worker-specific DB
-        worker_db = f"course_records_e2e_worker{worker_id}.db"
+        worker_db = f"loopcloser_e2e_worker{worker_id}.db"
         # Ensure absolute path to avoid CWD ambiguity
         db_path = os.path.abspath(worker_db)
         db_url = f"sqlite:///{db_path}"
     else:
         # Serial mode: Use default E2E DB
-        db_path = os.path.abspath("course_records_e2e.db")
+        db_path = os.path.abspath("loopcloser_e2e.db")
         db_url = f"sqlite:///{db_path}"
 
     # Force reconfiguration of the app in this process

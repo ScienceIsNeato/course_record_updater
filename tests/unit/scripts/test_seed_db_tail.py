@@ -39,7 +39,7 @@ def test_resolve_database_url_paths(monkeypatch: Any) -> None:
     assert ex.value.code == 1
 
     args_local = argparse.Namespace(env="local", clear=False, demo=False, manifest=None)
-    assert module._resolve_database_url(args_local) == "sqlite:///course_records_dev.db"
+    assert module._resolve_database_url(args_local) == "sqlite:///loopcloser_dev.db"
 
 
 def test_confirm_deployed_environment_paths(monkeypatch: Any) -> None:

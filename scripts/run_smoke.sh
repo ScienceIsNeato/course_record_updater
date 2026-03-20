@@ -14,7 +14,7 @@ cd "$PROJECT_ROOT"
 
 TEST_PORT="${LOOPCLOSER_DEFAULT_PORT_SMOKE:-3103}"
 SERVER_PID=""
-SMOKE_DB_PATH="${PROJECT_ROOT}/course_records_smoke.db"
+SMOKE_DB_PATH="${PROJECT_ROOT}/loopcloser_smoke.db"
 SMOKE_DATABASE_URL="sqlite:///${SMOKE_DB_PATH}"
 SMOKE_SESSION_FILE="${PROJECT_ROOT}/.tmp/smoke_session_cookies.json"
 
