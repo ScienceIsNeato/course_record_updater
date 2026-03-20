@@ -87,7 +87,7 @@ cd /path/to/fogofdog
 npm start  # or whatever starts FogOfDog
 
 # Terminal 2: Start LoopCloser (port 3001)
-cd /path/to/course_record_updater
+cd /path/to/your-clone
 ./restart_server.sh
 
 # Both applications now run without conflicts!

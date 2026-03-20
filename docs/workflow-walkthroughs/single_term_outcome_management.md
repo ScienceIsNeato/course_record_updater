@@ -10,7 +10,7 @@
 
 ```bash
 # Navigate to project
-cd /path/to/course_record_updater
+cd /path/to/your-clone
 
 # Activate environment
 source venv/bin/activate

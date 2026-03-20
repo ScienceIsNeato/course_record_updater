@@ -410,9 +410,9 @@ git commit --file=COMMIT_MSG.txt
 
 **Database Paths:**
 
-- Development: `course_records_dev.db`
-- E2E Tests: `course_records_e2e.db`
-- Unit Tests: `course_records_test.db`
+- Development: `loopcloser_dev.db`
+- E2E Tests: `loopcloser_e2e.db`
+- Unit Tests: `loopcloser_test.db`
 - Production: Configured via `DB_PATH` environment variable
 
 **Port Configuration:**
@@ -469,7 +469,7 @@ bash scripts/restart_server.sh dev
 **Database locked errors:**
 
 - Stop any running servers: `pkill -f "python.*app.py"`
-- Remove lock: `rm course_records_*.db-*`
+- Remove lock: `rm loopcloser_*.db-*`
 
 **Import errors:**
 

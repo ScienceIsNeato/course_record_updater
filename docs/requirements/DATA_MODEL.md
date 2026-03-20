@@ -135,7 +135,7 @@
 
 ### 4. **Course**
 
-**Purpose:** Individual course record with all data needed for accreditation
+**Purpose:** Individual course definition with all data needed for accreditation
 **Key Attributes:**
 
 - `course_id` (UUID, primary key)

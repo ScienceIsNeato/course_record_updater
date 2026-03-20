@@ -7,7 +7,7 @@ Use this checklist before your first demo run to ensure everything works!
 - [ ] **Virtual environment exists**: `ls venv/bin/activate` should show the file
 - [ ] **Dependencies installed**: `pip list | grep requests` should show requests library
 - [ ] **Environment variables configured**: `.envrc` file exists with required vars
-- [ ] **Database file exists**: `course_records_dev.db` in project root
+- [ ] **Database file exists**: `loopcloser_dev.db` in project root
 - [ ] **Server script executable**: `chmod +x restart_server.sh` if needed
 - [ ] **advance_demo script exists**: `ls scripts/advance_demo.py` should work
 
@@ -25,7 +25,7 @@ python --version  # Should be Python 3.x
 pip show requests  # Should show installed version
 
 # 3. Test database access
-sqlite3 course_records_dev.db "SELECT COUNT(*) FROM users"  # Should return a number
+sqlite3 loopcloser_dev.db "SELECT COUNT(*) FROM users"  # Should return a number
 
 # 4. Test server startup
 ./restart_server.sh dev  # Should start server on port 3001
@@ -62,7 +62,7 @@ Mode: VERIFY-ONLY (No actions will be executed)
 Once verify-only passes, test the full automation:
 
 ```bash
-cd /path/to/course_record_updater
+cd /path/to/your-clone
 source venv/bin/activate
 cd demos
 python run_demo.py --demo full_semester_workflow.json --auto
@@ -79,7 +79,7 @@ python run_demo.py --demo full_semester_workflow.json --auto
 **Problem**: Virtual environment not activated  
 **Fix**: `source venv/bin/activate` from project root
 
-### "No such file: course_records_dev.db"
+### "No such file: loopcloser_dev.db"
 
 **Problem**: Database needs to be seeded  
 **Fix**: `python scripts/seed_db.py --demo --clear --env dev`
@@ -144,7 +144,7 @@ Quick reference for debugging specific steps:
 If you can check all boxes above, you're ready for your first demo run!
 
 ```bash
-cd /path/to/course_record_updater
+cd /path/to/your-clone
 source venv/bin/activate
 cd demos
 python run_demo.py --demo full_semester_workflow.json --auto

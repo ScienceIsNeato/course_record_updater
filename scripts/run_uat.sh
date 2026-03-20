@@ -131,7 +131,8 @@ echo ""
 # Always prefer the repository venv when present, even if another environment
 # was inherited from the parent process.
 if [[ -f "venv/bin/activate" ]]; then
-    if [[ "$VIRTUAL_ENV" != *"/course_record_updater/venv" ]]; then
+    expected_repo_venv="$(pwd)/venv"
+    if [[ "$VIRTUAL_ENV" != "$expected_repo_venv" ]]; then
         echo -e "${YELLOW}⚠️  Activating repository virtual environment...${NC}"
     fi
     # shellcheck disable=SC1091

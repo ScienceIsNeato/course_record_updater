@@ -400,7 +400,7 @@
       "purpose": "Show the invite acceptance flow: inbox, accept link, account creation, and confirmation of assigned course",
       "pre_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT token FROM user_invitations WHERE email='lassie.tests.instructor1.test@gmail.com' ORDER BY created_at DESC LIMIT 1\"",
+          "command": "sqlite3 loopcloser_dev.db \"SELECT token FROM user_invitations WHERE email='lassie.tests.instructor1.test@gmail.com' ORDER BY created_at DESC LIMIT 1\"",
           "purpose": "Get invitation token for Lassie",
           "capture_output_as": "invite_token"
         }
@@ -443,12 +443,12 @@
       ],
       "post_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM users WHERE email='lassie.tests.instructor1.test@gmail.com' LIMIT 1\"",
+          "command": "sqlite3 loopcloser_dev.db \"SELECT id FROM users WHERE email='lassie.tests.instructor1.test@gmail.com' LIMIT 1\"",
           "purpose": "Confirm user created",
           "capture_output_as": "lassie_user_id"
         },
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT count(*) FROM course_assignments WHERE user_id='{{lassie_user_id}}' AND course_id=(SELECT id FROM courses WHERE course_number='BIOL-101') AND term_id=(SELECT id FROM terms WHERE code='SP2026')\"",
+          "command": "sqlite3 loopcloser_dev.db \"SELECT count(*) FROM course_assignments WHERE user_id='{{lassie_user_id}}' AND course_id=(SELECT id FROM courses WHERE course_number='BIOL-101') AND term_id=(SELECT id FROM terms WHERE code='SP2026')\"",
           "purpose": "Confirm course assignment exists",
           "capture_output_as": "lassie_assignment_count"
         }

@@ -4,13 +4,13 @@
 [![Security Scan](https://github.com/ScienceIsNeato/course_record_updater/workflows/Security%20Scan/badge.svg)](https://github.com/ScienceIsNeato/course_record_updater/actions/workflows/security-scan.yml)
 [![Pre-commit](https://github.com/ScienceIsNeato/course_record_updater/workflows/Pre-commit%20Hooks/badge.svg)](https://github.com/ScienceIsNeato/course_record_updater/actions/workflows/pre-commit.yml)
 
-A enterprise-grade Flask web application for managing course records with comprehensive quality gates and 80% test coverage.
+An enterprise-grade Flask web application for managing course assessment and outcome workflows with comprehensive quality gates and 80% test coverage.
 
 ## Features
 
 - Manual entry of course details via a web form.
 - Upload of `.docx` files for automatic data extraction (using format-specific adapters).
-- Display of course records in a table.
+- Display of courses and related workflow data in a table.
 - Inline editing and deletion of records.
 - Persistence using SQLite (SQLAlchemy ORM).
 - **Enterprise-grade quality gates** with 80% test coverage threshold
@@ -161,7 +161,7 @@ python scripts/seed_db.py --clear
 
     ```bash
     git clone <repository_url>
-    cd course_record_updater
+    cd <repository_directory>
     ```
 
 3.  **Create and activate a virtual environment:**

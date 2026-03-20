@@ -46,7 +46,7 @@ class FileBaseAdapter(ABC):
                 - message: Success details or specific error description
 
         Example:
-            (True, "File compatible. Detected 45 course records, 12 faculty records.")
+            (True, "File compatible. Detected 45 course entries, 12 faculty records.")
             (False, "Missing required columns: course_code, instructor_email")
         """
 

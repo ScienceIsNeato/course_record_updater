@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-1. **Run from project root** - The demo expects to be executed from `/path/to/course_record_updater`
+1. **Run from project root** - The demo expects to be executed from your local repository root
 2. **Virtual environment activated** - Source `venv/bin/activate` before running
 3. **Environment variables loaded** - Source `.envrc` for required config
 4. **Server running** - Flask app should be running on port 3001 (setup commands handle this)
@@ -12,7 +12,7 @@
 ### Automated Mode (Full Automation)
 
 ```bash
-cd /path/to/course_record_updater
+cd /path/to/your-clone
 source venv/bin/activate
 cd demos
 python run_demo.py --demo full_semester_workflow.json --auto
@@ -23,7 +23,7 @@ This runs the entire demo automatically without any human interaction. Perfect f
 ### Human-Guided Mode (Presenter Mode)
 
 ```bash
-cd /path/to/course_record_updater
+cd /path/to/your-clone
 source venv/bin/activate
 cd demos
 python run_demo.py --demo full_semester_workflow.json

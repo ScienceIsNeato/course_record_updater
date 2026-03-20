@@ -540,25 +540,19 @@ class TestPortConfiguration:
     def test_port_from_port_env_var(self) -> None:
         """Test port configuration from PORT environment variable."""
         # Test the port resolution logic
-        port = int(
-            os.environ.get("PORT", os.environ.get("COURSE_RECORD_UPDATER_PORT", 3001))
-        )
+        port = int(os.environ.get("PORT", 3001))
         assert port == 5000
 
-    @patch.dict(os.environ, {"COURSE_RECORD_UPDATER_PORT": "8080"}, clear=True)
-    def test_port_from_course_record_updater_port(self) -> None:
-        """Test port configuration from COURSE_RECORD_UPDATER_PORT."""
-        port = int(
-            os.environ.get("PORT", os.environ.get("COURSE_RECORD_UPDATER_PORT", 3001))
-        )
+    @patch.dict(os.environ, {"PORT": "8080"}, clear=True)
+    def test_port_from_port_env_var_with_clean_environment(self) -> None:
+        """Test port configuration from PORT with no fallback environment."""
+        port = int(os.environ.get("PORT", 3001))
         assert port == 8080
 
     @patch.dict(os.environ, {}, clear=True)
     def test_port_default_value(self) -> None:
         """Test default port value when no environment variables are set."""
-        port = int(
-            os.environ.get("PORT", os.environ.get("COURSE_RECORD_UPDATER_PORT", 3001))
-        )
+        port = int(os.environ.get("PORT", 3001))
         assert port == 3001
 
     @patch.dict(os.environ, {"FLASK_DEBUG": "true"})
@@ -589,11 +583,7 @@ class TestMainExecution:
 
         # Test port resolution
         with patch.dict(os.environ, {"PORT": "4000"}):
-            port = int(
-                os.environ.get(
-                    "PORT", os.environ.get("COURSE_RECORD_UPDATER_PORT", 3001)
-                )
-            )
+            port = int(os.environ.get("PORT", 3001))
             assert port == 4000
 
         # Test debug flag resolution
