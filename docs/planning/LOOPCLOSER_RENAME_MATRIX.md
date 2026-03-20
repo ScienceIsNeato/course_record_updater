@@ -18,7 +18,7 @@ Use this document as the cutover worksheet for external systems and repo-owned r
 | --- | --- | --- | --- | --- |
 | GitHub repo slug | `course_record_updater` | `loopcloser` | GitHub repo settings | Rename late, after runtime/deploy config is already updated. |
 | GitHub badge URLs | `ScienceIsNeato/course_record_updater` | `ScienceIsNeato/loopcloser` | `README.md` | Low risk, but should be updated immediately after repo rename. |
-| GitHub repository links in docs | `https://github.com/ScienceIsNeato/course_record_updater` | `https://github.com/ScienceIsNeato/loopcloser` | `docs/RUNBOOK.md` | Update at the same time as the repo rename so links stay valid. |
+| GitHub repository links in docs | `https://github.com/ScienceIsNeato/loopcloser` | `https://github.com/ScienceIsNeato/loopcloser` | `docs/RUNBOOK.md` | Update at the same time as the repo rename so links stay valid. |
 | Codecov slug | `codecov.io/gh/ScienceIsNeato/course_record_updater` | `codecov.io/gh/ScienceIsNeato/loopcloser` | `docs/setup/CI_SETUP_GUIDE.md` | Likely requires post-rename integration verification, not just doc edits. |
 | Product display name | `LoopCloser` | `LoopCloser` | UI/docs/email | Already aligned. Preserve as canonical. |
 | Production domain | `loopcloser.io` | `loopcloser.io` | deploy env + deploy workflow | Already aligned. Must remain source of truth for email links. |

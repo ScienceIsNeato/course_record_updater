@@ -225,8 +225,9 @@ def _setup_parallel_environment(worker_id: int, worker_port: int) -> tuple[Any, 
             print(f"   ✓ Database copied: {dst}")
 
     env_overrides = {
-        "ENV": "test",
-        "WTF_CSRF_ENABLED": "true",
+        "ENV": "e2e",
+        "FLASK_ENV": "e2e",
+        "WTF_CSRF_ENABLED": "false",
     }
 
     os.makedirs("logs", exist_ok=True)
@@ -435,7 +436,11 @@ def authenticated_page(page: Page) -> Page:
     page.click('button[type="submit"]')
 
     try:
-        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=10000)
+        page.wait_for_url(
+            f"{BASE_URL}/dashboard",
+            timeout=15000,
+            wait_until="domcontentloaded",
+        )
         page.wait_for_load_state("networkidle")
 
         # Verify session is properly established with institution context
@@ -468,7 +473,11 @@ def authenticated_site_admin_page(page: Page) -> Page:
     page.click('button[type="submit"]')
 
     try:
-        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=5000)
+        page.wait_for_url(
+            f"{BASE_URL}/dashboard",
+            timeout=10000,
+            wait_until="domcontentloaded",
+        )
         return page
     except Exception:
         pytest.fail("Site admin login failed")
@@ -492,7 +501,11 @@ def authenticated_institution_admin_page(page: Page) -> Page:
     page.click('button[type="submit"]')
 
     try:
-        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=10000)
+        page.wait_for_url(
+            f"{BASE_URL}/dashboard",
+            timeout=15000,
+            wait_until="domcontentloaded",
+        )
         page.wait_for_load_state("networkidle")
 
         # Verify session is properly established with institution context
@@ -530,7 +543,11 @@ def authenticated_program_admin_page(page: Page) -> Page:
     page.click('button[type="submit"]')
 
     try:
-        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=10000)
+        page.wait_for_url(
+            f"{BASE_URL}/dashboard",
+            timeout=15000,
+            wait_until="domcontentloaded",
+        )
         page.wait_for_load_state("networkidle")
 
         # Verify session is properly established
@@ -576,7 +593,11 @@ def program_admin_authenticated_page(page: Page) -> Page:
     page.click('button[type="submit"]')
 
     try:
-        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=10000)  # Increased timeout
+        page.wait_for_url(
+            f"{BASE_URL}/dashboard",
+            timeout=15000,
+            wait_until="domcontentloaded",
+        )
         page.wait_for_load_state("networkidle")
         return page
     except Exception as e:

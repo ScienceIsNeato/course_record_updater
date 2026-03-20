@@ -1,8 +1,8 @@
 # LoopCloser
 
-[![Quality Gate](https://github.com/ScienceIsNeato/course_record_updater/workflows/Quality%20Gate/badge.svg)](https://github.com/ScienceIsNeato/course_record_updater/actions/workflows/quality-gate.yml)
-[![Security Scan](https://github.com/ScienceIsNeato/course_record_updater/workflows/Security%20Scan/badge.svg)](https://github.com/ScienceIsNeato/course_record_updater/actions/workflows/security-scan.yml)
-[![Pre-commit](https://github.com/ScienceIsNeato/course_record_updater/workflows/Pre-commit%20Hooks/badge.svg)](https://github.com/ScienceIsNeato/course_record_updater/actions/workflows/pre-commit.yml)
+[![Quality Gate](https://github.com/ScienceIsNeato/loopcloser/workflows/Quality%20Gate/badge.svg)](https://github.com/ScienceIsNeato/loopcloser/actions/workflows/quality-gate.yml)
+[![Security Scan](https://github.com/ScienceIsNeato/loopcloser/workflows/Security%20Scan/badge.svg)](https://github.com/ScienceIsNeato/loopcloser/actions/workflows/security-scan.yml)
+[![Pre-commit](https://github.com/ScienceIsNeato/loopcloser/workflows/Pre-commit%20Hooks/badge.svg)](https://github.com/ScienceIsNeato/loopcloser/actions/workflows/pre-commit.yml)
 
 An enterprise-grade Flask web application for managing course assessment and outcome workflows with comprehensive quality gates and 80% test coverage.
 

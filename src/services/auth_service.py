@@ -705,14 +705,34 @@ def admin_required(f: Callable[..., Any]) -> Callable[..., Any]:
 #  _get_session_user() compares the two; a mismatch means the DB was
 #  re-seeded and the session is stale.
 # ---------------------------------------------------------------------------
+import hashlib as _hashlib
 import os as _os
 import pathlib as _pathlib
 
-DB_GENERATION_FILE = (
-    _pathlib.Path(_os.environ.get("AGENT_HOME", _os.getcwd()))
-    / "data"
-    / ".db_generation"
-)
+DB_GENERATION_DIR = _pathlib.Path(_os.environ.get("AGENT_HOME", _os.getcwd())) / "data"
+
+
+def _get_db_generation_file() -> _pathlib.Path:
+    """Return the generation marker path for the active database.
+
+    A single repo-global marker causes cross-talk when multiple databases are
+    active at once, such as parallel E2E workers or concurrent quality gates.
+    Scope the marker to DATABASE_URL so one database reseed only invalidates
+    sessions tied to that same database.
+    """
+    database_url = _os.environ.get("DATABASE_URL", "").strip()
+    if not database_url:
+        return DB_GENERATION_DIR / ".db_generation"
+
+    if database_url.startswith("sqlite:///"):
+        raw_path = database_url.removeprefix("sqlite:///")
+        db_path = _pathlib.Path(raw_path).expanduser()
+        if not db_path.is_absolute():
+            db_path = (_pathlib.Path(_os.getcwd()) / db_path).resolve()
+        return db_path.with_name(f".{db_path.name}.generation")
+
+    digest = _hashlib.sha256(database_url.encode("utf-8")).hexdigest()[:12]
+    return DB_GENERATION_DIR / f".db_generation.{digest}"
 
 
 def _read_db_generation() -> Optional[str]:
@@ -721,12 +741,13 @@ def _read_db_generation() -> Optional[str]:
     Returns ``None`` when the marker file does not exist (e.g. in test
     environments that never run the seeder).
     """
+    generation_file = _get_db_generation_file()
     try:
-        return DB_GENERATION_FILE.read_text().strip()
+        return generation_file.read_text().strip()
     except FileNotFoundError:
         return None
     except Exception:
-        logger.debug("[Auth] Could not read %s", DB_GENERATION_FILE)
+        logger.debug("[Auth] Could not read %s", generation_file)
         return None
 
 
@@ -738,9 +759,10 @@ def write_db_generation() -> str:
     import uuid
 
     token = str(uuid.uuid4())
-    DB_GENERATION_FILE.parent.mkdir(parents=True, exist_ok=True)
-    DB_GENERATION_FILE.write_text(token)
-    logger.info("[Auth] Wrote new database generation token")
+    generation_file = _get_db_generation_file()
+    generation_file.parent.mkdir(parents=True, exist_ok=True)
+    generation_file.write_text(token)
+    logger.info("[Auth] Wrote new database generation token to %s", generation_file)
     return token
 
 

@@ -2,6 +2,7 @@
 .agent/
 .envrc
 .venv
+venv/
 *.pyc
 cursor-rules/
 
@@ -72,8 +73,9 @@ coverage-diff.json
 .tmp/
 .slopmop/
 
-# Local database generation token
-data/.db_generation
+# Local database generation tokens
+data/.db_generation*
+*.db.generation
 
 # Scratch backups
 *.backup.*
