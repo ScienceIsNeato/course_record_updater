@@ -30,7 +30,7 @@ start_frontend_server_if_needed() {
   fi
 
   export DATABASE_TYPE="${DATABASE_TYPE:-sqlite}"
-  export DATABASE_URL="${DATABASE_URL:-sqlite:///${PROJECT_ROOT}/course_records_dev.db}"
+  export DATABASE_URL="${DATABASE_URL:-sqlite:///${PROJECT_ROOT}/loopcloser_dev.db}"
   export ENV="${ENV:-test}"
   export BASE_URL="$BASE_URL"
 

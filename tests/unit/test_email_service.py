@@ -459,7 +459,7 @@ class TestEmailLogging:
     def test_url_building_with_custom_base_url(self) -> None:
         """Test URL building with custom base URL"""
         app = Flask(__name__)
-        app.config["BASE_URL"] = "https://production.courserecord.app"
+        app.config["BASE_URL"] = "https://loopcloser.io"
 
         with app.app_context():
             verification_url = EmailService._build_verification_url("token")
@@ -467,10 +467,10 @@ class TestEmailLogging:
             invitation_url = EmailService._build_invitation_url("token")
             dashboard_url = EmailService._build_dashboard_url()
 
-            assert verification_url.startswith("https://production.courserecord.app")
-            assert reset_url.startswith("https://production.courserecord.app")
-            assert invitation_url.startswith("https://production.courserecord.app")
-            assert dashboard_url.startswith("https://production.courserecord.app")
+            assert verification_url.startswith("https://loopcloser.io")
+            assert reset_url.startswith("https://loopcloser.io")
+            assert invitation_url.startswith("https://loopcloser.io")
+            assert dashboard_url.startswith("https://loopcloser.io")
 
 
 class TestEmailSuppression:

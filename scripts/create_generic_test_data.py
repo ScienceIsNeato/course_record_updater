@@ -3,7 +3,7 @@
 create_generic_test_data.py - Create generic CSV adapter test data for E2E tests
 
 Creates a ZIP file following the Generic CSV Adapter format with:
-- ~6-10 representative course records
+- ~6-10 representative course entries
 - Edge cases: conflicts, duplicates, various data types
 - Institution-agnostic format (no CEI-specific data)
 """

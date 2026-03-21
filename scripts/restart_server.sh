@@ -90,21 +90,21 @@ fi
 # Determine database and base URL based on environment
 case "$APP_ENV" in
     local)
-        DATABASE_URL="${DATABASE_URL_LOCAL:-sqlite:///course_records_dev.db}"
+        DATABASE_URL="${DATABASE_URL_LOCAL:-sqlite:///loopcloser_dev.db}"
         BASE_URL="${BASE_URL_LOCAL:-http://localhost:3001}"
         ;;
     e2e|uat)
-        DATABASE_URL="${DATABASE_URL_E2E:-sqlite:///course_records_e2e.db}"
+        DATABASE_URL="${DATABASE_URL_E2E:-sqlite:///loopcloser_e2e.db}"
         BASE_URL="${BASE_URL_E2E:-http://localhost:3002}"
         ;;
     smoke)
         export ENV="test"
-        DATABASE_URL="${DATABASE_URL_SMOKE:-sqlite:///course_records_smoke.db}"
+        DATABASE_URL="${DATABASE_URL_SMOKE:-sqlite:///loopcloser_smoke.db}"
         BASE_URL="${BASE_URL_SMOKE:-http://localhost:3003}"
         ;;
     *)
         # Default to local environment
-        DATABASE_URL="${DATABASE_URL_LOCAL:-sqlite:///course_records_dev.db}"
+        DATABASE_URL="${DATABASE_URL_LOCAL:-sqlite:///loopcloser_dev.db}"
         BASE_URL="${BASE_URL_LOCAL:-http://localhost:3001}"
         ;;
 esac

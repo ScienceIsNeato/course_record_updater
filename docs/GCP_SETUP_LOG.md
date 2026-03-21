@@ -4,6 +4,11 @@
 > **Domain:** loopcloser.io (Cloudflare)  
 > **GCP Project:** loopcloser
 
+> Warning: This setup log reflects the original GCS-backed SQLite deployment model.
+> Current deploy automation in the repository does not exactly match this document: `dev`
+> currently uses Neon, and `staging`/`prod` currently deploy with ephemeral `/tmp/loopcloser.db`.
+> Do not treat this file alone as the current runtime source of truth.
+
 ---
 
 ## 1. Prerequisites Completed

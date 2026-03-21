@@ -23,7 +23,7 @@ class SQLService:
     """
 
     def __init__(self, db_path: str | None = None) -> None:
-        db_url = db_path or os.getenv("DATABASE_URL", "sqlite:///course_records.db")
+        db_url = db_path or os.getenv("DATABASE_URL", "sqlite:///loopcloser.db")
         assert db_url is not None, "DATABASE_URL must be set"
         connect_args = (
             {"check_same_thread": False} if db_url.startswith("sqlite") else {}

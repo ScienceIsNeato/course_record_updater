@@ -1,5 +1,113 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR 70 Buff Loop (2026-03-20)
+
+**Status**: 🚧 IN PROGRESS - PR `#70` has green CI but still has four unresolved review threads
+
+**What I Verified**:
+
+- `./venv/bin/sm buff status 70` reports the current PR checks passing.
+- `./venv/bin/sm buff verify 70` reports four unresolved threads across architecture, general, documentation, and testing.
+- The doc threads point at real stale guidance in checked-in `.github/instructions/*` files.
+- The testing thread is also valid: `tests/unit/test_app.py` still hardcodes `PORT` -> `3001`, while `src/app.py` falls back through `DEFAULT_PORT` and `LOOPCLOSER_DEFAULT_PORT_DEV` before `3001`.
+
+**Next Steps**:
+
+- Fix the rename checklist so its replacements and verification sweep target only old-slug references.
+- Repair PR-closing and CI-watch instructions to reference real checked-in docs and executable `gh` commands.
+- Extract a shared app-port helper and update unit tests to validate the same runtime logic used at startup.
+- Re-run validation, commit, resolve the review threads with `sm buff resolve`, then push and watch CI.
+
+## Latest Work: Rename Finalization Scour Recovery (2026-03-20)
+
+**Status**: ✅ PASSING - full `sm scour` green after fixing E2E session invalidation cross-talk
+
+**Root Cause**:
+
+- Parallel E2E workers were booting with the wrong environment settings (`ENV=test`, CSRF re-enabled), which reintroduced auth/CSRF failures under `run_uat.sh`.
+- After that was fixed, the remaining `overconfidence:e2e` flake came from stale-session detection using one repo-global database generation marker.
+- Any concurrent reseed touching that shared marker could invalidate sessions for a different worker/database, causing mid-test redirects to login and cascading Playwright timeouts.
+
+**What Changed**:
+
+- Aligned parallel E2E worker bootstrap in `tests/e2e/conftest.py` with the serial E2E environment (`ENV=e2e`, `FLASK_ENV=e2e`, `WTF_CSRF_ENABLED=false`).
+- Scoped database generation markers in `src/services/auth_service.py` to the active `DATABASE_URL` instead of a single repo-global file.
+- Added/updated focused unit coverage for the E2E bootstrap and generation-marker behavior.
+- Ignored local generation marker artifacts so validation runs do not dirty the worktree.
+
+**Validation**:
+
+- `./venv/bin/pytest tests/unit/e2e/test_conftest_db_paths.py -q` ✅
+- `./venv/bin/pytest tests/unit/test_auth_service.py -q` ✅
+- `./venv/bin/pytest tests/e2e/test_admin_invitation_workflow.py::TestAdminInvitationsAndMultiRole::test_complete_admin_invitation_workflow tests/e2e/test_clo_approval_workflow.py::test_clo_approval_workflow tests/e2e/test_permission_boundaries.py::TestPermissionBoundaries::test_complete_permission_boundaries_workflow -n 3 --dist=loadscope -q` ✅
+- `./venv/bin/sm scour --no-cache --json --output-file .slopmop/last_scour.json` ✅ (`failed=0`, `all_passed=true`)
+
+**Next Steps**:
+
+- Rename the working branch from `tmp_branch` to a descriptive feature branch.
+- Commit the rename-finalization and validation recovery work.
+- Push the branch and open a PR.
+
+## Latest Work: Rename Finalization Validation Recovery (2026-03-20)
+
+**Status**: ✅ PASSING - repaired repo venv and local `sm swab` green after rename fallout
+
+**Root Cause**:
+
+- The repo rename left the old local virtualenv and generated hooks pointing at the pre-rename absolute path.
+- Rebuilding the venv removed a previously implicit dependency: `pandas-stubs`.
+- Without `pandas-stubs`, `sm swab` failed on `overconfidence:type-blindness.py` with localized pandas `Unknown` typing noise in `src/adapters/cei_excel_adapter.py`.
+
+**What Changed**:
+
+- Repaired the local repo venv and regenerated the pre-commit hook against the current repo path.
+- Added `pandas-stubs` to `requirements-dev.txt` so rebuilt environments keep the same typing surface.
+- Confirmed the repo-local `sm` launcher works from `venv/bin/sm`.
+
+**Validation**:
+
+- `./venv/bin/sm swab -g overconfidence:type-blindness.py --verbose --no-cache` ✅
+- `./venv/bin/sm swab --json --output-file .slopmop/last_swab.json` ✅ (`failed=0`, `all_passed=true`)
+
+**Known Environment Note**:
+
+- A separate global shim at `/Users/pacey/.local/bin/sm` is still broken (`ModuleNotFoundError: packaging`).
+- Repo work is unblocked because the repaired repo-local launcher in `venv/bin/sm` is healthy.
+
+**Next Steps**:
+
+- Rename the working branch from `tmp_branch` to a descriptive feature branch.
+- Commit the rename-finalization and dev-environment follow-through.
+- Push the branch and open a PR.
+
+## Latest Work: LoopCloser Rename Finalization Prep (2026-03-20)
+
+**Status**: 🚧 IN PROGRESS - rename-focused docs/link sweep is ready for validation, commit, push, and PR creation
+
+**What I Verified**:
+
+- Current worktree is on local-only branch `tmp_branch` with no upstream and no open PR.
+- Uncommitted changes are tightly scoped to the `course-record-updater` -> `loopcloser` rename follow-through.
+- Active code, workflows, and automation no longer contain blocking references to the old repo name.
+- Remaining old-name references are limited to archived/generated/planning material where historical context is expected.
+
+**Files In Scope**:
+
+- `README.md`
+- `STATUS.md`
+- `PR_50_RESOLUTION_PLAN.md`
+- `docs/RUNBOOK.md`
+- `docs/setup/CI_SETUP_GUIDE.md`
+- `demos/full_semester_workflow.json`
+- `docs/planning/LOOPCLOSER_RENAME_MATRIX.md`
+- `docs/planning/LOOPCLOSER_MANUAL_RENAME_EXECUTION_CHECKLIST.md` (new)
+
+**Next Steps**:
+
+- Run `sm swab` locally to validate the rename-finalization changes.
+- Commit on a properly named feature branch.
+- Push the branch and open a PR to finalize the switch.
+
 ## Latest Work: Scour Stabilization + Green Validation (2026-03-18)
 
 **Status**: ✅ PASSING - full `sm scour` green (`22` passed, `0` failed)
@@ -36,7 +144,7 @@
 
 - Commit: `f296bf9`
 - Branch: `chore/slop-mop-remediation`
-- PR: `#69` (`https://github.com/ScienceIsNeato/course_record_updater/pull/69`)
+- PR: `#69` (`https://github.com/ScienceIsNeato/loopcloser/pull/69`)
 
 ## Latest Work: Swab/Scour Policy Update (2026-03-17)
 

@@ -736,13 +736,9 @@ def health_check() -> tuple[dict[str, Any], int]:
     return {"status": "ok", "ready": True}, 200
 
 
-if __name__ == "__main__":
-    # Port selection priority (for CI/multi-environment compatibility):
-    # 1. PORT (standard env var, used by CI)
-    # 2. DEFAULT_PORT (CI fallback)
-    # 3. LOOPCLOSER_DEFAULT_PORT_DEV (local dev default from .envrc)
-    # 4. 3001 (hardcoded fallback)
-    port = int(
+def resolve_app_port() -> int:
+    """Resolve the Flask port using the same precedence as runtime startup."""
+    return int(
         os.environ.get(
             "PORT",
             os.environ.get(
@@ -750,6 +746,15 @@ if __name__ == "__main__":
             ),
         )
     )
+
+
+if __name__ == "__main__":
+    # Port selection priority (for CI/multi-environment compatibility):
+    # 1. PORT (standard env var, used by CI)
+    # 2. DEFAULT_PORT (CI fallback)
+    # 3. LOOPCLOSER_DEFAULT_PORT_DEV (local dev default from .envrc)
+    # 4. 3001 (hardcoded fallback)
+    port = resolve_app_port()
     # Debug mode should be controlled by FLASK_DEBUG environment variable
     use_debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
 

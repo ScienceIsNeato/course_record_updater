@@ -28,7 +28,7 @@
       "purpose": "Authenticate as an admin with manage_programs + view_program_data so all PLO mutations and drilldowns are available",
       "pre_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM programs WHERE short_name='BIOL' LIMIT 1\"",
+          "command": "sqlite3 loopcloser_dev.db \"SELECT id FROM programs WHERE short_name='BIOL' LIMIT 1\"",
           "purpose": "Capture BIOL program ID for all subsequent PLO API calls",
           "capture_output_as": "biol_program_id"
         }
@@ -84,12 +84,12 @@
       ],
       "post_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT COUNT(*) FROM program_outcomes WHERE program_id='{{biol_program_id}}' AND plo_number=5\"",
+          "command": "sqlite3 loopcloser_dev.db \"SELECT COUNT(*) FROM program_outcomes WHERE program_id='{{biol_program_id}}' AND plo_number=5\"",
           "purpose": "Verify PLO-5 row exists in program_outcomes",
           "expected_output": "1"
         },
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM program_outcomes WHERE program_id='{{biol_program_id}}' AND plo_number=5 LIMIT 1\"",
+          "command": "sqlite3 loopcloser_dev.db \"SELECT id FROM program_outcomes WHERE program_id='{{biol_program_id}}' AND plo_number=5 LIMIT 1\"",
           "purpose": "Capture new PLO id for the edit step",
           "capture_output_as": "new_plo_id"
         }
@@ -120,7 +120,7 @@
       ],
       "post_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT description FROM program_outcomes WHERE id='{{new_plo_id}}'\"",
+          "command": "sqlite3 loopcloser_dev.db \"SELECT description FROM program_outcomes WHERE id='{{new_plo_id}}'\"",
           "purpose": "Verify description was updated",
           "expected_output_contains": "capstone project"
         }
@@ -134,7 +134,7 @@
       "purpose": "Add a CLO→PLO link: BIOL-301 CLO 3 rolls into our new PLO-5. This creates/reuses the draft mapping (a new draft since v1 was already published by the seeder).",
       "pre_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT co.id FROM course_outcomes co JOIN courses c ON c.id = co.course_id WHERE c.course_number='BIOL-301' AND co.clo_number='3' LIMIT 1\"",
+          "command": "sqlite3 loopcloser_dev.db \"SELECT co.id FROM course_outcomes co JOIN courses c ON c.id = co.course_id WHERE c.course_number='BIOL-301' AND co.clo_number='3' LIMIT 1\"",
           "purpose": "Capture the target CLO template id",
           "capture_output_as": "target_clo_id"
         }
@@ -160,7 +160,7 @@
       ],
       "post_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM plo_mappings WHERE program_id='{{biol_program_id}}' AND status='draft' LIMIT 1\"",
+          "command": "sqlite3 loopcloser_dev.db \"SELECT id FROM plo_mappings WHERE program_id='{{biol_program_id}}' AND status='draft' LIMIT 1\"",
           "purpose": "Capture draft mapping id now that the draft has been opened",
           "capture_output_as": "draft_mapping_id"
         }
@@ -189,7 +189,7 @@
       "expected_results": ["Entry row exists in plo_mapping_entries"],
       "post_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT COUNT(*) FROM plo_mapping_entries WHERE mapping_id='{{draft_mapping_id}}' AND program_outcome_id='{{new_plo_id}}' AND course_outcome_id='{{target_clo_id}}'\"",
+          "command": "sqlite3 loopcloser_dev.db \"SELECT COUNT(*) FROM plo_mapping_entries WHERE mapping_id='{{draft_mapping_id}}' AND program_outcome_id='{{new_plo_id}}' AND course_outcome_id='{{target_clo_id}}'\"",
           "purpose": "Verify the mapping entry was inserted",
           "expected_output": "1"
         }
@@ -221,12 +221,12 @@
       ],
       "post_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT version FROM plo_mappings WHERE id='{{draft_mapping_id}}'\"",
+          "command": "sqlite3 loopcloser_dev.db \"SELECT version FROM plo_mappings WHERE id='{{draft_mapping_id}}'\"",
           "purpose": "Verify mapping has version 2 assigned",
           "expected_output": "2"
         },
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT status FROM plo_mappings WHERE id='{{draft_mapping_id}}'\"",
+          "command": "sqlite3 loopcloser_dev.db \"SELECT status FROM plo_mappings WHERE id='{{draft_mapping_id}}'\"",
           "purpose": "Verify mapping status is published",
           "expected_output": "published"
         }
@@ -262,7 +262,7 @@
       ],
       "post_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT COUNT(DISTINCT program_outcome_id) FROM plo_mapping_entries e JOIN plo_mappings m ON m.id=e.mapping_id WHERE m.program_id='{{biol_program_id}}' AND m.version=2\"",
+          "command": "sqlite3 loopcloser_dev.db \"SELECT COUNT(DISTINCT program_outcome_id) FROM plo_mapping_entries e JOIN plo_mappings m ON m.id=e.mapping_id WHERE m.program_id='{{biol_program_id}}' AND m.version=2\"",
           "purpose": "Verify v2 mapping has entries for multiple PLOs (copied v1 + new PLO-5 entry)",
           "expected_output_contains": ""
         }
@@ -276,7 +276,7 @@
       "purpose": "Show the per-program display-mode setting and the second seeded program's tree. ZOOL uses percentage mode out of the box.",
       "pre_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM programs WHERE short_name='ZOOL' LIMIT 1\"",
+          "command": "sqlite3 loopcloser_dev.db \"SELECT id FROM programs WHERE short_name='ZOOL' LIMIT 1\"",
           "purpose": "Capture ZOOL program id",
           "capture_output_as": "zool_program_id"
         }

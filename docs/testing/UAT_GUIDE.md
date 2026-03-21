@@ -36,7 +36,7 @@ This UAT guide covers the complete LoopCloser system including:
 1. **Seed the database with test data**:
 
    ```bash
-   cd /path/to/course_record_updater
+   cd /path/to/your-clone
    source venv/bin/activate
    python scripts/seed_db.py --clear  # Clear existing data and create full test dataset
    ```

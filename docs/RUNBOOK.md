@@ -35,7 +35,7 @@
 
 ### Important Links
 
-- [GitHub Repository](https://github.com/ScienceIsNeato/course_record_updater)
+- [GitHub Repository](https://github.com/ScienceIsNeato/loopcloser)
 - [Cloud Run Console](https://console.cloud.google.com/run)
 - [Cloud Monitoring](https://console.cloud.google.com/monitoring)
 - [Error Reporting](https://console.cloud.google.com/errors)

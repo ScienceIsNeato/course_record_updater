@@ -1,7 +1,7 @@
 # PR #50 Resolution Plan
 
 **Created**: 2026-01-18  
-**PR**: https://github.com/ScienceIsNeato/course_record_updater/pull/50  
+**PR**: https://github.com/ScienceIsNeato/loopcloser/pull/50  
 **Strategy**: Group by concept, resolve as we fix
 
 ## Already Resolved (Files Deleted by User) ✅

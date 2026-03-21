@@ -20,8 +20,7 @@ pytest-xdist>=3.6.1        # Parallel test execution (35% faster)
 
 # Security scanning
 bandit>=1.7.5              # Security linter for Python
-safety>=2.3.0,<3.7.0       # Cap: 3.7.0 pulls typer 0.24+ which crashes on Python 3.11 (click.Choice not subscriptable)
-typer>=0.16.0,<0.24.0       # Cap: 0.24.0 uses click.Choice[T] which is not subscriptable on Python 3.11
+pip-audit>=2.9.0           # Dependency vulnerability scanner used by slop-mop dependency-risk gate
 detect-secrets>=1.4.0        # Secret detection in code
 
 # Code quality and complexity
@@ -52,6 +51,7 @@ Flask-WTF>=1.2.1           # CSRF protection and form handling (needed for tests
 
 # Data processing (needed for Excel import tests)
 pandas>=2.3.2               # Data manipulation and analysis
+pandas-stubs>=2.3.0.250703  # Static typing support for pandas used by type-blindness gate
 openpyxl>=3.1.0             # Excel file support for pandas
 
 # Browser automation for E2E testing

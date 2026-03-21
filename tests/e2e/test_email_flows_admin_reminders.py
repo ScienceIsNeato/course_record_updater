@@ -62,7 +62,7 @@ class TestAdminInstructorReminderSingleRecipient:
         - Email contains direct link to course submission page
         - Email includes deadline (if applicable)
         - Subject: "Reminder: Please submit your course data for [Term]"
-        - From: LoopCloser <noreply@courserecord.app>
+        - From: LoopCloser <noreply@loopcloser.io>
         - Reply-To: Program admin's email (optional)
         """
         # Setup: Log in as program admin
@@ -316,6 +316,6 @@ class EmailService:
         # - Missing Courses: List of specific courses (if provided)
         # - Deadline: "Please submit by {deadline}" (if provided)
         # - CTA Button: "Submit Course Data Now"
-        # - Help: "Need help? Contact us at support@courserecord.app"
+        # - Help: "Need help? Contact us at support@loopcloser.io"
         pass
 """

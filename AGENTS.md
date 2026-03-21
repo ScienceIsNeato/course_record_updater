@@ -752,7 +752,7 @@ Create `/tmp/PR_{PR}_RESOLUTION_PLAN.md` containing:
 
 ## Resolution Mapping
 Comment PRRT_xxx will be resolved by commits:
-  - fix: standardize CI database to course_records_ci.db
+  - fix: standardize CI database to loopcloser_ci.db
   
 Comment PRRT_yyy will be resolved by commits:
   - fix: store session dates as datetime objects
@@ -1378,10 +1378,10 @@ gh pr comment <PR_NUMBER> --body-file /tmp/pr_comment.md
 
 _Including project rules matching: 
 
-✓ Including: course_record_updater.mdc
-# course_record_updater
+✓ Including: project instructions
+# loopcloser
 
-# Course Record Updater Project Rules 📚
+# LoopCloser Project Rules 📚
 
 ## 🔄 PR Closing Protocol
 

@@ -39,9 +39,9 @@ logger = logging.getLogger("demo_advancer")
 
 def setup_env(env_name: str = "dev") -> None:
     db_mapping = {
-        "dev": "sqlite:///course_records_dev.db",
-        "e2e": "sqlite:///course_records_e2e.db",
-        "prod": "sqlite:///course_records.db",
+        "dev": "sqlite:///loopcloser_dev.db",
+        "e2e": "sqlite:///loopcloser_e2e.db",
+        "prod": "sqlite:///loopcloser.db",
     }
     url = db_mapping.get(env_name, db_mapping["dev"])
     os.environ["DATABASE_URL"] = url

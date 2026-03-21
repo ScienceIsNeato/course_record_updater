@@ -288,21 +288,21 @@ main() {
         dev)
             SERVICE_NAME="loopcloser-dev"
             BUCKET="loopcloser-db-dev"
-            LOCAL_DB="course_records_dev.db"
+            LOCAL_DB="loopcloser_dev.db"
             ORIGINAL_MIN_INSTANCES=0
             ORIGINAL_MAX_INSTANCES=2
             ;;
         staging)
             SERVICE_NAME="loopcloser-staging"
             BUCKET="loopcloser-db-staging"
-            LOCAL_DB="course_records_staging.db"
+            LOCAL_DB="loopcloser_staging.db"
             ORIGINAL_MIN_INSTANCES=0
             ORIGINAL_MAX_INSTANCES=4
             ;;
         prod)
             SERVICE_NAME="loopcloser-prod"
             BUCKET="loopcloser-db-prod"
-            LOCAL_DB="course_records_prod.db"
+            LOCAL_DB="loopcloser_prod.db"
             ORIGINAL_MIN_INSTANCES=1
             ORIGINAL_MAX_INSTANCES=10
             ;;

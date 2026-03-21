@@ -11,7 +11,7 @@ permissions:
 env:
   PYTHON_VERSION: "3.11" # Source of truth for Python version - must match Dockerfile
   DATABASE_TYPE: "sqlite"
-  DATABASE_URL: "sqlite:///course_records.db" # Default database for unit/integration tests
+  DATABASE_URL: "sqlite:///loopcloser.db" # Default database for unit/integration tests
 
 jobs:
   setup:
@@ -216,25 +216,25 @@ jobs:
 
           # Use consistent database name throughout smoke tests
           export DATABASE_TYPE=sqlite
-          export DATABASE_URL=sqlite:///course_records_ci.db
+          export DATABASE_URL=sqlite:///loopcloser_ci.db
 
           echo "✅ SQLite database configuration ready"
       - name: Seed Database for Smoke Tests
         run: |
           # Set environment variables for SQLite (consistent with runtime)
           export DATABASE_TYPE=sqlite
-          export DATABASE_URL=sqlite:///course_records_ci.db
+          export DATABASE_URL=sqlite:///loopcloser_ci.db
           export ENV=ci
           export PYTHONPATH=.
 
           # Seed baseline data for smoke tests using CI environment
-          # This uses course_records_ci.db as configured in DATABASE_URL
+          # This uses loopcloser_ci.db as configured in DATABASE_URL
           python scripts/seed_db.py --env ci --clear
       - name: Start Flask Server for Smoke Tests
         run: |
           # Set environment variables for SQLite (consistent with seed step)
           export DATABASE_TYPE=sqlite
-          export DATABASE_URL=sqlite:///course_records_ci.db
+          export DATABASE_URL=sqlite:///loopcloser_ci.db
           export PYTHONPATH=.
           export PORT=3001  # Use default dev port in CI (no conflicts)
           export ENV=ci
@@ -255,7 +255,7 @@ jobs:
         run: |
           # Set environment variables for SQLite (consistent with seed/server)
           export DATABASE_TYPE=sqlite
-          export DATABASE_URL=sqlite:///course_records_ci.db
+          export DATABASE_URL=sqlite:///loopcloser_ci.db
           export ENV=ci
           export SELENIUM_IMPLICIT_WAIT=3
           export SELENIUM_PAGE_LOAD_TIMEOUT=8
@@ -295,18 +295,18 @@ jobs:
         run: |
           echo "Setting up SQLite database for testing..."
           # Create database directory if it doesn't exist
-          mkdir -p $(dirname course_records.db)
+          mkdir -p $(dirname loopcloser.db)
 
           # Set database environment variables for SQLite
           export DATABASE_TYPE=sqlite
-          export DATABASE_URL=sqlite:///course_records.db
+          export DATABASE_URL=sqlite:///loopcloser.db
 
           echo "✅ SQLite database ready for testing"
       - name: Seed Database for Integration Tests
         run: |
           # Set environment variables for SQLite
           export DATABASE_TYPE=sqlite
-          export DATABASE_URL=sqlite:///course_records.db
+          export DATABASE_URL=sqlite:///loopcloser.db
           export ENV=test
           export PYTHONPATH=.
 
@@ -317,7 +317,7 @@ jobs:
         run: |
           # Set environment variables for SQLite
           export DATABASE_TYPE=sqlite
-          export DATABASE_URL=sqlite:///course_records.db
+          export DATABASE_URL=sqlite:///loopcloser.db
           export PYTHONPATH=.
           export PORT=3001  # Use default dev port in CI (no conflicts)
 
@@ -337,7 +337,7 @@ jobs:
         run: |
           # Set environment variables for SQLite
           export DATABASE_TYPE=sqlite
-          export DATABASE_URL=sqlite:///course_records.db
+          export DATABASE_URL=sqlite:///loopcloser.db
           export ENV=test
           export SELENIUM_IMPLICIT_WAIT=3
           export SELENIUM_PAGE_LOAD_TIMEOUT=8
@@ -381,8 +381,8 @@ jobs:
           # Set E2E environment manually (don't source .envrc.template - it has placeholder credentials)
           export ENV="test"
           # Use absolute path to avoid CWD issues between server and test processes
-          export DATABASE_URL="sqlite:///${{ github.workspace }}/course_records_e2e.db"
-          export DATABASE_URL_E2E="sqlite:///${{ github.workspace }}/course_records_e2e.db"
+          export DATABASE_URL="sqlite:///${{ github.workspace }}/loopcloser_e2e.db"
+          export DATABASE_URL_E2E="sqlite:///${{ github.workspace }}/loopcloser_e2e.db"
           export LOOPCLOSER_DEFAULT_PORT_E2E="3002"
 
           # Set Ethereal credentials from GitHub secrets for email verification

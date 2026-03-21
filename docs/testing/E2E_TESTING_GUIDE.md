@@ -38,7 +38,7 @@ E2E tests automate real user interactions in a browser, replacing manual UAT. Th
 **Current**: Uses `tests/e2e/fixtures/generic_test_data.zip` (Generic CSV Adapter format)  
 **Format**: ZIP file containing normalized CSV files (institution-agnostic)
 
-The test file contains 7 course records, 3 programs, 3 users, and other entities used to validate import/export functionality. Edge cases include duplicates, conflicts, and inactive records.
+The test file contains 7 course entries, 3 programs, 3 users, and other entities used to validate import/export functionality. Edge cases include duplicates, conflicts, and inactive records.
 
 **Note**: CEI-specific test data remains in `research/CEI/` for manual testing only.
 
@@ -90,7 +90,7 @@ E2E tests run automatically on every PR via GitHub Actions:
 tail -f logs/test_server.log
 
 # Verify database seeding
-sqlite3 course_records_e2e.db "SELECT email FROM users WHERE email LIKE '%admin%';"
+sqlite3 loopcloser_e2e.db "SELECT email FROM users WHERE email LIKE '%admin%';"
 ```
 
 **Import failures**:
@@ -151,8 +151,8 @@ E2E tests use isolated environment to prevent interference with development:
 
 | Environment | Port | Database                | Purpose                |
 | ----------- | ---- | ----------------------- | ---------------------- |
-| dev         | 3001 | `course_records_dev.db` | Local development      |
-| e2e         | 3002 | `course_records_e2e.db` | E2E tests (local & CI) |
+| dev         | 3001 | `loopcloser_dev.db`     | Local development      |
+| e2e         | 3002 | `loopcloser_e2e.db`     | E2E tests (local & CI) |
 
 Environment managed via `APP_ENV` variable and `.envrc` file.
 

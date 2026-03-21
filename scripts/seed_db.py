@@ -1734,10 +1734,10 @@ def _resolve_database_url(args: argparse.Namespace) -> str:
 
     # Local SQLite database mapping (for local/test envs only)
     local_db_mapping = {
-        "local": "sqlite:///course_records_dev.db",
-        "e2e": "sqlite:///course_records_e2e.db",
-        "smoke": "sqlite:///course_records_smoke.db",
-        "ci": "sqlite:///course_records_ci.db",
+        "local": "sqlite:///loopcloser_dev.db",
+        "e2e": "sqlite:///loopcloser_e2e.db",
+        "smoke": "sqlite:///loopcloser_smoke.db",
+        "ci": "sqlite:///loopcloser_ci.db",
     }
 
     deployed_environments = ["dev", "staging", "prod"]
@@ -1768,7 +1768,7 @@ def _resolve_database_url(args: argparse.Namespace) -> str:
         sys.exit(1)
     else:
         # Local SQLite fallback
-        database_url = local_db_mapping.get(args.env, "sqlite:///course_records.db")
+        database_url = local_db_mapping.get(args.env, "sqlite:///loopcloser.db")
         print(f"\n[SEED] 🗄️  Using local {args.env} database: {database_url}")
         return database_url
 

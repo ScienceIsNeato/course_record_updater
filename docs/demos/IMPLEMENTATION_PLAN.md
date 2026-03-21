@@ -104,7 +104,7 @@ demos/
 
       "post_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT COUNT(*) FROM users WHERE email='demo2025.admin@example.com'\"",
+          "command": "sqlite3 loopcloser_dev.db \"SELECT COUNT(*) FROM users WHERE email='demo2025.admin@example.com'\"",
           "purpose": "Confirm admin user exists",
           "expected_output": "1"
         }
@@ -218,7 +218,7 @@ python demos/run_demo.py --demo full_semester_workflow.json --verify-only
 
 🔧 Pre-Step Commands:
   ✓ Getting Biology program ID...
-    $ sqlite3 course_records_dev.db "SELECT program_id FROM programs..."
+    $ sqlite3 loopcloser_dev.db "SELECT program_id FROM programs..."
     Result: abc-123-def
     (Captured as {{biology_program_id}})
 
@@ -243,7 +243,7 @@ python demos/run_demo.py --demo full_semester_workflow.json --verify-only
 
 🔍 Post-Step Verification:
   ✓ Verifying description was updated...
-    $ sqlite3 course_records_dev.db "SELECT description FROM programs..."
+    $ sqlite3 loopcloser_dev.db "SELECT description FROM programs..."
     Expected: Contains "Fall 2024 Accreditation"
     Actual: "Primary focus for Fall 2024 Accreditation Cycle"
     ✅ PASS

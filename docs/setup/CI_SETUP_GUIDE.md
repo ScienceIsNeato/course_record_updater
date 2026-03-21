@@ -140,9 +140,9 @@ Add the `comprehensive-check` label to a PR to trigger full validation:
 Add to README.md:
 
 ```markdown
-[![Quality Gate](https://github.com/ScienceIsNeato/course_record_updater/workflows/Quality%20Gate/badge.svg)](https://github.com/ScienceIsNeato/course_record_updater/actions/workflows/quality-gate.yml)
-[![Security Scan](https://github.com/ScienceIsNeato/course_record_updater/workflows/Security%20Scan/badge.svg)](https://github.com/ScienceIsNeato/course_record_updater/actions/workflows/security-scan.yml)
-[![codecov](https://codecov.io/gh/ScienceIsNeato/course_record_updater/branch/main/graph/badge.svg)](https://codecov.io/gh/ScienceIsNeato/course_record_updater)
+[![Quality Gate](https://github.com/ScienceIsNeato/loopcloser/workflows/Quality%20Gate/badge.svg)](https://github.com/ScienceIsNeato/loopcloser/actions/workflows/quality-gate.yml)
+[![Security Scan](https://github.com/ScienceIsNeato/loopcloser/workflows/Security%20Scan/badge.svg)](https://github.com/ScienceIsNeato/loopcloser/actions/workflows/security-scan.yml)
+[![codecov](https://codecov.io/gh/ScienceIsNeato/loopcloser/branch/main/graph/badge.svg)](https://codecov.io/gh/ScienceIsNeato/loopcloser)
 ```
 
 #### **Artifact Collection**

@@ -14,7 +14,7 @@ A web application built with Python (Flask) that allows:
 
 - **Manual Entry:** Direct input of course details via a web form.
 - **Automated Extraction:** Uploading Word documents (`.docx`) and selecting a corresponding format "adapter" to automatically parse and extract the course information.
-- **Centralized Viewing/Editing:** Displaying all course records in a searchable/sortable ledger format, with options to edit or delete entries.
+- **Centralized Viewing/Editing:** Displaying all course entries in a searchable/sortable ledger format, with options to edit or delete entries.
 
 ## 4. Key Components
 
@@ -23,7 +23,7 @@ A web application built with Python (Flask) that allows:
   - Provides interface for:
     - File Upload (`/add_course_automatic` endpoint): Word document + Adapter selection dropdown.
     - Manual Data Entry Form (`/add_course_manual` endpoint).
-    - Tabular Display of Course Records (Ledger style, reverse chronological).
+    - Tabular Display of Course Entries (Ledger style, reverse chronological).
     - Inline Edit / Delete functionality per record (Future Milestone).
 - **Backend (API - Flask):**
   - Flask application serving the UI and handling data operations.

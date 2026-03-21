@@ -87,7 +87,7 @@ export EMAIL_PROVIDER="brevo"
 
 # Brevo for real email sending
 export BREVO_API_KEY="production-api-key"
-export BREVO_SENDER_EMAIL="noreply@courserecord.app"
+export BREVO_SENDER_EMAIL="noreply@loopcloser.io"
 export BREVO_SENDER_NAME="LoopCloser"
 
 # Set production flags

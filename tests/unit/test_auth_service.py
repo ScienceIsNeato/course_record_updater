@@ -989,7 +989,22 @@ class TestStaleSessionDetection:
         )
 
         gen_file = tmp_path / ".db_generation"
-        with patch("src.services.auth_service.DB_GENERATION_FILE", gen_file):
+        with patch(
+            "src.services.auth_service._get_db_generation_file", return_value=gen_file
+        ):
             token = write_db_generation()
             assert token  # non-empty UUID string
             assert _read_db_generation() == token
+
+    def test_generation_file_scoped_to_sqlite_database(self) -> None:
+        """SQLite databases use a per-database generation marker."""
+        from src.services.auth_service import _get_db_generation_file
+
+        with patch.dict(
+            "os.environ",
+            {"DATABASE_URL": "sqlite:///loopcloser_e2e_worker4.db"},
+            clear=False,
+        ):
+            generation_file = _get_db_generation_file()
+
+        assert generation_file.name == ".loopcloser_e2e_worker4.db.generation"

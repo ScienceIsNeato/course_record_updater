@@ -39,7 +39,7 @@ The `.envrc.template` file follows a strict pattern to prevent credential overri
 **✅ DO: Export variables with valid default values**
 
 ```bash
-export DATABASE_URL="sqlite:///course_records.db"
+export DATABASE_URL="sqlite:///loopcloser.db"
 export LOG_LEVEL="INFO"
 export ETHEREAL_SMTP_HOST="smtp.ethereal.email"  # Valid default
 ```
@@ -86,8 +86,8 @@ The `APP_ENV` variable controls which environment is active:
 
 | Environment | Port | Database                | Use Case                 |
 | ----------- | ---- | ----------------------- | ------------------------ |
-| `dev`       | 3001 | `course_records_dev.db` | Local development        |
-| `e2e`       | 3002 | `course_records_e2e.db` | E2E testing (local & CI) |
+| `dev`       | 3001 | `loopcloser_dev.db`     | Local development        |
+| `e2e`       | 3002 | `loopcloser_e2e.db`     | E2E testing (local & CI) |
 
 ### Usage Examples
 

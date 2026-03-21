@@ -469,7 +469,7 @@ class Course(DataModel):
         program_ids: Optional[List[str]] = None,
         active: bool = True,
     ) -> Dict[str, Any]:
-        """Create a new course record schema with program associations"""
+        """Create a new course schema with program associations"""
 
         return {
             "course_id": Course.generate_id(),
