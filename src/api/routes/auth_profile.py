@@ -5,15 +5,17 @@ Provides endpoints for user profile management, password changes, and
 password reset workflows.
 """
 
-from typing import Any, Dict, cast
+from typing import Any, Dict
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from flask.typing import ResponseReturnValue
 
 from src.api.utils import (
+    format_missing_required_field,
     get_current_user_id_safe,
     get_current_user_safe,
 )
+from src.api.utils import get_request_json_object as _get_request_json
 from src.database.database_service import (
     get_user_by_id,
     update_user,
@@ -21,8 +23,11 @@ from src.database.database_service import (
 )
 from src.services.auth_service import login_required
 from src.utils.constants import (
+    AUTHENTICATION_REQUIRED_MSG,
+    FAILED_TO_UPDATE_PROFILE_MSG,
     MISSING_REQUIRED_FIELD_EMAIL_MSG,
     NO_JSON_DATA_PROVIDED_MSG,
+    SESSION_USER_ID_NOT_FOUND_MSG,
     USER_NOT_FOUND_MSG,
 )
 from src.utils.logging_config import get_logger
@@ -32,14 +37,6 @@ auth_profile_bp = Blueprint("auth_profile", __name__, url_prefix="/api")
 
 # Initialize logger
 logger = get_logger(__name__)
-
-
-def _get_request_json() -> Dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
-
-
 # ===== PROFILE MANAGEMENT API ENDPOINTS =====
 
 
@@ -68,12 +65,15 @@ def update_profile_api() -> ResponseReturnValue:
         # Get current user
         current_user = get_current_user_safe()
         if not current_user:
-            return jsonify({"success": False, "error": "Authentication required"}), 401
+            return (
+                jsonify({"success": False, "error": AUTHENTICATION_REQUIRED_MSG}),
+                401,
+            )
 
         # Get request data
         data = _get_request_json()
         if not data:
-            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
         # Filter allowed fields - SECURITY: prevent email/role/institution changes
         allowed_fields = {"first_name", "last_name"}
@@ -91,9 +91,7 @@ def update_profile_api() -> ResponseReturnValue:
         user_id = get_current_user_id_safe()
         if not user_id:
             return (
-                jsonify(
-                    {"success": False, "error": "Session error: user ID not found"}
-                ),
+                jsonify({"success": False, "error": SESSION_USER_ID_NOT_FOUND_MSG}),
                 401,
             )
         success = update_user_profile(user_id, profile_data)
@@ -118,11 +116,14 @@ def update_profile_api() -> ResponseReturnValue:
                 200,
             )
         else:
-            return jsonify({"success": False, "error": "Failed to update profile"}), 500
+            return (
+                jsonify({"success": False, "error": FAILED_TO_UPDATE_PROFILE_MSG}),
+                500,
+            )
 
     except Exception as e:
         logger.error(f"Profile update error: {e}")
-        return jsonify({"success": False, "error": "Failed to update profile"}), 500
+        return jsonify({"success": False, "error": FAILED_TO_UPDATE_PROFILE_MSG}), 500
 
 
 @auth_profile_bp.route("/auth/change-password", methods=["POST"])
@@ -158,7 +159,7 @@ def change_password_api() -> ResponseReturnValue:
         # Get request data
         data = _get_request_json()
         if not data:
-            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
         # Validate required fields
         if "current_password" not in data:
@@ -183,9 +184,7 @@ def change_password_api() -> ResponseReturnValue:
         user_id = get_current_user_id_safe()
         if not user_id:
             return (
-                jsonify(
-                    {"success": False, "error": "Session error: user ID not found"}
-                ),
+                jsonify({"success": False, "error": SESSION_USER_ID_NOT_FOUND_MSG}),
                 401,
             )
         user = get_user_by_id(user_id)
@@ -309,7 +308,10 @@ def reset_password_api() -> ResponseReturnValue:
             if field not in data:
                 return (
                     jsonify(
-                        {"success": False, "error": f"Missing required field: {field}"}
+                        {
+                            "success": False,
+                            "error": format_missing_required_field(field),
+                        }
                     ),
                     400,
                 )

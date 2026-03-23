@@ -10,8 +10,8 @@ from src.app import app
 from tests.test_utils import create_test_session
 
 
-@pytest.fixture
-def client() -> Generator[Any, None, None]:
+@pytest.fixture(name="client")
+def crud_api_client_fixture() -> Generator[Any, None, None]:
     """Create test client."""
 
     app.config["TESTING"] = True
@@ -19,7 +19,9 @@ def client() -> Generator[Any, None, None]:
         yield client
 
 
-def create_site_admin_session(client: Any) -> None:
+def create_site_admin_session(  # noqa: ambiguity-mine - test helper name is intentionally generic
+    client: Any,
+) -> None:
     """Create session for site admin user."""
     user_data = {
         "user_id": "site-admin-123",
@@ -52,7 +54,9 @@ def create_instructor_session(client: Any) -> None:
     create_test_session(client, user_data)
 
 
-def get_csrf_token(client: Any) -> Any:
+def get_csrf_token(  # noqa: ambiguity-mine - test helper name is intentionally generic
+    client: Any,
+) -> Any:
     """Get CSRF token using Flask-WTF's generate_csrf."""
     from flask import session as flask_session
     from flask_wtf.csrf import generate_csrf

@@ -7,11 +7,12 @@ Admin only.
 """
 
 from functools import wraps
-from typing import Any, Callable, Dict, List, ParamSpec, TypeVar, cast
+from typing import Any, Callable, List, ParamSpec, TypeVar, cast
 
 from flask import Blueprint, jsonify, request
 from sqlalchemy.orm import Session
 
+from src.api.utils import get_request_json_object as _get_request_json
 from src.api.utils import handle_api_error
 from src.database.database_factory import get_database_service
 from src.services.auth_service import (  # Still need for mocking in tests
@@ -24,13 +25,7 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 
-def _get_request_json() -> Dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
-
-
-def lazy_permission_required(
+def lazy_permission_required(  # noqa: ambiguity-mine - shared route-local decorator pattern
     permission_name: str,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """

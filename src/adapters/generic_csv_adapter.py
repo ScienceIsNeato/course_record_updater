@@ -25,6 +25,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+from src.utils.constants import EXPORT_FAILED_MSG
+
 from .file_base_adapter import FileBaseAdapter
 
 logger = logging.getLogger(__name__)
@@ -523,7 +525,7 @@ class GenericCSVAdapter(FileBaseAdapter):
 
         except Exception as e:
             logger.error(f"Export failed: {e}", exc_info=True)
-            return False, f"Export failed: {str(e)}", 0
+            return False, EXPORT_FAILED_MSG.format(error=str(e)), 0
 
     def _write_entity_csv(
         self, entity_type: str, records: List[Dict[str, Any]], output_file: str

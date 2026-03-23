@@ -16,7 +16,7 @@ from tests.e2e.test_helpers import (
 )
 
 
-def _create_test_course(
+def _create_test_course(  # noqa: ambiguity-mine - test-local UI setup helper
     admin_page: Page, institution_id: str, csrf_token: str
 ) -> tuple[str, str]:
     """Create test course for UI test."""

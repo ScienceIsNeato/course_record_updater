@@ -20,7 +20,7 @@ from src.database.database_service import (
 from src.services.export_service import ExportConfig, ExportService
 
 
-def test_export() -> bool:
+def run_export_test() -> bool:
     """Test export functionality with simple test data."""
 
     print("🧪 Testing Export Service")
@@ -148,7 +148,7 @@ def test_export() -> bool:
 
 
 if __name__ == "__main__":
-    success = test_export()
+    success = run_export_test()
     print("\n" + "=" * 50)
     print(f"🏁 Result: {'✅ SUCCESS' if success else '❌ FAILED'}")
     sys.exit(0 if success else 1)

@@ -311,7 +311,7 @@ class MailtrapScraper:
 
 
 # Convenience functions for easy import
-def wait_for_email(
+def wait_for_email(  # noqa: ambiguity-mine - Mailtrap-specific polling interface
     recipient_email: str,
     subject_substring: Optional[str] = None,
     unique_identifier: Optional[str] = None,

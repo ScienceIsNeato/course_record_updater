@@ -25,7 +25,7 @@ from src.api.utils import (
 from src.database.database_service import get_all_institutions
 from src.services.auth_service import UserRole, login_required
 from src.services.export_service import ExportConfig, create_export_service
-from src.utils.constants import USER_NOT_AUTHENTICATED_MSG
+from src.utils.constants import ADAPTER_NOT_FOUND_MSG, USER_NOT_AUTHENTICATED_MSG
 from src.utils.logging_config import get_logger
 
 # Create blueprint
@@ -165,11 +165,12 @@ def export_data() -> ResponseReturnValue:
         try:
             adapter = export_service.registry.get_adapter_by_id(adapter_id)
             if not adapter:
-                logger.error(f"[EXPORT] Adapter not found: {adapter_id}")
+                adapter_not_found_msg = ADAPTER_NOT_FOUND_MSG.format(
+                    adapter_id=adapter_id
+                )
+                logger.error("[EXPORT] %s", adapter_not_found_msg)
                 return (
-                    jsonify(
-                        {"success": False, "error": f"Adapter not found: {adapter_id}"}
-                    ),
+                    jsonify({"success": False, "error": adapter_not_found_msg}),
                     400,
                 )
 

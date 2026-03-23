@@ -11,7 +11,14 @@ from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 
 import src.database.database_service as database_service
-from src.api.utils import get_current_institution_id_safe, handle_api_error
+from src.api.utils import (
+    format_missing_required_fields,
+    get_current_institution_id_safe,
+)
+from src.api.utils import get_request_json_object as _get_request_json
+from src.api.utils import (
+    handle_api_error,
+)
 from src.database.database_service import (
     delete_course_offering,
     get_all_course_offerings,
@@ -29,12 +36,6 @@ from src.utils.term_utils import TERM_STATUS_ACTIVE, get_term_status
 
 offerings_bp = Blueprint("offerings", __name__, url_prefix="/api")
 logger = get_logger(__name__)
-
-
-def _get_request_json() -> Dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
 
 
 def _filter_sections_by_params(
@@ -113,7 +114,9 @@ def _enrich_offerings_with_programs(
         offering["program_ids"] = ids
 
 
-def _strip_term_status_fields(payload: Dict[str, Any]) -> None:
+def _strip_term_status_fields(  # noqa: ambiguity-mine - route-local payload sanitizer
+    payload: Dict[str, Any],
+) -> None:
     """Remove unsupported status toggles from term payloads."""
     for key in ("status", "active", "is_active"):
         payload.pop(key, None)
@@ -283,7 +286,7 @@ def create_course_offering_endpoint() -> ResponseReturnValue:
                 jsonify(
                     {
                         "success": False,
-                        "error": f'Missing required fields: {", ".join(missing_fields)}',
+                        "error": format_missing_required_fields(missing_fields),
                     }
                 ),
                 400,

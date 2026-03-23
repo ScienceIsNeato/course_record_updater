@@ -24,6 +24,8 @@ from typing import Any
 import pandas as pd
 from flask import Flask
 
+from src.utils.logging_config import STANDARD_LOG_FORMAT
+
 # Add parent dir to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -31,7 +33,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.makedirs("logs", exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    format=STANDARD_LOG_FORMAT,
     handlers=[logging.FileHandler("logs/demo_advancer.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger("demo_advancer")

@@ -11,8 +11,12 @@ from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 
 from src.api.utils import (
+    format_missing_required_field,
     get_current_institution_id_safe,
     get_current_user_safe,
+)
+from src.api.utils import get_request_json_object as _get_request_json
+from src.api.utils import (
     handle_api_error,
 )
 from src.services.auth_service import permission_required
@@ -34,18 +38,6 @@ auth_invitations_bp = Blueprint("auth_invitations", __name__, url_prefix="/api")
 
 # Initialize logger
 logger = get_logger(__name__)
-
-
-def _get_request_json() -> Dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return (
-        cast(Dict[str, Any], payload)
-        if isinstance(payload, dict)
-        else cast(Dict[str, Any], {})
-    )
-
-
 # ===== INVITATION API ENDPOINTS =====
 
 
@@ -82,7 +74,10 @@ def create_invitation_api() -> ResponseReturnValue:
             if field not in data:
                 return (
                     jsonify(
-                        {"success": False, "error": f"Missing required field: {field}"}
+                        {
+                            "success": False,
+                            "error": format_missing_required_field(field),
+                        }
                     ),
                     400,
                 )
@@ -199,7 +194,10 @@ def accept_invitation_api() -> ResponseReturnValue:
             if field not in data:
                 return (
                     jsonify(
-                        {"success": False, "error": f"Missing required field: {field}"}
+                        {
+                            "success": False,
+                            "error": format_missing_required_field(field),
+                        }
                     ),
                     400,
                 )

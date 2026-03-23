@@ -25,7 +25,7 @@ from data.session import (
 
 
 @pytest.fixture
-def app() -> Any:
+def app() -> Any:  # noqa: ambiguity-mine - pytest fixture convention
     """Create Flask app for testing"""
     app = Flask(__name__)
     app.config["SECRET_KEY"] = "test-secret-key"
@@ -38,13 +38,15 @@ def app() -> Any:
 
 
 @pytest.fixture
-def client(app: Any) -> Any:
+def client(app: Any) -> Any:  # noqa: ambiguity-mine - pytest fixture convention
     """Create test client"""
     return app.test_client()
 
 
 @pytest.fixture
-def app_context(app: Any) -> Generator[Any, None, None]:
+def app_context(  # noqa: ambiguity-mine - pytest fixture convention
+    app: Any,
+) -> Generator[Any, None, None]:
     """Create app context for testing"""
     with app.app_context():
         yield app
@@ -58,7 +60,7 @@ def request_context(app: Any) -> Generator[None, None, None]:
 
 
 @pytest.fixture
-def sample_user_data() -> Any:
+def sample_user_data() -> Any:  # noqa: ambiguity-mine - test fixture convention
     """Sample user data for testing"""
     return {
         "user_id": "user123",

@@ -13,35 +13,16 @@ from src.utils.constants import CLOApprovalStatus, CLOStatus
 from src.utils.logging_config import get_logger
 from src.utils.time_utils import get_current_time
 
+from .clo_workflow_details import CLOWorkflowDetailsMixin
 from .email_service import EmailService
 
 logger = get_logger(__name__)
 
+SECTION_OUTCOME_NOT_FOUND_MSG = "Section outcome not found: {section_outcome_id}"
 
-class CLOWorkflowService:
+
+class CLOWorkflowService(CLOWorkflowDetailsMixin):
     """Service for managing CLO submission and approval workflows."""
-
-    @staticmethod
-    def _course_program_ids(course: Optional[Dict[str, Any]]) -> List[str]:
-        """Normalize program identifiers attached to a course."""
-        if not course:
-            return []
-
-        raw_program_ids = course.get("program_ids")
-        if isinstance(raw_program_ids, list):
-            program_id_values: List[Any] = cast(List[Any], raw_program_ids)
-            program_ids = [
-                str(program_id_value)
-                for program_id_value in program_id_values
-                if program_id_value
-            ]
-            if program_ids:
-                return program_ids
-        elif isinstance(raw_program_ids, str):
-            return [raw_program_ids]
-
-        program_id = course.get("program_id")
-        return [str(program_id)] if program_id else []
 
     @staticmethod
     def submit_clo_for_approval(
@@ -61,7 +42,9 @@ class CLOWorkflowService:
             outcome = db.get_section_outcome(section_outcome_id)
             if not outcome:
                 logger.error(
-                    f"Section outcome not found: {logger.sanitize(section_outcome_id)}"
+                    SECTION_OUTCOME_NOT_FOUND_MSG.format(
+                        section_outcome_id=logger.sanitize(section_outcome_id)
+                    )
                 )
                 return False
             if outcome.get("status") in [CLOStatus.APPROVED, CLOStatus.COMPLETED]:
@@ -115,7 +98,11 @@ class CLOWorkflowService:
         try:
             outcome = db.get_section_outcome(section_outcome_id)
             if not outcome:
-                logger.error(f"Section outcome not found: {section_outcome_id}")
+                logger.error(
+                    SECTION_OUTCOME_NOT_FOUND_MSG.format(
+                        section_outcome_id=section_outcome_id
+                    )
+                )
                 return False
 
             # Verify CLO is in a state that can be approved
@@ -175,7 +162,11 @@ class CLOWorkflowService:
         try:
             outcome = db.get_section_outcome(section_outcome_id)
             if not outcome:
-                logger.error(f"Section outcome not found: {section_outcome_id}")
+                logger.error(
+                    SECTION_OUTCOME_NOT_FOUND_MSG.format(
+                        section_outcome_id=section_outcome_id
+                    )
+                )
                 return {"success": False, "email_sent": False}
 
             # Verify CLO is in a state that can be sent back for rework
@@ -246,7 +237,11 @@ class CLOWorkflowService:
         try:
             outcome = db.get_section_outcome(section_outcome_id)
             if not outcome:
-                logger.error(f"Section outcome not found: {section_outcome_id}")
+                logger.error(
+                    SECTION_OUTCOME_NOT_FOUND_MSG.format(
+                        section_outcome_id=section_outcome_id
+                    )
+                )
                 return False
 
             # Allow reopening from Approved or NCI
@@ -300,7 +295,11 @@ class CLOWorkflowService:
         try:
             outcome = db.get_section_outcome(section_outcome_id)
             if not outcome:
-                logger.error(f"Section outcome not found: {section_outcome_id}")
+                logger.error(
+                    SECTION_OUTCOME_NOT_FOUND_MSG.format(
+                        section_outcome_id=section_outcome_id
+                    )
+                )
                 return False
 
             # Update status to NCI
@@ -428,7 +427,11 @@ class CLOWorkflowService:
         try:
             outcome = db.get_section_outcome(section_outcome_id)
             if not outcome:
-                logger.error(f"Section outcome not found: {section_outcome_id}")
+                logger.error(
+                    SECTION_OUTCOME_NOT_FOUND_MSG.format(
+                        section_outcome_id=section_outcome_id
+                    )
+                )
                 return False
 
             current_status = outcome.get("status")
@@ -949,652 +952,3 @@ class CLOWorkflowService:
         except Exception as e:
             logger.error(f"Error getting CLOs by status: {e}")
             return []
-
-    @staticmethod
-    def _expand_outcome_for_sections(outcome: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Expand a course outcome into one entry per section (fallback to course-level row)."""
-        course_outcome_id = CLOWorkflowService._resolve_outcome_id(outcome)
-        if not course_outcome_id:
-            return []
-
-        course_id = outcome.get("course_id")
-        sections = db.get_sections_by_course(course_id) if course_id else []
-        results: List[Dict[str, Any]] = []
-
-        if sections:
-            for section in sections:
-                # Handle both "section_id" (from to_dict) and "id" (legacy/mock format)
-                section_id = section.get("section_id") or section.get("id")
-                if not section_id:
-                    continue
-                # Get the SECTION-SPECIFIC outcome for this course outcome + section
-                section_outcome = db.get_section_outcome_by_course_outcome_and_section(
-                    course_outcome_id, str(section_id)
-                )
-
-                if section_outcome:
-                    # Use the SECTION outcome ID, not the course outcome ID
-                    section_outcome_id = section_outcome.get("id")
-                    if not section_outcome_id:
-                        continue
-                    # Merge essential fields from course_outcome since section_outcome
-                    # only has section-specific data (it links via outcome_id)
-                    # Fields like course_id, clo_number, description are on course_outcome
-                    enriched_section_outcome: Dict[str, Any] = {
-                        **section_outcome,
-                        "course_id": course_id,
-                        "clo_number": outcome.get("clo_number"),
-                        "description": outcome.get("description"),
-                        "assessment_method": outcome.get("assessment_method"),
-                    }
-                    details = CLOWorkflowService.get_outcome_with_details(
-                        str(section_outcome_id),
-                        section_data=section,
-                        outcome_data=enriched_section_outcome,
-                    )
-                    if details:
-                        results.append(details)
-        else:
-            # Fallback to course-level outcome if no sections
-            details = CLOWorkflowService.get_outcome_with_details(
-                course_outcome_id, outcome_data=outcome
-            )
-            if details:
-                results.append(details)
-
-        return results
-
-    @staticmethod
-    def _resolve_outcome_id(outcome: Dict[str, Any]) -> Optional[str]:
-        """Return the normalized outcome ID from a dict (handles outcome_id/id)."""
-        raw_id = outcome.get("outcome_id") or outcome.get("id")
-        return str(raw_id) if raw_id else None
-
-    @staticmethod
-    def _get_instructor_from_outcome(
-        outcome: Dict[str, Any],
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Get instructor details from the user who submitted the CLO.
-
-        For multi-section courses, use the submitted_by_user_id to identify
-        the correct instructor rather than picking arbitrarily from sections.
-        """
-        # Unassigned CLOs don't have a responsible instructor yet
-        if outcome.get("status") == "unassigned":
-            return None
-
-        instructor_id = outcome.get("submitted_by_user_id")
-        if instructor_id:
-            return db.get_user(instructor_id)
-
-        # Fallback: if not submitted yet, try to get instructor from first section
-        # This is a best-effort attempt for assigned but unsubmitted CLOs
-        course_id = outcome.get("course_id")
-        if not course_id:
-            return None
-
-        sections = db.get_sections_by_course(course_id)
-        if not sections:
-            return None
-
-        section = sections[0]
-        instructor_id = section.get("instructor_id")
-        if not instructor_id:
-            return None
-
-        return db.get_user(instructor_id)
-
-    @staticmethod
-    def _build_instructor_name(instructor: Dict[str, Any]) -> Optional[str]:
-        """Build instructor full name from user data."""
-        instructor_name = instructor.get("display_name")
-        if instructor_name:
-            return instructor_name
-
-        first = instructor.get("first_name", "")
-        last = instructor.get("last_name", "")
-        return f"{first} {last}".strip() or None
-
-    @staticmethod
-    def _get_term_name_for_instructor(
-        instructor_id: str, course_id: str, outcome_id: str
-    ) -> Optional[str]:
-        """Get term name from instructor's section for a course."""
-        try:
-            sections = db.get_sections_by_instructor(instructor_id)
-            relevant_sections = [s for s in sections if s.get("course_id") == course_id]
-            if relevant_sections:
-                term_id = relevant_sections[0].get("term_id")
-                if term_id:
-                    term = db.get_term_by_id(term_id)
-                    if term:
-                        return term.get("name")
-        except Exception as e:
-            logger.warning(f"Failed to resolve term for outcome {outcome_id}: {e}")
-        return None
-
-    @staticmethod
-    def _get_program_name_for_course(course_id: str) -> Optional[str]:
-        """Get program name from course's programs."""
-        programs = db.get_programs_for_course(course_id)
-        if programs:
-            return programs[0].get("name") or programs[0].get("program_name")
-        return None
-
-    @staticmethod
-    def _enrich_outcome_with_instructor_details(
-        outcome: Dict[str, Any],
-        course_id: str,
-        outcome_id: str,
-        section_data: Optional[Dict[str, Any]] = None,
-    ) -> tuple[
-        Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]
-    ]:
-        """Get instructor name, email, term name, instructor ID, and section ID."""
-        if section_data:
-            return CLOWorkflowService._resolve_section_context(section_data)
-
-        outcome_section_id = outcome.get("section_id")
-        if outcome_section_id:
-            resolved = CLOWorkflowService._resolve_from_section_id(
-                outcome, outcome_section_id
-            )
-            if resolved:
-                return resolved
-
-        return CLOWorkflowService._resolve_from_course_fallback(
-            outcome, course_id, outcome_id
-        )
-
-    @staticmethod
-    def _resolve_from_section_id(
-        outcome: Dict[str, Any], outcome_section_id: str
-    ) -> Optional[
-        tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]
-    ]:
-        """Attempt to resolve instructor details from a section ID associated with the outcome."""
-        # Use eager-loaded section if available (avoids N+1 query)
-        section = outcome.get("_section") or db.get_section_by_id(outcome_section_id)
-        if not section:
-            return None
-
-        (
-            instructor_name,
-            instructor_email,
-            term_name,
-            instructor_id,
-            section_id,
-        ) = CLOWorkflowService._resolve_section_context(section)
-
-        if not instructor_name:
-            instructor = CLOWorkflowService._get_instructor_from_outcome(outcome)
-            if instructor:
-                instructor_name = CLOWorkflowService._build_instructor_name(instructor)
-                instructor_email = instructor.get("email")
-                instructor_id = instructor.get("user_id") or instructor.get("id")
-
-        return (
-            instructor_name,
-            instructor_email,
-            term_name,
-            instructor_id,
-            section_id or str(outcome_section_id),
-        )
-
-    @staticmethod
-    def _resolve_from_course_fallback(
-        outcome: Dict[str, Any], course_id: str, outcome_id: str
-    ) -> tuple[
-        Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]
-    ]:
-        """Fallback resolution based on course and responsible instructor."""
-        instructor = CLOWorkflowService._get_instructor_from_outcome(outcome)
-        section_id = None
-
-        try:
-            sections = db.get_sections_by_course(course_id)
-            if sections:
-                if instructor:
-                    inst_id = instructor.get("user_id") or instructor.get("id")
-                    relevant = [
-                        s for s in sections if s.get("instructor_id") == inst_id
-                    ]
-                    if relevant:
-                        section_id = relevant[0].get("section_id") or relevant[0].get(
-                            "id"
-                        )
-
-                if not section_id:
-                    section_id = sections[0].get("section_id") or sections[0].get("id")
-        except Exception:
-            pass
-
-        if not instructor:
-            return None, None, None, None, section_id
-
-        instructor_name = CLOWorkflowService._build_instructor_name(instructor)
-        instructor_email = instructor.get("email")
-        instructor_id = instructor.get("user_id") or instructor.get("id")
-        term_name = (
-            CLOWorkflowService._get_term_name_for_instructor(
-                instructor_id, course_id, outcome_id
-            )
-            if instructor_id
-            else None
-        )
-
-        return instructor_name, instructor_email, term_name, instructor_id, section_id
-
-    @staticmethod
-    def _resolve_section_context(
-        section_data: Dict[str, Any],
-    ) -> tuple[
-        Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]
-    ]:
-        """Resolve instructor and term details for an explicit section."""
-        # Use eager-loaded instructor if available (avoids N+1 query)
-        instructor = section_data.get("_instructor")
-        instructor_id = section_data.get("instructor_id")
-
-        if not instructor and instructor_id:
-            instructor = db.get_user(instructor_id)
-
-        instructor_name = (
-            CLOWorkflowService._build_instructor_name(instructor)
-            if instructor
-            else None
-        )
-        instructor_email = instructor.get("email") if instructor else None
-
-        # Use eager-loaded offering and term if available (avoids N+1 queries)
-        term_name = None
-        offering = section_data.get("_offering")
-        if not offering:
-            offering_id = section_data.get("offering_id")
-            if offering_id:
-                offering = db.get_course_offering(offering_id)
-
-        if offering:
-            term = offering.get("_term")
-            if not term:
-                term_id = offering.get("term_id")
-                if term_id:
-                    term = db.get_term_by_id(term_id)
-            if term:
-                term_name = term.get("term_name") or term.get("name")
-
-        section_id = section_data.get("section_id") or section_data.get("id")
-        return instructor_name, instructor_email, term_name, instructor_id, section_id
-
-    @staticmethod
-    def get_outcome_with_details(
-        outcome_id: str,
-        section_data: Optional[Dict[str, Any]] = None,
-        outcome_data: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Get a section outcome with enriched course and instructor details.
-
-        Args:
-            outcome_id: The ID of the section outcome
-            section_data: Optional section metadata to scope the instructor/term context
-            outcome_data: Optional pre-fetched outcome dict (avoids extra query)
-
-        Returns:
-            Dictionary with outcome data plus course_number, course_title,
-            instructor_name, instructor_email, etc.
-        """
-        try:
-            outcome = outcome_data or db.get_section_outcome(outcome_id)
-            if not outcome:
-                return None
-
-            # Enrich outcome with template data if needed
-            enriched_outcome = CLOWorkflowService._enrich_outcome_with_template(outcome)
-
-            # Get course information
-            course = CLOWorkflowService._get_course_for_outcome(enriched_outcome)
-
-            # Get instructor and term details
-            instructor_details = CLOWorkflowService._get_instructor_details_for_outcome(
-                enriched_outcome, course, outcome_id, section_data
-            )
-
-            # Get program information
-            program_name = CLOWorkflowService._get_program_name_for_outcome(course)
-
-            # Build final details
-            final_details = CLOWorkflowService._build_final_outcome_details(
-                enriched_outcome, course, instructor_details, program_name, section_data
-            )
-
-            # Add history
-            CLOWorkflowService._add_outcome_history(final_details)
-
-            return final_details
-
-        except Exception as e:
-            logger.error(f"Error getting outcome with details: {e}")
-            return None
-
-    @staticmethod
-    def _enrich_outcome_with_template(outcome: Dict[str, Any]) -> Dict[str, Any]:
-        """Enrich outcome with template data if it's a raw section outcome."""
-        # Use eager-loaded template if available (avoids N+1 query)
-        if "_template" in outcome:
-            template = outcome["_template"]
-            enriched_outcome: Dict[str, Any] = {
-                **template,  # Base: Template fields (clo_number, description, course_id)
-                **outcome,  # Override: Section outcome fields (status, specific assessment)
-                "id": outcome["id"],  # Ensure we keep the section outcome ID
-            }
-            return enriched_outcome
-
-        # Fallback: fetch template if not eager loaded
-        raw_course_id = outcome.get("course_id")
-        if not raw_course_id and outcome.get("outcome_id"):
-            # Fetch the template (CourseOutcome)
-            template = db.get_course_outcome(outcome["outcome_id"])
-            if template:
-                # Merge template data (defaults) into outcome
-                # We preserve outcome's own values (status, etc) if they exist
-                enriched_outcome = {
-                    **template,  # Base: Template fields (clo_number, description, course_id)
-                    **outcome,  # Override: Section outcome fields (status, specific assessment)
-                    "id": outcome["id"],  # Ensure we keep the section outcome ID
-                }
-                return enriched_outcome
-        return outcome
-
-    @staticmethod
-    def _get_course_for_outcome(outcome: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Get course information for the outcome."""
-        # Use eager-loaded course from template if available (avoids N+1 query)
-        if "_template" in outcome and outcome["_template"].get("_course"):
-            return outcome["_template"]["_course"]
-
-        # Fallback: fetch course if not eager loaded
-        raw_course_id = outcome.get("course_id")
-        course_id = raw_course_id if isinstance(raw_course_id, str) else None
-        return db.get_course_by_id(course_id) if course_id else None
-
-    @staticmethod
-    def _get_instructor_details_for_outcome(
-        outcome: Dict[str, Any],
-        course: Optional[Dict[str, Any]],
-        outcome_id: str,
-        section_data: Optional[Dict[str, Any]],
-    ) -> Dict[str, Any]:
-        """Get instructor and term details for the outcome."""
-        if not course:
-            return {
-                "instructor_name": None,
-                "instructor_email": None,
-                "instructor_id": None,
-                "term_name": None,
-                "section_id": outcome.get("section_id"),
-            }
-
-        course_id = (
-            course.get("id")
-            if isinstance(course, dict) and course.get("id")
-            else course
-        )
-        (
-            instructor_name,
-            instructor_email,
-            term_name,
-            instructor_id,
-            resolved_section_id,
-        ) = CLOWorkflowService._enrich_outcome_with_instructor_details(
-            outcome,
-            course_id if isinstance(course_id, str) else "",
-            outcome_id,
-            section_data=section_data,
-        )
-
-        return {
-            "instructor_name": instructor_name,
-            "instructor_email": instructor_email,
-            "instructor_id": instructor_id,
-            "term_name": term_name,
-            "section_id": resolved_section_id or outcome.get("section_id"),
-        }
-
-    @staticmethod
-    def _get_program_name_for_outcome(
-        course: Optional[Dict[str, Any]],
-    ) -> Optional[str]:
-        """Get program name for the course."""
-        if not course:
-            return None
-
-        # Use eager-loaded programs if available (avoids N+1 query)
-        program_ids = CLOWorkflowService._course_program_ids(course)
-        if program_ids and len(program_ids) > 0:
-            # Programs might be eager loaded as _programs
-            if "_programs" in course:
-                programs = course["_programs"]
-                if programs and len(programs) > 0:
-                    return programs[0].get("name") or programs[0].get("program_name")
-
-        # Fallback: query programs
-        course_id = (
-            course.get("id")
-            if isinstance(course, dict) and course.get("id")
-            else course
-        )
-        if not course_id or not isinstance(course_id, str):
-            return None
-        return CLOWorkflowService._get_program_name_for_course(course_id)
-
-    @staticmethod
-    def _build_final_outcome_details(
-        enriched_outcome: Dict[str, Any],
-        course: Optional[Dict[str, Any]],
-        instructor_details: Dict[str, Any],
-        program_name: Optional[str],
-        section_data: Optional[Dict[str, Any]],
-    ) -> Dict[str, Any]:
-        """Build the final outcome details dictionary."""
-        final_details = enriched_outcome.copy()
-
-        section_id = instructor_details.get("section_id")
-        section_number = section_data.get("section_number") if section_data else None
-        section_status = section_data.get("status") if section_data else None
-
-        # Use eager-loaded section if available (avoids N+1 query!)
-        if not section_number and section_id:
-            # Check if section was eager loaded
-            section = enriched_outcome.get("_section")
-            if not section:
-                # Fallback: query if not eager loaded
-                section = db.get_section_by_id(section_id)
-            if section:
-                section_number = section_number or section.get("section_number")
-
-        final_details.update(
-            {
-                "course_number": (course.get("course_number") if course else None),
-                "course_title": course.get("course_title") if course else None,
-                "instructor_name": instructor_details.get("instructor_name"),
-                "instructor_email": instructor_details.get("instructor_email"),
-                "instructor_id": instructor_details.get("instructor_id"),
-                "section_id": section_id,
-                "section_number": section_number,
-                "section_status": section_status,
-                "program_name": program_name,
-                "term_name": instructor_details.get("term_name"),
-            }
-        )
-
-        return final_details
-
-    @staticmethod
-    def _add_outcome_history(final_details: Dict[str, Any]) -> None:
-        """Add unified history for the section outcome.
-
-        Uses eager-loaded history if available to avoid N+1 query.
-        """
-        # Use eager-loaded history if available (avoids N+1 query)
-        if "_history" in final_details:
-            final_details["history"] = final_details["_history"]
-            return
-
-        # Fallback: query history if not eager loaded
-        outcome_id_for_history = final_details.get("id")
-        if outcome_id_for_history:
-            history = db.get_outcome_history(outcome_id_for_history)
-            final_details["history"] = history
-        else:
-            final_details["history"] = []
-
-    @staticmethod
-    def _notify_program_admins(section_outcome_id: str, user_id: str) -> None:
-        """Send email alert to program admins about new submission."""
-        try:
-            from src.services.email_service import EmailService
-
-            outcome = db.get_section_outcome(section_outcome_id)
-            if not outcome:
-                logger.warning(
-                    f"Outcome not found for notification: {section_outcome_id}"
-                )
-                return
-
-            course = db.get_course_by_id(outcome["course_id"])
-            if not course:
-                logger.warning(
-                    f"Course not found for notification: {outcome['course_id']}"
-                )
-                return
-
-            instructor = db.get_user_by_id(user_id)
-            if not instructor:
-                logger.warning(f"Instructor not found for notification: {user_id}")
-                return
-
-            # Get program_id (courses have program_ids array, use first one)
-            program_ids = CLOWorkflowService._course_program_ids(course)
-            program_id = program_ids[0] if program_ids else None
-            if not program_id:
-                logger.warning(f"No program ID for course {course['id']}")
-                return
-
-            admins = db.get_program_admins(program_id)
-            if not admins:
-                logger.info(f"No program admins found for program {program_id}")
-                return
-
-            # Send email to each admin
-            instructor_name = f"{instructor['first_name']} {instructor['last_name']}"
-
-            # Fetch section data to get section_number (outcome doesn't have this field)
-            section_id = outcome.get("section_id")
-            section_number = "Unknown"
-            if section_id:
-                section_data = db.get_section_by_id(section_id)
-                if section_data:
-                    section_number = section_data.get("section_number", "Unknown")
-
-            course_code = f"{course['course_number']}-{section_number}"
-
-            for admin in admins:
-                try:
-                    EmailService.send_admin_submission_alert(
-                        to_email=admin["email"],
-                        admin_name=admin.get("first_name", "Admin"),
-                        instructor_name=instructor_name,
-                        course_code=course_code,
-                        clo_count=1,
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to send email to {admin['email']}: {e}")
-
-            logger.info(f"Sent admin alerts to {len(admins)} program admins")
-
-        except Exception as e:
-            logger.error(f"Failed to notify admins: {e}")
-            # Don't fail submission if email fails
-
-    @staticmethod
-    def _notify_program_admins_for_course(
-        course_id: str, user_id: str, clo_count: int
-    ) -> tuple[bool, Optional[str]]:
-        """
-        Send aggregated notification to program admins after course submission.
-        Returns (success, error_message)
-        """
-        try:
-            course = db.get_course_by_id(course_id)
-            if not course:
-                error_msg = f"Course not found: {course_id}"
-                logger.warning(error_msg)
-                return False, error_msg
-
-            instructor = db.get_user_by_id(user_id)
-            if not instructor:
-                error_msg = f"Instructor not found: {user_id}"
-                logger.warning(error_msg)
-                return False, error_msg
-
-            # Get program_id (courses have program_ids array, use first one)
-            program_ids = CLOWorkflowService._course_program_ids(course)
-            program_id = program_ids[0] if program_ids else None
-
-            admins: List[Dict[str, Any]] = []
-            if program_id:
-                # Try to get program admins first
-                admins = db.get_program_admins(program_id)
-                if not admins:
-                    logger.info(
-                        f"No program admins for program {program_id}, falling back to institution admins"
-                    )
-            else:
-                # No program assigned - go straight to institution admins
-                logger.info(
-                    f"No program ID for course {course_id}, using institution admins for notifications"
-                )
-
-            # Fall back to institution admins if no program or no program admins
-            if not admins:
-                institution_id = course.get("institution_id")
-                if institution_id:
-                    all_users = db.get_all_users(institution_id)
-                    admins = [
-                        u for u in all_users if u.get("role") == "institution_admin"
-                    ]
-
-            # Only error if no admins found at all
-            if not admins:
-                error_msg = (
-                    f"No program or institution admins found for course {course_id}"
-                )
-                logger.warning(error_msg)
-                return False, error_msg
-
-            instructor_name = f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip()
-            if not instructor_name:
-                instructor_name = instructor.get("email", "Instructor")
-
-            course_code = course.get("course_number") or course_id
-
-            for admin in admins:
-                try:
-                    EmailService.send_admin_submission_alert(
-                        to_email=admin["email"],
-                        admin_name=admin.get("first_name", "Admin"),
-                        instructor_name=instructor_name,
-                        course_code=course_code,
-                        clo_count=clo_count,
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to send email to {admin['email']}: {e}")
-
-            logger.info(f"Sent admin submission alerts to {len(admins)} program admins")
-            return True, None
-        except Exception as e:
-            error_msg = f"Failed to notify admins: {e}"
-            logger.error(error_msg)
-            return False, str(e)

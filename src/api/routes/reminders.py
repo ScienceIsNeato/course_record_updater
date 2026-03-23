@@ -7,12 +7,20 @@ Provides endpoints for sending course-specific assessment reminders to instructo
 from collections.abc import Mapping
 from typing import Any, Dict, cast
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from flask.typing import ResponseReturnValue
 
 import src.database.database_service as database_service
-from src.api.utils import get_current_user_safe
+from src.api.utils import (
+    get_current_user_safe,
+)
+from src.api.utils import get_request_json_object as _get_request_json
 from src.services.auth_service import login_required, permission_required
+from src.utils.constants import (
+    COURSE_NOT_FOUND_MSG,
+    DEFAULT_BASE_URL,
+    NO_JSON_DATA_PROVIDED_MSG,
+)
 from src.utils.logging_config import get_logger
 
 # Create blueprint
@@ -22,10 +30,12 @@ reminders_bp = Blueprint("reminders", __name__, url_prefix="/api")
 logger = get_logger(__name__)
 
 
-def _get_request_json() -> Dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
+def _display_name(person: Dict[str, Any], fallback: str) -> str:
+    """Return first/last name when present, otherwise a fallback."""
+    full_name = f"{person.get('first_name', '')} {person.get('last_name', '')}".strip()
+    if full_name:
+        return full_name
+    return str(person.get("email", fallback))
 
 
 @reminders_bp.route("/send-course-reminder", methods=["POST"])
@@ -53,7 +63,10 @@ def send_course_reminder_api() -> ResponseReturnValue:
         # Get request data
         data = _get_request_json()
         if not data:
-            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+            return (
+                jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}),
+                400,
+            )
 
         instructor_id = str(data.get("instructor_id", "")).strip()
         course_id = str(data.get("course_id", "")).strip()
@@ -85,17 +98,12 @@ def send_course_reminder_api() -> ResponseReturnValue:
         # Get course details
         course = database_service.get_course_by_id(course_id)
         if not course:
-            return (
-                jsonify({"success": False, "error": f"Course not found: {course_id}"}),
-                404,
-            )
+            return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
 
         # Get current user (admin sending the reminder)
         current_user = get_current_user_safe()
         assert current_user is not None
-        admin_name = f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip()
-        if not admin_name:
-            admin_name = str(current_user.get("email", "Your program administrator"))
+        admin_name = _display_name(current_user, "Your program administrator")
 
         # Get institution name
         institution_id = instructor.get("institution_id")
@@ -115,16 +123,12 @@ def send_course_reminder_api() -> ResponseReturnValue:
         # Use configured BASE_URL (not request.url_root which may be wrong on Cloud Run)
         from flask import current_app
 
-        from src.utils.constants import DEFAULT_BASE_URL
-
         app_config = cast(Mapping[str, Any], current_app.config)
         base_url = str(app_config.get("BASE_URL", DEFAULT_BASE_URL)).rstrip("/")
         assessment_url = f"{base_url}/assessments?course={course_id}"
 
         # Send email
-        instructor_name = f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip()
-        if not instructor_name:
-            instructor_name = instructor.get("email", "Instructor")
+        instructor_name = _display_name(instructor, "Instructor")
 
         course_number = course.get("course_number", "Course")
         course_title = course.get("course_title", "")

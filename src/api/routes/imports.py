@@ -25,6 +25,7 @@ from src.api.utils import (
 )
 from src.services.auth_service import UserRole, login_required, permission_required
 from src.services.import_service import import_excel
+from src.utils.constants import ADAPTER_NOT_FOUND_MSG
 from src.utils.logging_config import get_logger
 
 # Create blueprint
@@ -237,7 +238,7 @@ def _validate_excel_import_request() -> Tuple[Any, Dict[str, Any]]:
     adapter = registry.get_adapter_by_id(adapter_id)
 
     if not adapter:
-        raise ValueError(f"Adapter not found: {adapter_id}")
+        raise ValueError(ADAPTER_NOT_FOUND_MSG.format(adapter_id=adapter_id))
 
     # Get supported extensions
     adapter_info = adapter.get_adapter_info()

@@ -137,7 +137,7 @@ def get_email_by_subject(
     return None
 
 
-def wait_for_email(
+def wait_for_email(  # noqa: ambiguity-mine - compatibility wrapper around IMAP polling
     recipient_email: str,
     subject_substring: Optional[str] = None,
     timeout: int = 30,

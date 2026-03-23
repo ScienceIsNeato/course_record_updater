@@ -46,7 +46,7 @@ def _create_test_program(admin_page: Any, csrf_token: Any, institution_id: Any) 
     return program_response.json()["program_id"]
 
 
-def _create_test_course(
+def _create_test_course(  # noqa: ambiguity-mine - test-local setup helper
     admin_page: Any, csrf_token: Any, institution_id: Any, program_id: Any
 ) -> Any:
     """Create test course via API."""

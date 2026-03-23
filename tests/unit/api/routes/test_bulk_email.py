@@ -25,7 +25,9 @@ from src.api.routes.bulk_email import bulk_email_bp
 
 
 @pytest.fixture(scope="module", autouse=True)
-def bypass_permissions() -> Generator[None, None, None]:
+def bypass_permissions() -> (  # noqa: ambiguity-mine - test fixture name is intentionally generic
+    Generator[None, None, None]
+):
     """Bypass permission checks for all bulk_email route tests"""
     with patch(
         "src.services.auth_service.permission_required",

@@ -14,6 +14,9 @@ from flask.typing import ResponseReturnValue
 from src.api.utils import (
     get_current_institution_id_safe,
     get_current_user_id_safe,
+)
+from src.api.utils import get_request_json_object as _get_request_json
+from src.api.utils import (
     handle_api_error,
 )
 from src.database.database_service import get_program_by_id
@@ -50,12 +53,6 @@ logger = get_logger(__name__)
 
 PLO_NOT_FOUND_MSG = "Program outcome not found"
 MAPPING_NOT_FOUND_MSG = "PLO mapping not found"
-
-
-def _get_request_json() -> Dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
 
 
 def _validate_program(program_id: str) -> tuple[dict[str, Any] | None, Any]:

@@ -24,7 +24,7 @@ from src.utils.constants import (
     DASHBOARD_ENDPOINT,
     DATE_OVERRIDE_BANNER_PREFIX,
 )
-from src.utils.logging_config import get_app_logger
+from src.utils.logging_config import STANDARD_LOG_FORMAT, get_app_logger
 from src.utils.term_utils import get_current_term, get_term_display_name
 
 from .api import register_blueprints  # Modular API structure
@@ -114,7 +114,7 @@ def setup_logging() -> None:
     # Configure root logger
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        format=STANDARD_LOG_FORMAT,
         handlers=[
             logging.StreamHandler(sys.stdout),  # Console output
             logging.FileHandler("logs/server.log", mode="a"),  # File output
@@ -728,7 +728,9 @@ def outcomes_page() -> Union[str, Response]:
 # This endpoint is registered AFTER all other initialization, so when it responds
 # we know Flask is fully ready to serve requests (not just that the port is open)
 @app.route("/health")
-def health_check() -> tuple[dict[str, Any], int]:
+def health_check() -> (  # noqa: ambiguity-mine - app health entrypoint intentionally mirrors route name
+    tuple[dict[str, Any], int]
+):
     """
     Health check endpoint for E2E test infrastructure.
     Returns 200 OK when Flask is fully initialized and ready to serve requests.

@@ -29,6 +29,7 @@ from src.services.import_service import (
     create_import_report,
     import_excel,
 )
+from src.utils.constants import FILE_NOT_FOUND_MSG
 from src.utils.logging_config import get_logger
 
 # Get logger for CLI operations
@@ -155,8 +156,9 @@ def determine_conflict_strategy(args: CLIArgs) -> str:
 def validate_file(file_path: str) -> bool:
     """Validate that the input file exists and is accessible"""
     if not os.path.exists(file_path):
-        logger.error(f"File not found: {file_path}")
-        print(f"❌ Error: File not found: {file_path}")
+        file_not_found_msg = FILE_NOT_FOUND_MSG.format(file_path=file_path)
+        logger.error(file_not_found_msg)
+        print(f"❌ Error: {file_not_found_msg}")
         return False
 
     if not os.access(file_path, os.R_OK):

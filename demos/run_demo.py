@@ -42,6 +42,11 @@ RED = '\033[0;31m'
 BOLD = '\033[1m'
 NC = '\033[0m'  # No Color
 
+API_SUCCESS_FMT = "{GREEN}  ✓ Success: {status_code}{NC}"
+API_FAILURE_FMT = "{RED}  ✗ Failed: {status_code}{NC}"
+API_ERROR_FMT = "{RED}  Error: {response_text}{NC}"
+API_EXCEPTION_FMT = "{RED}  ✗ API call failed: {error}{NC}"
+
 class DemoRunner:
     def __init__(self, demo_file: Path, env: str, auto_mode: bool = False, start_step: int = 1,
                  fail_fast: bool = False, verify_only: bool = False):
@@ -72,6 +77,23 @@ class DemoRunner:
         except json.JSONDecodeError as e:
             self.print_error(f"Invalid JSON in demo file: {e}")
             return False
+
+    def _print_api_success(self, status_code: int) -> None:
+        print(API_SUCCESS_FMT.format(GREEN=GREEN, status_code=status_code, NC=NC))
+
+    def _print_api_failure(self, status_code: int, response_text: str = "") -> None:
+        print(API_FAILURE_FMT.format(RED=RED, status_code=status_code, NC=NC))
+        if response_text:
+            print(
+                API_ERROR_FMT.format(
+                    RED=RED,
+                    response_text=response_text[:200],
+                    NC=NC,
+                )
+            )
+
+    def _print_api_exception(self, error: Exception) -> None:
+        print(API_EXCEPTION_FMT.format(RED=RED, error=error, NC=NC))
 
     def setup_artifacts(self):
         """Create artifact directory for this demo run."""
@@ -654,19 +676,17 @@ class DemoRunner:
             response = self.session.post(full_url, json=substituted_data, headers=headers)
 
             if response.status_code in [200, 201]:
-                print(f"{GREEN}  ✓ Success: {response.status_code}{NC}")
+                self._print_api_success(response.status_code)
                 return True
             else:
                 error_msg = f"Step {self.current_step}: POST {endpoint} failed ({response.status_code})"
                 self.errors.append(error_msg)
-                print(f"{RED}  ✗ Failed: {response.status_code}{NC}")
-                if response.text:
-                    print(f"{RED}  Error: {response.text[:200]}{NC}")
+                self._print_api_failure(response.status_code, response.text)
                 return False
         except Exception as e:
             error_msg = f"Step {self.current_step}: POST {endpoint} exception: {e}"
             self.errors.append(error_msg)
-            print(f"{RED}  ✗ API call failed: {e}{NC}")
+            self._print_api_exception(e)
             return False
 
     def api_put(self, config: Dict) -> bool:
@@ -703,19 +723,17 @@ class DemoRunner:
             response = self.session.put(full_url, json=substituted_data, headers=headers)
 
             if response.status_code == 200:
-                print(f"{GREEN}  ✓ Success: {response.status_code}{NC}")
+                self._print_api_success(response.status_code)
                 return True
             else:
                 error_msg = f"Step {self.current_step}: PUT {endpoint} failed ({response.status_code})"
                 self.errors.append(error_msg)
-                print(f"{RED}  ✗ Failed: {response.status_code}{NC}")
-                if response.text:
-                    print(f"{RED}  Error: {response.text[:200]}{NC}")
+                self._print_api_failure(response.status_code, response.text)
                 return False
         except Exception as e:
             error_msg = f"Step {self.current_step}: PUT {endpoint} exception: {e}"
             self.errors.append(error_msg)
-            print(f"{RED}  ✗ API call failed: {e}{NC}")
+            self._print_api_exception(e)
             return False
 
     def api_get(self, config: Dict) -> bool:
@@ -732,15 +750,13 @@ class DemoRunner:
             response = self.session.get(full_url)
 
             if response.status_code == 200:
-                print(f"{GREEN}  ✓ Success: {response.status_code}{NC}")
+                self._print_api_success(response.status_code)
                 return True
             else:
-                print(f"{RED}  ✗ Failed: {response.status_code}{NC}")
-                if response.text:
-                    print(f"{RED}  Error: {response.text[:200]}{NC}")
+                self._print_api_failure(response.status_code, response.text)
                 return False
         except Exception as e:
-            print(f"{RED}  ✗ API call failed: {e}{NC}")
+            self._print_api_exception(e)
             return False
 
     def collect_artifacts(self, artifacts: Dict, step_num: int):

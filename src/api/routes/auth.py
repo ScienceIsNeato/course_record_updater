@@ -5,12 +5,19 @@ Provides endpoints for user registration, email verification,
 login/logout, session management, and account lockout handling.
 """
 
-from typing import Any, Dict, cast
+from typing import Any, Dict
 
-from flask import Blueprint, flash, jsonify, redirect, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, url_for
 from flask.typing import ResponseReturnValue
 
-from src.api.utils import get_current_user_safe, handle_api_error
+from src.api.utils import (
+    format_missing_required_field,
+    get_current_user_safe,
+)
+from src.api.utils import get_request_json_object as _get_request_json
+from src.api.utils import (
+    handle_api_error,
+)
 from src.services.auth_service import login_required
 from src.services.registration_service import (
     RegistrationError,
@@ -31,14 +38,6 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/api")
 
 # Initialize logger
 logger = get_logger(__name__)
-
-
-def _get_request_json() -> Dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
-
-
 # ===== REGISTRATION API ENDPOINTS =====
 
 
@@ -306,7 +305,10 @@ def login_api() -> ResponseReturnValue:
             if field not in data:
                 return (
                     jsonify(
-                        {"success": False, "error": f"Missing required field: {field}"}
+                        {
+                            "success": False,
+                            "error": format_missing_required_field(field),
+                        }
                     ),
                     400,
                 )
