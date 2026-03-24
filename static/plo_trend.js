@@ -23,6 +23,10 @@
   const TREND_FILL_COLOR = "rgba(13, 110, 253, 0.08)";
   const TREND_NULL_DASH = [4, 4];
   const THRESHOLD_LINE_COLOR = "rgba(108, 117, 125, 0.3)";
+  const trendPanelModule =
+    typeof module !== "undefined" && module.exports
+      ? require("./plo_trend_panel")
+      : globalThis.PloTrendPanel;
 
   /**
    * Destroy any Chart.js instances attached to canvas elements within an element.
@@ -97,6 +101,192 @@
     return Math.round(valid[valid.length - 1].pass_rate - valid[0].pass_rate);
   }
 
+  function buildSparklineInputs(trendPoints, terms, opts) {
+    const labels = terms.map((t) => t.term_name || "");
+    const data = trendPoints.map((p) =>
+      p !== null && p.pass_rate !== null ? p.pass_rate : NaN,
+    );
+    const currentTermIndices = new Set(
+      terms.map((t, i) => (t.is_current ? i : -1)).filter((i) => i >= 0),
+    );
+    const threshold = (opts && opts.threshold) || 70;
+    const selectedTermIndex =
+      opts && opts.selectedTermIndex != null && opts.selectedTermIndex >= 0
+        ? opts.selectedTermIndex
+        : -1;
+    const hasFuture =
+      selectedTermIndex >= 0 && selectedTermIndex < data.length - 1;
+    const lastValid = data.filter((d) => !isNaN(d));
+    const lineColor =
+      lastValid.length > 0 && lastValid[lastValid.length - 1] < threshold
+        ? TREND_LINE_COLOR_FAIL
+        : TREND_LINE_COLOR;
+    const lastValidIdx = data.reduce((acc, d, i) => (!isNaN(d) ? i : acc), -1);
+    const dotIdx =
+      selectedTermIndex >= 0 && !isNaN(data[selectedTermIndex])
+        ? selectedTermIndex
+        : lastValidIdx;
+    const pointColors = data.map((_, i) =>
+      hasFuture && i > selectedTermIndex ? TREND_LINE_COLOR_FUTURE : lineColor,
+    );
+
+    return {
+      currentTermIndices,
+      data,
+      hasFuture,
+      labels,
+      lineColor,
+      pointBorders: pointColors,
+      pointColors,
+      pointRadii: data.map((_, i) => (i === dotIdx ? 3 : 0)),
+      selectedTermIndex,
+      threshold,
+    };
+  }
+
+  function buildSparklineGradients(canvas) {
+    const blueRgb = "13, 110, 253";
+    const redRgb = "220, 53, 69";
+    const ctx2d = canvas.getContext("2d");
+    let gradientFillBlue = `rgba(${blueRgb}, ${TREND_FILL_ALPHA_TOP})`;
+    let gradientFillRed = `rgba(${redRgb}, ${TREND_FILL_ALPHA_TOP})`;
+    if (ctx2d) {
+      const grdB = ctx2d.createLinearGradient(0, 0, 0, SPARK_HEIGHT);
+      grdB.addColorStop(0, `rgba(${blueRgb}, ${TREND_FILL_ALPHA_TOP})`);
+      grdB.addColorStop(1, `rgba(${blueRgb}, ${TREND_FILL_ALPHA_BOTTOM})`);
+      gradientFillBlue = grdB;
+      const grdR = ctx2d.createLinearGradient(0, 0, 0, SPARK_HEIGHT);
+      grdR.addColorStop(0, `rgba(${redRgb}, ${TREND_FILL_ALPHA_TOP})`);
+      grdR.addColorStop(1, `rgba(${redRgb}, ${TREND_FILL_ALPHA_BOTTOM})`);
+      gradientFillRed = grdR;
+    }
+    return { gradientFillBlue, gradientFillRed };
+  }
+
+  function createBelowThresholdFillPlugin(threshold, gradientFillRed) {
+    return {
+      id: "belowThresholdFill",
+      afterDatasetsDraw(chart) {
+        const ds = chart.data.datasets[0];
+        if (!ds) return;
+        const meta = chart.getDatasetMeta(0);
+        const yScale = chart.scales.y;
+        if (!yScale || meta.data.length < 2) return;
+
+        const threshY = yScale.getPixelForValue(threshold);
+        const { left, right, bottom } = chart.chartArea;
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.beginPath();
+        let started = false;
+        for (let i = 0; i < meta.data.length; i++) {
+          const pt = meta.data[i];
+          const val = ds.data[i];
+          if (val === null || val === undefined || isNaN(val)) continue;
+          const px = pt.x;
+          const py = Math.max(pt.y, threshY);
+          if (!started) {
+            ctx.moveTo(px, py);
+            started = true;
+          } else {
+            ctx.lineTo(px, py);
+          }
+        }
+        if (!started) {
+          ctx.restore();
+          return;
+        }
+        ctx.lineTo(right, bottom);
+        ctx.lineTo(left, bottom);
+        ctx.closePath();
+        ctx.clip();
+        ctx.fillStyle =
+          typeof gradientFillRed === "object"
+            ? gradientFillRed
+            : `rgba(220, 53, 69, ${TREND_FILL_ALPHA_TOP})`;
+        ctx.fillRect(left, threshY, right - left, bottom - threshY);
+        ctx.restore();
+      },
+    };
+  }
+
+  function createThresholdLinePlugin(threshold) {
+    return {
+      id: "thresholdLine",
+      afterDraw(chart) {
+        const yScale = chart.scales.y;
+        if (!yScale) return;
+        const y = yScale.getPixelForValue(threshold);
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.strokeStyle = THRESHOLD_LINE_COLOR;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(chart.chartArea.left, y);
+        ctx.lineTo(chart.chartArea.right, y);
+        ctx.stroke();
+        ctx.restore();
+      },
+    };
+  }
+
+  function createSparkDiscontinuityPlugin(labels, opts) {
+    return {
+      id: "sparkDiscontinuity",
+      afterDraw(chart) {
+        const discs = (opts && opts.discontinuities) || [];
+        if (discs.length === 0) return;
+        const xScale = chart.scales.x;
+        if (!xScale) return;
+        const ctx = chart.ctx;
+        discs.forEach((d) => {
+          const ti = d.term_index;
+          if (ti < 0 || ti >= labels.length) return;
+          const xCurr = xScale.getPixelForValue(ti);
+          const xPrev = ti > 0 ? xScale.getPixelForValue(ti - 1) : xCurr;
+          const x = (xPrev + xCurr) / 2;
+          ctx.save();
+          ctx.strokeStyle = "rgba(255, 152, 0, 0.35)";
+          ctx.lineWidth = 1;
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(x, chart.chartArea.top);
+          ctx.lineTo(x, chart.chartArea.bottom);
+          ctx.stroke();
+          ctx.restore();
+        });
+      },
+    };
+  }
+
+  function createFutureWashPlugin(hasFuture, selectedTermIndex) {
+    return {
+      id: "futureWash",
+      afterDraw(chart) {
+        if (!hasFuture) return;
+        const xScale = chart.scales.x;
+        if (!xScale) return;
+        const xPos = xScale.getPixelForValue(selectedTermIndex);
+        const { top, bottom, right } = chart.chartArea;
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+        ctx.fillRect(xPos, top, right - xPos, bottom - top);
+        ctx.restore();
+      },
+    };
+  }
+
+  function createSparklinePlugins(config) {
+    return [
+      createBelowThresholdFillPlugin(config.threshold, config.gradientFillRed),
+      createThresholdLinePlugin(config.threshold),
+      createSparkDiscontinuityPlugin(config.labels, config.opts),
+      createFutureWashPlugin(config.hasFuture, config.selectedTermIndex),
+    ];
+  }
+
   /**
    * Create a tiny sparkline canvas element from trend data points.
    * Returns an HTMLCanvasElement ready to insert into the DOM.
@@ -112,80 +302,28 @@
 
     if (!trendPoints || trendPoints.length === 0) return canvas;
 
-    // Prepare data: map null points to NaN for Chart.js spanGaps
-    const labels = terms.map((t) => t.term_name || "");
-    const data = trendPoints.map((p) =>
-      p !== null && p.pass_rate !== null ? p.pass_rate : NaN,
-    );
-
-    // Use a segment-based approach for dashed lines at in-progress terms
-    const currentTermIndices = new Set(
-      terms.map((t, i) => (t.is_current ? i : -1)).filter((i) => i >= 0),
-    );
-
-    const threshold = (opts && opts.threshold) || 70;
-    const selectedTermIndex =
-      opts && opts.selectedTermIndex != null && opts.selectedTermIndex >= 0
-        ? opts.selectedTermIndex
-        : -1;
-    // Is there a "future" region after the selected term?
-    const hasFuture =
-      selectedTermIndex >= 0 && selectedTermIndex < data.length - 1;
-
-    // Determine line colour based on latest valid point
-    const lastValid = data.filter((d) => !isNaN(d));
-    const lineColor =
-      lastValid.length > 0 && lastValid[lastValid.length - 1] < threshold
-        ? TREND_LINE_COLOR_FAIL
-        : TREND_LINE_COLOR;
-
-    // Dot position: selected term if valid, else last valid point
-    const lastValidIdx = data.reduce((acc, d, i) => (!isNaN(d) ? i : acc), -1);
-    const dotIdx =
-      selectedTermIndex >= 0 && !isNaN(data[selectedTermIndex])
-        ? selectedTermIndex
-        : lastValidIdx;
-    const pointRadii = data.map((_, i) => (i === dotIdx ? 3 : 0));
-    const pointColors = data.map((_, i) =>
-      hasFuture && i > selectedTermIndex ? TREND_LINE_COLOR_FUTURE : lineColor,
-    );
-    const pointBorders = pointColors;
+    const sparkline = buildSparklineInputs(trendPoints, terms, opts);
 
     // Defer rendering until canvas is in the DOM
     requestAnimationFrame(() => {
       if (typeof Chart === "undefined") return;
 
-      // Build gradient fills (blue above threshold, red below)
-      const ctx2d = canvas.getContext("2d");
-      const blueRgb = "13, 110, 253";
-      const redRgb = "220, 53, 69";
-      let gradientFillBlue = `rgba(${blueRgb}, ${TREND_FILL_ALPHA_TOP})`;
-      let gradientFillRed = `rgba(${redRgb}, ${TREND_FILL_ALPHA_TOP})`;
-      if (ctx2d) {
-        const grdB = ctx2d.createLinearGradient(0, 0, 0, SPARK_HEIGHT);
-        grdB.addColorStop(0, `rgba(${blueRgb}, ${TREND_FILL_ALPHA_TOP})`);
-        grdB.addColorStop(1, `rgba(${blueRgb}, ${TREND_FILL_ALPHA_BOTTOM})`);
-        gradientFillBlue = grdB;
-        const grdR = ctx2d.createLinearGradient(0, 0, 0, SPARK_HEIGHT);
-        grdR.addColorStop(0, `rgba(${redRgb}, ${TREND_FILL_ALPHA_TOP})`);
-        grdR.addColorStop(1, `rgba(${redRgb}, ${TREND_FILL_ALPHA_BOTTOM})`);
-        gradientFillRed = grdR;
-      }
+      const gradients = buildSparklineGradients(canvas);
 
       new Chart(canvas, {
         type: "line",
         data: {
-          labels,
+          labels: sparkline.labels,
           datasets: [
             {
-              data,
-              borderColor: lineColor,
-              backgroundColor: gradientFillBlue,
+              data: sparkline.data,
+              borderColor: sparkline.lineColor,
+              backgroundColor: gradients.gradientFillBlue,
               fill: true,
               tension: 0.4,
-              pointRadius: pointRadii,
-              pointBackgroundColor: pointColors,
-              pointBorderColor: pointBorders,
+              pointRadius: sparkline.pointRadii,
+              pointBackgroundColor: sparkline.pointColors,
+              pointBorderColor: sparkline.pointBorders,
               pointBorderWidth: 1.5,
               borderWidth: 2,
               borderCapStyle: "round",
@@ -193,12 +331,15 @@
               spanGaps: true,
               segment: {
                 borderDash: (ctx) =>
-                  currentTermIndices.has(ctx.p1DataIndex)
+                  sparkline.currentTermIndices.has(ctx.p1DataIndex)
                     ? TREND_NULL_DASH
                     : undefined,
                 borderColor: (ctx) => {
                   // Grey for segments beyond the selected term
-                  if (hasFuture && ctx.p0DataIndex >= selectedTermIndex) {
+                  if (
+                    sparkline.hasFuture &&
+                    ctx.p0DataIndex >= sparkline.selectedTermIndex
+                  ) {
                     return TREND_LINE_COLOR_FUTURE;
                   }
                   // Red segment when both endpoints are below threshold
@@ -207,8 +348,8 @@
                   if (
                     !isNaN(p0) &&
                     !isNaN(p1) &&
-                    p0 < threshold &&
-                    p1 < threshold
+                    p0 < sparkline.threshold &&
+                    p1 < sparkline.threshold
                   ) {
                     return TREND_LINE_COLOR_FAIL;
                   }
@@ -237,112 +378,14 @@
             },
           },
         },
-        plugins: [
-          {
-            id: "belowThresholdFill",
-            afterDatasetsDraw(chart) {
-              const ds = chart.data.datasets[0];
-              if (!ds) return;
-              const meta = chart.getDatasetMeta(0);
-              const yScale = chart.scales.y;
-              if (!yScale || meta.data.length < 2) return;
-
-              const threshY = yScale.getPixelForValue(threshold);
-              const { left, right, bottom } = chart.chartArea;
-              const ctx = chart.ctx;
-              ctx.save();
-              ctx.beginPath();
-              let started = false;
-              for (let i = 0; i < meta.data.length; i++) {
-                const pt = meta.data[i];
-                const val = ds.data[i];
-                if (val === null || val === undefined || isNaN(val)) continue;
-                const px = pt.x;
-                const py = Math.max(pt.y, threshY);
-                if (!started) {
-                  ctx.moveTo(px, py);
-                  started = true;
-                } else {
-                  ctx.lineTo(px, py);
-                }
-              }
-              if (!started) {
-                ctx.restore();
-                return;
-              }
-              ctx.lineTo(right, bottom);
-              ctx.lineTo(left, bottom);
-              ctx.closePath();
-              ctx.clip();
-              if (typeof gradientFillRed === "object") {
-                ctx.fillStyle = gradientFillRed;
-              } else {
-                ctx.fillStyle = `rgba(220, 53, 69, ${TREND_FILL_ALPHA_TOP})`;
-              }
-              ctx.fillRect(left, threshY, right - left, bottom - threshY);
-              ctx.restore();
-            },
-          },
-          {
-            id: "thresholdLine",
-            afterDraw(chart) {
-              const yScale = chart.scales.y;
-              if (!yScale) return;
-              const y = yScale.getPixelForValue(threshold);
-              const ctx = chart.ctx;
-              ctx.save();
-              ctx.strokeStyle = THRESHOLD_LINE_COLOR;
-              ctx.lineWidth = 1;
-              ctx.setLineDash([3, 3]);
-              ctx.beginPath();
-              ctx.moveTo(chart.chartArea.left, y);
-              ctx.lineTo(chart.chartArea.right, y);
-              ctx.stroke();
-              ctx.restore();
-            },
-          },
-          {
-            id: "sparkDiscontinuity",
-            afterDraw(chart) {
-              const discs = (opts && opts.discontinuities) || [];
-              if (discs.length === 0) return;
-              const xScale = chart.scales.x;
-              if (!xScale) return;
-              const ctx = chart.ctx;
-              discs.forEach((d) => {
-                const ti = d.term_index;
-                if (ti < 0 || ti >= labels.length) return;
-                const xCurr = xScale.getPixelForValue(ti);
-                const xPrev = ti > 0 ? xScale.getPixelForValue(ti - 1) : xCurr;
-                const x = (xPrev + xCurr) / 2;
-                ctx.save();
-                ctx.strokeStyle = "rgba(255, 152, 0, 0.35)";
-                ctx.lineWidth = 1;
-                ctx.setLineDash([]);
-                ctx.beginPath();
-                ctx.moveTo(x, chart.chartArea.top);
-                ctx.lineTo(x, chart.chartArea.bottom);
-                ctx.stroke();
-                ctx.restore();
-              });
-            },
-          },
-          {
-            id: "futureWash",
-            afterDraw(chart) {
-              if (!hasFuture) return;
-              const xScale = chart.scales.x;
-              if (!xScale) return;
-              const xPos = xScale.getPixelForValue(selectedTermIndex);
-              const { top, bottom, right } = chart.chartArea;
-              const ctx = chart.ctx;
-              ctx.save();
-              ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
-              ctx.fillRect(xPos, top, right - xPos, bottom - top);
-              ctx.restore();
-            },
-          },
-        ],
+        plugins: createSparklinePlugins({
+          gradientFillRed: gradients.gradientFillRed,
+          hasFuture: sparkline.hasFuture,
+          labels: sparkline.labels,
+          opts,
+          selectedTermIndex: sparkline.selectedTermIndex,
+          threshold: sparkline.threshold,
+        }),
       });
     });
 
@@ -480,353 +523,16 @@
    * When opts.discontinuities is provided, renders vertical annotations.
    */
   function createTrendPanel(trendPoints, terms, opts) {
-    const panel = document.createElement("div");
-    panel.className = "plo-trend-panel";
-
-    // Visibility toggle button (eyeball icon)
-    const toggleBtn = document.createElement("button");
-    toggleBtn.type = "button";
-    toggleBtn.className = "plo-trend-panel-toggle";
-    toggleBtn.innerHTML = "&#128065;"; // 👁 open eye
-    toggleBtn.title = "Hide trend chart";
-    toggleBtn.setAttribute("aria-label", "Toggle trend chart visibility");
-    toggleBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const body = panel.querySelector(".plo-trend-panel-body");
-      if (!body) return;
-      const hidden = body.style.display === "none";
-      body.style.display = hidden ? "" : "none";
-      toggleBtn.innerHTML = hidden ? "&#128065;" : "&#128064;"; // 👁 vs 👀
-      toggleBtn.title = hidden ? "Hide trend chart" : "Show trend chart";
-      panel.classList.toggle("plo-trend-panel--collapsed", !hidden);
+    return trendPanelModule.createTrendPanel(trendPoints, terms, opts, {
+      CLO_COLORS,
+      TREND_FILL_COLOR,
+      TREND_LINE_COLOR,
+      TREND_LINE_COLOR_FAIL,
+      TREND_NULL_DASH,
+      cloLabel,
+      computeYRange,
+      createCompositionBar,
     });
-    panel.appendChild(toggleBtn);
-
-    // Wrap canvas + composition bar in a body div for show/hide
-    const body = document.createElement("div");
-    body.className = "plo-trend-panel-body";
-
-    const canvas = document.createElement("canvas");
-    canvas.style.width = "100%";
-    canvas.style.height = "300px";
-    body.appendChild(canvas);
-    panel.appendChild(body);
-
-    if (!trendPoints || trendPoints.length === 0) {
-      const msg = document.createElement("p");
-      msg.className = "text-muted text-center py-3";
-      msg.textContent = "No trend data available.";
-      body.appendChild(msg);
-      return panel;
-    }
-
-    const labels = terms.map((t) => t.term_name || "");
-    const data = trendPoints.map((p) =>
-      p !== null && p.pass_rate !== null ? p.pass_rate : NaN,
-    );
-
-    const threshold = (opts && opts.threshold) || 70;
-    const title = (opts && opts.title) || "Pass Rate Trend";
-    const clos = (opts && opts.clos) || [];
-    const discontinuities = (opts && opts.discontinuities) || [];
-
-    const currentTermIndices = new Set(
-      terms.map((t, i) => (t.is_current ? i : -1)).filter((i) => i >= 0),
-    );
-
-    // Per-point colour: red for below threshold, blue for at/above
-    const pointColors = data.map((d) =>
-      !isNaN(d) && d < threshold ? TREND_LINE_COLOR_FAIL : TREND_LINE_COLOR,
-    );
-    // Larger radius for fail points
-    const failRadii = data.map((d) => (!isNaN(d) && d < threshold ? 6 : 4));
-    const pointBorders = data.map((d) =>
-      !isNaN(d) && d < threshold ? TREND_LINE_COLOR_FAIL : TREND_LINE_COLOR,
-    );
-
-    // Determine line colour based on latest valid point
-    const lastValid = data.filter((d) => !isNaN(d));
-    const lineColor =
-      lastValid.length > 0 && lastValid[lastValid.length - 1] < threshold
-        ? TREND_LINE_COLOR_FAIL
-        : TREND_LINE_COLOR;
-
-    // --- Build datasets array ---
-    // For CLO-level charts (no CLO overlays), use a context-aware label
-    const mainLabel =
-      (opts && opts.mainLabel) || (clos.length > 0 ? "PLO Pass Rate %" : title);
-
-    const datasets = [
-      {
-        label: mainLabel,
-        data,
-        borderColor: lineColor,
-        backgroundColor: TREND_FILL_COLOR,
-        fill: true,
-        tension: 0.3,
-        pointRadius: failRadii,
-        pointHoverRadius: 6,
-        pointBackgroundColor: pointColors,
-        pointBorderColor: pointBorders,
-        pointBorderWidth: 1.5,
-        borderWidth: 2.5,
-        spanGaps: true,
-        order: 0, // draw on top
-        segment: {
-          borderDash: (ctx) =>
-            currentTermIndices.has(ctx.p1DataIndex)
-              ? TREND_NULL_DASH
-              : undefined,
-        },
-      },
-    ];
-
-    // --- CLO overlay lines (Feature #1) ---
-    if (clos.length > 0) {
-      clos.forEach((clo, ci) => {
-        const color = CLO_COLORS[ci % CLO_COLORS.length];
-        const cloData = (clo.trend || []).map((p) =>
-          p !== null && p.pass_rate !== null ? p.pass_rate : NaN,
-        );
-        datasets.push({
-          label: cloLabel(clo),
-          data: cloData,
-          borderColor: color,
-          backgroundColor: "transparent",
-          fill: false,
-          tension: 0.3,
-          pointRadius: 2,
-          pointHoverRadius: 4,
-          pointBackgroundColor: color,
-          pointBorderColor: color,
-          borderWidth: 1.5,
-          spanGaps: true,
-          order: 1, // behind PLO line
-        });
-      });
-    }
-
-    requestAnimationFrame(() => {
-      if (typeof Chart === "undefined") return;
-
-      new Chart(canvas, {
-        type: "line",
-        data: { labels, datasets },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: { duration: 300 },
-          plugins: {
-            legend: {
-              display: clos.length > 0,
-              position: "bottom",
-              labels: {
-                usePointStyle: true,
-                pointStyle: "line",
-                font: { size: 10 },
-                boxWidth: 20,
-                padding: 8,
-              },
-              onClick(_e, legendItem, legend) {
-                const chart = legend.chart;
-                const ci = legendItem.datasetIndex;
-                const allHidden = chart.data.datasets.every(
-                  (ds, i) => i === ci || !chart.isDatasetVisible(i),
-                );
-                if (allHidden) {
-                  // Un-solo: show all
-                  chart.data.datasets.forEach((_ds, i) => {
-                    chart.setDatasetVisibility(i, true);
-                  });
-                } else {
-                  // Solo: show only clicked
-                  chart.data.datasets.forEach((_ds, i) => {
-                    chart.setDatasetVisibility(i, i === ci);
-                  });
-                }
-                chart.update();
-              },
-            },
-            title: {
-              display: true,
-              text: title,
-              font: { size: 13, weight: "normal" },
-              color: "#6c757d",
-            },
-            tooltip: {
-              mode: "index",
-              intersect: false,
-              callbacks: {
-                title: (items) => items[0]?.label || "",
-                label: (item) => {
-                  if (item.raw === null || isNaN(item.raw)) return null;
-                  const dsIndex = item.datasetIndex;
-                  const pct = `${Math.round(item.raw)}%`;
-                  if (dsIndex === 0) {
-                    // Main line (PLO aggregate or CLO individual)
-                    const point = trendPoints[item.dataIndex];
-                    if (point && point.students_took) {
-                      return `${item.dataset.label}: ${pct} (${point.students_passed}/${point.students_took})`;
-                    }
-                    return `${item.dataset.label}: ${pct}`;
-                  }
-                  // CLO overlay line
-                  const cloIdx = dsIndex - 1;
-                  const clo = clos[cloIdx];
-                  const cloPoint = clo && (clo.trend || [])[item.dataIndex];
-                  if (cloPoint && cloPoint.students_took) {
-                    return `${item.dataset.label}: ${pct} (${cloPoint.students_passed}/${cloPoint.students_took})`;
-                  }
-                  return `${item.dataset.label}: ${pct}`;
-                },
-                afterLabel: (item) => {
-                  if (item.raw === null || isNaN(item.raw)) return "";
-                  const dsIndex = item.datasetIndex;
-                  if (dsIndex === 0) return ""; // PLO line — no description
-                  const clo = clos[dsIndex - 1];
-                  if (clo && clo.description) {
-                    const desc = clo.description;
-                    // Truncate long descriptions for tooltip readability
-                    return `  "${desc.length > 60 ? desc.slice(0, 57) + "…" : desc}"`;
-                  }
-                  return "";
-                },
-                // Filter out null entries from tooltip
-                filter: (item) => item.raw !== null && !isNaN(item.raw),
-                afterBody: (items) => {
-                  if (!discontinuities || discontinuities.length === 0) {
-                    return "";
-                  }
-                  const idx = items[0] && items[0].dataIndex;
-                  if (idx == null) return "";
-                  // Find any discontinuity AT this term index
-                  const disc = discontinuities.find(
-                    (d) => d.term_index === idx,
-                  );
-                  if (!disc) return "";
-                  const lines = ["\n─── Course changes ───"];
-                  const prev = [];
-                  const curr = [];
-                  if (disc.removed && disc.removed.length > 0) {
-                    disc.removed.forEach((r) => prev.push(r.label));
-                  }
-                  if (disc.added && disc.added.length > 0) {
-                    disc.added.forEach((a) => curr.push(a.label));
-                  }
-                  if (prev.length > 0 || curr.length > 0) {
-                    const maxLen = Math.max(prev.length, curr.length);
-                    for (let i = 0; i < maxLen; i++) {
-                      const left = prev[i] ? "− " + prev[i] : "";
-                      const right = curr[i] ? "+ " + curr[i] : "";
-                      if (left && right) {
-                        lines.push(left + "  │  " + right);
-                      } else {
-                        lines.push(left || "          │  " + right);
-                      }
-                    }
-                  }
-                  return lines;
-                },
-              },
-            },
-          },
-          scales: {
-            x: {
-              grid: { display: false },
-              ticks: { font: { size: 11 } },
-            },
-            y: {
-              ...computeYRange(datasets),
-              ticks: {
-                callback: (v) => v + "%",
-                font: { size: 11 },
-              },
-              grid: { color: "rgba(0,0,0,0.05)" },
-            },
-          },
-          // Click-to-drill: clicking a data point sets the term filter
-          onClick(_event, elements) {
-            if (!elements || elements.length === 0) return;
-            const idx = elements[0].index;
-            const term = terms[idx];
-            if (!term) return;
-
-            const termFilter = document.getElementById("ploTermFilter");
-            if (termFilter) {
-              termFilter.value = term.term_id;
-              termFilter.dispatchEvent(new Event("change"));
-            }
-          },
-        },
-        plugins: [
-          {
-            id: "thresholdLine",
-            afterDraw(chart) {
-              const yScale = chart.scales.y;
-              if (!yScale) return;
-              const y = yScale.getPixelForValue(threshold);
-              const ctx = chart.ctx;
-              ctx.save();
-              ctx.strokeStyle = "rgba(220, 53, 69, 0.4)";
-              ctx.lineWidth = 1;
-              ctx.setLineDash([6, 4]);
-              ctx.beginPath();
-              ctx.moveTo(chart.chartArea.left, y);
-              ctx.lineTo(chart.chartArea.right, y);
-              ctx.stroke();
-              // Label
-              ctx.fillStyle = "rgba(220, 53, 69, 0.6)";
-              ctx.font = "10px sans-serif";
-              ctx.fillText(
-                `Threshold ${threshold}%`,
-                chart.chartArea.right - 80,
-                y - 4,
-              );
-              ctx.restore();
-            },
-          },
-          {
-            id: "discontinuityLines",
-            afterDraw(chart) {
-              if (!discontinuities || discontinuities.length === 0) return;
-              const xScale = chart.scales.x;
-              const yScale = chart.scales.y;
-              if (!xScale || !yScale) return;
-              const ctx = chart.ctx;
-
-              discontinuities.forEach((d) => {
-                const ti = d.term_index;
-                if (ti < 0 || ti >= labels.length) return;
-
-                // Subtle hairline between previous and current term
-                const xCurr = xScale.getPixelForValue(ti);
-                const xPrev = ti > 0 ? xScale.getPixelForValue(ti - 1) : xCurr;
-                const x = (xPrev + xCurr) / 2;
-
-                ctx.save();
-                ctx.strokeStyle = "rgba(255, 152, 0, 0.2)";
-                ctx.lineWidth = 1;
-                ctx.setLineDash([]);
-                ctx.beginPath();
-                ctx.moveTo(x, chart.chartArea.top);
-                ctx.lineTo(x, chart.chartArea.bottom);
-                ctx.stroke();
-                ctx.restore();
-                // Text labels removed — details shown in tooltip afterBody
-              });
-            },
-          },
-        ],
-      });
-    });
-
-    // --- CLO Composition bar (Feature #4) ---
-    if (clos.length > 0) {
-      const compBar = createCompositionBar(clos, terms);
-      body.appendChild(compBar);
-    }
-
-    return panel;
   }
 
   // -----------------------------------------------------------------------

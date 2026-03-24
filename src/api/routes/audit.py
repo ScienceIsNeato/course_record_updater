@@ -31,6 +31,18 @@ audit_bp = Blueprint("audit", __name__, url_prefix="/api/audit")
 logger = get_logger(__name__)
 
 
+def _build_audit_export_response(export_bytes: bytes, export_format: str) -> Response:
+    """Return a download response for audit export bytes."""
+    export_io = BytesIO(export_bytes)
+    export_io.seek(0)
+    timestamp = get_current_time().strftime("%Y%m%d_%H%M%S")
+    filename = f"audit_logs_{timestamp}.{export_format}"
+    mime_type = "text/csv" if export_format == "csv" else "application/json"
+    return send_file(
+        export_io, as_attachment=True, download_name=filename, mimetype=mime_type
+    )
+
+
 @audit_bp.route("/recent", methods=["GET"])
 @permission_required("manage_users")  # Site admin only
 def get_recent_logs() -> tuple[Any, int]:
@@ -321,20 +333,7 @@ def export_logs() -> Union[Response, tuple[Any, int]]:
             format_type=export_format,
         )
 
-        # Create BytesIO object for send_file
-        export_io = BytesIO(export_bytes)
-        export_io.seek(0)
-
-        # Generate filename with timestamp
-        timestamp = get_current_time().strftime("%Y%m%d_%H%M%S")
-        filename = f"audit_logs_{timestamp}.{export_format}"
-
-        # Determine mime type
-        mime_type = "text/csv" if export_format == "csv" else "application/json"
-
-        return send_file(
-            export_io, as_attachment=True, download_name=filename, mimetype=mime_type
-        )
+        return _build_audit_export_response(export_bytes, export_format)
 
     except Exception as e:
         return handle_api_error(e, "Export audit logs", "Failed to export audit logs")

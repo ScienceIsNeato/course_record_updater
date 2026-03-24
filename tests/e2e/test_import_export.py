@@ -26,6 +26,68 @@ from tests.e2e.conftest import BASE_URL
 # (Removed database_service imports to enforce UI-based verification)
 
 
+def capture_login_page_events(page: Page) -> tuple[list[str], list[str]]:
+    """Capture console logs and script responses while the login page loads."""
+    console_logs: list[str] = []
+    script_loads: list[str] = []
+    page.on("console", lambda msg: console_logs.append(f"[{msg.type}] {msg.text}"))
+    page.on(
+        "response",
+        lambda response: (
+            script_loads.append(response.url) if ".js" in response.url else None
+        ),
+    )
+    return console_logs, script_loads
+
+
+def evaluate_login_page_state(
+    page: Page,
+) -> tuple[dict[str, object], dict[str, object], bool, dict[str, object]]:
+    """Collect auth script, form, and initialization state from the page."""
+    form_check = page.evaluate("""
+        () => {
+            const form = document.getElementById('loginForm');
+            if (!form) return {exists: false};
+
+            return {
+                exists: true,
+                formOnsubmit: form.onsubmit ? 'set' : 'not set',
+                hasAction: form.action || 'none',
+                hasMethod: form.method || 'get'
+            };
+        }
+    """)
+    functions_check = page.evaluate("""
+        () => {
+            return {
+                handleLogin: typeof handleLogin,
+                initializeLoginForm: typeof initializeLoginForm,
+                initializePage: typeof initializePage,
+                getCSRFToken: typeof getCSRFToken
+            };
+        }
+    """)
+    dom_ready = page.evaluate("""
+        () => {
+            return document.readyState === 'complete' || document.readyState === 'interactive';
+        }
+    """)
+    initialization_check = page.evaluate("""
+        () => {
+            const currentPath = window.location.pathname;
+            const form = document.getElementById('loginForm');
+
+            return {
+                currentPath: currentPath,
+                pathIncludesLogin: currentPath.includes('/login'),
+                formExists: !!form,
+                formListenerCount: form ? (form._events ? Object.keys(form._events).length : 'unknown') : 0
+            };
+        }
+    """)
+    return form_check, functions_check, dom_ready, initialization_check
+
+
 # ========================================
 # SCENARIO 0: Basic Health Check & Login Debugging
 # ========================================
@@ -81,18 +143,7 @@ def test_login_script_loading(page: Page, server_running: bool) -> None:
     Verifies: auth.js loads, DOMContentLoaded fires, initializeLoginForm runs,
               event listener is attached to form
     """
-    # Listen for console messages
-    console_logs = []
-    page.on("console", lambda msg: console_logs.append(f"[{msg.type}] {msg.text}"))
-
-    # Listen for script loads
-    script_loads = []
-    page.on(
-        "response",
-        lambda response: (
-            script_loads.append(response.url) if ".js" in response.url else None
-        ),
-    )
+    console_logs, script_loads = capture_login_page_events(page)
 
     # Navigate to login
     page.goto(f"{BASE_URL}/login")
@@ -105,67 +156,13 @@ def test_login_script_loading(page: Page, server_running: bool) -> None:
         auth_js_url = [url for url in script_loads if "auth.js" in url][0]
         print(f"   URL: {auth_js_url}")
 
-    # Check if form exists and has properties
-    form_check = page.evaluate("""
-        () => {
-            const form = document.getElementById('loginForm');
-            if (!form) return {exists: false};
-            
-            return {
-                exists: true,
-                formOnsubmit: form.onsubmit ? 'set' : 'not set',
-                hasAction: form.action || 'none',
-                hasMethod: form.method || 'get'
-            };
-        }
-    """)
+    form_check, functions_check, dom_ready, initialization_check = (
+        evaluate_login_page_state(page)
+    )
 
     print(f"🔍 Form properties: {form_check}")
-
-    # Check if functions are defined in global scope
-    functions_check = page.evaluate("""
-        () => {
-            return {
-                handleLogin: typeof handleLogin,
-                initializeLoginForm: typeof initializeLoginForm,
-                initializePage: typeof initializePage,
-                getCSRFToken: typeof getCSRFToken
-            };
-        }
-    """)
-
     print(f"🔍 Global functions defined: {functions_check}")
-
-    # Check if DOMContentLoaded event has fired
-    dom_ready = page.evaluate("""
-        () => {
-            return document.readyState === 'complete' || document.readyState === 'interactive';
-        }
-    """)
-
     print(f"✅ DOM ready: {dom_ready}")
-
-    # CRITICAL: Check if initializePage() was actually called
-    # We can infer this by checking if event listeners were attached
-    initialization_check = page.evaluate("""
-        () => {
-            // Check current path that initializePage would see
-            const currentPath = window.location.pathname;
-            
-            // Check if form has submit listener (indirect check)
-            const form = document.getElementById('loginForm');
-            
-            return {
-                currentPath: currentPath,
-                pathIncludesLogin: currentPath.includes('/login'),
-                formExists: !!form,
-                // Try to manually check if listener was added
-                // by attempting to access internal properties (may not work)
-                formListenerCount: form ? (form._events ? Object.keys(form._events).length : 'unknown') : 0
-            };
-        }
-    """)
-
     print(f"🔍 Initialization check: {initialization_check}")
 
     # Print any console logs

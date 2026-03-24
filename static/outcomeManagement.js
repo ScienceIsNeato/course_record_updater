@@ -23,6 +23,45 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeEditOutcomeModal();
 });
 
+function loadCreateOutcomeCourses(select) {
+  return fetch("/api/courses")
+    .then((resp) => (resp.ok ? resp.json() : null))
+    .then((data) => {
+      if (!data) return;
+      const courses = data.courses || [];
+      courses.sort((a, b) =>
+        (a.course_number || "").localeCompare(b.course_number || ""),
+      );
+      courses.forEach((course) => {
+        const opt = document.createElement("option");
+        opt.value = course.course_id;
+        opt.textContent = `${course.course_number} - ${course.course_title}`;
+        select.appendChild(opt);
+      });
+    });
+}
+
+function getCreateOutcomeData() {
+  const assessmentValue = document.getElementById(
+    "outcomeAssessmentMethod",
+  ).value;
+  return {
+    course_id: document.getElementById("outcomeCourseId").value,
+    clo_number: document.getElementById("outcomeCloNumber").value,
+    description: document.getElementById("outcomeDescription").value,
+    assessment_method: assessmentValue || null,
+    active: document.getElementById("outcomeActive").checked,
+  };
+}
+
+function setCreateOutcomeButtonLoading(createBtn, isLoading) {
+  const btnText = createBtn.querySelector(".btn-text");
+  const btnSpinner = createBtn.querySelector(".btn-spinner");
+  btnText.classList.toggle("d-none", isLoading);
+  btnSpinner.classList.toggle("d-none", !isLoading);
+  createBtn.disabled = isLoading;
+}
+
 /**
  * Initialize Create Outcome Modal
  * Sets up form submission for new outcomes
@@ -42,22 +81,7 @@ function initializeCreateOutcomeModal() {
       // Only load if empty or just has placeholder
       if (select && select.options.length <= 1) {
         try {
-          const resp = await fetch("/api/courses");
-          if (resp.ok) {
-            const data = await resp.json();
-            const courses = data.courses || [];
-            // sort by name
-            courses.sort((a, b) =>
-              (a.course_number || "").localeCompare(b.course_number || ""),
-            );
-
-            courses.forEach((c) => {
-              const opt = document.createElement("option");
-              opt.value = c.course_id;
-              opt.textContent = `${c.course_number} - ${c.course_title}`;
-              select.appendChild(opt);
-            });
-          }
+          await loadCreateOutcomeCourses(select);
         } catch (e) {
           console.error("Failed to load courses for dropdown", e);
         }
@@ -67,27 +91,10 @@ function initializeCreateOutcomeModal() {
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-
-    const assessmentValue = document.getElementById(
-      "outcomeAssessmentMethod",
-    ).value;
-
-    const outcomeData = {
-      course_id: document.getElementById("outcomeCourseId").value,
-      clo_number: document.getElementById("outcomeCloNumber").value,
-      description: document.getElementById("outcomeDescription").value,
-      assessment_method: assessmentValue || null,
-      active: document.getElementById("outcomeActive").checked,
-    };
+    const outcomeData = getCreateOutcomeData();
 
     const createBtn = document.getElementById("createOutcomeBtn");
-    const btnText = createBtn.querySelector(".btn-text");
-    const btnSpinner = createBtn.querySelector(".btn-spinner");
-
-    // Show loading state
-    btnText.classList.add("d-none");
-    btnSpinner.classList.remove("d-none");
-    createBtn.disabled = true;
+    setCreateOutcomeButtonLoading(createBtn, true);
 
     try {
       const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
@@ -132,10 +139,7 @@ function initializeCreateOutcomeModal() {
         "Failed to create outcome. Please check your connection and try again.",
       );
     } finally {
-      // Restore button state
-      btnText.classList.remove("d-none");
-      btnSpinner.classList.add("d-none");
-      createBtn.disabled = false;
+      setCreateOutcomeButtonLoading(createBtn, false);
     }
   });
 }

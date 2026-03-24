@@ -729,6 +729,134 @@ function showSuccess(message) {
   showMessage(message, "success");
 }
 
+function updateOverrideBannerMessage(
+  overrideBanner,
+  overrideBannerBody,
+  message,
+) {
+  if (!overrideBanner || !overrideBannerBody) {
+    return;
+  }
+
+  const overridePrefix = overrideBanner.dataset?.prefix || "Date Override Mode";
+  overrideBannerBody.textContent = "";
+
+  const prefixEl = document.createElement("strong");
+  prefixEl.textContent = `${overridePrefix}:`;
+  overrideBannerBody.appendChild(prefixEl);
+
+  const textEl = document.createElement("span");
+  textEl.textContent = message;
+  overrideBannerBody.appendChild(textEl);
+}
+
+function formatOverrideDate(dateValue) {
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(new Date(dateValue));
+}
+
+async function submitDateOverrideRequest(method, payload) {
+  const response = await fetch("/api/profile/system-date", {
+    method,
+    headers: {
+      ...(payload && { "Content-Type": "application/json" }),
+      "X-CSRFToken": getCSRFToken(),
+    },
+    ...(payload && { body: JSON.stringify(payload) }),
+  });
+
+  return {
+    response,
+    result: await response.json(),
+  };
+}
+
+async function handleSetDateOverride(setBtn, dateInput, clearBtn, bannerState) {
+  const dateValue = dateInput.value;
+  if (!dateValue) {
+    showError("Please select a date and time");
+    return;
+  }
+
+  try {
+    setLoadingState(setBtn, true);
+    const { response, result } = await submitDateOverrideRequest("POST", {
+      date: new Date(dateValue).toISOString(),
+    });
+
+    if (response.ok && result.success) {
+      showSuccess("System date override set. Refreshing...");
+
+      if (bannerState.overrideBanner) {
+        bannerState.overrideBanner.classList.remove("d-none");
+      }
+      updateOverrideBannerMessage(
+        bannerState.overrideBanner,
+        bannerState.overrideBannerBody,
+        ` Viewing data as of ${formatOverrideDate(dateValue)}.`,
+      );
+
+      if (clearBtn) {
+        clearBtn.disabled = false;
+      }
+
+      if (result.force_refresh) {
+        setTimeout(() => window.location.reload(), 1000);
+      }
+      return;
+    }
+
+    showError(result.error || "Failed to set date override");
+  } catch (err) {
+    showError("Network error: " + err.message);
+  } finally {
+    setLoadingState(setBtn, false);
+  }
+}
+
+async function handleClearDateOverride(clearBtn, dateInput, bannerState) {
+  try {
+    setLoadingState(clearBtn, true);
+    const { response, result } = await submitDateOverrideRequest("DELETE");
+
+    if (response.ok && result.success) {
+      showSuccess("System date reset to live. Refreshing...");
+
+      if (bannerState.overrideBanner) {
+        bannerState.overrideBanner.classList.add("d-none");
+      }
+      updateOverrideBannerMessage(
+        bannerState.overrideBanner,
+        bannerState.overrideBannerBody,
+        " Using the current system time.",
+      );
+
+      if (dateInput) {
+        dateInput.value = "";
+      }
+
+      clearBtn.disabled = true;
+
+      if (result.force_refresh) {
+        setTimeout(() => window.location.reload(), 1000);
+      }
+      return;
+    }
+
+    showError(result.error || "Failed to clear date override");
+  } catch (err) {
+    showError("Network error: " + err.message);
+  } finally {
+    setLoadingState(clearBtn, false);
+  }
+}
+
 function showMessage(message, type) {
   // Remove existing messages
   const existingMessages = document.querySelectorAll(".auth-message-dynamic");
@@ -939,119 +1067,17 @@ function initializeDateOverride() {
   const overrideBannerBody = overrideBanner?.querySelector(
     ".override-banner-body",
   );
-  const overridePrefix =
-    overrideBanner?.dataset?.prefix || "Date Override Mode";
+  const bannerState = { overrideBanner, overrideBannerBody };
 
   if (setBtn && dateInput) {
     setBtn.addEventListener("click", async () => {
-      const dateValue = dateInput.value;
-      if (!dateValue) {
-        showError("Please select a date and time");
-        return;
-      }
-
-      try {
-        setLoadingState(setBtn, true);
-        const response = await fetch("/api/profile/system-date", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCSRFToken(),
-          },
-          body: JSON.stringify({ date: new Date(dateValue).toISOString() }),
-        });
-
-        const result = await response.json();
-        if (response.ok && result.success) {
-          showSuccess("System date override set. Refreshing...");
-
-          if (overrideBanner && overrideBannerBody) {
-            const formattedDate = new Intl.DateTimeFormat(undefined, {
-              year: "numeric",
-              month: "long",
-              day: "2-digit",
-              hour: "2-digit",
-              minute: "2-digit",
-              timeZoneName: "short",
-            }).format(new Date(dateValue));
-
-            overrideBanner.classList.remove("d-none");
-            overrideBannerBody.textContent = "";
-
-            const prefixEl = document.createElement("strong");
-            prefixEl.textContent = `${overridePrefix}:`;
-            overrideBannerBody.appendChild(prefixEl);
-
-            const textEl = document.createElement("span");
-            textEl.textContent = ` Viewing data as of ${formattedDate}.`;
-            overrideBannerBody.appendChild(textEl);
-          }
-
-          if (clearBtn) {
-            clearBtn.disabled = false;
-          }
-
-          if (result.force_refresh) {
-            setTimeout(() => window.location.reload(), 1000);
-          }
-        } else {
-          showError(result.error || "Failed to set date override");
-        }
-      } catch (err) {
-        showError("Network error: " + err.message);
-      } finally {
-        setLoadingState(setBtn, false);
-      }
+      await handleSetDateOverride(setBtn, dateInput, clearBtn, bannerState);
     });
   }
 
   if (clearBtn) {
     clearBtn.addEventListener("click", async () => {
-      try {
-        setLoadingState(clearBtn, true);
-        const response = await fetch("/api/profile/system-date", {
-          method: "DELETE",
-          headers: {
-            "X-CSRFToken": getCSRFToken(),
-          },
-        });
-
-        const result = await response.json();
-        if (response.ok && result.success) {
-          showSuccess("System date reset to live. Refreshing...");
-
-          if (overrideBanner && overrideBannerBody) {
-            overrideBanner.classList.add("d-none");
-            overrideBannerBody.textContent = "";
-
-            const prefixEl = document.createElement("strong");
-            prefixEl.textContent = `${overridePrefix}:`;
-            overrideBannerBody.appendChild(prefixEl);
-
-            const textEl = document.createElement("span");
-            textEl.textContent = " Using the current system time.";
-            overrideBannerBody.appendChild(textEl);
-          }
-
-          if (dateInput) {
-            dateInput.value = "";
-          }
-
-          if (clearBtn) {
-            clearBtn.disabled = true;
-          }
-
-          if (result.force_refresh) {
-            setTimeout(() => window.location.reload(), 1000);
-          }
-        } else {
-          showError(result.error || "Failed to clear date override");
-        }
-      } catch (err) {
-        showError("Network error: " + err.message);
-      } finally {
-        setLoadingState(clearBtn, false);
-      }
+      await handleClearDateOverride(clearBtn, dateInput, bannerState);
     });
   }
 }

@@ -362,157 +362,27 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (outcomes.length === 0) {
-        // nosemgrep: insecure-document-method - Content is sanitized via template literals
-        outcomesContainer.innerHTML = `
-                    <div class="alert alert-info">
-                        No outcomes defined for ${data.course_number} - ${data.course_title}
-                    </div>
-                `;
+        // nosemgrep: insecure-document-method - Content is sanitized in helper
+        outcomesContainer.innerHTML = AssessmentOutcomes.buildNoOutcomesHtml(
+          data.course_number,
+          data.course_title,
+        );
         return;
       }
 
-      // Get section info for the selected section
       const section = sectionId
         ? instructorSections.find((s) => s.section_id === sectionId)
         : instructorSections.find((s) => s.course_id === courseId);
-      const termName = section?.term_name || "Unknown Term";
-
-      const courseHeader = section
-        ? `${termName} - ${data.course_number} - Section ${section.section_number || "001"}`
-        : `${data.course_number} - ${data.course_title}`;
-
-      const enrollmentInfo = section?.enrollment
-        ? `<span class="text-muted">${section.enrollment} students enrolled</span>`
-        : "";
-
-      // Build compact inline form for CLOs
-      let html = `
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header bg-primary text-white py-3">
-                        <h4 class="mb-0"><i class="fas fa-graduation-cap"></i> ${courseHeader}</h4>
-                        ${enrollmentInfo ? `<small>${enrollmentInfo}</small>` : ""}
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted mb-3">Enter assessment data for each CLO. Changes save automatically.</p>
-                        
-                        <!-- CLO Table Header -->
-                        <div class="row g-2 mb-2 fw-bold text-muted small">
-                            <div class="col-md-1">CLO</div>
-                            <div class="col-md-4">Description</div>
-                            <div class="col-md-2">Took</div>
-                            <div class="col-md-2">Passed</div>
-                            <div class="col-md-2">Tool</div>
-                            <div class="col-md-1">Rate</div>
-                        </div>
-                        
-                        <div class="outcomes-list">
-            `;
-
-      outcomes.forEach((outcome, index) => {
-        const studentsTook = outcome.students_took ?? "";
-        const studentsPassed = outcome.students_passed ?? "";
-        const assessmentTool = outcome.assessment_tool || "";
-        const status = outcome.status || "assigned";
-        const feedback = outcome.feedback_comments || "";
-        const needsWork = status === "approval_pending" && feedback;
-        const isApproved = status === "approved";
-
-        // Calculate success rate
-        const tookNum = parseInt(studentsTook) || 0;
-        const passedNum = parseInt(studentsPassed) || 0;
-        const percentage =
-          tookNum > 0 ? Math.round((passedNum / tookNum) * 100) : 0;
-        const rateColor = isApproved
-          ? "text-success"
-          : percentage >= 80
-            ? "text-success"
-            : percentage >= 60
-              ? "text-warning"
-              : "text-danger";
-
-        // Row styling based on status
-        const rowClass = isApproved
-          ? "bg-success bg-opacity-10"
-          : needsWork
-            ? "bg-warning bg-opacity-10"
-            : "";
-        const inputDisabled = isApproved ? "disabled" : "";
-
-        html += `
-                    <div class="row g-2 py-2 align-items-center border-bottom ${rowClass}" data-outcome-id="${outcome.id}" data-course-outcome-id="${outcome.outcome_id}">
-                        <div class="col-md-1">
-                            <span class="fw-bold">${index + 1}</span>
-                            ${isApproved ? '<i class="fas fa-check-circle text-success ms-1" title="Approved"></i>' : ""}
-                            ${needsWork ? '<i class="fas fa-exclamation-triangle text-warning ms-1" title="Needs Rework"></i>' : ""}
-                        </div>
-                        <div class="col-md-4">
-                            <small class="text-wrap">${escapeHtml(outcome.description)}</small>
-                            ${needsWork ? `<div class="text-warning small mt-1"><i class="fas fa-comment"></i> ${escapeHtml(feedback)}</div>` : ""}
-                        </div>
-                        <div class="col-md-2">
-                            <input type="number" class="form-control form-control-sm clo-input" 
-                                   data-field="students_took" 
-                                   data-outcome-id="${outcome.id}"
-                                   data-enrollment="${section.enrollment || 0}"
-                                   value="${studentsTook}" 
-                                   min="0" 
-                                   placeholder="0"
-                                   ${inputDisabled}>
-                        </div>
-                        <div class="col-md-2">
-                            <input type="number" class="form-control form-control-sm clo-input" 
-                                   data-field="students_passed" 
-                                   data-outcome-id="${outcome.id}"
-                                   value="${studentsPassed}" 
-                                   min="0" 
-                                   placeholder="0"
-                                   ${inputDisabled}>
-                        </div>
-                        <div class="col-md-2">
-                            <input type="text" class="form-control form-control-sm clo-input" 
-                                   data-field="assessment_tool" 
-                                   data-outcome-id="${outcome.id}"
-                                   value="${escapeHtml(assessmentTool)}" 
-                                   maxlength="50" 
-                                   placeholder="e.g., Lab 2"
-                                   ${inputDisabled}>
-                        </div>
-                        <div class="col-md-1 text-center">
-                            <span class="fw-bold ${rateColor}">${studentsTook ? percentage + "%" : "-"}</span>
-                        </div>
-                    </div>
-                `;
-      });
-
-      html += `
-                        </div>
-                    </div>
-                </div>
-            `;
-      // nosemgrep: insecure-document-method - HTML built from sanitized outcome data
-      outcomesContainer.innerHTML = html;
-
-      // Add auto-save on blur for all CLO inputs
-      document.querySelectorAll(".clo-input").forEach((input) => {
-        input.addEventListener("blur", function () {
-          autoSaveCLO(this);
-        });
-        // Also update rate display on change
-        input.addEventListener("input", function () {
-          updateRateDisplay(this);
-        });
-      });
-
-      // Update submit button text based on whether assessments were previously submitted
-      const submitBtn = document.getElementById("submitCourseBtn");
-      if (submitBtn) {
-        const hasPreviousSubmission = Boolean(data.has_previous_submission);
-        const label = hasPreviousSubmission
-          ? "Re-Submit Assessments"
-          : "Submit Assessments";
-        submitBtn.innerHTML = `<i class="fas fa-upload"></i> ${label}`;
-      }
-      // Note: Submit button handler is added ONCE in DOMContentLoaded, not here
+      // nosemgrep: insecure-document-method - HTML built from sanitized helper output
+      outcomesContainer.innerHTML = AssessmentOutcomes.buildOutcomesHtml(
+        outcomes,
+        data,
+        section,
+      );
+      AssessmentOutcomes.bindOutcomeInputs(autoSaveCLO, updateRateDisplay);
+      AssessmentOutcomes.updateSubmitButtonLabel(
+        Boolean(data.has_previous_submission),
+      );
     } catch (error) {
       console.error("Error loading outcomes:", error);
       outcomesContainer.innerHTML =
@@ -664,42 +534,147 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        let successMessage = "Course submitted for approval successfully!";
-        if (alertProgramAdmins) {
-          if (data.admin_alert_sent) {
-            successMessage =
-              "Course submitted for approval successfully! Program admins have been notified.";
-          } else {
-            const alertError =
-              data.admin_alert_error || "Unable to notify program admins.";
-            successMessage =
-              "Course submitted for approval, but failed to notify program admins: " +
-              alertError;
-          }
-        }
-        alert(successMessage);
+        alert(getCourseSubmitSuccessMessage(data, alertProgramAdmins));
         // Reconstruct composite ID for reload
         const compositeId = sectionId ? `${courseId}::${sectionId}` : courseId;
         loadOutcomes(compositeId); // Reload to show updated status with section filter
         loadCourses(); // Reload to update status summary counts
       } else {
-        // Show validation errors
-        let errorMsg = "Please fix the following issues:\n\n";
-        data.errors?.forEach((err) => {
-          errorMsg += `• ${err.message}\n`;
-          // Highlight the field
-          if (err.outcome_id) {
-            const input = document.querySelector(
-              `[data-outcome-id="${err.outcome_id}"][data-field="${err.field}"]`,
-            );
-            input?.classList.add("border-danger", "is-invalid");
-          }
-        });
-        alert(errorMsg);
+        showCourseSubmitErrors(data);
       }
     } catch (error) {
       console.error("Error submitting course:", error);
       alert("Failed to submit course: " + error.message);
+    }
+  }
+
+  function getCourseSubmitSuccessMessage(data, alertProgramAdmins) {
+    if (!alertProgramAdmins) {
+      return "Course submitted for approval successfully!";
+    }
+    if (data.admin_alert_sent) {
+      return "Course submitted for approval successfully! Program admins have been notified.";
+    }
+    const alertError =
+      data.admin_alert_error || "Unable to notify program admins.";
+    return (
+      "Course submitted for approval, but failed to notify program admins: " +
+      alertError
+    );
+  }
+
+  function showCourseSubmitErrors(data) {
+    let errorMsg = "Please fix the following issues:\n\n";
+    data.errors?.forEach((err) => {
+      errorMsg += `• ${err.message}\n`;
+      if (!err.outcome_id) {
+        return;
+      }
+      const input = document.querySelector(
+        `[data-outcome-id="${err.outcome_id}"][data-field="${err.field}"]`,
+      );
+      input?.classList.add("border-danger", "is-invalid");
+    });
+    alert(errorMsg);
+  }
+
+  function buildCourseSectionPayload() {
+    return {
+      students_passed:
+        Number.parseInt(
+          document.getElementById("courseStudentsPassed").value,
+        ) || null,
+      students_dfic:
+        Number.parseInt(document.getElementById("courseStudentsDFIC").value) ||
+        null,
+      cannot_reconcile: document.getElementById("cannotReconcile").checked,
+      reconciliation_note:
+        document.getElementById("reconciliationNote").value.trim() || null,
+      narrative_celebrations:
+        document.getElementById("narrativeCelebrations").value.trim() || null,
+      narrative_challenges:
+        document.getElementById("narrativeChallenges").value.trim() || null,
+      narrative_changes:
+        document.getElementById("narrativeChanges").value.trim() || null,
+    };
+  }
+
+  function updateLoadedCourseData(data) {
+    loadedCourseData = {
+      students_passed: (data.students_passed || "").toString(),
+      students_dfic: (data.students_dfic || "").toString(),
+      cannot_reconcile: data.cannot_reconcile,
+      reconciliation_note: data.reconciliation_note || "",
+      narrative_celebrations: data.narrative_celebrations || "",
+      narrative_challenges: data.narrative_challenges || "",
+      narrative_changes: data.narrative_changes || "",
+    };
+  }
+
+  function showCourseDataSaveStatus(message, className) {
+    const statusEl = document.getElementById("saveStatus");
+    statusEl.textContent = message;
+    statusEl.className = className;
+    statusEl.style.display = "block";
+    statusEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  async function handleSaveCourseData() {
+    const compositeId = courseSelect.value;
+    if (!compositeId) {
+      alert("Please select a course first");
+      return;
+    }
+
+    const [courseId, sectionId] = compositeId.split("::");
+
+    try {
+      const csrfToken = document.querySelector(
+        'meta[name="csrf-token"]',
+      )?.content;
+      const section = sectionId
+        ? instructorSections.find((s) => s.section_id === sectionId)
+        : instructorSections.find((s) => s.course_id === courseId);
+
+      if (!section) {
+        alert("No section found for this course");
+        return;
+      }
+
+      const data = buildCourseSectionPayload();
+      if (canEditDueDate && courseDueDateInput) {
+        data.assessment_due_date = courseDueDateInput.value || null;
+      }
+
+      const response = await fetch(`/api/sections/${section.section_id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to save course data");
+      }
+
+      updateLoadedCourseData(data);
+      await reloadSections();
+      showCourseDataSaveStatus(
+        "Course data saved successfully!",
+        "alert alert-success",
+      );
+      setTimeout(() => {
+        document.getElementById("saveStatus").style.display = "none";
+      }, 5000);
+    } catch (error) {
+      console.error("Error saving course data:", error);
+      showCourseDataSaveStatus(
+        "Failed to save course data: " + error.message,
+        "alert alert-danger",
+      );
     }
   }
 
@@ -1158,108 +1133,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Save course-level data
   if (saveCourseDataBtn) {
-    saveCourseDataBtn.addEventListener("click", async () => {
-      const compositeId = courseSelect.value;
-      if (!compositeId) {
-        alert("Please select a course first");
-        return;
-      }
-
-      // Parse composite ID: "courseId::sectionId"
-      const [courseId, sectionId] = compositeId.split("::");
-
-      try {
-        const csrfToken = document.querySelector(
-          'meta[name="csrf-token"]',
-        )?.content;
-        const section = sectionId
-          ? instructorSections.find((s) => s.section_id === sectionId)
-          : instructorSections.find((s) => s.course_id === courseId);
-
-        if (!section) {
-          alert("No section found for this course");
-          return;
-        }
-
-        const data = {
-          students_passed:
-            Number.parseInt(
-              document.getElementById("courseStudentsPassed").value,
-            ) || null,
-          students_dfic:
-            Number.parseInt(
-              document.getElementById("courseStudentsDFIC").value,
-            ) || null,
-          cannot_reconcile: document.getElementById("cannotReconcile").checked,
-          reconciliation_note:
-            document.getElementById("reconciliationNote").value.trim() || null,
-          narrative_celebrations:
-            document.getElementById("narrativeCelebrations").value.trim() ||
-            null,
-          narrative_challenges:
-            document.getElementById("narrativeChallenges").value.trim() || null,
-          narrative_changes:
-            document.getElementById("narrativeChanges").value.trim() || null,
-        };
-
-        if (canEditDueDate && courseDueDateInput) {
-          data.assessment_due_date = courseDueDateInput.value || null;
-        }
-
-        const response = await fetch(`/api/sections/${section.section_id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": csrfToken,
-          },
-          body: JSON.stringify(data),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Failed to save course data");
-        }
-
-        // Update loaded data to match what was just saved
-        loadedCourseData = {
-          students_passed: (data.students_passed || "").toString(),
-          students_dfic: (data.students_dfic || "").toString(),
-          cannot_reconcile: data.cannot_reconcile,
-          reconciliation_note: data.reconciliation_note || "",
-          narrative_celebrations: data.narrative_celebrations || "",
-          narrative_challenges: data.narrative_challenges || "",
-          narrative_changes: data.narrative_changes || "",
-        };
-
-        // Reload sections from API to refresh stale data
-        await reloadSections();
-
-        // Show success message
-        const statusEl = document.getElementById("saveStatus");
-        statusEl.textContent = "Course data saved successfully!";
-        statusEl.className = "alert alert-success";
-        statusEl.style.display = "block";
-
-        // Scroll to the status message
-        statusEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-
-        // Hide after 5 seconds
-        setTimeout(() => {
-          statusEl.style.display = "none";
-        }, 5000);
-      } catch (error) {
-        console.error("Error saving course data:", error);
-
-        // Show error message
-        const statusEl = document.getElementById("saveStatus");
-        statusEl.textContent = "Failed to save course data: " + error.message;
-        statusEl.className = "alert alert-danger";
-        statusEl.style.display = "block";
-
-        // Scroll to the status message
-        statusEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
-    });
+    saveCourseDataBtn.addEventListener("click", handleSaveCourseData);
   }
 
   // Filter event listeners

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Mapping, Optional, cast
 
 from src.database.database_service import db
 from src.utils.logging_config import get_logger
@@ -72,18 +72,25 @@ class CLOWorkflowDetailsMixin:
             return []
 
         course_id = outcome.get("course_id")
-        sections = service_db.get_sections_by_course(course_id) if course_id else []
+        raw_sections: Any = (
+            service_db.get_sections_by_course(course_id) if course_id else []
+        )
+        sections: List[Mapping[str, Any]] = cast(
+            List[Mapping[str, Any]],
+            raw_sections,
+        )
         results: List[Dict[str, Any]] = []
 
         if sections:
             for section in sections:
-                section_id = section.get("section_id") or section.get("id")
+                section_id_value = section.get("section_id") or section.get("id")
+                section_id = str(section_id_value) if section_id_value else None
                 if not section_id:
                     continue
 
                 section_outcome = (
                     service_db.get_section_outcome_by_course_outcome_and_section(
-                        course_outcome_id, str(section_id)
+                        course_outcome_id, section_id
                     )
                 )
                 if not section_outcome:
@@ -102,7 +109,7 @@ class CLOWorkflowDetailsMixin:
                 }
                 details = service.get_outcome_with_details(
                     str(section_outcome_id),
-                    section_data=section,
+                    section_data=dict(section),
                     outcome_data=enriched_section_outcome,
                 )
                 if details:

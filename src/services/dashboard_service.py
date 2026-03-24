@@ -14,6 +14,7 @@ from src.database.database_service import (
     get_all_sections,
     get_all_terms,
     get_all_users,
+    get_course_outcomes,
     get_courses_by_program,
     get_institution_by_id,
     get_programs_by_institution,
@@ -22,6 +23,9 @@ from src.services.dashboard_service_enrichment import DashboardServiceEnrichment
 from src.services.dashboard_service_support import DashboardServiceSupportMixin
 from src.utils.logging_config import get_logger
 from src.utils.time_utils import get_current_time
+
+# Keep legacy patch targets available in this module for unit tests.
+_COMPAT_PATCH_TARGETS = (get_course_outcomes,)
 
 
 class DashboardServiceError(Exception):

@@ -3,10 +3,18 @@
 from __future__ import annotations
 
 import sys
-from typing import Any, Callable, Dict, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+
+if TYPE_CHECKING:
+    from src.services.import_service import ImportStats
 
 
 class ImportServiceExecutionMixin:
+    stats: "ImportStats"
+    institution_id: str
+    _log: Callable[..., None]
+    logger: Any
+
     @staticmethod
     def _service_fn(name: str) -> Any:
         service_module = sys.modules.get("src.services.import_service")

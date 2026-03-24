@@ -90,6 +90,33 @@ def get_db() -> Session:
     return db_service.sql.get_session()  # type: ignore[attr-defined,return-value]
 
 
+def _parse_bulk_reminder_request(
+    data: dict[str, Any],
+) -> tuple[List[str], dict[str, str | None]] | None:
+    """Validate and normalize bulk reminder request data."""
+    raw_instructor_ids = data.get("instructor_ids")
+    instructor_ids = (
+        [
+            str(instructor_id)
+            for instructor_id in cast(List[Any], raw_instructor_ids)
+            if instructor_id
+        ]
+        if isinstance(raw_instructor_ids, list)
+        else []
+    )
+    if not instructor_ids:
+        return None
+    course_id_value = data.get("course_id")
+    return instructor_ids, {
+        "personal_message": (
+            str(data.get("personal_message")) if data.get("personal_message") else None
+        ),
+        "term": str(data.get("term")) if data.get("term") else None,
+        "deadline": str(data.get("deadline")) if data.get("deadline") else None,
+        "course_id": str(course_id_value) if course_id_value else None,
+    }
+
+
 @bulk_email_bp.route("/send-instructor-reminders", methods=["POST"])
 @lazy_permission_required("manage_programs")  # Lazy decorator for testability
 def send_instructor_reminders():
@@ -123,18 +150,8 @@ def send_instructor_reminders():
         if not data:
             return jsonify({"success": False, "error": "Request body is required"}), 400
 
-        # Validate required fields
-        raw_instructor_ids = data.get("instructor_ids")
-        instructor_ids = (
-            [
-                str(instructor_id)
-                for instructor_id in cast(List[Any], raw_instructor_ids)
-                if instructor_id
-            ]
-            if isinstance(raw_instructor_ids, list)
-            else []
-        )
-        if not instructor_ids or not isinstance(instructor_ids, list):
+        parsed_request = _parse_bulk_reminder_request(data)
+        if not parsed_request:
             return (
                 jsonify(
                     {
@@ -144,13 +161,7 @@ def send_instructor_reminders():
                 ),
                 400,
             )
-
-        # Get optional fields
-        personal_message = data.get("personal_message")
-        term = data.get("term")
-        deadline = data.get("deadline")
-        course_id_value = data.get("course_id")
-        course_id = str(course_id_value) if course_id_value else None
+        instructor_ids, options = parsed_request
 
         # Get current user
         current_user = get_current_user()
@@ -170,10 +181,10 @@ def send_instructor_reminders():
                 db=db,
                 instructor_ids=instructor_ids,
                 created_by_user_id=current_user["user_id"],
-                personal_message=str(personal_message) if personal_message else None,
-                term=str(term) if term else None,
-                deadline=str(deadline) if deadline else None,
-                course_id=course_id,
+                personal_message=options["personal_message"],
+                term=options["term"],
+                deadline=options["deadline"],
+                course_id=options["course_id"],
             )
 
             logger.info(

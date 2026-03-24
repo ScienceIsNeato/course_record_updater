@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Callable, Dict, List, Optional, cast
 
 from src.database.database_service import get_course_outcomes
 from src.utils.logging_config import get_logger
@@ -13,6 +13,10 @@ logger = get_logger(__name__)
 
 
 class DashboardServiceEnrichmentMixin:
+    logger: Any
+    _course_program_ids: Callable[[Dict[str, Any]], List[str]]
+    _full_name: Callable[[Dict[str, Any]], str]
+
     @staticmethod
     def _service_get_course_outcomes() -> Any:
         service_module = sys.modules.get("src.services.dashboard_service")

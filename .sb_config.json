@@ -399,7 +399,7 @@
         ]
       },
       "code-sprawl": {
-        "enabled": false,
+        "enabled": true,
         "auto_fix": false,
         "config_file_path": null,
         "max_file_lines": 1000,

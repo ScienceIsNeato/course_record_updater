@@ -1,5 +1,108 @@
 # LoopCloser - Current Status
 
+## Latest Work: Code-Sprawl Gate Enablement (2026-03-22)
+
+**Status**: 🚧 IN PROGRESS - `myopia:code-sprawl` is being enabled and burned down on `chore/post-main-sync-20260321-043046`
+
+**Intent**:
+
+- Turn on `myopia:code-sprawl` instead of leaving it disabled in checked-in config.
+- Run the gate directly to get the concrete failure list.
+- Refactor the biggest offenders by splitting files and methods along the most coherent seam nearest the middle.
+
+**Known Starting Point**:
+
+- `src/database/database_sqlite.py`
+- `src/services/dashboard_service.py`
+- `src/services/clo_workflow_service.py`
+- `src/services/import_service.py`
+- `src/services/email_service.py`
+- `src/models/models_sql.py`
+
+**Checkpoint**:
+
+- Enabled `myopia:code-sprawl` in `.sb_config.json` and started burning it down on this branch.
+- First direct gate run found `62` violations.
+- Split `src/database/database_sqlite.py` into shared helpers plus academic/workflow mixins and extracted `create_course_outcome()` helpers; the database modules are no longer on the failure list.
+- Split `src/services/clo_workflow_service.py` into a detail/notification mixin; that file is no longer on the failure list.
+- Split `src/services/import_service.py` into an execution mixin; that file is no longer on the failure list.
+- Split `src/services/dashboard_service.py` into support and enrichment mixins; the dashboard modules are no longer on the failure list.
+- Split `tests/unit/test_import_service.py` into `test_import_service.py`, `test_import_service_core.py`, and `test_import_service_error_handling.py`; those files are no longer on the failure list.
+- Split `tests/unit/test_database_service.py` by moving the CRUD/audit coverage tail into `tests/unit/test_database_service_crud.py`; the original oversized file is no longer on the failure list.
+- Latest direct gate run is down to `55` violations.
+
+**Current Front Of Queue**:
+
+- `scripts/seed_db.py` is now the last remaining Python file-level offender.
+- After that, the remaining file-level failures are frontend assets and JS tests.
+
+**Next Steps**:
+
+- Split `scripts/seed_db.py` by extracting `BaselineSeeder` into its own module.
+- Re-run `sm swab -g myopia:code-sprawl --verbose --no-cache` after each structural cut.
+- Keep burning down the remaining file-level offenders before switching to the longer list of oversized functions.
+
+## Latest Work: Disabled Slop-Mop Gate Triage (2026-03-22)
+
+**Status**: ✅ REVIEWED - next meaningful disabled gate is `myopia:code-sprawl`
+
+**What I Verified**:
+
+- Checked-in disabled gates are:
+   - `overconfidence:coverage-gaps.dart`
+   - `deceptiveness:bogus-tests.dart`
+   - `laziness:generated-artifacts.dart`
+   - `myopia:code-sprawl`
+   - `myopia:ignored-feedback`
+- The repo has no `.dart` files, so the three Dart gates are irrelevant rather than deferred work.
+- `myopia:ignored-feedback` is useful on PR branches, but it is not the best next target for this clean local branch because it depends on review-thread workflow rather than repo code quality.
+- `myopia:code-sprawl` is the next real repo-quality gap and would hit immediately if enabled.
+
+**Largest Likely Offenders**:
+
+- `src/database/database_sqlite.py` (`2664` lines)
+- `src/services/dashboard_service.py` (`1777` lines)
+- `src/services/clo_workflow_service.py` (`1600` lines)
+- `src/services/import_service.py` (`1548` lines)
+- `src/services/email_service.py` (`1358` lines)
+- `src/models/models_sql.py` (`1162` lines)
+- several large test and static files also exceed the current `1000`-line threshold
+
+**Recommendation**:
+
+- Tackle `myopia:code-sprawl` next on this branch.
+- Treat `myopia:ignored-feedback` as a later PR-workflow gate.
+- Leave the disabled Dart gates alone unless Dart code is added to the repo.
+
+## Latest Work: Main Rebase Recovery + Fresh Branch (2026-03-21)
+
+**Status**: ✅ PASSING - repo recovered from a half-finished `main` rebase and moved onto a clean post-main branch
+
+**What Happened**:
+
+- The repo was stuck in an interactive rebase of local `main` onto `origin/main`, leaving a detached `HEAD` and partially-applied instruction-file deletions.
+- Local `main` had three rename-related commits not on `origin/main`, while `origin/main` already had PR `#70` merged as commit `70c5914`.
+- The safest path was to preserve the old local `main` tip, abort the rebase, and branch fresh from `origin/main` instead of trying to finish a stale replay.
+
+**Recovery Actions**:
+
+- Created safety branch `backup/pre-rebase-main-20260321-043046` at the pre-rebase local `main` tip (`cec0f57`).
+- Aborted the in-progress rebase.
+- Fetched `origin` and created fresh branch `chore/post-main-sync-20260321-043046` from `origin/main` (`70c5914`).
+
+**Current Verified State**:
+
+- Current branch: `chore/post-main-sync-20260321-043046`
+- Rebase in progress: no
+- Worktree: clean
+- `origin/main`: `70c5914` (`Finalize LoopCloser rename and stabilize E2E validation (#70)`)
+- Local pre-rebase state is preserved on the backup branch if any of those commits still matter later.
+
+**Next Steps**:
+
+- Do new work on `chore/post-main-sync-20260321-043046`.
+- If any old local-`main` changes are still needed, inspect or cherry-pick them from `backup/pre-rebase-main-20260321-043046` one commit at a time.
+
 ## Latest Work: PR 70 Buff Loop (2026-03-20)
 
 **Status**: 🚧 IN PROGRESS - PR `#70` has green CI but still has four unresolved review threads

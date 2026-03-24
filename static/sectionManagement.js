@@ -133,6 +133,50 @@ async function loadInstructors(instructorSelect) {
   }
 }
 
+function setSectionButtonLoading(buttonEl, isLoading) {
+  const btnText = buttonEl?.querySelector(".btn-text");
+  const btnSpinner = buttonEl?.querySelector(".btn-spinner");
+  if (!buttonEl || !btnText || !btnSpinner) return;
+
+  btnText.classList.toggle("d-none", isLoading);
+  btnSpinner.classList.toggle("d-none", !isLoading);
+  buttonEl.disabled = isLoading;
+}
+
+function buildCreateSectionData(offeringSelect, instructorSelect) {
+  const instructorValue = instructorSelect?.value || "";
+  const capacityValue = document.getElementById("sectionCapacity")?.value;
+  const dueDateValue = document.getElementById("sectionDueDate")?.value;
+  const sectionData = {
+    offering_id: offeringSelect?.value,
+    section_number: document.getElementById("sectionNumber").value,
+    instructor_id: instructorValue || null,
+    enrollment: null,
+    status: document.getElementById("sectionStatus").value,
+  };
+  if (capacityValue !== undefined && capacityValue !== "") {
+    sectionData.capacity = Number.parseInt(capacityValue, 10);
+  }
+  if (dueDateValue) {
+    sectionData.due_date = dueDateValue;
+  }
+  return sectionData;
+}
+
+function resetCreateSectionForm(form, termSelect, offeringSelect) {
+  form.reset();
+  if (termSelect && termSelect.options.length > 0) {
+    termSelect.selectedIndex = 0;
+  }
+  if (offeringSelect && offeringSelect.options.length > 0) {
+    offeringSelect.selectedIndex = 0;
+  }
+  const sectionNumberInput = document.getElementById("sectionNumber");
+  if (sectionNumberInput) {
+    sectionNumberInput.value = "001";
+  }
+}
+
 // Initialize when DOM is ready (guard for non-browser test environments)
 if (typeof document !== "undefined") {
   document.addEventListener("DOMContentLoaded", () => {
@@ -187,33 +231,13 @@ function initializeCreateSectionModal() {
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-
-    const instructorValue = instructorSelect?.value || "";
-    const capacityValue = document.getElementById("sectionCapacity")?.value;
-    const dueDateValue = document.getElementById("sectionDueDate")?.value;
-
-    const sectionData = {
-      offering_id: offeringSelect?.value,
-      section_number: document.getElementById("sectionNumber").value,
-      instructor_id: instructorValue || null,
-      enrollment: null,
-      status: document.getElementById("sectionStatus").value,
-    };
-    if (capacityValue !== undefined && capacityValue !== "") {
-      sectionData.capacity = Number.parseInt(capacityValue, 10);
-    }
-    if (dueDateValue) {
-      sectionData.due_date = dueDateValue;
-    }
+    const sectionData = buildCreateSectionData(
+      offeringSelect,
+      instructorSelect,
+    );
 
     const createBtn = document.getElementById("createSectionBtn");
-    const btnText = createBtn.querySelector(".btn-text");
-    const btnSpinner = createBtn.querySelector(".btn-spinner");
-
-    // Show loading state
-    btnText.classList.add("d-none");
-    btnSpinner.classList.remove("d-none");
-    createBtn.disabled = true;
+    setSectionButtonLoading(createBtn, true);
 
     try {
       const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
@@ -239,17 +263,7 @@ function initializeCreateSectionModal() {
           modal.hide();
         }
 
-        form.reset();
-        if (termSelect && termSelect.options.length > 0) {
-          termSelect.selectedIndex = 0;
-        }
-        if (offeringSelect && offeringSelect.options.length > 0) {
-          offeringSelect.selectedIndex = 0;
-        }
-        const sectionNumberInput = document.getElementById("sectionNumber");
-        if (sectionNumberInput) {
-          sectionNumberInput.value = "001";
-        }
+        resetCreateSectionForm(form, termSelect, offeringSelect);
 
         alert(result.message || "Section created successfully!");
         publishSectionMutation("create", { sectionId: result.section_id });
@@ -268,10 +282,7 @@ function initializeCreateSectionModal() {
         "Failed to create section. Please check your connection and try again.",
       );
     } finally {
-      // Restore button state
-      btnText.classList.remove("d-none");
-      btnSpinner.classList.add("d-none");
-      createBtn.disabled = false;
+      setSectionButtonLoading(createBtn, false);
     }
   });
 }
