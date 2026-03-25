@@ -89,6 +89,9 @@ jobs:
             --json-file slopmop-swab.json
         env:
           PYTHONPATH: .
+      - name: Create slop-mop results compatibility file
+        if: always() && hashFiles('slopmop-swab.json') != ''
+        run: cp slopmop-swab.json slopmop-results.json
       - name: Upload slop-mop SARIF
         if: always() && hashFiles('slopmop-swab.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
@@ -103,6 +106,7 @@ jobs:
           path: |
             slopmop-swab.sarif
             slopmop-swab.json
+            slopmop-results.json
       - name: Upload slop-mop results compatibility artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -111,6 +115,7 @@ jobs:
           path: |
             slopmop-swab.sarif
             slopmop-swab.json
+            slopmop-results.json
 
   slopmop-laziness-sloppy-formatting-py:
     runs-on: ubuntu-latest

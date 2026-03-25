@@ -1,5 +1,29 @@
 # LoopCloser - Current Status
 
+## Latest Work: Buff Inspect Results Filename Compatibility (2026-03-25)
+
+**Status**: ✅ COMPLETE - workflow now emits `slopmop-results.json`
+
+**Root Cause**:
+
+- `sm buff inspect --run-id ...` progressed to artifact download but failed because it expects `slopmop-results.json` inside the `slopmop-results` artifact.
+- The workflow only produced `slopmop-swab.json`.
+
+**What Changed**:
+
+- Added a compatibility step in `.github/workflows/quality-gate.yml` that copies `slopmop-swab.json` to `slopmop-results.json`.
+- Updated both structured-output artifact uploads to include `slopmop-results.json`.
+
+**Validation**:
+
+- `activate && sm swab --json --output-file .slopmop/last_swab.json` ❌
+   - Remaining failure unchanged: `myopia:code-sprawl` in `scripts/seed_db.py`.
+
+**Next Steps**:
+
+- Commit and push the compatibility filename fix.
+- Re-run PR 71 checks and verify `sm buff inspect --run-id` succeeds.
+
 ## Latest Work: Buff Inspect Artifact Compatibility (2026-03-25)
 
 **Status**: ✅ COMPLETE - workflow now publishes `slopmop-results`
