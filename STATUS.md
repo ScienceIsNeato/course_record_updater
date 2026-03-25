@@ -1,5 +1,33 @@
 # LoopCloser - Current Status
 
+## Latest Work: Slopmop 0.12.0 Upgrade + PR 71 Buff (2026-03-25)
+
+**Status**: ✅ COMPLETE - repo pins updated to latest and buff executed with 0.12.0
+
+**What Changed**:
+
+- Upgraded local slopmop from `0.11.1` to `0.12.0`.
+- Updated all CI slopmop pins in `.github/workflows/quality-gate.yml` from `0.11.1` to `0.12.0`.
+
+**Validation**:
+
+- `activate && sm --version` → `0.12.0`
+- `activate && sm swab --json --output-file .slopmop/last_swab.json` ❌
+   - Remaining failure unchanged: `myopia:code-sprawl`.
+
+**PR 71 Buff Results (using 0.12.0)**:
+
+- `sm buff verify 71` reports `1` unresolved review thread.
+- `sm buff status 71` reports `14 passed`, `2 failed`, `0 pending` checks.
+   - Failing checks: `slopmop-laziness-complexity-creep-py`, `slopmop-myopia-dependency-risk-py`.
+- `sm buff inspect 71 --run-id 23530973716 --json --output-file .slopmop/last_buff_71.json` generated inspect output successfully.
+   - Current unresolved thread ID: `PRRT_kwDOOV6J2s52pFQC`.
+
+**Next Steps**:
+
+- Resolve the remaining review thread with `sm buff resolve`.
+- Address the two failing CI checks and re-run buff cycle.
+
 ## Latest Work: Buff Inspect Results Filename Compatibility (2026-03-25)
 
 **Status**: ✅ COMPLETE - workflow now emits `slopmop-results.json`

@@ -74,7 +74,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-          pip install --no-cache-dir slopmop==0.11.1
+          pip install --no-cache-dir slopmop==0.12.0
       - name: Fix slopmop template dirs
         run: python scripts/ci_fix_slopmop_templates.py
       - name: Generate slop-mop SARIF
@@ -138,7 +138,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-          pip install --no-cache-dir slopmop==0.11.1
+          pip install --no-cache-dir slopmop==0.12.0
       - name: Fix slopmop template dirs
         run: python scripts/ci_fix_slopmop_templates.py
       - name: Run Python Lint & Format (black, isort, flake8)
@@ -168,7 +168,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-          pip install --no-cache-dir slopmop==0.11.1
+          pip install --no-cache-dir slopmop==0.12.0
       - name: Fix slopmop template dirs
         run: python scripts/ci_fix_slopmop_templates.py
       - name: Run Coverage (unit + integration)
@@ -446,7 +446,7 @@ jobs:
           # Use binary-only semgrep wheel to avoid resolver fallback to legacy source builds in CI.
           pip install --only-binary=:all: semgrep==1.156.0
           semgrep --version
-          pip install --no-cache-dir slopmop==0.11.1
+          pip install --no-cache-dir slopmop==0.12.0
       - name: Fix slopmop template dirs
         run: python scripts/ci_fix_slopmop_templates.py
       - name: Run Security Audit
@@ -499,7 +499,7 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Install slopmop
         run: |
-          pip install --no-cache-dir slopmop==0.11.1
+          pip install --no-cache-dir slopmop==0.12.0
       - name: Fix slopmop template dirs
         run: python scripts/ci_fix_slopmop_templates.py
       - name: Run Python Static Analysis (mypy, imports)
@@ -530,7 +530,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-          pip install --no-cache-dir slopmop==0.11.1
+          pip install --no-cache-dir slopmop==0.12.0
       - name: Fix slopmop template dirs
         run: python scripts/ci_fix_slopmop_templates.py
       - name: Run Code Duplication Check
@@ -566,7 +566,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-          pip install --no-cache-dir slopmop==0.11.1
+          pip install --no-cache-dir slopmop==0.12.0
       - name: Fix slopmop template dirs
         run: python scripts/ci_fix_slopmop_templates.py
       - name: Run Frontend Sanity Gate
@@ -609,7 +609,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-          pip install --no-cache-dir slopmop==0.11.1
+          pip install --no-cache-dir slopmop==0.12.0
       - name: Fix slopmop template dirs
         run: python scripts/ci_fix_slopmop_templates.py
       - name: Run JavaScript Lint & Format (ESLint, Prettier)
@@ -690,7 +690,7 @@ jobs:
       - name: Install radon and xenon
         run: |
           pip install radon xenon
-          pip install --no-cache-dir slopmop==0.11.1
+          pip install --no-cache-dir slopmop==0.12.0
       - name: Fix slopmop template dirs
         run: python scripts/ci_fix_slopmop_templates.py
       - name: Check Complexity (threshold 15)
