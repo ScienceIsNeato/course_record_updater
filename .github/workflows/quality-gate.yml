@@ -103,6 +103,14 @@ jobs:
           path: |
             slopmop-swab.sarif
             slopmop-swab.json
+      - name: Upload slop-mop results compatibility artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: slopmop-results
+          path: |
+            slopmop-swab.sarif
+            slopmop-swab.json
 
   slopmop-laziness-sloppy-formatting-py:
     runs-on: ubuntu-latest

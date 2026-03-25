@@ -1,5 +1,27 @@
 # LoopCloser - Current Status
 
+## Latest Work: Buff Inspect Artifact Compatibility (2026-03-25)
+
+**Status**: ✅ COMPLETE - workflow now publishes `slopmop-results`
+
+**Root Cause**:
+
+- `sm buff inspect 71` failed even with explicit run IDs because CI runs did not publish an artifact named `slopmop-results`.
+
+**What Changed**:
+
+- Added a second artifact upload step in `.github/workflows/quality-gate.yml` that publishes the same structured outputs under `slopmop-results` (compatibility alias), while preserving existing `slopmop-sarif-output`.
+
+**Validation**:
+
+- `activate && sm swab --json --output-file .slopmop/last_swab.json` ❌
+   - Remaining failure is unchanged: `myopia:code-sprawl`.
+
+**Next Steps**:
+
+- Commit and push artifact compatibility fix.
+- Confirm next PR run allows `sm buff inspect` to consume `slopmop-results`.
+
 ## Latest Work: PR 71 Setup Failure Fix (2026-03-25)
 
 **Status**: ✅ COMPLETE - dependency floor corrected to unblock CI setup
