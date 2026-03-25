@@ -1,5 +1,31 @@
 # LoopCloser - Current Status
 
+## Latest Work: CI Consolidated To Single Scour (2026-03-25)
+
+**Status**: ✅ COMPLETE - Quality Gate workflow now uses slopmop scour as the single validation runner
+
+**What Changed**:
+
+- Replaced the multi-job, per-gate matrix in `.github/workflows/quality-gate.yml` with a single `slopmop-scour` job (plus setup/cache job).
+- The CI validation command is now a single call:
+   - `sm scour --json --output-file slopmop-results.json --no-cache`
+- Preserved buff/triage compatibility by uploading a `slopmop-results` artifact containing `slopmop-results.json` and generated reports/logs.
+
+**Overlap/Non-Overlap Decision**:
+
+- Removed jobs that duplicated slopmop checks (formatting, tests, coverage, complexity, dependency risk, duplication, frontend sanity, etc.) because `scour` already includes swab-level and scour-level gates.
+- Kept CI artifact publication so non-validation reporting/triage outputs remain available.
+
+**Validation**:
+
+- `activate && sm swab --json --output-file .slopmop/last_swab.json` ❌
+   - Remaining failure unchanged: `myopia:code-sprawl`.
+
+**Next Steps**:
+
+- Commit and push workflow simplification.
+- Run `sm buff status 71` / `sm buff inspect` on the new CI run to verify the single-scour path end-to-end.
+
 ## Latest Work: Slopmop 0.12.0 Upgrade + PR 71 Buff (2026-03-25)
 
 **Status**: ✅ COMPLETE - repo pins updated to latest and buff executed with 0.12.0
