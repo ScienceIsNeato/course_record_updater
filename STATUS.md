@@ -1,5 +1,24 @@
 # LoopCloser - Current Status
 
+## Latest Work: Slopmop Version Bump To 0.11.1 (2026-03-24)
+
+**Status**: ✅ COMPLETE - CI slopmop pins upgraded and locally validated
+
+**What Changed**:
+
+- Updated every pinned install in `.github/workflows/quality-gate.yml` from `slopmop==0.9.0` to `slopmop==0.11.1`.
+- Verified package availability in the active environment: latest and installed are both `0.11.1`.
+
+**Validation**:
+
+- `activate && sm swab --json --output-file .slopmop/last_swab.json` ❌
+   - Result: `31` total, `8` passed, `1` failed, `16` skipped, `6` not applicable.
+   - Failing gate: `myopia:code-sprawl` (existing remediation work), no new workflow syntax errors.
+
+**Next Steps**:
+
+- Continue current `myopia:code-sprawl` burn-down and then rerun `sm swab`.
+
 ## Latest Work: Code-Sprawl Gate Enablement (2026-03-22)
 
 **Status**: 🚧 IN PROGRESS - `myopia:code-sprawl` is being enabled and burned down on `chore/post-main-sync-20260321-043046`
