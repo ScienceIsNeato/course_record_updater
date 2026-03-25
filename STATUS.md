@@ -1,5 +1,29 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR 71 Setup Failure Fix (2026-03-25)
+
+**Status**: ✅ COMPLETE - dependency floor corrected to unblock CI setup
+
+**Root Cause**:
+
+- PR 71 failed on `setup` because `requirements-dev.txt` pinned `pygments>=2.19.3`.
+- That version does not exist on the package index; latest available is `2.19.2`.
+
+**What Changed**:
+
+- Updated `requirements-dev.txt` to `pygments>=2.19.2`.
+
+**Validation**:
+
+- `activate && sm swab --json --output-file .slopmop/last_swab.json` ❌
+   - Remaining failure is still the existing `myopia:code-sprawl` gate (`scripts/seed_db.py` long methods).
+   - No new dependency-resolution failures locally.
+
+**Next Steps**:
+
+- Commit and push the dependency-floor fix.
+- Re-check PR 71 CI setup job and continue buff loop.
+
 ## Latest Work: Slopmop Version Bump To 0.11.1 (2026-03-24)
 
 **Status**: ✅ COMPLETE - CI slopmop pins upgraded and locally validated
