@@ -771,9 +771,32 @@ async function submitDateOverrideRequest(method, payload) {
     ...(payload && { body: JSON.stringify(payload) }),
   });
 
+  let parsedResult;
+  const contentType =
+    response.headers && response.headers.get
+      ? response.headers.get("content-type") || ""
+      : "";
+  if (contentType.toLowerCase().includes("application/json")) {
+    try {
+      parsedResult = await response.json();
+    } catch (_parseError) {
+      parsedResult = {
+        success: false,
+        error:
+          "Received an invalid response from the server. Please try again.",
+      };
+    }
+  } else {
+    parsedResult = {
+      success: false,
+      error:
+        "Received an unexpected response from the server. Please try again.",
+    };
+  }
+
   return {
     response,
-    result: await response.json(),
+    result: parsedResult,
   };
 }
 
@@ -1133,5 +1156,6 @@ const authTestExports = {
 if (typeof module !== "undefined" && module.exports) {
   // Add updatePasswordRequirements for test access
   authTestExports.updatePasswordRequirements = updatePasswordRequirements;
+  authTestExports.submitDateOverrideRequest = submitDateOverrideRequest;
   module.exports = authTestExports;
 }

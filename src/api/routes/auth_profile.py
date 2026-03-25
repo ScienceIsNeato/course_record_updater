@@ -42,20 +42,20 @@ logger = get_logger(__name__)
 def _require_password_change_payload(data: Dict[str, Any]) -> tuple[str, str]:
     """Validate required password-change fields and return normalized values."""
     if "current_password" not in data:
-        raise ValueError("Missing required field: current_password")
+        raise ValueError(format_missing_required_field("current_password"))
     if "new_password" not in data:
-        raise ValueError("Missing required field: new_password")
+        raise ValueError(format_missing_required_field("new_password"))
     return str(data["current_password"]), str(data["new_password"])
 
 
-def _get_password_change_user() -> tuple[str, Dict[str, Any]] | ResponseReturnValue:
+def _get_password_change_user() -> tuple[str, Dict[str, Any] | None]:
     """Fetch the current user and full DB record for password change."""
     user_id = get_current_user_id_safe()
     if not user_id:
-        return jsonify({"success": False, "error": SESSION_USER_ID_NOT_FOUND_MSG}), 401
+        return "", None
     user = get_user_by_id(user_id)
     if not user:
-        return jsonify({"success": False, "error": USER_NOT_FOUND_MSG}), 404
+        return user_id, None
     return user_id, user
 
 
@@ -196,10 +196,15 @@ def change_password_api() -> ResponseReturnValue:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
         current_password, new_password = _require_password_change_payload(data)
-        user_context = _get_password_change_user()
-        if not isinstance(user_context, tuple):
-            return user_context
-        user_id, user = cast(tuple[str, Dict[str, Any]], user_context)
+        user_id, user = _get_password_change_user()
+        if not user_id:
+            return (
+                jsonify({"success": False, "error": SESSION_USER_ID_NOT_FOUND_MSG}),
+                401,
+            )
+        if not user:
+            return jsonify({"success": False, "error": USER_NOT_FOUND_MSG}), 404
+        user = cast(Dict[str, Any], user)
 
         password_error = _verify_current_password(
             verify_password, current_password, user

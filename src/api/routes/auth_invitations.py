@@ -100,8 +100,8 @@ def _create_invitation_response(invitation: Dict[str, Any]) -> ResponseReturnVal
 def _build_public_invitation_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     """Normalize `/api/invitations` aliases to the internal invitation shape."""
     data = dict(payload)
-    data["invitee_email"] = payload.get("invitee_email") or payload.get("email")
-    data["invitee_role"] = payload.get("invitee_role") or payload.get("role")
+    data["invitee_email"] = payload.get("invitee_email") or payload.get("email") or ""
+    data["invitee_role"] = payload.get("invitee_role") or payload.get("role") or ""
     return data
 
 

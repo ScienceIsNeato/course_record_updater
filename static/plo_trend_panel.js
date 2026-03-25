@@ -1,6 +1,16 @@
 (function () {
   "use strict";
 
+  function updateTrendToggleState(toggleBtn, hidden) {
+    toggleBtn.textContent = hidden ? "\u{1F441}" : "\u{1F440}";
+    toggleBtn.title = hidden ? "Show trend chart" : "Hide trend chart";
+    toggleBtn.setAttribute("aria-expanded", String(!hidden));
+    toggleBtn.setAttribute(
+      "aria-label",
+      hidden ? "Show trend chart" : "Hide trend chart",
+    );
+  }
+
   function createTrendPanelShell() {
     const panel = document.createElement("div");
     panel.className = "plo-trend-panel";
@@ -17,15 +27,12 @@
     const toggleBtn = document.createElement("button");
     toggleBtn.type = "button";
     toggleBtn.className = "plo-trend-panel-toggle";
-    toggleBtn.innerHTML = "&#128065;";
-    toggleBtn.title = "Hide trend chart";
-    toggleBtn.setAttribute("aria-label", "Toggle trend chart visibility");
+    updateTrendToggleState(toggleBtn, false);
     toggleBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       const hidden = body.style.display === "none";
       body.style.display = hidden ? "" : "none";
-      toggleBtn.innerHTML = hidden ? "&#128065;" : "&#128064;";
-      toggleBtn.title = hidden ? "Hide trend chart" : "Show trend chart";
+      updateTrendToggleState(toggleBtn, !hidden);
       panel.classList.toggle("plo-trend-panel--collapsed", !hidden);
     });
     panel.insertBefore(toggleBtn, body);

@@ -24,10 +24,10 @@ from typing import Any
 import pandas as pd
 from flask import Flask
 
-from src.utils.logging_config import STANDARD_LOG_FORMAT
-
 # Add parent dir to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.utils.logging_config import STANDARD_LOG_FORMAT
 
 # Setup Logging
 os.makedirs("logs", exist_ok=True)

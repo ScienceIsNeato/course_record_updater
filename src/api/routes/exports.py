@@ -106,7 +106,10 @@ def _validate_export_output_path(output_path: Path) -> ResponseReturnValue | Non
     """Ensure the export file stays inside the temp directory."""
     resolved_output_parent = output_path.parent.resolve()
     resolved_temp_dir = Path(tempfile.gettempdir()).resolve()
-    if not str(resolved_output_parent).startswith(str(resolved_temp_dir)):
+    if (
+        resolved_output_parent != resolved_temp_dir
+        and resolved_temp_dir not in resolved_output_parent.parents
+    ):
         logger.error(f"[EXPORT] Path traversal attempt detected: {output_path}")
         return jsonify({"success": False, "error": "Invalid export path"}), 400
     return None
