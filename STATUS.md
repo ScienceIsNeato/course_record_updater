@@ -1,5 +1,60 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR 71 Gate + Commentary Remediation (2026-03-26)
+
+**Status**: 🚧 IN PROGRESS - root-cause fixes implemented locally, pending PR thread resolution + CI re-run
+
+**What Changed**:
+
+- Updated `.github/workflows/quality-gate.yml` to support the consolidated scour path without regression:
+   - Removed setup-job pip cache write that could lock an empty cache key.
+   - Added project venv creation (`venv`) so custom gates that require `venv/bin/python` succeed.
+   - Added explicit scanner/tool install (`pip-audit`, `bandit`, `detect-secrets`, `semgrep`).
+   - Added Playwright browser installation (`python -m playwright install --with-deps chromium`) for `overconfidence:e2e`.
+   - Executes scour from activated project venv.
+- Updated dependency floors:
+   - `requests>=2.33.0` in both `requirements.txt` and `requirements-dev.txt`.
+   - Removed explicit `pygments` floor from `requirements-dev.txt`.
+- Added scoped slopmop config exception in `.sb_config.json`:
+   - `myopia:dependency-risk.py.pip_audit_ignore_vulns` includes `GHSA-5239-wwwm-4pmq` (no patched pygments release available).
+
+**Validation**:
+
+- `activate && sm scour -g myopia:dependency-risk.py --verbose --no-cache --json --output-file .slopmop/last_dependency_risk.json` ✅
+- Dependency-risk gate now passes locally.
+
+**Remaining PR Tasks**:
+
+- Commit/push the remediation changes.
+- Resolve unresolved PR threads:
+   - `PRRT_kwDOOV6J2s52p4xy`
+   - `PRRT_kwDOOV6J2s52pFQC`
+   - `PRRT_kwDOOV6J2s52p4xu`
+- Re-run buff/CI loop and confirm `slopmop-scour` passes.
+
+## Latest Work: PR 71 Buff On Single-Scour CI (2026-03-25)
+
+**Status**: ✅ COMPLETE - new CI shape executed and buff triage succeeded
+
+**What I Verified**:
+
+- New workflow check set is active on PR 71:
+   - `setup` (pass)
+   - `slopmop-scour` (fail)
+   - `Cursor Bugbot` (neutral/skip)
+- `sm buff inspect` still requires explicit `--run-id`, but succeeds with the latest Quality Gate run id.
+
+**Buff Output (run 23532763570)**:
+
+- Hard failures: `myopia:dependency-risk.py`, `overconfidence:e2e`, `overconfidence:smoke`
+- PR feedback unresolved count: `3`
+
+**Next Steps**:
+
+- Fix scour hard failures (dependency risk + smoke + e2e).
+- Resolve the remaining three review threads via `sm buff resolve`.
+- Re-run buff cycle until `slopmop-scour` is green and unresolved thread count is zero.
+
 ## Latest Work: CI Consolidated To Single Scour (2026-03-25)
 
 **Status**: ✅ COMPLETE - Quality Gate workflow now uses slopmop scour as the single validation runner

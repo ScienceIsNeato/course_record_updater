@@ -254,6 +254,9 @@
           "semgrep",
           "detect-secrets"
         ],
+        "pip_audit_ignore_vulns": [
+          "GHSA-5239-wwwm-4pmq"
+        ],
         "exclude_dirs": [
           ".specstory",
           "venv",

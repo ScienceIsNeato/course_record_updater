@@ -27,13 +27,6 @@ jobs:
       - name: Generate cache key
         id: cache-key
         run: echo "key=${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}" >> $GITHUB_OUTPUT
-      - name: Cache pip dependencies
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
-        with:
-          path: ~/.cache/pip
-          key: ${{ steps.cache-key.outputs.key }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
 
   slopmop-scour:
     runs-on: ubuntu-latest
@@ -58,16 +51,28 @@ jobs:
             ${{ runner.os }}-pip-
       - name: Install JavaScript dependencies
         run: npm install
-      - name: Install Python dependencies
+      - name: Create project virtual environment
+        run: python -m venv venv
+      - name: Install Python dependencies and scanners
         run: |
+          source venv/bin/activate
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
+          pip install pip-audit bandit detect-secrets
+          pip install --only-binary=:all: semgrep==1.156.0
           pip install --no-cache-dir slopmop==0.12.0
+      - name: Install Playwright browser dependencies
+        run: |
+          source venv/bin/activate
+          python -m playwright install --with-deps chromium
       - name: Fix slopmop template dirs
-        run: python scripts/ci_fix_slopmop_templates.py
+        run: |
+          source venv/bin/activate
+          python scripts/ci_fix_slopmop_templates.py
       - name: Run slopmop scour (single source of truth)
         run: |
+          source venv/bin/activate
           sm scour --json --output-file slopmop-results.json --no-cache
         env:
           PYTHONPATH: .
