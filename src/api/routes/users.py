@@ -9,6 +9,9 @@ from src.api.utils import (
     InstitutionContextMissingError,
     get_current_institution_id_safe,
     get_current_user_safe,
+)
+from src.api.utils import get_request_json_object as _get_request_json
+from src.api.utils import (
     handle_api_error,
     resolve_institution_scope,
 )
@@ -31,6 +34,7 @@ from src.services.auth_service import (
     permission_required,
 )
 from src.utils.constants import (
+    FAILED_TO_UPDATE_PROFILE_MSG,
     INSTITUTION_CONTEXT_REQUIRED_MSG,
     NO_DATA_PROVIDED_MSG,
     NO_JSON_DATA_PROVIDED_MSG,
@@ -42,12 +46,6 @@ from src.utils.logging_config import get_logger
 logger = get_logger(__name__)
 
 users_bp = Blueprint("users", __name__, url_prefix="/api")
-
-
-def _get_request_json() -> Dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
 
 
 def _resolve_users_scope() -> Tuple[Dict[str, Any], List[str], bool]:
@@ -162,7 +160,9 @@ def list_users() -> ResponseReturnValue:
 
 @users_bp.route("/users", methods=["POST"])
 @permission_required("manage_users")
-def create_user() -> ResponseReturnValue:
+def create_user() -> (  # noqa: ambiguity-mine - route handler intentionally mirrors service verb
+    ResponseReturnValue
+):
     """Create a new user with role-based authorization checks."""
     try:
         data = _get_request_json()
@@ -361,7 +361,10 @@ def update_user_profile_endpoint(user_id: str) -> ResponseReturnValue:
                 200,
             )
         else:
-            return jsonify({"success": False, "error": "Failed to update profile"}), 500
+            return (
+                jsonify({"success": False, "error": FAILED_TO_UPDATE_PROFILE_MSG}),
+                500,
+            )
 
     except Exception as e:
         return handle_api_error(
@@ -393,11 +396,11 @@ def update_user_role_endpoint(user_id: str) -> ResponseReturnValue:
 
         user = get_user_by_id(user_id)
         if not user:
-            return jsonify({"success": False, "error": "User not found"}), 404
+            return jsonify({"success": False, "error": USER_NOT_FOUND_MSG}), 404
 
         current_institution_id = get_current_institution_id_safe()
         if user.get("institution_id") != current_institution_id:
-            return jsonify({"success": False, "error": "User not found"}), 404
+            return jsonify({"success": False, "error": USER_NOT_FOUND_MSG}), 404
 
         success = update_user_role(user_id, new_role, program_ids=None)
 

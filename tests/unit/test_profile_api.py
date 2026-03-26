@@ -247,6 +247,24 @@ class TestChangePasswordAPI:
         assert data["success"] is False
         assert "new_password" in data["error"]
 
+    def test_change_password_user_lookup_missing_returns_404(self) -> None:
+        """Missing DB user should return 404 instead of crashing on tuple shape."""
+        self._login_user()
+
+        with patch("src.api.routes.auth_profile.get_user_by_id", return_value=None):
+            response = self.client.post(
+                "/api/auth/change-password",
+                json={
+                    "current_password": TEST_PASSWORD,
+                    "new_password": NEW_TEST_PASSWORD,
+                },
+            )
+
+        assert response.status_code == 404
+        data = response.get_json()
+        assert data["success"] is False
+        assert "User not found" in data["error"]
+
     def test_change_password_wrong_current_password(self) -> None:
         """Test password change with incorrect current password."""
         self._login_user()

@@ -102,6 +102,7 @@ def ensure_test_database(tmp_path_factory: Any) -> Generator[None, None, None]:
         os.environ["DATABASE_TYPE"] = "sqlite"
         database_service.refresh_connection()
         yield
+        database_service.close_connection()
         return
 
     # Create temporary database for unit tests

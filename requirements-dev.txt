@@ -35,7 +35,7 @@ tox>=4.6.0                 # Testing across multiple Python versions
 # Security patch minimums (safety scan)
 filelock>=3.20.1
 authlib>=1.6.5
-requests>=2.32.4
+requests>=2.33.0
 
 # Documentation
 sphinx>=7.1.0              # Documentation generator

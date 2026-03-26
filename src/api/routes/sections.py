@@ -5,14 +5,18 @@ Provides endpoints for managing course sections (CRUD operations)
 with role-based filtering, instructor assignment, and institution access verification.
 """
 
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple
 
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 
 from src.api.utils import (
+    format_missing_required_fields,
     get_current_institution_id_safe,
     get_current_user_safe,
+)
+from src.api.utils import get_request_json_object as _get_request_json
+from src.api.utils import (
     handle_api_error,
 )
 from src.database.database_service import (
@@ -42,14 +46,6 @@ sections_bp = Blueprint("sections", __name__, url_prefix="/api")
 
 # Initialize logger
 logger = get_logger(__name__)
-
-
-def _get_request_json() -> Dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
-
-
 # ========================================
 # HELPER FUNCTIONS
 # ========================================
@@ -187,7 +183,7 @@ def create_section() -> ResponseReturnValue:
                 jsonify(
                     {
                         "success": False,
-                        "error": f'Missing required fields: {", ".join(missing_fields)}',
+                        "error": format_missing_required_fields(missing_fields),
                     }
                 ),
                 400,

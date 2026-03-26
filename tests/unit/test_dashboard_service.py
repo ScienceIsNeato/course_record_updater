@@ -8,8 +8,8 @@ import pytest
 from src.services.dashboard_service import DashboardService, DashboardServiceError
 
 
-@pytest.fixture
-def service() -> Any:
+@pytest.fixture(name="service")
+def dashboard_service_core_fixture() -> Any:
     return DashboardService()
 
 

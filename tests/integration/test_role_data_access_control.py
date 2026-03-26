@@ -53,6 +53,280 @@ class TestDataFixture:
     """Helper to create controlled test data using Generic CSV adapter."""
 
     @staticmethod
+    def _manifest_data() -> Dict[str, Any]:
+        return {
+            "format_version": "1.0",
+            "export_timestamp": "2025-10-07T00:00:00Z",
+            "adapter_id": "generic_csv_v1",
+            "entity_counts": {
+                "institutions": 3,
+                "programs": 6,
+                "users": 10,
+                "courses": 12,
+                "terms": 2,
+                "course_offerings": 12,
+                "course_sections": 15,
+                "course_outcomes": 20,
+            },
+        }
+
+    @staticmethod
+    def _institutions_data() -> List[Dict[str, Any]]:
+        return [
+            {
+                "id": "tu-001",
+                "name": "Tech University",
+                "short_name": "TU",
+                "website_url": "https://tech.edu",
+                "created_by": "system",
+                "admin_email": "admin@tech.edu",
+                "allow_self_registration": "true",
+                "require_email_verification": "true",
+                "is_active": "true",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
+            },
+            {
+                "id": "cc-001",
+                "name": "Community College",
+                "short_name": "CC",
+                "website_url": "https://community.edu",
+                "created_by": "system",
+                "admin_email": "admin@community.edu",
+                "allow_self_registration": "false",
+                "require_email_verification": "true",
+                "is_active": "true",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
+            },
+            {
+                "id": "sc-001",
+                "name": "State College",
+                "short_name": "SC",
+                "website_url": "https://state.edu",
+                "created_by": "system",
+                "admin_email": "admin@state.edu",
+                "allow_self_registration": "true",
+                "require_email_verification": "false",
+                "is_active": "true",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
+            },
+        ]
+
+    @staticmethod
+    def _programs_data() -> List[Dict[str, Any]]:
+        return [
+            {
+                "id": "tu-cs-001",
+                "name": "Computer Science",
+                "short_name": "CS",
+                "description": "Computer Science program",
+                "institution_id": "tu-001",
+                "created_by": "system",
+                "is_default": "false",
+                "is_active": "true",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
+            },
+            {
+                "id": "tu-ee-001",
+                "name": "Electrical Engineering",
+                "short_name": "EE",
+                "description": "Electrical Engineering program",
+                "institution_id": "tu-001",
+                "created_by": "system",
+                "is_default": "false",
+                "is_active": "true",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
+            },
+            {
+                "id": "cc-nurs-001",
+                "name": "Nursing",
+                "short_name": "NURS",
+                "description": "Nursing program",
+                "institution_id": "cc-001",
+                "created_by": "system",
+                "is_default": "false",
+                "is_active": "true",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
+            },
+            {
+                "id": "cc-bus-001",
+                "name": "Business",
+                "short_name": "BUS",
+                "description": "Business program",
+                "institution_id": "cc-001",
+                "created_by": "system",
+                "is_default": "false",
+                "is_active": "true",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
+            },
+            {
+                "id": "sc-la-001",
+                "name": "Liberal Arts",
+                "short_name": "LA",
+                "description": "Liberal Arts program",
+                "institution_id": "sc-001",
+                "created_by": "system",
+                "is_default": "false",
+                "is_active": "true",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
+            },
+            {
+                "id": "sc-gen-001",
+                "name": "General Studies",
+                "short_name": "GEN",
+                "description": "General Studies program",
+                "institution_id": "sc-001",
+                "created_by": "system",
+                "is_default": "true",
+                "is_active": "true",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
+            },
+        ]
+
+    @staticmethod
+    def _users_data() -> List[Dict[str, Any]]:
+        return [
+            {
+                "id": "site-admin-001",
+                "email": SITE_ADMIN_EMAIL,
+                "first_name": "Site",
+                "last_name": "Admin",
+                "display_name": "Site Administrator",
+                "role": UserRole.SITE_ADMIN.value,
+                "institution_id": "",
+                "account_status": "active",
+                "email_verified": "true",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
+            },
+            {
+                "id": "tu-admin-001",
+                "email": "admin@tech.edu",
+                "first_name": "Tech",
+                "last_name": "Admin",
+                "display_name": "Tech University Admin",
+                "role": UserRole.INSTITUTION_ADMIN.value,
+                "institution_id": "tu-001",
+                "account_status": "active",
+                "email_verified": "true",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
+            },
+            {
+                "id": "tu-cs-prog-001",
+                "email": "cs.admin@tech.edu",
+                "first_name": "CS",
+                "last_name": "Program Admin",
+                "display_name": "CS Program Admin",
+                "role": UserRole.PROGRAM_ADMIN.value,
+                "institution_id": "tu-001",
+                "account_status": "active",
+                "email_verified": "true",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
+            },
+            {
+                "id": "tu-cs-inst-001",
+                "email": "cs.instructor@tech.edu",
+                "first_name": "CS",
+                "last_name": "Instructor",
+                "display_name": "CS Instructor",
+                "role": UserRole.INSTRUCTOR.value,
+                "institution_id": "tu-001",
+                "account_status": "active",
+                "email_verified": "true",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
+            },
+            {
+                "id": "cc-admin-001",
+                "email": "admin@community.edu",
+                "first_name": "Community",
+                "last_name": "Admin",
+                "display_name": "Community College Admin",
+                "role": UserRole.INSTITUTION_ADMIN.value,
+                "institution_id": "cc-001",
+                "account_status": "active",
+                "email_verified": "true",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
+            },
+            {
+                "id": "cc-nurs-inst-001",
+                "email": "nurs.instructor@community.edu",
+                "first_name": "Nursing",
+                "last_name": "Instructor",
+                "display_name": "Nursing Instructor",
+                "role": UserRole.INSTRUCTOR.value,
+                "institution_id": "cc-001",
+                "account_status": "active",
+                "email_verified": "true",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
+            },
+            {
+                "id": "sc-admin-001",
+                "email": "admin@state.edu",
+                "first_name": "State",
+                "last_name": "Admin",
+                "display_name": "State College Admin",
+                "role": UserRole.INSTITUTION_ADMIN.value,
+                "institution_id": "sc-001",
+                "account_status": "active",
+                "email_verified": "true",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
+            },
+        ]
+
+    @staticmethod
+    def _user_programs_data() -> List[Dict[str, Any]]:
+        return [
+            {"user_id": "tu-cs-prog-001", "program_id": "tu-cs-001"},
+            {"user_id": "tu-cs-inst-001", "program_id": "tu-cs-001"},
+            {"user_id": "cc-nurs-inst-001", "program_id": "cc-nurs-001"},
+        ]
+
+    @staticmethod
+    def _write_fixture_csvs(tmppath: Path) -> None:
+        TestDataFixture._write_csv(
+            tmppath / "institutions.csv", TestDataFixture._institutions_data()
+        )
+        TestDataFixture._write_csv(
+            tmppath / "programs.csv", TestDataFixture._programs_data()
+        )
+        TestDataFixture._write_csv(tmppath / "users.csv", TestDataFixture._users_data())
+        TestDataFixture._write_csv(
+            tmppath / "user_programs.csv", TestDataFixture._user_programs_data()
+        )
+        for csv_name in [
+            "courses.csv",
+            "course_programs.csv",
+            "terms.csv",
+            "course_offerings.csv",
+            "course_sections.csv",
+            "course_outcomes.csv",
+            "user_invitations.csv",
+        ]:
+            TestDataFixture._write_csv(tmppath / csv_name, [])
+
+    @staticmethod
+    def _create_zip_archive(tmppath: Path) -> bytes:
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for file_path in tmppath.glob("*"):
+                zip_file.write(file_path, file_path.name)
+        return zip_buffer.getvalue()
+
+    @staticmethod
     def create_minimal_test_zip() -> bytes:
         """
         Create a minimal ZIP of CSVs with known, predictable values.
@@ -63,292 +337,12 @@ class TestDataFixture:
         - Known user counts per role
         - Known course/section counts
         """
-        # Create temporary directory for CSVs
         with tempfile.TemporaryDirectory() as tmpdir:
             tmppath = Path(tmpdir)
-
-            # 1. Create manifest.json
-            manifest = {
-                "format_version": "1.0",
-                "export_timestamp": "2025-10-07T00:00:00Z",
-                "adapter_id": "generic_csv_v1",
-                "entity_counts": {
-                    "institutions": 3,
-                    "programs": 6,
-                    "users": 10,
-                    "courses": 12,
-                    "terms": 2,
-                    "course_offerings": 12,
-                    "course_sections": 15,
-                    "course_outcomes": 20,
-                },
-            }
             with open(tmppath / "manifest.json", "w") as f:
-                json.dump(manifest, f, indent=2)
-
-            # 2. Create institutions.csv
-            institutions_data = [
-                {
-                    "id": "tu-001",
-                    "name": "Tech University",
-                    "short_name": "TU",
-                    "website_url": "https://tech.edu",
-                    "created_by": "system",
-                    "admin_email": "admin@tech.edu",
-                    "allow_self_registration": "true",
-                    "require_email_verification": "true",
-                    "is_active": "true",
-                    "created_at": "2025-01-01T00:00:00Z",
-                    "updated_at": "2025-01-01T00:00:00Z",
-                },
-                {
-                    "id": "cc-001",
-                    "name": "Community College",
-                    "short_name": "CC",
-                    "website_url": "https://community.edu",
-                    "created_by": "system",
-                    "admin_email": "admin@community.edu",
-                    "allow_self_registration": "false",
-                    "require_email_verification": "true",
-                    "is_active": "true",
-                    "created_at": "2025-01-01T00:00:00Z",
-                    "updated_at": "2025-01-01T00:00:00Z",
-                },
-                {
-                    "id": "sc-001",
-                    "name": "State College",
-                    "short_name": "SC",
-                    "website_url": "https://state.edu",
-                    "created_by": "system",
-                    "admin_email": "admin@state.edu",
-                    "allow_self_registration": "true",
-                    "require_email_verification": "false",
-                    "is_active": "true",
-                    "created_at": "2025-01-01T00:00:00Z",
-                    "updated_at": "2025-01-01T00:00:00Z",
-                },
-            ]
-            TestDataFixture._write_csv(tmppath / "institutions.csv", institutions_data)
-
-            # 3. Create programs.csv
-            programs_data = [
-                # TU programs
-                {
-                    "id": "tu-cs-001",
-                    "name": "Computer Science",
-                    "short_name": "CS",
-                    "description": "Computer Science program",
-                    "institution_id": "tu-001",
-                    "created_by": "system",
-                    "is_default": "false",
-                    "is_active": "true",
-                    "created_at": "2025-01-01T00:00:00Z",
-                    "updated_at": "2025-01-01T00:00:00Z",
-                },
-                {
-                    "id": "tu-ee-001",
-                    "name": "Electrical Engineering",
-                    "short_name": "EE",
-                    "description": "Electrical Engineering program",
-                    "institution_id": "tu-001",
-                    "created_by": "system",
-                    "is_default": "false",
-                    "is_active": "true",
-                    "created_at": "2025-01-01T00:00:00Z",
-                    "updated_at": "2025-01-01T00:00:00Z",
-                },
-                # CC programs
-                {
-                    "id": "cc-nurs-001",
-                    "name": "Nursing",
-                    "short_name": "NURS",
-                    "description": "Nursing program",
-                    "institution_id": "cc-001",
-                    "created_by": "system",
-                    "is_default": "false",
-                    "is_active": "true",
-                    "created_at": "2025-01-01T00:00:00Z",
-                    "updated_at": "2025-01-01T00:00:00Z",
-                },
-                {
-                    "id": "cc-bus-001",
-                    "name": "Business",
-                    "short_name": "BUS",
-                    "description": "Business program",
-                    "institution_id": "cc-001",
-                    "created_by": "system",
-                    "is_default": "false",
-                    "is_active": "true",
-                    "created_at": "2025-01-01T00:00:00Z",
-                    "updated_at": "2025-01-01T00:00:00Z",
-                },
-                # SC programs
-                {
-                    "id": "sc-la-001",
-                    "name": "Liberal Arts",
-                    "short_name": "LA",
-                    "description": "Liberal Arts program",
-                    "institution_id": "sc-001",
-                    "created_by": "system",
-                    "is_default": "false",
-                    "is_active": "true",
-                    "created_at": "2025-01-01T00:00:00Z",
-                    "updated_at": "2025-01-01T00:00:00Z",
-                },
-                {
-                    "id": "sc-gen-001",
-                    "name": "General Studies",
-                    "short_name": "GEN",
-                    "description": "General Studies program",
-                    "institution_id": "sc-001",
-                    "created_by": "system",
-                    "is_default": "true",
-                    "is_active": "true",
-                    "created_at": "2025-01-01T00:00:00Z",
-                    "updated_at": "2025-01-01T00:00:00Z",
-                },
-            ]
-            TestDataFixture._write_csv(tmppath / "programs.csv", programs_data)
-
-            # 4. Create users.csv (passwords excluded per security spec)
-            users_data = [
-                # Site Admin
-                {
-                    "id": "site-admin-001",
-                    "email": SITE_ADMIN_EMAIL,
-                    "first_name": "Site",
-                    "last_name": "Admin",
-                    "display_name": "Site Administrator",
-                    "role": UserRole.SITE_ADMIN.value,
-                    "institution_id": "",  # Site admin has no institution
-                    "account_status": "active",
-                    "email_verified": "true",
-                    "created_at": "2025-01-01T00:00:00Z",
-                    "updated_at": "2025-01-01T00:00:00Z",
-                },
-                # TU users
-                {
-                    "id": "tu-admin-001",
-                    "email": "admin@tech.edu",
-                    "first_name": "Tech",
-                    "last_name": "Admin",
-                    "display_name": "Tech University Admin",
-                    "role": UserRole.INSTITUTION_ADMIN.value,
-                    "institution_id": "tu-001",
-                    "account_status": "active",
-                    "email_verified": "true",
-                    "created_at": "2025-01-01T00:00:00Z",
-                    "updated_at": "2025-01-01T00:00:00Z",
-                },
-                {
-                    "id": "tu-cs-prog-001",
-                    "email": "cs.admin@tech.edu",
-                    "first_name": "CS",
-                    "last_name": "Program Admin",
-                    "display_name": "CS Program Admin",
-                    "role": UserRole.PROGRAM_ADMIN.value,
-                    "institution_id": "tu-001",
-                    "account_status": "active",
-                    "email_verified": "true",
-                    "created_at": "2025-01-01T00:00:00Z",
-                    "updated_at": "2025-01-01T00:00:00Z",
-                },
-                {
-                    "id": "tu-cs-inst-001",
-                    "email": "cs.instructor@tech.edu",
-                    "first_name": "CS",
-                    "last_name": "Instructor",
-                    "display_name": "CS Instructor",
-                    "role": UserRole.INSTRUCTOR.value,
-                    "institution_id": "tu-001",
-                    "account_status": "active",
-                    "email_verified": "true",
-                    "created_at": "2025-01-01T00:00:00Z",
-                    "updated_at": "2025-01-01T00:00:00Z",
-                },
-                # CC users
-                {
-                    "id": "cc-admin-001",
-                    "email": "admin@community.edu",
-                    "first_name": "Community",
-                    "last_name": "Admin",
-                    "display_name": "Community College Admin",
-                    "role": UserRole.INSTITUTION_ADMIN.value,
-                    "institution_id": "cc-001",
-                    "account_status": "active",
-                    "email_verified": "true",
-                    "created_at": "2025-01-01T00:00:00Z",
-                    "updated_at": "2025-01-01T00:00:00Z",
-                },
-                {
-                    "id": "cc-nurs-inst-001",
-                    "email": "nurs.instructor@community.edu",
-                    "first_name": "Nursing",
-                    "last_name": "Instructor",
-                    "display_name": "Nursing Instructor",
-                    "role": UserRole.INSTRUCTOR.value,
-                    "institution_id": "cc-001",
-                    "account_status": "active",
-                    "email_verified": "true",
-                    "created_at": "2025-01-01T00:00:00Z",
-                    "updated_at": "2025-01-01T00:00:00Z",
-                },
-                # SC users
-                {
-                    "id": "sc-admin-001",
-                    "email": "admin@state.edu",
-                    "first_name": "State",
-                    "last_name": "Admin",
-                    "display_name": "State College Admin",
-                    "role": UserRole.INSTITUTION_ADMIN.value,
-                    "institution_id": "sc-001",
-                    "account_status": "active",
-                    "email_verified": "true",
-                    "created_at": "2025-01-01T00:00:00Z",
-                    "updated_at": "2025-01-01T00:00:00Z",
-                },
-            ]
-            TestDataFixture._write_csv(tmppath / "users.csv", users_data)
-
-            # 5. Create user_programs.csv (program admin assignments)
-            user_programs_data = [
-                {
-                    "user_id": "tu-cs-prog-001",
-                    "program_id": "tu-cs-001",
-                },
-                {
-                    "user_id": "tu-cs-inst-001",
-                    "program_id": "tu-cs-001",
-                },
-                {
-                    "user_id": "cc-nurs-inst-001",
-                    "program_id": "cc-nurs-001",
-                },
-            ]
-            TestDataFixture._write_csv(
-                tmppath / "user_programs.csv", user_programs_data
-            )
-
-            # 6-11. Create remaining entity CSVs (courses, terms, offerings, sections, outcomes, invitations)
-            # For now, create empty files to satisfy import order
-            for csv_name in [
-                "courses.csv",
-                "course_programs.csv",
-                "terms.csv",
-                "course_offerings.csv",
-                "course_sections.csv",
-                "course_outcomes.csv",
-                "user_invitations.csv",
-            ]:
-                TestDataFixture._write_csv(tmppath / csv_name, [])
-
-            # Create ZIP archive
-            zip_buffer = io.BytesIO()
-            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-                for file_path in tmppath.glob("*"):
-                    zip_file.write(file_path, file_path.name)
-
-            return zip_buffer.getvalue()
+                json.dump(TestDataFixture._manifest_data(), f, indent=2)
+            TestDataFixture._write_fixture_csvs(tmppath)
+            return TestDataFixture._create_zip_archive(tmppath)
 
     @staticmethod
     def _write_csv(file_path: Path, data: List[Dict[str, Any]]) -> None:

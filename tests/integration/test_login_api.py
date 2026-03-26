@@ -15,8 +15,8 @@ from src.app import app
 from src.utils.constants import INVALID_PASSWORD
 
 
-@pytest.fixture
-def client() -> Generator[Any, None, None]:
+@pytest.fixture(name="client")
+def login_api_client_fixture() -> Generator[Any, None, None]:
     """Create test client"""
     app.config["TESTING"] = True
     app.config["SECRET_KEY"] = "test-secret-key"
@@ -27,7 +27,7 @@ def client() -> Generator[Any, None, None]:
 
 
 @pytest.fixture
-def sample_user_data() -> Any:
+def sample_user_data() -> Any:  # noqa: ambiguity-mine - test fixture convention
     """Sample user data for testing"""
     return {
         "user_id": "user-123",

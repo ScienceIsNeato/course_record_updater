@@ -13,7 +13,9 @@ health_bp = Blueprint("health", __name__, url_prefix="/api")
 
 
 @health_bp.route("/health", methods=["GET"])
-def health_check() -> tuple[Any, int]:
+def health_check() -> (  # noqa: ambiguity-mine - route endpoint intentionally mirrors app health entrypoint
+    tuple[Any, int]
+):
     """API health check endpoint"""
     return (
         jsonify(

@@ -18,7 +18,9 @@ from src.app import app
 from tests.test_utils import CommonAuthMixin
 
 
-def get_csrf_token(client: Any) -> Any:
+def get_csrf_token(  # noqa: ambiguity-mine - test helper name is intentionally generic
+    client: Any,
+) -> Any:
     """Get CSRF token using Flask-WTF's generate_csrf."""
     from flask import session as flask_session
     from flask_wtf.csrf import generate_csrf

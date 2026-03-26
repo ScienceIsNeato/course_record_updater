@@ -281,6 +281,84 @@ function setButtonLoading(buttonEl, isLoading) {
   buttonEl.disabled = false;
 }
 
+function createSectionRow(index) {
+  const sectionNum = (index + 1).toString().padStart(3, "0");
+  const row = document.createElement("div");
+  row.className = "section-row row mb-2 align-items-end";
+  row.dataset.index = index;
+
+  const col1 = document.createElement("div");
+  col1.className = "col-md-10";
+
+  const label = document.createElement("label");
+  label.className = "form-label small";
+  label.textContent = "Section Number";
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "form-control form-control-sm section-number";
+  input.name = `section-number-${index}`;
+  input.value = sectionNum;
+  input.readOnly = true;
+
+  col1.appendChild(label);
+  col1.appendChild(input);
+
+  const col2 = document.createElement("div");
+  col2.className = "col-md-2";
+
+  const removeBtn = document.createElement("button");
+  removeBtn.type = "button";
+  removeBtn.className = "btn btn-sm btn-outline-danger remove-section-btn";
+
+  const icon = document.createElement("i");
+  icon.className = "fas fa-trash";
+  removeBtn.appendChild(icon);
+
+  col2.appendChild(removeBtn);
+  row.appendChild(col1);
+  row.appendChild(col2);
+  return row;
+}
+
+function reindexSectionRows(container) {
+  const rows = container.querySelectorAll(".section-row");
+  rows.forEach((row, idx) => {
+    row.dataset.index = idx;
+    const input = row.querySelector(".section-number");
+    const sectionNum = (idx + 1).toString().padStart(3, "0");
+    input.value = sectionNum;
+    input.name = `section-number-${idx}`;
+  });
+}
+
+function appendSectionRow(container) {
+  const nextIndex = container.querySelectorAll(".section-row").length;
+  const row = createSectionRow(nextIndex);
+  container.appendChild(row);
+  row.querySelector(".remove-section-btn").addEventListener("click", () => {
+    row.remove();
+    reindexSectionRows(container);
+  });
+}
+
+function collectOfferingSections(container) {
+  if (!container) return [];
+  return Array.from(container.querySelectorAll(".section-row"), (row) => ({
+    section_number: row.querySelector(".section-number").value,
+  }));
+}
+
+function buildCreateOfferingData(container) {
+  const programIdValue = document.getElementById("offeringProgramId").value;
+  return {
+    course_id: document.getElementById("offeringCourseId").value,
+    term_id: document.getElementById("offeringTermId").value,
+    program_id: programIdValue || null,
+    sections: collectOfferingSections(container),
+  };
+}
+
 /**
  * Initialize Create Offering Modal
  * Sets up form submission for new offerings
@@ -297,87 +375,13 @@ function initializeCreateOfferingModal() {
 
   if (addBtn && container) {
     addBtn.addEventListener("click", () => {
-      const rows = container.querySelectorAll(".section-row");
-      const nextIndex = rows.length;
-      const sectionNum = (nextIndex + 1).toString().padStart(3, "0");
-
-      const row = document.createElement("div");
-      row.className = "section-row row mb-2 align-items-end";
-      row.dataset.index = nextIndex;
-
-      // Create section number column
-      const col1 = document.createElement("div");
-      col1.className = "col-md-10";
-
-      const label = document.createElement("label");
-      label.className = "form-label small";
-      label.textContent = "Section Number";
-
-      const input = document.createElement("input");
-      input.type = "text";
-      input.className = "form-control form-control-sm section-number";
-      input.name = `section-number-${nextIndex}`;
-      input.value = sectionNum;
-      input.readOnly = true;
-
-      col1.appendChild(label);
-      col1.appendChild(input);
-
-      // Create remove button column
-      const col2 = document.createElement("div");
-      col2.className = "col-md-2";
-
-      const removeBtn = document.createElement("button");
-      removeBtn.type = "button";
-      removeBtn.className = "btn btn-sm btn-outline-danger remove-section-btn";
-
-      const icon = document.createElement("i");
-      icon.className = "fas fa-trash";
-      removeBtn.appendChild(icon);
-
-      col2.appendChild(removeBtn);
-
-      row.appendChild(col1);
-      row.appendChild(col2);
-      container.appendChild(row);
-
-      row.querySelector(".remove-section-btn").addEventListener("click", () => {
-        row.remove();
-        reindexSections(container);
-      });
-    });
-  }
-
-  function reindexSections(cont) {
-    const rows = cont.querySelectorAll(".section-row");
-    rows.forEach((row, idx) => {
-      row.dataset.index = idx;
-      const sectionNum = (idx + 1).toString().padStart(3, "0");
-      row.querySelector(".section-number").value = sectionNum;
-      row.querySelector(".section-number").name = `section-number-${idx}`;
+      appendSectionRow(container);
     });
   }
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-
-    const programIdValue = document.getElementById("offeringProgramId").value;
-    const sections = [];
-    if (container) {
-      container.querySelectorAll(".section-row").forEach((row) => {
-        sections.push({
-          section_number: row.querySelector(".section-number").value,
-        });
-      });
-    }
-
-    const offeringData = {
-      course_id: document.getElementById("offeringCourseId").value,
-      term_id: document.getElementById("offeringTermId").value,
-      // Treat empty selection as null so API doesn't receive "" (often fails UUID validation)
-      program_id: programIdValue || null,
-      sections,
-    };
+    const offeringData = buildCreateOfferingData(container);
 
     const createBtn = document.getElementById("createOfferingBtn");
     setButtonLoading(createBtn, true);
@@ -632,77 +636,10 @@ async function loadOfferings() {
     // Look for the offerings list in multiple possible keys for robustness
     const offerings = data.offerings || data || [];
 
-    if (offerings.length === 0) {
-      // nosemgrep
-      container.innerHTML = `
-          <div class="alert alert-info">
-            <i class="fas fa-info-circle me-2"></i>
-            No course offerings found. Create an offering to get started.
-          </div>
-        `;
-      return;
-    }
-
-    let html = `
-        <div class="table-responsive">
-          <table class="table table-striped table-hover">
-            <thead>
-              <tr>
-                <th>Course</th>
-                <th>Program</th>
-                <th>Term</th>
-                <th>Status</th>
-                <th>Sections</th>
-                <th>Enrollment</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-      `;
-
-    offerings.forEach((offering) => {
-      const courseName =
-        offering.course_name ||
-        offering.course_title ||
-        offering.course_number ||
-        "Unknown Course";
-      const termName = offering.term_name || offering.term || "Unknown Term";
-      const statusValue = resolveOfferingStatus(offering);
-      const statusBadge = renderOfferingStatusBadge(statusValue);
-      const termId = offering.term_id || "";
-      // Support multiple programs - use program_ids array from API
-      const programIds = offering.program_ids || [];
-      const programIdsStr = programIds.join(",");
-
-      // Safe JSON stringify for the edit button
-      const offeringJson = JSON.stringify(offering)
-        .replace(/'/g, "&apos;")
-        .replace(/"/g, "&quot;");
-
-      html += `
-          <tr class="offering-row" data-term-id="${termId}" data-program-ids="${programIdsStr}">
-            <td><strong>${courseName}</strong></td>
-            <td>${offering.program_names && offering.program_names.length > 0 ? offering.program_names.join(", ") : "-"}</td>
-            <td>${termName}</td>
-            <td>${statusBadge}</td>
-            <td>${offering.section_count || 0}</td>
-            <td>${offering.total_enrollment || 0}</td>
-            <td>
-              <button class="btn btn-sm btn-outline-secondary" 
-                      data-offering='${offeringJson}'
-                      onclick="handleEditOfferingClick(this)">
-                <i class="fas fa-edit"></i> Edit
-              </button>
-              <button class="btn btn-sm btn-outline-danger" onclick='deleteOffering("${offering.offering_id || offering.id}", "${courseName}", "${termName}")'>
-                <i class="fas fa-trash"></i> Delete
-              </button>
-            </td>
-          </tr>
-        `;
-    });
-
-    html += "</tbody></table></div>";
-    container.innerHTML = html; // nosemgrep
+    container.innerHTML =
+      offerings.length === 0
+        ? renderEmptyOfferingsState()
+        : renderOfferingsTableMarkup(offerings); // nosemgrep
   } catch (error) {
     console.error("Error loading offerings:", error);
     // nosemgrep
@@ -713,6 +650,75 @@ async function loadOfferings() {
         </div>
       `;
   }
+}
+
+function renderEmptyOfferingsState() {
+  return `
+    <div class="alert alert-info">
+      <i class="fas fa-info-circle me-2"></i>
+      No course offerings found. Create an offering to get started.
+    </div>
+  `;
+}
+
+function renderOfferingRow(offering) {
+  const courseName =
+    offering.course_name ||
+    offering.course_title ||
+    offering.course_number ||
+    "Unknown Course";
+  const termName = offering.term_name || offering.term || "Unknown Term";
+  const statusValue = resolveOfferingStatus(offering);
+  const statusBadge = renderOfferingStatusBadge(statusValue);
+  const termId = offering.term_id || "";
+  const programIdsStr = (offering.program_ids || []).join(",");
+  const offeringJson = JSON.stringify(offering)
+    .replace(/'/g, "&apos;")
+    .replace(/"/g, "&quot;");
+
+  return `
+    <tr class="offering-row" data-term-id="${termId}" data-program-ids="${programIdsStr}">
+      <td><strong>${courseName}</strong></td>
+      <td>${offering.program_names && offering.program_names.length > 0 ? offering.program_names.join(", ") : "-"}</td>
+      <td>${termName}</td>
+      <td>${statusBadge}</td>
+      <td>${offering.section_count || 0}</td>
+      <td>${offering.total_enrollment || 0}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-secondary" 
+                data-offering='${offeringJson}'
+                onclick="handleEditOfferingClick(this)">
+          <i class="fas fa-edit"></i> Edit
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick='deleteOffering("${offering.offering_id || offering.id}", "${courseName}", "${termName}")'>
+          <i class="fas fa-trash"></i> Delete
+        </button>
+      </td>
+    </tr>
+  `;
+}
+
+function renderOfferingsTableMarkup(offerings) {
+  return `
+    <div class="table-responsive">
+      <table class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Course</th>
+            <th>Program</th>
+            <th>Term</th>
+            <th>Status</th>
+            <th>Sections</th>
+            <th>Enrollment</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${offerings.map(renderOfferingRow).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
 /**

@@ -278,6 +278,377 @@ function buildImportFormData(
   return formData;
 }
 
+function buildImportUiContext() {
+  return {
+    importForm: document.getElementById("excelImportForm"),
+    validateBtn: document.getElementById("validateImportBtn"),
+    executeBtn: document.getElementById("executeImportBtn"),
+    importBtnText: document.getElementById("importBtnText"),
+    dryRunCheckbox: document.getElementById("dry_run"),
+    progressDiv: document.getElementById("importProgress"),
+    resultsDiv: document.getElementById("importResults"),
+  };
+}
+
+function updateImportButtonText(dryRunCheckbox, importBtnText) {
+  if (!dryRunCheckbox || !importBtnText) return;
+  importBtnText.textContent = dryRunCheckbox.checked
+    ? "Test Import (Dry Run)"
+    : "Execute Import";
+}
+
+function showImportProgress(progressDiv, resultsDiv, message) {
+  if (progressDiv) {
+    progressDiv.style.display = "block";
+    document.getElementById("importStatus").innerHTML = `
+                <div class="spinner-border text-info" role="status">
+                    <span class="visually-hidden">Processing...</span>
+                </div>
+                <p class="mt-2">${message}</p>
+            `;
+  }
+  if (resultsDiv) {
+    resultsDiv.style.display = "none";
+  }
+}
+
+function hideImportProgress(progressDiv) {
+  if (progressDiv) {
+    progressDiv.style.display = "none";
+  }
+}
+
+function updateImportProgressBar(progress) {
+  const progressBar = document.getElementById("importProgressBar");
+  const statusDiv = document.getElementById("importStatus");
+  if (progressBar) {
+    const percentage = progress.percentage || 0;
+    progressBar.value = percentage;
+    progressBar.textContent = `${percentage}%`;
+  }
+  if (statusDiv) {
+    const message = progress.message || "Processing...";
+    const recordsProcessed = progress.records_processed || 0;
+    const totalRecords = progress.total_records || 0;
+    const recordsInfo =
+      totalRecords > 0 ? ` (${recordsProcessed}/${totalRecords} records)` : "";
+    statusDiv.innerHTML = `
+                <div class="spinner-border text-info" role="status">
+                    <span class="visually-hidden">Processing...</span>
+                </div>
+                <p class="mt-2">${message}${recordsInfo}</p>
+                <small class="text-muted">${progress.percentage || 0}% complete</small>
+            `;
+  }
+}
+
+function showImportError(resultsDiv, message) {
+  if (!resultsDiv) return;
+  resultsDiv.innerHTML = "";
+  const alert = document.createElement("div");
+  alert.className = "alert alert-danger";
+  const h5 = document.createElement("h5");
+  h5.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error';
+  const p = document.createElement("p");
+  p.textContent = message;
+  alert.appendChild(h5);
+  alert.appendChild(p);
+  resultsDiv.appendChild(alert);
+  resultsDiv.style.display = "block";
+}
+
+function appendImportIssues(
+  resultsDiv,
+  items,
+  limit,
+  title,
+  className,
+  suffix,
+) {
+  if (!items || items.length === 0) return;
+  const div = document.createElement("div");
+  div.className = className;
+  const h6 = document.createElement("h6");
+  h6.textContent = `${title} (${items.length}):`;
+  div.appendChild(h6);
+  const ul = document.createElement("ul");
+  items.slice(0, limit).forEach((item) => {
+    const li = document.createElement("li");
+    li.textContent = item;
+    ul.appendChild(li);
+  });
+  div.appendChild(ul);
+  if (items.length > limit) {
+    const p = document.createElement("p");
+    p.className = "small mb-0";
+    p.textContent = `...and ${items.length - limit} more ${suffix}`;
+    div.appendChild(p);
+  }
+  resultsDiv.appendChild(div);
+}
+
+function showImportValidationResults(resultsDiv, validation) {
+  if (!resultsDiv) return;
+  resultsDiv.innerHTML = "";
+  const header = document.createElement("div");
+  header.className = validation.valid
+    ? "alert alert-success"
+    : "alert alert-warning";
+  const h5 = document.createElement("h5");
+  const iconClass = validation.valid
+    ? "fas fa-check-circle"
+    : "fas fa-exclamation-triangle";
+  h5.innerHTML = `<i class="${iconClass}"></i> File Validation Results`;
+  header.appendChild(h5);
+  [
+    { label: "File:", value: validation.file_info.filename },
+    { label: "Format:", value: validation.file_info.adapter },
+    { label: "Records Found:", value: validation.records_found },
+    { label: "Potential Conflicts:", value: validation.potential_conflicts },
+  ].forEach((item) => {
+    const p = document.createElement("p");
+    p.className = "mb-1";
+    const strong = document.createElement("strong");
+    strong.textContent = item.label;
+    p.appendChild(strong);
+    p.appendChild(document.createTextNode(` ${item.value}`));
+    header.appendChild(p);
+  });
+  resultsDiv.appendChild(header);
+  appendImportIssues(
+    resultsDiv,
+    validation.errors,
+    validation.errors?.length || 0,
+    "Errors",
+    "alert alert-danger",
+    "errors",
+  );
+  appendImportIssues(
+    resultsDiv,
+    validation.warnings,
+    validation.warnings?.length || 0,
+    "Warnings",
+    "alert alert-warning",
+    "warnings",
+  );
+  resultsDiv.style.display = "block";
+}
+
+function showImportResults(resultsDiv, result, success) {
+  if (!resultsDiv) {
+    console.error("Results div not found!");
+    return;
+  }
+  resultsDiv.innerHTML = "";
+  const header = document.createElement("div");
+  header.className = success ? "alert alert-success" : "alert alert-danger";
+  const h4 = document.createElement("h4");
+  h4.textContent = success ? "Import Successful" : "Import Failed";
+  if (success) {
+    const icon = document.createElement("i");
+    icon.className = "fas fa-check-circle me-2";
+    h4.prepend(icon);
+  }
+  header.appendChild(h4);
+  if (result.dry_run) {
+    const badge = document.createElement("span");
+    badge.className = "badge bg-warning text-dark ms-2";
+    badge.textContent = "DRY RUN";
+    h4.appendChild(badge);
+  }
+  if (result.message) {
+    const p = document.createElement("p");
+    p.textContent = result.message;
+    header.appendChild(p);
+  }
+  resultsDiv.appendChild(header);
+  appendImportIssues(
+    resultsDiv,
+    result.errors,
+    10,
+    "Errors",
+    "alert alert-danger",
+    "errors",
+  );
+  appendImportIssues(
+    resultsDiv,
+    result.warnings,
+    5,
+    "Warnings",
+    "alert alert-warning",
+    "warnings",
+  );
+  if (result.conflicts?.length > 0) {
+    const div = document.createElement("div");
+    div.className = "alert alert-info";
+    const h6 = document.createElement("h6");
+    h6.textContent = `Conflicts Resolved (${result.conflicts.length}):`;
+    div.appendChild(h6);
+    const scrollDiv = document.createElement("div");
+    scrollDiv.style.maxHeight = "200px";
+    scrollDiv.style.overflowY = "auto";
+    const ul = document.createElement("ul");
+    ul.className = "small mb-0";
+    result.conflicts.slice(0, 20).forEach((conflict) => {
+      const li = document.createElement("li");
+      li.textContent = `${conflict.entity_type} ${conflict.entity_key}: ${conflict.field_name} kept ${conflict.resolution.replace("kept_", "")}`;
+      if (
+        conflict.existing_value !== undefined &&
+        conflict.import_value !== undefined
+      ) {
+        li.textContent += ` (${conflict.existing_value} vs ${conflict.import_value})`;
+      }
+      ul.appendChild(li);
+    });
+    scrollDiv.appendChild(ul);
+    div.appendChild(scrollDiv);
+    if (result.conflicts.length > 20) {
+      const more = document.createElement("p");
+      more.className = "small mt-2 mb-0";
+      more.textContent = `and ${result.conflicts.length - 20} more conflicts`;
+      div.appendChild(more);
+    }
+    resultsDiv.appendChild(div);
+  }
+  resultsDiv.style.display = "block";
+}
+
+async function pollImportProgressWithUi(progressId, shouldAutoRefresh, ui) {
+  const pollInterval = 1000;
+  const maxPollTime = 300000;
+  const startTime = Date.now();
+  const poll = async () => {
+    try {
+      const response = await fetch(`/api/import/progress/${progressId}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const progress = await response.json();
+      updateImportProgressBar(progress);
+      if (progress.status === "completed") {
+        handleCompletedStatus(
+          progress,
+          shouldAutoRefresh,
+          () => hideImportProgress(ui.progressDiv),
+          (result, success) =>
+            showImportResults(ui.resultsDiv, result, success),
+          showSuccessAndRefresh,
+        );
+      } else if (progress.status === "error") {
+        hideImportProgress(ui.progressDiv);
+        showImportError(
+          ui.resultsDiv,
+          "Import failed: " + (progress.message || "Unknown error"),
+        );
+      } else if (
+        progress.status === "running" ||
+        progress.status === "starting"
+      ) {
+        handleRunningStatus(
+          startTime,
+          maxPollTime,
+          pollInterval,
+          poll,
+          () => hideImportProgress(ui.progressDiv),
+          (message) => showImportError(ui.resultsDiv, message),
+        );
+      }
+    } catch (_error) {
+      hideImportProgress(ui.progressDiv);
+      showImportError(
+        ui.resultsDiv,
+        "Lost connection to import progress. Import may still be running.",
+      );
+    }
+  };
+  setTimeout(poll, 500);
+}
+
+async function handleImportValidation(ui) {
+  const fileInput = document.getElementById("excel_file");
+  const adapterSelect = document.getElementById("import_adapter");
+  if (!fileInput.files[0]) {
+    alert("Please select an Excel file first.");
+    return;
+  }
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+  formData.append("adapter_name", adapterSelect.value);
+  showImportProgress(ui.progressDiv, ui.resultsDiv, "Validating file...");
+  try {
+    const response = await fetch("/api/import/validate", {
+      method: "POST",
+      body: formData,
+    });
+    const result = await response.json();
+    hideImportProgress(ui.progressDiv);
+    if (result.success && result.validation) {
+      showImportValidationResults(ui.resultsDiv, result.validation);
+    } else {
+      showImportError(
+        ui.resultsDiv,
+        "Validation failed: " + (result.error || "Unknown error"),
+      );
+    }
+  } catch (error) {
+    hideImportProgress(ui.progressDiv);
+    showImportError(
+      ui.resultsDiv,
+      "Network error during validation: " + error.message,
+    );
+  }
+}
+
+async function executeImportSubmission(ui) {
+  const fileInput = document.getElementById("excel_file");
+  const adapterSelect = document.getElementById("import_adapter");
+  const conflictStrategy = document.querySelector(
+    'input[name="conflict_strategy"]:checked',
+  );
+  const dryRun = document.getElementById("dry_run");
+  const deleteExistingDb = document.getElementById("delete_existing_db");
+  if (!validateImportForm(fileInput, conflictStrategy)) return;
+  if (!dryRun.checked) {
+    const confirmMsg = buildConfirmationMessage(
+      conflictStrategy,
+      deleteExistingDb,
+    );
+    if (!confirm(confirmMsg)) return;
+  }
+  const formData = buildImportFormData(
+    fileInput,
+    conflictStrategy,
+    dryRun,
+    adapterSelect,
+    deleteExistingDb,
+  );
+  showImportProgress(
+    ui.progressDiv,
+    ui.resultsDiv,
+    `${dryRun.checked ? "Testing import" : "Executing import"}...`,
+  );
+  try {
+    const response = await fetch("/api/import/excel", {
+      method: "POST",
+      body: formData,
+    });
+    const result = await response.json();
+    if (result.success && result.progress_id) {
+      await pollImportProgressWithUi(result.progress_id, !dryRun.checked, ui);
+    } else {
+      hideImportProgress(ui.progressDiv);
+      showImportError(
+        ui.resultsDiv,
+        "Failed to start import: " + (result.error || "Unknown error"),
+      );
+    }
+  } catch (error) {
+    hideImportProgress(ui.progressDiv);
+    showImportError(
+      ui.resultsDiv,
+      "Network error during import: " + error.message,
+    );
+  }
+}
+
 // Note: handleErrorStatus will be replaced with inline logic in initializeImportForm
 // to avoid referencing locally-scoped functions
 
@@ -637,471 +1008,40 @@ async function loadDashboardData() {
 }
 
 function initializeImportForm() {
-  const importForm = document.getElementById("excelImportForm");
-  const validateBtn = document.getElementById("validateImportBtn");
-  const executeBtn = document.getElementById("executeImportBtn");
-  const importBtnText = document.getElementById("importBtnText");
-  const dryRunCheckbox = document.getElementById("dry_run");
-  const progressDiv = document.getElementById("importProgress");
-  const resultsDiv = document.getElementById("importResults");
+  const ui = buildImportUiContext();
 
   // eslint-disable-next-line no-console
   console.log("Import form elements found:", {
-    importForm: !!importForm,
-    validateBtn: !!validateBtn,
-    executeBtn: !!executeBtn,
-    importBtnText: !!importBtnText,
-    dryRunCheckbox: !!dryRunCheckbox,
+    importForm: !!ui.importForm,
+    validateBtn: !!ui.validateBtn,
+    executeBtn: !!ui.executeBtn,
+    importBtnText: !!ui.importBtnText,
+    dryRunCheckbox: !!ui.dryRunCheckbox,
   });
 
-  if (!importForm) {
+  if (!ui.importForm) {
     // eslint-disable-next-line no-console
     console.log(
       "Import form not found on this page - skipping import form initialization",
     );
-    return; // Exit if import form doesn't exist
+    return;
   }
 
-  // Update button text based on dry run checkbox
-  function updateButtonText() {
-    if (dryRunCheckbox?.checked) {
-      importBtnText.textContent = "Test Import (Dry Run)";
-    } else {
-      importBtnText.textContent = "Execute Import";
-    }
+  updateImportButtonText(ui.dryRunCheckbox, ui.importBtnText);
+  if (ui.dryRunCheckbox) {
+    ui.dryRunCheckbox.addEventListener("change", () =>
+      updateImportButtonText(ui.dryRunCheckbox, ui.importBtnText),
+    );
   }
-
-  // Initialize button text
-  updateButtonText();
-
-  // Update button text when dry run checkbox changes
-  if (dryRunCheckbox) {
-    dryRunCheckbox.addEventListener("change", updateButtonText);
-  }
-
-  // Validate file only
-  if (validateBtn) {
-    validateBtn.addEventListener("click", async () => {
-      const fileInput = document.getElementById("excel_file");
-      const adapterSelect = document.getElementById("import_adapter");
-
-      if (!fileInput.files[0]) {
-        alert("Please select an Excel file first.");
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("file", fileInput.files[0]);
-      formData.append("adapter_name", adapterSelect.value);
-
-      showProgress("Validating file...");
-
-      try {
-        const response = await fetch("/api/import/validate", {
-          method: "POST",
-          body: formData,
-        });
-
-        const result = await response.json();
-        hideProgress();
-
-        if (result.success && result.validation) {
-          showValidationResults(result.validation);
-        } else {
-          showError("Validation failed: " + (result.error || "Unknown error"));
-        }
-      } catch (error) {
-        hideProgress();
-        showError("Network error during validation: " + error.message);
-      }
+  if (ui.validateBtn) {
+    ui.validateBtn.addEventListener("click", async () => {
+      await handleImportValidation(ui);
     });
   }
-
-  async function executeImport(formData, dryRun) {
-    const actionText = dryRun.checked ? "Testing import" : "Executing import";
-    showProgress(actionText + "...");
-
-    try {
-      const response = await fetch("/api/import/excel", {
-        method: "POST",
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (result.success && result.progress_id) {
-        await pollImportProgress(result.progress_id, !dryRun.checked);
-      } else {
-        hideProgress();
-        showError(
-          "Failed to start import: " + (result.error || "Unknown error"),
-        );
-      }
-    } catch (error) {
-      hideProgress();
-      showError("Network error during import: " + error.message);
-    }
-  }
-
-  // Execute import
-  if (importForm) {
-    importForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      // Get form elements
-      const fileInput = document.getElementById("excel_file");
-      const adapterSelect = document.getElementById("import_adapter");
-      const conflictStrategy = document.querySelector(
-        'input[name="conflict_strategy"]:checked',
-      );
-      const dryRun = document.getElementById("dry_run");
-      const deleteExistingDb = document.getElementById("delete_existing_db");
-      // Validate form inputs
-      if (!validateImportForm(fileInput, conflictStrategy)) {
-        return;
-      }
-
-      // Confirm execution if not dry run
-      if (!dryRun.checked) {
-        const confirmMsg = buildConfirmationMessage(
-          conflictStrategy,
-          deleteExistingDb,
-        );
-        if (!confirm(confirmMsg)) {
-          return;
-        }
-      }
-
-      // Build form data and execute import
-      const formData = buildImportFormData(
-        fileInput,
-        conflictStrategy,
-        dryRun,
-        adapterSelect,
-        deleteExistingDb,
-      );
-      await executeImport(formData, dryRun);
-    });
-  }
-
-  function showProgress(message) {
-    if (progressDiv) {
-      progressDiv.style.display = "block";
-      // nosemgrep
-      document.getElementById("importStatus").innerHTML = `
-                <div class="spinner-border text-info" role="status">
-                    <span class="visually-hidden">Processing...</span>
-                </div>
-                <p class="mt-2">${message}</p>
-            `;
-    }
-    if (resultsDiv) {
-      resultsDiv.style.display = "none";
-    }
-  }
-
-  function hideProgress() {
-    if (progressDiv) {
-      progressDiv.style.display = "none";
-    }
-  }
-
-  async function pollImportProgress(progressId, shouldAutoRefresh) {
-    const pollInterval = 1000; // Poll every second
-    const maxPollTime = 300000; // Max 5 minutes
-    const startTime = Date.now();
-
-    const poll = async () => {
-      try {
-        const response = await fetch(`/api/import/progress/${progressId}`);
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const progress = await response.json();
-        updateProgressBar(progress);
-
-        // Handle different progress statuses
-        if (progress.status === "completed") {
-          handleCompletedStatus(
-            progress,
-            shouldAutoRefresh,
-            hideProgress,
-            showImportResults,
-            showSuccessAndRefresh,
-          );
-        } else if (progress.status === "error") {
-          // Handle error status inline
-          hideProgress();
-          showError("Import failed: " + (progress.message || "Unknown error"));
-        } else if (
-          progress.status === "running" ||
-          progress.status === "starting"
-        ) {
-          handleRunningStatus(
-            startTime,
-            maxPollTime,
-            pollInterval,
-            poll,
-            hideProgress,
-            showError,
-          );
-        }
-      } catch (error) {
-        hideProgress();
-        showError(
-          "Lost connection to import progress. Import may still be running.",
-        );
-      }
-    };
-
-    // Start polling
-    setTimeout(poll, 500); // Start after 500ms
-  }
-
-  function updateProgressBar(progress) {
-    const progressBar = document.getElementById("importProgressBar");
-    const statusDiv = document.getElementById("importStatus");
-
-    if (progressBar) {
-      const percentage = progress.percentage || 0;
-      // Update HTML5 progress element value attribute (not style.width)
-      progressBar.value = percentage;
-      progressBar.textContent = `${percentage}%`; // Update visible percentage text
-    }
-
-    if (statusDiv) {
-      const message = progress.message || "Processing...";
-      const recordsProcessed = progress.records_processed || 0;
-      const totalRecords = progress.total_records || 0;
-      const recordsInfo =
-        totalRecords > 0
-          ? ` (${recordsProcessed}/${totalRecords} records)`
-          : "";
-
-      // nosemgrep
-      // nosemgrep
-      statusDiv.innerHTML = `
-                <div class="spinner-border text-info" role="status">
-                    <span class="visually-hidden">Processing...</span>
-                </div>
-                <p class="mt-2">${message}${recordsInfo}</p>
-                <small class="text-muted">${progress.percentage || 0}% complete</small>
-            `;
-    }
-  }
-
-  function showValidationResults(validation) {
-    if (!resultsDiv) return;
-    resultsDiv.innerHTML = "";
-
-    const header = document.createElement("div");
-    header.className = validation.valid
-      ? "alert alert-success"
-      : "alert alert-warning";
-    const h5 = document.createElement("h5");
-    const iconClass = validation.valid
-      ? "fas fa-check-circle"
-      : "fas fa-exclamation-triangle";
-    h5.innerHTML = `<i class="${iconClass}"></i> File Validation Results`;
-    header.appendChild(h5);
-
-    const info = [
-      { label: "File:", value: validation.file_info.filename },
-      { label: "Format:", value: validation.file_info.adapter },
-      { label: "Records Found:", value: validation.records_found },
-      { label: "Potential Conflicts:", value: validation.potential_conflicts },
-    ];
-
-    info.forEach((item) => {
-      const p = document.createElement("p");
-      p.className = "mb-1";
-      const strong = document.createElement("strong");
-      strong.textContent = item.label;
-      p.appendChild(strong);
-      p.appendChild(document.createTextNode(` ${item.value}`));
-      header.appendChild(p);
-    });
-    resultsDiv.appendChild(header);
-
-    if (validation.errors && validation.errors.length > 0) {
-      const errorDiv = document.createElement("div");
-      errorDiv.className = "alert alert-danger";
-      const h6 = document.createElement("h6");
-      h6.textContent = "Errors:";
-      errorDiv.appendChild(h6);
-      const ul = document.createElement("ul");
-      validation.errors.forEach((error) => {
-        const li = document.createElement("li");
-        li.textContent = error;
-        ul.appendChild(li);
-      });
-      errorDiv.appendChild(ul);
-      resultsDiv.appendChild(errorDiv);
-    }
-
-    if (validation.warnings && validation.warnings.length > 0) {
-      const warnDiv = document.createElement("div");
-      warnDiv.className = "alert alert-warning";
-      const h6 = document.createElement("h6");
-      h6.textContent = "Warnings:";
-      warnDiv.appendChild(h6);
-      const ul = document.createElement("ul");
-      validation.warnings.forEach((warning) => {
-        const li = document.createElement("li");
-        li.textContent = warning;
-        ul.appendChild(li);
-      });
-      warnDiv.appendChild(ul);
-      resultsDiv.appendChild(warnDiv);
-    }
-
-    resultsDiv.style.display = "block";
-  }
-
-  function showImportResults(result, success) {
-    if (!resultsDiv) {
-      // eslint-disable-next-line no-console
-      console.error("Results div not found!");
-      return;
-    }
-
-    resultsDiv.innerHTML = "";
-
-    // Build header
-    const header = document.createElement("div");
-    header.className = success ? "alert alert-success" : "alert alert-danger";
-    const h4 = document.createElement("h4");
-    h4.textContent = success ? "Import Successful" : "Import Failed";
-    if (success) {
-      const icon = document.createElement("i");
-      icon.className = "fas fa-check-circle me-2";
-      h4.prepend(icon);
-    }
-    header.appendChild(h4);
-    if (result.dry_run) {
-      const badge = document.createElement("span");
-      badge.className = "badge bg-warning text-dark ms-2";
-      badge.textContent = "DRY RUN";
-      h4.appendChild(badge);
-    }
-
-    if (result.message) {
-      const p = document.createElement("p");
-      p.textContent = result.message;
-      header.appendChild(p);
-    }
-    resultsDiv.appendChild(header);
-
-    // Errors
-    if (result.errors && result.errors.length > 0) {
-      const div = document.createElement("div");
-      div.className = "alert alert-danger";
-      const h6 = document.createElement("h6");
-      h6.textContent = `Errors (${result.errors.length}):`;
-      div.appendChild(h6);
-      const ul = document.createElement("ul");
-      const displayErrors = result.errors.slice(0, 10);
-      displayErrors.forEach((err) => {
-        const li = document.createElement("li");
-        li.textContent = err;
-        ul.appendChild(li);
-      });
-      div.appendChild(ul);
-      if (result.errors.length > 10) {
-        const p = document.createElement("p");
-        p.className = "small mb-0";
-        p.textContent = `...and ${result.errors.length - 10} more errors`;
-        div.appendChild(p);
-      }
-      resultsDiv.appendChild(div);
-    }
-
-    // Warnings
-    if (result.warnings && result.warnings.length > 0) {
-      const div = document.createElement("div");
-      div.className = "alert alert-warning";
-      const h6 = document.createElement("h6");
-      h6.textContent = `Warnings (${result.warnings.length}):`;
-      div.appendChild(h6);
-      const ul = document.createElement("ul");
-      const displayWarnings = result.warnings.slice(0, 5);
-      displayWarnings.forEach((warn) => {
-        const li = document.createElement("li");
-        li.textContent = warn;
-        ul.appendChild(li);
-      });
-      div.appendChild(ul);
-      if (result.warnings.length > 5) {
-        const p = document.createElement("p");
-        p.className = "small mb-0";
-        p.textContent = `...and ${result.warnings.length - 5} more warnings`;
-        div.appendChild(p);
-      }
-      resultsDiv.appendChild(div);
-    }
-
-    // Conflicts
-    if (result.conflicts && result.conflicts.length > 0) {
-      const div = document.createElement("div");
-      div.className = "alert alert-info";
-      const h6 = document.createElement("h6");
-      h6.textContent = `Conflicts Resolved (${result.conflicts.length}):`;
-      div.appendChild(h6);
-
-      const scrollDiv = document.createElement("div");
-      scrollDiv.style.maxHeight = "200px";
-      scrollDiv.style.overflowY = "auto";
-
-      const ul = document.createElement("ul");
-      ul.className = "small mb-0";
-      result.conflicts.slice(0, 20).forEach((conflict) => {
-        const li = document.createElement("li");
-        li.textContent = `${conflict.entity_type} ${
-          conflict.entity_key
-        }: ${conflict.field_name} kept ${conflict.resolution.replace(
-          "kept_",
-          "",
-        )}`;
-        if (
-          conflict.existing_value !== undefined &&
-          conflict.import_value !== undefined
-        ) {
-          li.textContent += ` (${conflict.existing_value} vs ${conflict.import_value})`;
-        }
-        ul.appendChild(li);
-      });
-      scrollDiv.appendChild(ul);
-      div.appendChild(scrollDiv);
-
-      if (result.conflicts.length > 20) {
-        const more = document.createElement("p");
-        more.className = "small mt-2 mb-0";
-        more.textContent = `and ${result.conflicts.length - 20} more conflicts`;
-        div.appendChild(more);
-      }
-
-      resultsDiv.appendChild(div);
-    }
-
-    resultsDiv.style.display = "block";
-  }
-
-  function showError(message) {
-    if (resultsDiv) {
-      resultsDiv.innerHTML = "";
-      const alert = document.createElement("div");
-      alert.className = "alert alert-danger";
-      const h5 = document.createElement("h5");
-      h5.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error';
-      const p = document.createElement("p");
-      p.textContent = message;
-      alert.appendChild(h5);
-      alert.appendChild(p);
-      resultsDiv.appendChild(alert);
-      resultsDiv.style.display = "block";
-    }
-  }
+  ui.importForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await executeImportSubmission(ui);
+  });
 }
 
 // Debug functionality removed - temporary development tools no longer needed

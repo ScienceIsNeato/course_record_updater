@@ -6,7 +6,13 @@ from typing import Any, Callable, Dict, List, ParamSpec, TypeVar, cast
 
 from flask import Blueprint, jsonify, request, session
 
-from src.api.utils import get_current_user, handle_api_error
+from src.api.utils import (
+    get_current_user,
+)
+from src.api.utils import get_request_json_object as _get_request_json
+from src.api.utils import (
+    handle_api_error,
+)
 from src.database.database_service import (
     get_course_by_id,
     get_course_outcome,
@@ -15,20 +21,18 @@ from src.database.database_service import (
 )
 from src.services.auth_service import get_current_institution_id
 from src.services.clo_workflow_service import CLOWorkflowService
-from src.utils.constants import OUTCOME_NOT_FOUND_MSG, PERMISSION_DENIED_MSG
+from src.utils.constants import (
+    OUTCOME_NOT_FOUND_MSG,
+    PERMISSION_DENIED_MSG,
+    USER_NOT_AUTHENTICATED_MSG,
+)
 from src.utils.logging_config import get_logger
 
 P = ParamSpec("P")
 R = TypeVar("R")
 
 
-def _get_request_json() -> Dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
-
-
-def lazy_permission_required(
+def lazy_permission_required(  # noqa: ambiguity-mine - shared route-local decorator pattern
     permission_name: str,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Resolve auth_service at runtime so tests can mock permission_required."""
@@ -84,7 +88,10 @@ def submit_clo_for_approval(section_outcome_id: str):
 
         user_id = session.get("user_id")
         if not user_id or not isinstance(user_id, str):
-            return jsonify({"success": False, "error": "User not authenticated"}), 401
+            return (
+                jsonify({"success": False, "error": USER_NOT_AUTHENTICATED_MSG}),
+                401,
+            )
         institution_id = get_current_institution_id()
 
         course_id = _resolve_course_id(section_outcome)
@@ -129,7 +136,10 @@ def get_clos_for_audit():
         institution_id = get_current_institution_id()
         user = get_current_user()
         if not user:
-            return jsonify({"success": False, "error": "User not authenticated"}), 401
+            return (
+                jsonify({"success": False, "error": USER_NOT_AUTHENTICATED_MSG}),
+                401,
+            )
         if not institution_id:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
@@ -214,7 +224,10 @@ def approve_clo(section_outcome_id: str):
 
         user_id = session.get("user_id")
         if not user_id or not isinstance(user_id, str):
-            return jsonify({"success": False, "error": "User not authenticated"}), 401
+            return (
+                jsonify({"success": False, "error": USER_NOT_AUTHENTICATED_MSG}),
+                401,
+            )
 
         success = CLOWorkflowService.approve_clo(section_outcome_id, user_id)
 
@@ -266,7 +279,10 @@ def request_clo_rework(section_outcome_id: str):
 
         user_id = session.get("user_id")
         if not user_id or not isinstance(user_id, str):
-            return jsonify({"success": False, "error": "User not authenticated"}), 401
+            return (
+                jsonify({"success": False, "error": USER_NOT_AUTHENTICATED_MSG}),
+                401,
+            )
 
         logger.info(
             f"[Rework Request] Calling CLOWorkflowService.request_rework for outcome {section_outcome_id}"
@@ -327,20 +343,23 @@ def mark_clo_as_nci(section_outcome_id: str):
 
         user = get_current_user()
         if not user:
-            return jsonify({"success": False, "error": "User not authenticated"}), 401
+            return (
+                jsonify({"success": False, "error": USER_NOT_AUTHENTICATED_MSG}),
+                401,
+            )
         user_id = user.get("user_id")
         if not user_id or not isinstance(user_id, str):
             return jsonify({"success": False, "error": "User ID not found"}), 401
 
         section_outcome = get_section_outcome(section_outcome_id)
         if not section_outcome:
-            return jsonify({"success": False, "error": "Outcome not found"}), 404
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         institution_id = get_current_institution_id()
         course_id = _resolve_course_id(section_outcome)
         course = get_course_by_id(course_id) if course_id else None
         if not course or course.get("institution_id") != institution_id:
-            return jsonify({"success": False, "error": "Outcome not found"}), 404
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         success = CLOWorkflowService.mark_as_nci(section_outcome_id, user_id, reason)
 
@@ -371,7 +390,10 @@ def reopen_clo(section_outcome_id: str):
     try:
         user = get_current_user()
         if not user:
-            return jsonify({"success": False, "error": "User not authenticated"}), 401
+            return (
+                jsonify({"success": False, "error": USER_NOT_AUTHENTICATED_MSG}),
+                401,
+            )
         user_id = user.get("user_id")
 
         section_outcome = get_section_outcome(section_outcome_id)
@@ -385,7 +407,10 @@ def reopen_clo(section_outcome_id: str):
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         if not user_id:
-            return jsonify({"success": False, "error": "User not authenticated"}), 401
+            return (
+                jsonify({"success": False, "error": USER_NOT_AUTHENTICATED_MSG}),
+                401,
+            )
 
         success = CLOWorkflowService.reopen_clo(section_outcome_id, str(user_id))
 

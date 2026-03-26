@@ -28,17 +28,19 @@ from tests.e2e.test_helpers import (
 )
 
 
-def _setup_approval_test_data(admin_page: Any, institution_id: Any) -> Any:
-    """Create all necessary test data via API."""
-    csrf_token = admin_page.evaluate(
-        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
-    )
-    headers = {
+def _approval_headers(csrf_token: Any) -> dict[str, str]:
+    return {
         "Content-Type": "application/json",
         "X-CSRFToken": csrf_token if csrf_token else "",
     }
 
-    # Create program
+
+def _create_approval_entities(
+    admin_page: Any, institution_id: Any, csrf_token: Any
+) -> tuple[str, str, str]:
+    """Create program, course, instructor, term, offering, section, and CLO."""
+    headers = _approval_headers(csrf_token)
+
     program_response = admin_page.request.post(
         f"{BASE_URL}/api/programs",
         headers=headers,
@@ -53,7 +55,6 @@ def _setup_approval_test_data(admin_page: Any, institution_id: Any) -> Any:
     assert program_response.ok, f"Failed to create program: {program_response.text()}"
     program_id = program_response.json()["program_id"]
 
-    # Create course
     course_response = admin_page.request.post(
         f"{BASE_URL}/api/courses",
         headers=headers,
@@ -70,7 +71,6 @@ def _setup_approval_test_data(admin_page: Any, institution_id: Any) -> Any:
     assert course_response.ok, f"Failed to create course: {course_response.text()}"
     course_id = course_response.json()["course_id"]
 
-    # Create instructor
     instructor_email = "uat008.instructor@test.com"
     instructor = create_test_user_via_api(
         admin_page=admin_page,
@@ -84,7 +84,6 @@ def _setup_approval_test_data(admin_page: Any, institution_id: Any) -> Any:
     )
     instructor_id = instructor["user_id"]
 
-    # Create term
     term_response = admin_page.request.post(
         f"{BASE_URL}/api/terms",
         headers=headers,
@@ -101,8 +100,7 @@ def _setup_approval_test_data(admin_page: Any, institution_id: Any) -> Any:
     assert term_response.ok, f"Failed to create term: {term_response.text()}"
     term_id = term_response.json()["term_id"]
 
-    # Create offering
-    section_response = admin_page.request.post(
+    offering_response = admin_page.request.post(
         f"{BASE_URL}/api/offerings",
         headers=headers,
         data=json.dumps(
@@ -114,25 +112,25 @@ def _setup_approval_test_data(admin_page: Any, institution_id: Any) -> Any:
             }
         ),
     )
-    assert section_response.ok, f"Failed to create offering: {section_response.text()}"
-    section_id = section_response.json()["offering_id"]
+    assert (
+        offering_response.ok
+    ), f"Failed to create offering: {offering_response.text()}"
+    offering_id = offering_response.json()["offering_id"]
 
-    # Create section
-    create_section_response = admin_page.request.post(
+    section_response = admin_page.request.post(
         f"{BASE_URL}/api/sections",
         headers=headers,
         data=json.dumps(
             {
-                "offering_id": section_id,
+                "offering_id": offering_id,
                 "section_number": "001",
                 "instructor_id": instructor_id,
                 "status": "open",
             }
         ),
     )
-    assert create_section_response.ok, "Failed to create section"
+    assert section_response.ok, "Failed to create section"
 
-    # Create CLO
     clo_response = admin_page.request.post(
         f"{BASE_URL}/api/courses/{course_id}/outcomes",
         headers=headers,
@@ -149,24 +147,30 @@ def _setup_approval_test_data(admin_page: Any, institution_id: Any) -> Any:
         ),
     )
     assert clo_response.ok, f"Failed to create CLO: {clo_response.text()}"
-    clo_id = clo_response.json()["outcome_id"]
+    return course_id, clo_response.json()["outcome_id"], instructor_email
 
-    # Fetch the Section Outcome ID (since API now requires it for submission)
+
+def _resolve_section_outcome_id(
+    admin_page: Any, course_id: str, clo_id: str, csrf_token: Any
+) -> str:
+    """Look up the section outcome ID for the created CLO."""
     audit_response = admin_page.request.get(
         f"{BASE_URL}/api/outcomes/audit?course_id={course_id}",
-        headers=headers,
+        headers=_approval_headers(csrf_token),
     )
     assert audit_response.ok, "Failed to fetch audit list to resolve section outcome ID"
     audit_outcomes = audit_response.json().get("outcomes", [])
-
-    # Find the section outcome corresponding to our template CLO
     target_section_outcome = next(
         (o for o in audit_outcomes if o.get("outcome_id") == clo_id), None
     )
     assert target_section_outcome is not None, "Could not find created section outcome"
-    section_outcome_id = target_section_outcome["id"]
+    return target_section_outcome["id"]
 
-    # Submit CLO via instructor context using SECTION OUTCOME ID
+
+def _submit_approval_fixture_as_instructor(
+    admin_page: Any, instructor_email: str, section_outcome_id: str
+) -> None:
+    """Submit the pending CLO from the instructor context."""
     instructor_context = admin_page.context.browser.new_context()
     instructor_page = instructor_context.new_page()
     login_as_user(instructor_page, BASE_URL, instructor_email, GENERIC_PASSWORD)
@@ -180,14 +184,27 @@ def _setup_approval_test_data(admin_page: Any, institution_id: Any) -> Any:
 
     submit_response = instructor_page.request.post(
         f"{BASE_URL}/api/outcomes/{section_outcome_id}/submit",
-        headers={
-            "Content-Type": "application/json",
-            "X-CSRFToken": instructor_csrf if instructor_csrf else "",
-        },
+        headers=_approval_headers(instructor_csrf),
         data=json.dumps({}),
     )
     assert submit_response.ok, f"Failed to submit CLO: {submit_response.text()}"
     instructor_context.close()
+
+
+def _setup_approval_test_data(admin_page: Any, institution_id: Any) -> Any:
+    """Create all necessary test data via API."""
+    csrf_token = admin_page.evaluate(
+        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
+    )
+    course_id, clo_id, instructor_email = _create_approval_entities(
+        admin_page, institution_id, csrf_token
+    )
+    section_outcome_id = _resolve_section_outcome_id(
+        admin_page, course_id, clo_id, csrf_token
+    )
+    _submit_approval_fixture_as_instructor(
+        admin_page, instructor_email, section_outcome_id
+    )
 
     return clo_id, csrf_token
 

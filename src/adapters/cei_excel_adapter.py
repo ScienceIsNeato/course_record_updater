@@ -13,6 +13,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union, cast
 import pandas as pd
 
 from src.models.models import validate_course_number
+from src.utils.constants import EXPORT_FAILED_MSG, FILE_NOT_FOUND_MSG
 
 from .file_base_adapter import FileBaseAdapter, FileCompatibilityError
 
@@ -21,6 +22,13 @@ FACULTY_NAME_COLUMN = "Faculty Name"
 ENROLLED_STUDENTS_COLUMN = "Enrolled Students"
 XLSX_EXTENSION = ".xlsx"
 XLS_EXTENSION = ".xls"
+
+
+def _instructor_full_name(instructor: Dict[str, Any]) -> str:
+    """Return a display name for CEI export rows."""
+    return (
+        f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip()
+    )
 
 
 def validate_cei_term_name(term_name: str) -> bool:
@@ -544,7 +552,7 @@ class CEIExcelAdapter(FileBaseAdapter):
 
         # Check if file exists
         if not os.path.exists(file_path):
-            return False, f"File not found: {file_path}"
+            return False, FILE_NOT_FOUND_MSG.format(file_path=file_path)
 
         # Check file size
         file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
@@ -1054,7 +1062,7 @@ class CEIExcelAdapter(FileBaseAdapter):
             )
 
         except Exception as e:
-            return False, f"Export failed: {str(e)}", 0
+            return False, EXPORT_FAILED_MSG.format(error=str(e)), 0
 
     def _build_cei_export_records(
         self, data: Dict[str, List[Dict[str, Any]]], options: Dict[str, Any]
@@ -1141,7 +1149,7 @@ class CEIExcelAdapter(FileBaseAdapter):
                 "section": section.get("section_number", "01"),
                 "effterm_c": term_formatted,
                 "students": section.get("enrollment", 0),
-                FACULTY_NAME_COLUMN: f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip(),
+                FACULTY_NAME_COLUMN: _instructor_full_name(instructor),
                 "email": instructor.get("email", ""),
             }
             records.append(record)
@@ -1197,7 +1205,7 @@ class CEIExcelAdapter(FileBaseAdapter):
                 "section": offering.get("section_number", "01"),
                 "effterm_c": term_formatted,
                 "students": offering.get("enrollment_count", 0),
-                FACULTY_NAME_COLUMN: f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip(),
+                FACULTY_NAME_COLUMN: _instructor_full_name(instructor),
                 "email": instructor.get("email", ""),
             }
             records.append(record)
@@ -1225,7 +1233,7 @@ class CEIExcelAdapter(FileBaseAdapter):
                     "section": "01",  # Default section
                     "effterm_c": term_formatted,
                     "students": 25,  # Default student count
-                    FACULTY_NAME_COLUMN: f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip(),
+                    FACULTY_NAME_COLUMN: _instructor_full_name(instructor),
                     "email": instructor.get("email", ""),
                 }
                 records.append(record)

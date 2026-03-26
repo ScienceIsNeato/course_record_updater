@@ -1,5 +1,306 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR 71 Gate + Commentary Remediation (2026-03-26)
+
+**Status**: 🚧 IN PROGRESS - root-cause fixes implemented locally, pending PR thread resolution + CI re-run
+
+**What Changed**:
+
+- Updated `.github/workflows/quality-gate.yml` to support the consolidated scour path without regression:
+   - Removed setup-job pip cache write that could lock an empty cache key.
+   - Added project venv creation (`venv`) so custom gates that require `venv/bin/python` succeed.
+   - Added explicit scanner/tool install (`pip-audit`, `bandit`, `detect-secrets`, `semgrep`).
+   - Added Playwright browser installation (`python -m playwright install --with-deps chromium`) for `overconfidence:e2e`.
+   - Executes scour from activated project venv.
+- Updated dependency floors:
+   - `requests>=2.33.0` in both `requirements.txt` and `requirements-dev.txt`.
+   - Removed explicit `pygments` floor from `requirements-dev.txt`.
+- Added scoped slopmop config exception in `.sb_config.json`:
+   - `myopia:dependency-risk.py.pip_audit_ignore_vulns` includes `GHSA-5239-wwwm-4pmq` (no patched pygments release available).
+
+**Validation**:
+
+- `activate && sm scour -g myopia:dependency-risk.py --verbose --no-cache --json --output-file .slopmop/last_dependency_risk.json` ✅
+- Dependency-risk gate now passes locally.
+
+**Remaining PR Tasks**:
+
+- Commit/push the remediation changes.
+- Resolve unresolved PR threads:
+   - `PRRT_kwDOOV6J2s52p4xy`
+   - `PRRT_kwDOOV6J2s52pFQC`
+   - `PRRT_kwDOOV6J2s52p4xu`
+- Re-run buff/CI loop and confirm `slopmop-scour` passes.
+
+## Latest Work: PR 71 Buff On Single-Scour CI (2026-03-25)
+
+**Status**: ✅ COMPLETE - new CI shape executed and buff triage succeeded
+
+**What I Verified**:
+
+- New workflow check set is active on PR 71:
+   - `setup` (pass)
+   - `slopmop-scour` (fail)
+   - `Cursor Bugbot` (neutral/skip)
+- `sm buff inspect` still requires explicit `--run-id`, but succeeds with the latest Quality Gate run id.
+
+**Buff Output (run 23532763570)**:
+
+- Hard failures: `myopia:dependency-risk.py`, `overconfidence:e2e`, `overconfidence:smoke`
+- PR feedback unresolved count: `3`
+
+**Next Steps**:
+
+- Fix scour hard failures (dependency risk + smoke + e2e).
+- Resolve the remaining three review threads via `sm buff resolve`.
+- Re-run buff cycle until `slopmop-scour` is green and unresolved thread count is zero.
+
+## Latest Work: CI Consolidated To Single Scour (2026-03-25)
+
+**Status**: ✅ COMPLETE - Quality Gate workflow now uses slopmop scour as the single validation runner
+
+**What Changed**:
+
+- Replaced the multi-job, per-gate matrix in `.github/workflows/quality-gate.yml` with a single `slopmop-scour` job (plus setup/cache job).
+- The CI validation command is now a single call:
+   - `sm scour --json --output-file slopmop-results.json --no-cache`
+- Preserved buff/triage compatibility by uploading a `slopmop-results` artifact containing `slopmop-results.json` and generated reports/logs.
+
+**Overlap/Non-Overlap Decision**:
+
+- Removed jobs that duplicated slopmop checks (formatting, tests, coverage, complexity, dependency risk, duplication, frontend sanity, etc.) because `scour` already includes swab-level and scour-level gates.
+- Kept CI artifact publication so non-validation reporting/triage outputs remain available.
+
+**Validation**:
+
+- `activate && sm swab --json --output-file .slopmop/last_swab.json` ❌
+   - Remaining failure unchanged: `myopia:code-sprawl`.
+
+**Next Steps**:
+
+- Commit and push workflow simplification.
+- Run `sm buff status 71` / `sm buff inspect` on the new CI run to verify the single-scour path end-to-end.
+
+## Latest Work: Slopmop 0.12.0 Upgrade + PR 71 Buff (2026-03-25)
+
+**Status**: ✅ COMPLETE - repo pins updated to latest and buff executed with 0.12.0
+
+**What Changed**:
+
+- Upgraded local slopmop from `0.11.1` to `0.12.0`.
+- Updated all CI slopmop pins in `.github/workflows/quality-gate.yml` from `0.11.1` to `0.12.0`.
+
+**Validation**:
+
+- `activate && sm --version` → `0.12.0`
+- `activate && sm swab --json --output-file .slopmop/last_swab.json` ❌
+   - Remaining failure unchanged: `myopia:code-sprawl`.
+
+**PR 71 Buff Results (using 0.12.0)**:
+
+- `sm buff verify 71` reports `1` unresolved review thread.
+- `sm buff status 71` reports `14 passed`, `2 failed`, `0 pending` checks.
+   - Failing checks: `slopmop-laziness-complexity-creep-py`, `slopmop-myopia-dependency-risk-py`.
+- `sm buff inspect 71 --run-id 23530973716 --json --output-file .slopmop/last_buff_71.json` generated inspect output successfully.
+   - Current unresolved thread ID: `PRRT_kwDOOV6J2s52pFQC`.
+
+**Next Steps**:
+
+- Resolve the remaining review thread with `sm buff resolve`.
+- Address the two failing CI checks and re-run buff cycle.
+
+## Latest Work: Buff Inspect Results Filename Compatibility (2026-03-25)
+
+**Status**: ✅ COMPLETE - workflow now emits `slopmop-results.json`
+
+**Root Cause**:
+
+- `sm buff inspect --run-id ...` progressed to artifact download but failed because it expects `slopmop-results.json` inside the `slopmop-results` artifact.
+- The workflow only produced `slopmop-swab.json`.
+
+**What Changed**:
+
+- Added a compatibility step in `.github/workflows/quality-gate.yml` that copies `slopmop-swab.json` to `slopmop-results.json`.
+- Updated both structured-output artifact uploads to include `slopmop-results.json`.
+
+**Validation**:
+
+- `activate && sm swab --json --output-file .slopmop/last_swab.json` ❌
+   - Remaining failure unchanged: `myopia:code-sprawl` in `scripts/seed_db.py`.
+
+**Next Steps**:
+
+- Commit and push the compatibility filename fix.
+- Re-run PR 71 checks and verify `sm buff inspect --run-id` succeeds.
+
+## Latest Work: Buff Inspect Artifact Compatibility (2026-03-25)
+
+**Status**: ✅ COMPLETE - workflow now publishes `slopmop-results`
+
+**Root Cause**:
+
+- `sm buff inspect 71` failed even with explicit run IDs because CI runs did not publish an artifact named `slopmop-results`.
+
+**What Changed**:
+
+- Added a second artifact upload step in `.github/workflows/quality-gate.yml` that publishes the same structured outputs under `slopmop-results` (compatibility alias), while preserving existing `slopmop-sarif-output`.
+
+**Validation**:
+
+- `activate && sm swab --json --output-file .slopmop/last_swab.json` ❌
+   - Remaining failure is unchanged: `myopia:code-sprawl`.
+
+**Next Steps**:
+
+- Commit and push artifact compatibility fix.
+- Confirm next PR run allows `sm buff inspect` to consume `slopmop-results`.
+
+## Latest Work: PR 71 Setup Failure Fix (2026-03-25)
+
+**Status**: ✅ COMPLETE - dependency floor corrected to unblock CI setup
+
+**Root Cause**:
+
+- PR 71 failed on `setup` because `requirements-dev.txt` pinned `pygments>=2.19.3`.
+- That version does not exist on the package index; latest available is `2.19.2`.
+
+**What Changed**:
+
+- Updated `requirements-dev.txt` to `pygments>=2.19.2`.
+
+**Validation**:
+
+- `activate && sm swab --json --output-file .slopmop/last_swab.json` ❌
+   - Remaining failure is still the existing `myopia:code-sprawl` gate (`scripts/seed_db.py` long methods).
+   - No new dependency-resolution failures locally.
+
+**Next Steps**:
+
+- Commit and push the dependency-floor fix.
+- Re-check PR 71 CI setup job and continue buff loop.
+
+## Latest Work: Slopmop Version Bump To 0.11.1 (2026-03-24)
+
+**Status**: ✅ COMPLETE - CI slopmop pins upgraded and locally validated
+
+**What Changed**:
+
+- Updated every pinned install in `.github/workflows/quality-gate.yml` from `slopmop==0.9.0` to `slopmop==0.11.1`.
+- Verified package availability in the active environment: latest and installed are both `0.11.1`.
+
+**Validation**:
+
+- `activate && sm swab --json --output-file .slopmop/last_swab.json` ❌
+   - Result: `31` total, `8` passed, `1` failed, `16` skipped, `6` not applicable.
+   - Failing gate: `myopia:code-sprawl` (existing remediation work), no new workflow syntax errors.
+
+**Next Steps**:
+
+- Continue current `myopia:code-sprawl` burn-down and then rerun `sm swab`.
+
+## Latest Work: Code-Sprawl Gate Enablement (2026-03-22)
+
+**Status**: 🚧 IN PROGRESS - `myopia:code-sprawl` is being enabled and burned down on `chore/post-main-sync-20260321-043046`
+
+**Intent**:
+
+- Turn on `myopia:code-sprawl` instead of leaving it disabled in checked-in config.
+- Run the gate directly to get the concrete failure list.
+- Refactor the biggest offenders by splitting files and methods along the most coherent seam nearest the middle.
+
+**Known Starting Point**:
+
+- `src/database/database_sqlite.py`
+- `src/services/dashboard_service.py`
+- `src/services/clo_workflow_service.py`
+- `src/services/import_service.py`
+- `src/services/email_service.py`
+- `src/models/models_sql.py`
+
+**Checkpoint**:
+
+- Enabled `myopia:code-sprawl` in `.sb_config.json` and started burning it down on this branch.
+- First direct gate run found `62` violations.
+- Split `src/database/database_sqlite.py` into shared helpers plus academic/workflow mixins and extracted `create_course_outcome()` helpers; the database modules are no longer on the failure list.
+- Split `src/services/clo_workflow_service.py` into a detail/notification mixin; that file is no longer on the failure list.
+- Split `src/services/import_service.py` into an execution mixin; that file is no longer on the failure list.
+- Split `src/services/dashboard_service.py` into support and enrichment mixins; the dashboard modules are no longer on the failure list.
+- Split `tests/unit/test_import_service.py` into `test_import_service.py`, `test_import_service_core.py`, and `test_import_service_error_handling.py`; those files are no longer on the failure list.
+- Split `tests/unit/test_database_service.py` by moving the CRUD/audit coverage tail into `tests/unit/test_database_service_crud.py`; the original oversized file is no longer on the failure list.
+- Latest direct gate run is down to `55` violations.
+
+**Current Front Of Queue**:
+
+- `scripts/seed_db.py` is now the last remaining Python file-level offender.
+- After that, the remaining file-level failures are frontend assets and JS tests.
+
+**Next Steps**:
+
+- Split `scripts/seed_db.py` by extracting `BaselineSeeder` into its own module.
+- Re-run `sm swab -g myopia:code-sprawl --verbose --no-cache` after each structural cut.
+- Keep burning down the remaining file-level offenders before switching to the longer list of oversized functions.
+
+## Latest Work: Disabled Slop-Mop Gate Triage (2026-03-22)
+
+**Status**: ✅ REVIEWED - next meaningful disabled gate is `myopia:code-sprawl`
+
+**What I Verified**:
+
+- Checked-in disabled gates are:
+   - `overconfidence:coverage-gaps.dart`
+   - `deceptiveness:bogus-tests.dart`
+   - `laziness:generated-artifacts.dart`
+   - `myopia:code-sprawl`
+   - `myopia:ignored-feedback`
+- The repo has no `.dart` files, so the three Dart gates are irrelevant rather than deferred work.
+- `myopia:ignored-feedback` is useful on PR branches, but it is not the best next target for this clean local branch because it depends on review-thread workflow rather than repo code quality.
+- `myopia:code-sprawl` is the next real repo-quality gap and would hit immediately if enabled.
+
+**Largest Likely Offenders**:
+
+- `src/database/database_sqlite.py` (`2664` lines)
+- `src/services/dashboard_service.py` (`1777` lines)
+- `src/services/clo_workflow_service.py` (`1600` lines)
+- `src/services/import_service.py` (`1548` lines)
+- `src/services/email_service.py` (`1358` lines)
+- `src/models/models_sql.py` (`1162` lines)
+- several large test and static files also exceed the current `1000`-line threshold
+
+**Recommendation**:
+
+- Tackle `myopia:code-sprawl` next on this branch.
+- Treat `myopia:ignored-feedback` as a later PR-workflow gate.
+- Leave the disabled Dart gates alone unless Dart code is added to the repo.
+
+## Latest Work: Main Rebase Recovery + Fresh Branch (2026-03-21)
+
+**Status**: ✅ PASSING - repo recovered from a half-finished `main` rebase and moved onto a clean post-main branch
+
+**What Happened**:
+
+- The repo was stuck in an interactive rebase of local `main` onto `origin/main`, leaving a detached `HEAD` and partially-applied instruction-file deletions.
+- Local `main` had three rename-related commits not on `origin/main`, while `origin/main` already had PR `#70` merged as commit `70c5914`.
+- The safest path was to preserve the old local `main` tip, abort the rebase, and branch fresh from `origin/main` instead of trying to finish a stale replay.
+
+**Recovery Actions**:
+
+- Created safety branch `backup/pre-rebase-main-20260321-043046` at the pre-rebase local `main` tip (`cec0f57`).
+- Aborted the in-progress rebase.
+- Fetched `origin` and created fresh branch `chore/post-main-sync-20260321-043046` from `origin/main` (`70c5914`).
+
+**Current Verified State**:
+
+- Current branch: `chore/post-main-sync-20260321-043046`
+- Rebase in progress: no
+- Worktree: clean
+- `origin/main`: `70c5914` (`Finalize LoopCloser rename and stabilize E2E validation (#70)`)
+- Local pre-rebase state is preserved on the backup branch if any of those commits still matter later.
+
+**Next Steps**:
+
+- Do new work on `chore/post-main-sync-20260321-043046`.
+- If any old local-`main` changes are still needed, inspect or cherry-pick them from `backup/pre-rebase-main-20260321-043046` one commit at a time.
+
 ## Latest Work: PR 70 Buff Loop (2026-03-20)
 
 **Status**: 🚧 IN PROGRESS - PR `#70` has green CI but still has four unresolved review threads

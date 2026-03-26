@@ -7,13 +7,15 @@ password reset workflows.
 
 from typing import Any, Dict, cast
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from flask.typing import ResponseReturnValue
 
 from src.api.utils import (
+    format_missing_required_field,
     get_current_user_id_safe,
     get_current_user_safe,
 )
+from src.api.utils import get_request_json_object as _get_request_json
 from src.database.database_service import (
     get_user_by_id,
     update_user,
@@ -21,8 +23,11 @@ from src.database.database_service import (
 )
 from src.services.auth_service import login_required
 from src.utils.constants import (
+    AUTHENTICATION_REQUIRED_MSG,
+    FAILED_TO_UPDATE_PROFILE_MSG,
     MISSING_REQUIRED_FIELD_EMAIL_MSG,
     NO_JSON_DATA_PROVIDED_MSG,
+    SESSION_USER_ID_NOT_FOUND_MSG,
     USER_NOT_FOUND_MSG,
 )
 from src.utils.logging_config import get_logger
@@ -34,10 +39,36 @@ auth_profile_bp = Blueprint("auth_profile", __name__, url_prefix="/api")
 logger = get_logger(__name__)
 
 
-def _get_request_json() -> Dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
+def _require_password_change_payload(data: Dict[str, Any]) -> tuple[str, str]:
+    """Validate required password-change fields and return normalized values."""
+    if "current_password" not in data:
+        raise ValueError(format_missing_required_field("current_password"))
+    if "new_password" not in data:
+        raise ValueError(format_missing_required_field("new_password"))
+    return str(data["current_password"]), str(data["new_password"])
+
+
+def _get_password_change_user() -> tuple[str, Dict[str, Any] | None]:
+    """Fetch the current user and full DB record for password change."""
+    user_id = get_current_user_id_safe()
+    if not user_id:
+        return "", None
+    user = get_user_by_id(user_id)
+    if not user:
+        return user_id, None
+    return user_id, user
+
+
+def _verify_current_password(
+    verify_password: Any, current_password: str, user: Dict[str, Any]
+) -> ResponseReturnValue | None:
+    """Validate the current password before allowing a change."""
+    if verify_password(current_password, user.get("password_hash", "")):
+        return None
+    return (
+        jsonify({"success": False, "error": "Current password is incorrect"}),
+        401,
+    )
 
 
 # ===== PROFILE MANAGEMENT API ENDPOINTS =====
@@ -68,12 +99,15 @@ def update_profile_api() -> ResponseReturnValue:
         # Get current user
         current_user = get_current_user_safe()
         if not current_user:
-            return jsonify({"success": False, "error": "Authentication required"}), 401
+            return (
+                jsonify({"success": False, "error": AUTHENTICATION_REQUIRED_MSG}),
+                401,
+            )
 
         # Get request data
         data = _get_request_json()
         if not data:
-            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
         # Filter allowed fields - SECURITY: prevent email/role/institution changes
         allowed_fields = {"first_name", "last_name"}
@@ -91,9 +125,7 @@ def update_profile_api() -> ResponseReturnValue:
         user_id = get_current_user_id_safe()
         if not user_id:
             return (
-                jsonify(
-                    {"success": False, "error": "Session error: user ID not found"}
-                ),
+                jsonify({"success": False, "error": SESSION_USER_ID_NOT_FOUND_MSG}),
                 401,
             )
         success = update_user_profile(user_id, profile_data)
@@ -118,11 +150,14 @@ def update_profile_api() -> ResponseReturnValue:
                 200,
             )
         else:
-            return jsonify({"success": False, "error": "Failed to update profile"}), 500
+            return (
+                jsonify({"success": False, "error": FAILED_TO_UPDATE_PROFILE_MSG}),
+                500,
+            )
 
     except Exception as e:
         logger.error(f"Profile update error: {e}")
-        return jsonify({"success": False, "error": "Failed to update profile"}), 500
+        return jsonify({"success": False, "error": FAILED_TO_UPDATE_PROFILE_MSG}), 500
 
 
 @auth_profile_bp.route("/auth/change-password", methods=["POST"])
@@ -158,49 +193,24 @@ def change_password_api() -> ResponseReturnValue:
         # Get request data
         data = _get_request_json()
         if not data:
-            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
-        # Validate required fields
-        if "current_password" not in data:
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "error": "Missing required field: current_password",
-                    }
-                ),
-                400,
-            )
-        if "new_password" not in data:
-            return (
-                jsonify(
-                    {"success": False, "error": "Missing required field: new_password"}
-                ),
-                400,
-            )
-
-        # Get user with password hash
-        user_id = get_current_user_id_safe()
+        current_password, new_password = _require_password_change_payload(data)
+        user_id, user = _get_password_change_user()
         if not user_id:
             return (
-                jsonify(
-                    {"success": False, "error": "Session error: user ID not found"}
-                ),
+                jsonify({"success": False, "error": SESSION_USER_ID_NOT_FOUND_MSG}),
                 401,
             )
-        user = get_user_by_id(user_id)
         if not user:
             return jsonify({"success": False, "error": USER_NOT_FOUND_MSG}), 404
+        user = cast(Dict[str, Any], user)
 
-        # Verify current password
-        current_password = str(data["current_password"])
-        new_password = str(data["new_password"])
-
-        if not verify_password(current_password, user.get("password_hash", "")):
-            return (
-                jsonify({"success": False, "error": "Current password is incorrect"}),
-                401,
-            )
+        password_error = _verify_current_password(
+            verify_password, current_password, user
+        )
+        if password_error:
+            return password_error
 
         # Hash new password (validates strength requirements)
         try:
@@ -212,7 +222,7 @@ def change_password_api() -> ResponseReturnValue:
         success = update_user(user_id, {"password_hash": new_hash})
 
         if success:
-            logger.info(f"Password changed for user {user_id}")
+            logger.info("Password changed for user %s", user_id)
             return (
                 jsonify({"success": True, "message": "Password changed successfully"}),
                 200,
@@ -223,6 +233,8 @@ def change_password_api() -> ResponseReturnValue:
                 500,
             )
 
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
     except Exception as e:
         logger.error(f"Password change error: {e}")
         return jsonify({"success": False, "error": "Failed to change password"}), 500
@@ -309,7 +321,10 @@ def reset_password_api() -> ResponseReturnValue:
             if field not in data:
                 return (
                     jsonify(
-                        {"success": False, "error": f"Missing required field: {field}"}
+                        {
+                            "success": False,
+                            "error": format_missing_required_field(field),
+                        }
                     ),
                     400,
                 )

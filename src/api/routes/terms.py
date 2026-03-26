@@ -6,14 +6,18 @@ listing, creating, updating, and deleting terms.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, cast
+from typing import Any, Dict, List
 
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 
 from src.api.utils import (
     InstitutionContextMissingError,
+    format_missing_required_fields,
     get_current_institution_id_safe,
+)
+from src.api.utils import get_request_json_object as _get_request_json
+from src.api.utils import (
     handle_api_error,
     resolve_institution_scope,
 )
@@ -41,13 +45,9 @@ terms_bp = Blueprint("terms", __name__, url_prefix="/api")
 logger = get_logger(__name__)
 
 
-def _get_request_json() -> Dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
-
-
-def _strip_term_status_fields(payload: Dict[str, Any]) -> None:
+def _strip_term_status_fields(  # noqa: ambiguity-mine - route-local payload sanitizer
+    payload: Dict[str, Any],
+) -> None:
     """Remove unsupported status toggles from term payloads."""
     for key in ("status", "active", "is_active"):
         payload.pop(key, None)
@@ -115,7 +115,7 @@ def create_term_api() -> ResponseReturnValue:
                 jsonify(
                     {
                         "success": False,
-                        "error": f'Missing required fields: {", ".join(missing_fields)}',
+                        "error": format_missing_required_fields(missing_fields),
                     }
                 ),
                 400,

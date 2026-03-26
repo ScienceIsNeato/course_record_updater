@@ -11,11 +11,17 @@ Used by demo automation and admin interfaces.
 
 from typing import Any, Dict, List, cast
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from flask.typing import ResponseReturnValue
 
 import src.database.database_service as db
+from src.api.utils import get_request_json_object as _get_request_json
 from src.services.auth_service import permission_required
+from src.utils.constants import (
+    NO_DATA_PROVIDED_MSG,
+    PROGRAM_NOT_FOUND_MSG,
+    SECTION_NOT_FOUND_MSG,
+)
 from src.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -23,15 +29,11 @@ logger = get_logger(__name__)
 management_bp = Blueprint("management", __name__, url_prefix="/api/management")
 
 
-def _get_request_json() -> Dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
-
-
 @management_bp.route("/programs/<program_id>", methods=["PUT"])
 @permission_required("manage_programs")
-def update_program(program_id: str) -> ResponseReturnValue:
+def update_program(  # noqa: ambiguity-mine - route handler intentionally mirrors service verb
+    program_id: str,
+) -> ResponseReturnValue:
     """
     Update a program's metadata.
 
@@ -45,12 +47,12 @@ def update_program(program_id: str) -> ResponseReturnValue:
     try:
         data = _get_request_json()
         if not data:
-            return {"success": False, "error": "No data provided"}, 400
+            return {"success": False, "error": NO_DATA_PROVIDED_MSG}, 400
 
         # Get existing program to verify it exists
         program = db.get_program_by_id(program_id)
         if not program:
-            return {"success": False, "error": "Program not found"}, 404
+            return {"success": False, "error": PROGRAM_NOT_FOUND_MSG}, 404
 
         # Update fields if provided
         updates: Dict[str, Any] = {}
@@ -183,12 +185,12 @@ def update_section(section_id: str) -> ResponseReturnValue:
     try:
         data = _get_request_json()
         if not data:
-            return jsonify({"success": False, "error": "No data provided"}), 400
+            return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
         # Get existing section to verify it exists
         section = db.get_section_by_id(section_id)
         if not section:
-            return {"success": False, "error": "Section not found"}, 404
+            return {"success": False, "error": SECTION_NOT_FOUND_MSG}, 404
 
         # Build updates dict
         updates: Dict[str, Any] = {}

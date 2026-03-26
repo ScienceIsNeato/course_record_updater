@@ -9,8 +9,8 @@ from src.models.models import Institution, User
 from src.utils.constants import GENERIC_PASSWORD
 
 
-@pytest.fixture
-def client() -> Generator[Any, None, None]:
+@pytest.fixture(name="client")
+def ui_navigation_client_fixture() -> Generator[Any, None, None]:
     """Create test client"""
     app.config["TESTING"] = True
     app.config["SECRET_KEY"] = "test-secret-key"

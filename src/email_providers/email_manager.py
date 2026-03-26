@@ -86,6 +86,10 @@ class EmailManager:
             f"base_delay={base_delay}s, max_delay={max_delay}s)"
         )
 
+    def _retry_context(self, attempt: int) -> str:
+        """Return a consistent retry progress suffix for logs."""
+        return f"(attempt {attempt + 1}/{self.max_retries})"
+
     def add_email(
         self,
         to_email: str,
@@ -257,7 +261,7 @@ class EmailManager:
                 job.last_error = "Rate limiter timeout"
                 logger.warning(
                     f"[EmailManager] Rate limiter timeout for {job.to_email} "
-                    f"(attempt {attempt + 1}/{self.max_retries})"
+                    f"{self._retry_context(attempt)}"
                 )
                 continue
 
@@ -265,7 +269,7 @@ class EmailManager:
             try:
                 logger.debug(
                     f"[EmailManager] Sending to {job.to_email} "
-                    f"(attempt {attempt + 1}/{self.max_retries})"
+                    f"{self._retry_context(attempt)}"
                 )
 
                 success = send_func(
@@ -282,7 +286,7 @@ class EmailManager:
                 job.last_error = str(e)
                 logger.warning(
                     f"[EmailManager] Error sending to {job.to_email}: {e} "
-                    f"(attempt {attempt + 1}/{self.max_retries})"
+                    f"{self._retry_context(attempt)}"
                 )
 
             # If not last attempt, wait with exponential backoff
@@ -290,7 +294,7 @@ class EmailManager:
                 delay = self._calculate_backoff_delay(attempt)
                 logger.debug(
                     f"[EmailManager] Waiting {delay}s before retry "
-                    f"(attempt {attempt + 1}/{self.max_retries})"
+                    f"{self._retry_context(attempt)}"
                 )
                 time.sleep(delay)
 

@@ -13,10 +13,6 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple, TypedDict
 
 from src.adapters.adapter_registry import AdapterRegistryError, get_adapter_registry
-from src.utils.time_utils import get_current_time
-
-# Constants for datetime formatting
-UTC_OFFSET = "+00:00"
 from src.database.database_service import (
     create_course,
     create_course_offering,
@@ -32,6 +28,24 @@ from src.database.database_service import (
     update_course,
     update_course_offering,
     update_user,
+)
+from src.services.import_service_execution import ImportServiceExecutionMixin
+from src.utils.constants import ADAPTER_NOT_FOUND_MSG, FILE_NOT_FOUND_MSG
+from src.utils.time_utils import get_current_time
+
+# Constants for datetime formatting
+UTC_OFFSET = "+00:00"
+
+# Keep legacy patch targets available in this module for unit tests.
+_COMPAT_PATCH_TARGETS = (
+    create_course_offering,
+    create_course_outcome,
+    create_course_section,
+    create_term,
+    get_course_offering_by_course_and_term,
+    get_course_outcomes,
+    get_term_by_name,
+    update_course_offering,
 )
 
 # Import our models and services
@@ -179,7 +193,7 @@ def _add_utc_offset(datetime_str: str) -> str:
         return datetime_str + ".000000" + UTC_OFFSET
 
 
-class ImportService:
+class ImportService(ImportServiceExecutionMixin):
     """Service for handling data imports with conflict resolution using the adapter registry system"""
 
     def __init__(
@@ -328,7 +342,7 @@ class ImportService:
         """Prepare import by validating file and getting adapter."""
         # Validate file exists
         if not os.path.exists(file_path):
-            error_msg = f"File not found: {file_path}"
+            error_msg = FILE_NOT_FOUND_MSG.format(file_path=file_path)
             self.stats["errors"].append(error_msg)
             return None
 
@@ -337,7 +351,7 @@ class ImportService:
             registry = get_adapter_registry()
             adapter = registry.get_adapter_by_id(adapter_id)
             if not adapter:
-                error_msg = f"Adapter not found: {adapter_id}"
+                error_msg = ADAPTER_NOT_FOUND_MSG.format(adapter_id=adapter_id)
                 self.stats["errors"].append(error_msg)
                 return None
         except AdapterRegistryError as e:
@@ -963,473 +977,6 @@ class ImportService:
             self._log(f"DRY RUN: Would create user: {email}")
 
         return conflicts
-
-    def _process_term_import(
-        self, term_data: Dict[str, Any], dry_run: bool = False
-    ) -> None:
-        """Process term import (simplified implementation)"""
-        try:
-            term_name = term_data.get("term_name")
-            if not term_name:
-                self.stats["errors"].append("Term missing term_name")
-                return
-
-            existing_term = get_term_by_name(term_name, self.institution_id)
-
-            if existing_term:
-                self.stats["records_skipped"] += 1
-                self._log(f"Term already exists: {term_name}")
-            else:
-                # SECURITY: Override institution_id with authenticated user's institution
-                # Never trust institution_id from import data (multi-tenant isolation)
-                term_data["institution_id"] = self.institution_id
-
-                # BUG FIX: Remove id field from CSV data (often empty/invalid)
-                # Database will generate proper UUIDs on creation
-                term_data.pop("id", None)
-
-                if not dry_run:
-                    _term_id = create_term(term_data)  # noqa: F841
-                    self.stats["records_created"] += 1
-                    self._log(f"Created term: {term_name}")
-                else:
-                    self._log(f"DRY RUN: Would create term: {term_name}")
-
-        except Exception as e:
-            self.stats["errors"].append(
-                f"Error processing term {term_data.get('term_name')}: {str(e)}"
-            )
-
-    def _validate_and_lookup_course_term(
-        self, course_number: str, term_name: str, institution_id: str, context: str
-    ) -> tuple[Optional[str], Optional[str]]:
-        """Validate and lookup course and term IDs. Returns (course_id, term_id) or (None, None) on error."""
-        course = get_course_by_number(course_number, institution_id)
-        term = get_term_by_name(term_name, institution_id)
-
-        if not course:
-            self.stats["errors"].append(
-                f"Course {course_number} not found for {context}"
-            )
-            return None, None
-
-        if not term:
-            self.stats["errors"].append(f"Term {term_name} not found for {context}")
-            return None, None
-
-        return course["course_id"], term["term_id"]
-
-    def _handle_offering_conflict(
-        self,
-        strategy: ConflictStrategy,
-        course_number: str,
-        term_name: str,
-    ) -> bool:
-        """Handle existing offering conflict. Returns True if should skip creation."""
-        if strategy == ConflictStrategy.USE_MINE:
-            self.stats["records_skipped"] += 1
-            self._log(f"Skipped existing offering: {course_number} - {term_name}")
-            return True
-        elif strategy == ConflictStrategy.USE_THEIRS:
-            self.stats["records_updated"] += 1
-            self._log(f"Updated offering: {course_number} - {term_name}")
-            return True
-        return False
-
-    def _process_offering_import(
-        self,
-        offering_data: Dict[str, Any],
-        strategy: ConflictStrategy,
-        dry_run: bool = False,
-    ) -> None:
-        """Process course offering import"""
-        try:
-            # Extract and validate required data
-            course_number = offering_data.get("course_number")
-            term_name = offering_data.get("term_name")
-            # SECURITY: Always use authenticated user's institution (multi-tenant isolation)
-            institution_id = self.institution_id
-
-            if not course_number or not term_name:
-                self.stats["errors"].append(
-                    f"Missing course_number or term_name in offering data: {offering_data}"
-                )
-                return
-
-            # Lookup course and term
-            course_id, term_id = self._validate_and_lookup_course_term(
-                course_number, term_name, institution_id, "offering"
-            )
-            if not course_id or not term_id:
-                return
-
-            if dry_run:
-                self._log(
-                    f"DRY RUN: Would create offering for {course_number} in {term_name}"
-                )
-                return
-
-            # Check for existing offering and handle conflicts
-            existing_offering = get_course_offering_by_course_and_term(
-                course_id, term_id
-            )
-            if existing_offering and self._handle_offering_conflict(
-                strategy, course_number, term_name
-            ):
-                return
-
-            # Create new offering
-            from src.models.models import CourseOffering
-
-            offering_schema = CourseOffering.create_schema(
-                course_id=course_id,
-                term_id=term_id,
-                institution_id=institution_id,
-            )
-
-            offering_id = create_course_offering(offering_schema)
-
-            if offering_id:
-                self.stats["records_created"] += 1
-                self._log(f"Created offering: {course_number} - {term_name}")
-            else:
-                self.stats["errors"].append(
-                    f"Failed to create offering for {course_number} - {term_name}"
-                )
-
-        except Exception as e:
-            error_msg = f"Error processing offering: {str(e)}"
-            self.stats["errors"].append(error_msg)
-            self._log(error_msg, "error")
-            import traceback
-
-            self._log(f"Traceback: {traceback.format_exc()}", "error")
-
-    def _get_or_create_offering(
-        self,
-        course_id: str,
-        term_id: str,
-        institution_id: str,
-        course_number: str,
-        section_number: str,
-    ) -> Optional[str]:
-        """Get existing offering or create a new one. Returns offering_id or None on error."""
-        existing_offering = get_course_offering_by_course_and_term(course_id, term_id)
-
-        if existing_offering:
-            return existing_offering["offering_id"]
-
-        # Create offering if it doesn't exist
-        from src.models.models import CourseOffering
-
-        offering_schema = CourseOffering.create_schema(
-            course_id=course_id,
-            term_id=term_id,
-            institution_id=institution_id,
-        )
-        offering_id = create_course_offering(offering_schema)
-
-        if not offering_id:
-            self.stats["errors"].append(
-                f"Failed to create offering for section {course_number}-{section_number}"
-            )
-            return None
-
-        return offering_id
-
-    def _update_offering_counts(
-        self, offering_id: str, course_id: str, term_id: str, student_count: int
-    ) -> None:
-        """Update offering section count and enrollment totals."""
-        offering = get_course_offering_by_course_and_term(course_id, term_id)
-        if offering:
-            current_section_count = offering.get("section_count", 0)
-            current_enrollment = offering.get("total_enrollment", 0)
-
-            update_course_offering(
-                offering_id,
-                {
-                    "section_count": current_section_count + 1,
-                    "total_enrollment": current_enrollment + student_count,
-                },
-            )
-
-    def _process_section_import(
-        self,
-        section_data: Dict[str, Any],
-        dry_run: bool = False,
-    ) -> None:
-        """Process course section import"""
-        try:
-            # Extract required data
-            course_number = section_data.get("course_number")
-            term_name = section_data.get("term_name")
-            section_number = section_data.get("section_number", "001")
-            # SECURITY: Always use authenticated user's institution (multi-tenant isolation)
-            institution_id = self.institution_id
-            student_count = section_data.get("student_count", 0)
-            instructor_email = section_data.get("instructor_email")
-
-            if not course_number or not term_name:
-                self.stats["errors"].append(
-                    f"Missing course_number or term_name in section data: {section_data}"
-                )
-                return
-
-            # Lookup course and term
-            course_id, term_id = self._validate_and_lookup_course_term(
-                course_number, term_name, institution_id, "section"
-            )
-            if not course_id or not term_id:
-                return
-
-            # Get or create offering
-            offering_id = self._get_or_create_offering(
-                course_id, term_id, institution_id, course_number, section_number
-            )
-            if not offering_id:
-                return
-
-            if dry_run:
-                self._log(
-                    f"DRY RUN: Would create section {section_number} for {course_number} in {term_name}"
-                )
-                return
-
-            # Get instructor ID if email provided
-            instructor_id = None
-            if instructor_email:
-                instructor = get_user_by_email(instructor_email)
-                if instructor:
-                    instructor_id = instructor["user_id"]
-
-            # Create section
-            from src.models.models import CourseSection
-
-            section_schema = CourseSection.create_schema(
-                offering_id=offering_id,
-                section_number=section_number,
-                instructor_id=instructor_id,
-                enrollment=student_count,
-                status="assigned",  # Default status for new sections
-            )
-
-            section_id = create_course_section(section_schema)
-
-            if section_id:
-                self.stats["records_created"] += 1
-                self._log(
-                    f"Created section {section_number} for {course_number} in {term_name}"
-                )
-                self._update_offering_counts(
-                    offering_id, course_id, term_id, student_count
-                )
-            else:
-                self.stats["errors"].append(
-                    f"Failed to create section {section_number} for {course_number}"
-                )
-
-        except Exception as e:
-            error_msg = f"Error processing section: {str(e)}"
-            self.stats["errors"].append(error_msg)
-            self._log(error_msg, "error")
-            import traceback
-
-            self._log(f"Traceback: {traceback.format_exc()}", "error")
-
-    def _process_clo_import(
-        self,
-        clo_data: Dict[str, Any],
-        strategy: ConflictStrategy,
-        dry_run: bool = False,
-    ) -> None:
-        """Process course learning outcome (CLO) import"""
-        try:
-            # Extract required data
-            course_number = clo_data.get("course_number")
-            clo_number = clo_data.get("clo_number")
-            description = clo_data.get("description")
-            assessment_method = clo_data.get("assessment_method")
-
-            if not course_number or not clo_number or not description:
-                self.stats["errors"].append(
-                    f"Missing required fields in CLO data: {clo_data}"
-                )
-                return
-
-            # Get course ID
-            course = get_course_by_number(course_number, self.institution_id)
-
-            if not course:
-                self.stats["errors"].append(
-                    f"Course {course_number} not found for CLO {clo_number}"
-                )
-                return
-
-            course_id = course["course_id"]
-
-            if dry_run:
-                self._log(f"DRY RUN: Would create CLO {clo_number} for {course_number}")
-                return
-
-            # Check if CLO already exists for this course
-            existing_clos = get_course_outcomes(course_id)
-            existing_clo = None
-            for clo in existing_clos:
-                if clo.get("clo_number") == clo_number:
-                    existing_clo = clo
-                    break
-
-            if existing_clo:
-                if strategy == ConflictStrategy.USE_MINE:
-                    self.stats["records_skipped"] += 1
-                    self._log(f"Skipped existing CLO: {course_number}.{clo_number}")
-                    return
-                elif strategy == ConflictStrategy.USE_THEIRS:
-                    self.stats["records_updated"] += 1
-                    self._log(f"Updated CLO: {course_number}.{clo_number}")
-                    # Could update here if needed
-                    return
-
-            # Create new CLO
-            from src.models.models import CourseOutcome
-
-            clo_schema = CourseOutcome.create_schema(
-                course_id=course_id,
-                clo_number=clo_number,
-                description=description,
-                assessment_method=assessment_method,
-                active=True,
-            )
-
-            outcome_id = create_course_outcome(clo_schema)
-
-            if outcome_id:
-                self.stats["records_created"] += 1
-                self._log(f"Created CLO {clo_number} for {course_number}")
-            else:
-                self.stats["errors"].append(
-                    f"Failed to create CLO {clo_number} for {course_number}"
-                )
-
-        except Exception as e:
-            error_msg = f"Error processing CLO: {str(e)}"
-            self.stats["errors"].append(error_msg)
-            self._log(error_msg, "error")
-            import traceback
-
-            self._log(f"Traceback: {traceback.format_exc()}", "error")
-
-    def _try_link_single_course(
-        self,
-        course: Dict[str, Any],
-        program_lookup: Dict[str, str],
-        course_mappings: Dict[str, str],
-        add_course_to_program_func: Callable[[str, str], bool],
-    ) -> bool:
-        """Helper to link a single course to its program. Returns True if linked."""
-        course_number = course["course_number"]
-        prefix = course_number.split("-")[0] if "-" in course_number else None
-
-        if not (prefix and prefix in course_mappings):
-            return False
-
-        program_name = course_mappings[prefix]
-        program_id = program_lookup.get(program_name)
-
-        if not program_id:
-            return False
-
-        try:
-            # Use course_id (not id) - Course model's primary key is course_id
-            course_id = course.get("course_id") or course.get("id")
-            if not course_id:
-                self.logger.warning(
-                    f"Course {course_number} missing course_id, cannot link"
-                )
-                return False
-            add_course_to_program_func(course_id, program_id)
-            return True
-        except Exception:
-            # Already linked, that's fine
-            return False
-
-    def _link_courses_to_programs(self) -> None:
-        """
-        Automatically link imported courses to programs based on course number prefixes.
-
-        Maps:
-        - BIOL-xxx → Biological Sciences
-        - BSN-xxx → Biological Sciences
-        - ZOOL-xxx → Zoology
-        - CEI-xxx → CEI Default Program
-        """
-        try:
-            from src.database.database_service import (
-                add_course_to_program,
-                get_all_courses,
-                get_programs_by_institution,
-            )
-
-            self.logger.info("[Import] Linking courses to programs...")
-
-            # Get all courses and programs for this institution
-            courses = get_all_courses(self.institution_id)
-            programs = get_programs_by_institution(self.institution_id)
-
-            if not courses or not programs:
-                self.logger.info("[Import] No courses or programs to link")
-                return
-
-            # Build program lookup by name
-            # Program model uses program_id as primary key, not id
-            program_lookup = {p["name"]: p["program_id"] for p in programs}
-
-            # Find default program (ends with "Default Program")
-            default_program = next(
-                (name for name in program_lookup.keys() if "Default Program" in name),
-                None,
-            )
-
-            # Course prefix to program mapping
-            course_mappings: Dict[str, Optional[str]] = {
-                "BIOL": "Biological Sciences",
-                "BSN": "Biological Sciences",
-                "ZOOL": "Zoology",
-                "CS": default_program,  # Computer Science → Default
-                "EE": default_program,  # Electrical Engineering → Default
-                "GEN": default_program,  # General courses → Default
-                "CEI": default_program,  # Legacy CEI courses → Default
-            }
-
-            # Remove None values if no default program found
-            course_mappings_typed: Dict[str, str] = {
-                key: value
-                for key, value in course_mappings.items()
-                if isinstance(value, str)
-            }
-
-            linked_count = len(
-                [
-                    course
-                    for course in courses
-                    if self._try_link_single_course(
-                        course,
-                        program_lookup,
-                        course_mappings_typed,
-                        add_course_to_program,
-                    )
-                ]
-            )
-
-            if linked_count > 0:
-                self.logger.info(f"[Import] Linked {linked_count} courses to programs")
-            else:
-                self.logger.info("[Import] All courses already linked to programs")
-
-        except Exception as e:
-            # Don't fail the import if linking fails
-            self.logger.warning(f"[Import] Failed to link courses to programs: {e}")
 
     def _create_import_result(
         self, start_time: datetime, dry_run: bool

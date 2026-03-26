@@ -76,19 +76,30 @@ SECTION_NOT_FOUND_MSG = "Section not found"
 OUTCOME_NOT_FOUND_MSG = "Outcome not found"
 COURSE_OFFERING_NOT_FOUND_MSG = "Course offering not found"
 MISSING_REQUIRED_FIELD_EMAIL_MSG = "Missing required field: email"
+MISSING_REQUIRED_FIELD_MSG = "Missing required field: {field}"
+MISSING_REQUIRED_FIELDS_MSG = "Missing required fields: {fields}"
+AUTHENTICATION_REQUIRED_MSG = "Authentication required"
+FAILED_TO_UPDATE_PROFILE_MSG = "Failed to update profile"
+FAILED_TO_CREATE_COURSE_OUTCOME_MSG = "Failed to create course outcome"
+FILE_NOT_FOUND_MSG = "File not found: {file_path}"
+ADAPTER_NOT_FOUND_MSG = "Adapter not found: {adapter_id}"
+EXPORT_FAILED_MSG = "Export failed: {error}"
+ADMIN_ACCESS_REQUIRED_MSG = "Admin access required"
+SESSION_USER_ID_NOT_FOUND_MSG = "Session error: user ID not found"
+FAILED_TO_CREATE_COURSE_MSG = "Failed to create course"
 
 # Application route constants
 DASHBOARD_ENDPOINT = "dashboard"
 
 # Common error messages
 ERROR_COURSE_NOT_FOUND = "Course not found"
-ERROR_PROGRAM_NOT_FOUND = "Program not found"
-ERROR_INVITATION_NOT_FOUND = "Invitation not found"
-ERROR_NO_JSON_DATA = "No JSON data provided"
-ERROR_NO_DATA_PROVIDED = "No data provided"
+ERROR_PROGRAM_NOT_FOUND = PROGRAM_NOT_FOUND_MSG
+ERROR_INVITATION_NOT_FOUND = INVITATION_NOT_FOUND_MSG
+ERROR_NO_JSON_DATA = NO_JSON_DATA_PROVIDED_MSG
+ERROR_NO_DATA_PROVIDED = NO_DATA_PROVIDED_MSG
 ERROR_INVALID_EMAIL_FORMAT = "Invalid email format"
-ERROR_INSTITUTION_CONTEXT_REQUIRED = "Institution context required"
-ERROR_AUTHENTICATION_REQUIRED = "Authentication required"
+ERROR_INSTITUTION_CONTEXT_REQUIRED = INSTITUTION_CONTEXT_REQUIRED_MSG
+ERROR_AUTHENTICATION_REQUIRED = AUTHENTICATION_REQUIRED_MSG
 
 # File extensions
 EXCEL_EXTENSION = ".xlsx"

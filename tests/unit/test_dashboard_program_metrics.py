@@ -1,6 +1,68 @@
 """Unit tests for dashboard program metrics calculation."""
 
+from typing import Any
+
 from src.services.dashboard_service import DashboardService
+
+
+def _build_program_metrics_inputs() -> tuple[
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+]:
+    """Return a simple single-program fixture set for metrics tests."""
+    programs = [
+        {
+            "program_id": "prog-cs",
+            "id": "prog-cs",
+            "name": "Computer Science",
+            "short_name": "CS",
+        }
+    ]
+    courses = [
+        {
+            "course_id": "cs-101",
+            "id": "cs-101",
+            "course_number": "CS-101",
+            "course_title": "Intro to CS",
+            "program_id": "prog-cs",
+            "program_ids": ["prog-cs"],
+        },
+        {
+            "course_id": "cs-201",
+            "id": "cs-201",
+            "course_number": "CS-201",
+            "course_title": "Data Structures",
+            "program_id": "prog-cs",
+            "program_ids": ["prog-cs"],
+        },
+    ]
+    sections = [
+        {
+            "section_id": "sec-101-001",
+            "course_id": "cs-101",
+            "section_number": "001",
+            "instructor_id": "instr-1",
+            "enrollment": 25,
+        },
+        {
+            "section_id": "sec-201-001",
+            "course_id": "cs-201",
+            "section_number": "001",
+            "instructor_id": "instr-1",
+            "enrollment": 20,
+        },
+    ]
+    faculty = [
+        {
+            "user_id": "instr-1",
+            "first_name": "Jane",
+            "last_name": "Doe",
+            "email": "jane@example.com",
+        }
+    ]
+    return programs, courses, sections, faculty
 
 
 class TestDashboardProgramMetrics:
@@ -22,64 +84,7 @@ class TestDashboardProgramMetrics:
         - student_count: sum of enrollments
         """
         service = DashboardService()
-
-        # Setup: Program with ID
-        programs = [
-            {
-                "program_id": "prog-cs",
-                "id": "prog-cs",
-                "name": "Computer Science",
-                "short_name": "CS",
-            }
-        ]
-
-        # Setup: 2 courses in CS program
-        courses = [
-            {
-                "course_id": "cs-101",
-                "id": "cs-101",
-                "course_number": "CS-101",
-                "course_title": "Intro to CS",
-                "program_id": "prog-cs",
-                "program_ids": ["prog-cs"],
-            },
-            {
-                "course_id": "cs-201",
-                "id": "cs-201",
-                "course_number": "CS-201",
-                "course_title": "Data Structures",
-                "program_id": "prog-cs",
-                "program_ids": ["prog-cs"],
-            },
-        ]
-
-        # Setup: 2 sections (1 per course), same instructor
-        sections = [
-            {
-                "section_id": "sec-101-001",
-                "course_id": "cs-101",
-                "section_number": "001",
-                "instructor_id": "instr-1",
-                "enrollment": 25,
-            },
-            {
-                "section_id": "sec-201-001",
-                "course_id": "cs-201",
-                "section_number": "001",
-                "instructor_id": "instr-1",
-                "enrollment": 20,
-            },
-        ]
-
-        # Setup: 1 faculty member
-        faculty = [
-            {
-                "user_id": "instr-1",
-                "first_name": "Jane",
-                "last_name": "Doe",
-                "email": "jane@example.com",
-            }
-        ]
+        programs, courses, sections, faculty = _build_program_metrics_inputs()
 
         # Execute
         metrics = service._build_program_metrics(programs, courses, sections, faculty)

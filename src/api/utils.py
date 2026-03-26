@@ -5,7 +5,7 @@ This module contains common helper functions, error handlers, and utilities
 used across multiple API route modules.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from flask import jsonify, request
 
@@ -14,6 +14,11 @@ from src.services.auth_service import (
     UserRole,
     get_current_institution_id,
     get_current_user,
+)
+from src.utils.constants import (
+    MISSING_REQUIRED_FIELD_MSG,
+    MISSING_REQUIRED_FIELDS_MSG,
+    NO_JSON_DATA_PROVIDED_MSG,
 )
 from src.utils.logging_config import get_logger
 
@@ -58,6 +63,22 @@ def get_current_institution_id_safe() -> str:
     if not inst_id:
         return ""
     return inst_id
+
+
+def get_request_json_object() -> Dict[str, Any]:
+    """Return a typed JSON object body or an empty dict."""
+    payload = request.get_json(silent=True)
+    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
+
+
+def format_missing_required_field(field: str) -> str:
+    """Return a consistent single-field validation message."""
+    return MISSING_REQUIRED_FIELD_MSG.format(field=field)
+
+
+def format_missing_required_fields(missing_fields: List[str]) -> str:
+    """Return a consistent multi-field validation message."""
+    return MISSING_REQUIRED_FIELDS_MSG.format(fields=", ".join(missing_fields))
 
 
 def get_mimetype_for_extension(file_extension: str) -> str:
@@ -151,11 +172,11 @@ def validate_request_json(
     """
     data = request.get_json()
     if not data:
-        raise ValueError("No JSON data provided")
+        raise ValueError(NO_JSON_DATA_PROVIDED_MSG)
 
     if required_fields:
         missing_fields = [f for f in required_fields if not data.get(f)]
         if missing_fields:
-            raise ValueError(f'Missing required fields: {", ".join(missing_fields)}')
+            raise ValueError(format_missing_required_fields(missing_fields))
 
     return data

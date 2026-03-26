@@ -21,6 +21,8 @@ from src.utils.time_utils import get_current_time
 
 logger = get_logger(__name__)
 
+AUDIT_LOG_FAILURE_MSG = "Failed to create audit log for %s %s"
+
 
 class OperationType(Enum):
     """Types of auditable operations"""
@@ -123,6 +125,18 @@ def get_changed_fields(
     return changed
 
 
+def _log_audit_result(
+    success: bool, success_message: str, entity_type: EntityType, entity_id: str
+) -> bool:
+    """Log audit persistence outcome and return success for compact call sites."""
+    if success:
+        logger.info(success_message)
+        return True
+
+    logger.error(AUDIT_LOG_FAILURE_MSG, entity_type.value, entity_id)
+    return False
+
+
 class AuditService:
     """Service for creating and querying audit logs"""
 
@@ -206,17 +220,14 @@ class AuditService:
             # Store audit entry (using database service)
             success = db.create_audit_log(audit_entry)
 
-            if success:
-                logger.info(
-                    f"Audit log created: {entity_type.value} {entity_id} "
-                    f"by {user_email or 'system'}"
-                )
+            if _log_audit_result(
+                success,
+                f"Audit log created: {entity_type.value} {entity_id} by {user_email or 'system'}",
+                entity_type,
+                entity_id,
+            ):
                 return audit_id
-            else:
-                logger.error(
-                    f"Failed to create audit log for {entity_type.value} {entity_id}"
-                )
-                return None
+            return None
 
         except Exception as e:
             logger.error(f"Audit logging failed for CREATE {entity_type.value}: {e}")
@@ -309,18 +320,16 @@ class AuditService:
             # Store audit entry
             success = db.create_audit_log(audit_entry)
 
-            if success:
-                logger.info(
-                    f"Audit log created: {entity_type.value} {entity_id} "
-                    f"updated by {user_email or 'system'} "
-                    f"(fields: {', '.join(changed_fields)})"
-                )
+            if _log_audit_result(
+                success,
+                "Audit log created: "
+                f"{entity_type.value} {entity_id} updated by {user_email or 'system'} "
+                f"(fields: {', '.join(changed_fields)})",
+                entity_type,
+                entity_id,
+            ):
                 return audit_id
-            else:
-                logger.error(
-                    f"Failed to create audit log for {entity_type.value} {entity_id}"
-                )
-                return None
+            return None
 
         except Exception as e:
             logger.error(f"Audit logging failed for UPDATE {entity_type.value}: {e}")
@@ -406,17 +415,14 @@ class AuditService:
             # Store audit entry
             success = db.create_audit_log(audit_entry)
 
-            if success:
-                logger.info(
-                    f"Audit log created: {entity_type.value} {entity_id} "
-                    f"deleted by {user_email or 'system'}"
-                )
+            if _log_audit_result(
+                success,
+                f"Audit log created: {entity_type.value} {entity_id} deleted by {user_email or 'system'}",
+                entity_type,
+                entity_id,
+            ):
                 return audit_id
-            else:
-                logger.error(
-                    f"Failed to create audit log for {entity_type.value} {entity_id}"
-                )
-                return None
+            return None
 
         except Exception as e:
             logger.error(f"Audit logging failed for DELETE {entity_type.value}: {e}")

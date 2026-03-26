@@ -7,12 +7,16 @@ Site admin only.
 
 from datetime import datetime
 from io import BytesIO
-from typing import Any, Union, cast
+from typing import Any, Union
 
 from flask import Blueprint, jsonify, request, send_file
 from werkzeug.wrappers import Response
 
-from src.api.utils import handle_api_error, resolve_institution_scope
+from src.api.utils import get_request_json_object as _get_request_json
+from src.api.utils import (
+    handle_api_error,
+    resolve_institution_scope,
+)
 from src.database.database_service import get_audit_logs_filtered
 from src.services.audit_service import AuditService, EntityType
 from src.services.auth_service import permission_required
@@ -27,10 +31,16 @@ audit_bp = Blueprint("audit", __name__, url_prefix="/api/audit")
 logger = get_logger(__name__)
 
 
-def _get_request_json() -> dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return cast(dict[str, Any], payload) if isinstance(payload, dict) else {}
+def _build_audit_export_response(export_bytes: bytes, export_format: str) -> Response:
+    """Return a download response for audit export bytes."""
+    export_io = BytesIO(export_bytes)
+    export_io.seek(0)
+    timestamp = get_current_time().strftime("%Y%m%d_%H%M%S")
+    filename = f"audit_logs_{timestamp}.{export_format}"
+    mime_type = "text/csv" if export_format == "csv" else "application/json"
+    return send_file(
+        export_io, as_attachment=True, download_name=filename, mimetype=mime_type
+    )
 
 
 @audit_bp.route("/recent", methods=["GET"])
@@ -323,20 +333,7 @@ def export_logs() -> Union[Response, tuple[Any, int]]:
             format_type=export_format,
         )
 
-        # Create BytesIO object for send_file
-        export_io = BytesIO(export_bytes)
-        export_io.seek(0)
-
-        # Generate filename with timestamp
-        timestamp = get_current_time().strftime("%Y%m%d_%H%M%S")
-        filename = f"audit_logs_{timestamp}.{export_format}"
-
-        # Determine mime type
-        mime_type = "text/csv" if export_format == "csv" else "application/json"
-
-        return send_file(
-            export_io, as_attachment=True, download_name=filename, mimetype=mime_type
-        )
+        return _build_audit_export_response(export_bytes, export_format)
 
     except Exception as e:
         return handle_api_error(e, "Export audit logs", "Failed to export audit logs")

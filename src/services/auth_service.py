@@ -767,7 +767,9 @@ def write_db_generation() -> str:
 
 
 # Utility functions (working stubs)
-def get_current_user() -> Optional[Dict[str, Any]]:
+def get_current_user() -> (  # noqa: ambiguity-mine - auth API intentionally matches session accessor
+    Optional[Dict[str, Any]]
+):
     """Get current user (convenience function)."""
     return auth_service.get_current_user()
 

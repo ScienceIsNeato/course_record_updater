@@ -3,6 +3,32 @@
  * Unassigned=grey, Assigned=black, In Progress=blue,
  * Needs Rework=orange, Awaiting Approval=yellow-green, Approved=green, NCI=red
  */
+function resolveAuditCloActionsModule() {
+  if (typeof globalThis !== "undefined" && globalThis.AuditCloActions) {
+    return globalThis.AuditCloActions;
+  }
+  if (typeof module === "undefined" || !module.exports) {
+    return null;
+  }
+  try {
+    return require("./audit_clo_actions");
+  } catch (_error) {
+    try {
+      return require(`${process.cwd()}/static/audit_clo_actions.js`);
+    } catch (_fallbackError) {
+      return null;
+    }
+  }
+}
+
+const auditCloActionsModule = resolveAuditCloActionsModule();
+const auditCloListModule =
+  typeof globalThis !== "undefined" && globalThis.AuditCloList
+    ? globalThis.AuditCloList
+    : typeof module !== "undefined" && module.exports
+      ? require("./audit_clo_list")
+      : null;
+
 function getStatusBadge(status) {
   const span = document.createElement("span");
   span.className = "badge";
@@ -174,100 +200,20 @@ function exportCurrentViewToCsv(cloList) {
  * Approve CLO (extracted for testability)
  */
 async function approveCLO() {
-  if (!globalThis.currentCLO) return;
-
-  const outcomeId =
-    globalThis.currentCLO.id || globalThis.currentCLO.outcome_id;
-  if (!outcomeId) {
-    alert("Error: Outcome ID not found");
-    return;
-  }
-
-  try {
-    const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-    const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
-
-    const response = await fetch(`/api/outcomes/${outcomeId}/approve`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": csrfToken,
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to approve Outcome");
-    }
-
-    // Close modal
-    const cloDetailModal = document.getElementById("cloDetailModal");
-    const modal = bootstrap.Modal.getInstance(cloDetailModal);
-    modal.hide();
-
-    // Show success
-    // Show success - Removed alert per request
-    // alert('CLO approved successfully!');
-
-    // Reload list
-    await globalThis.loadCLOs();
-  } catch (error) {
-    alert("Failed to approve Outcome: " + error.message);
-  }
+  return auditCloActionsModule.approveCLO({
+    getStatusBadge,
+    formatDate,
+  });
 }
 
 /**
  * Mark CLO as Never Coming In (NCI) (extracted for testability)
  */
 async function markAsNCI() {
-  if (!globalThis.currentCLO) return;
-
-  const reason = prompt(
-    `Mark this Outcome as "Never Coming In"?\n\n${globalThis.currentCLO.course_number} - Outcome ${globalThis.currentCLO.clo_number}\n\nOptional: Provide a reason (e.g., "Instructor left institution", "Non-responsive instructor"):`,
-  );
-
-  // null means cancelled, empty string is allowed
-  if (reason === null) {
-    return;
-  }
-
-  try {
-    const outcomeId =
-      globalThis.currentCLO.id || globalThis.currentCLO.outcome_id; // Use Section ID, not Template ID
-
-    const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-    const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
-
-    const response = await fetch(`/api/outcomes/${outcomeId}/mark-nci`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": csrfToken,
-      },
-      body: JSON.stringify({
-        reason: reason.trim() || null,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to mark Outcome as NCI");
-    }
-
-    // Close modal
-    const cloDetailModal = document.getElementById("cloDetailModal");
-    const modal = bootstrap.Modal.getInstance(cloDetailModal);
-    modal.hide();
-
-    // Show success
-    alert("Outcome marked as Never Coming In (NCI)");
-
-    // Reload list
-    await globalThis.loadCLOs();
-    await globalThis.updateStats();
-  } catch (error) {
-    alert("Failed to mark Outcome as NCI: " + error.message);
-  }
+  return auditCloActionsModule.markAsNCI({
+    getStatusBadge,
+    formatDate,
+  });
 }
 
 /**
@@ -307,229 +253,10 @@ function renderHistoryCellContent(clo) {
  * Render CLO details in modal (extracted for testability)
  */
 function renderCLODetails(clo) {
-  const container = document.createElement("div");
-
-  // Header / Status
-  const statusRow = document.createElement("div");
-  statusRow.className = "mb-3";
-  const statusFlex = document.createElement("div");
-  statusFlex.className =
-    "d-flex justify-content-between align-items-center mb-2";
-  const statusH6 = document.createElement("h6");
-  statusH6.className = "mb-0";
-  statusH6.textContent = "Status";
-  statusFlex.appendChild(statusH6);
-  statusFlex.appendChild(getStatusBadge(clo.status));
-  statusRow.appendChild(statusFlex);
-  container.appendChild(statusRow);
-
-  // Course / CLO Number
-  const courseRow = document.createElement("div");
-  courseRow.className = "row mb-3";
-
-  const courseCol = document.createElement("div");
-  courseCol.className = "col-md-6";
-  const courseStrong = document.createElement("strong");
-  courseStrong.textContent = "Course:";
-  courseCol.appendChild(courseStrong);
-  courseCol.appendChild(
-    document.createTextNode(
-      ` ${clo.course_number || "N/A"} - ${clo.course_title || "N/A"}`,
-    ),
-  );
-  courseRow.appendChild(courseCol);
-
-  const cloCol = document.createElement("div");
-  cloCol.className = "col-md-6";
-  const cloStrong = document.createElement("strong");
-  cloStrong.textContent = "Outcome Number:";
-  cloCol.appendChild(cloStrong);
-  cloCol.appendChild(document.createTextNode(` ${clo.clo_number || "N/A"}`));
-  courseRow.appendChild(cloCol);
-
-  container.appendChild(courseRow);
-
-  // Description
-  const descRow = document.createElement("div");
-  descRow.className = "mb-3";
-  const descStrong = document.createElement("strong");
-  descStrong.textContent = "Description:";
-  descRow.appendChild(descStrong);
-  const descP = document.createElement("p");
-  descP.textContent = clo.description;
-  descRow.appendChild(descP);
-  container.appendChild(descRow);
-
-  // Instructor
-  const instructorRow = document.createElement("div");
-  instructorRow.className = "row mb-3";
-
-  const instructorCol = document.createElement("div");
-  instructorCol.className = "col-md-6";
-  const instructorStrong = document.createElement("strong");
-  instructorStrong.textContent = "Instructor:";
-  instructorCol.appendChild(instructorStrong);
-  instructorCol.appendChild(
-    document.createTextNode(` ${clo.instructor_name || "N/A"}`),
-  );
-  instructorRow.appendChild(instructorCol);
-
-  const instructorEmailCol = document.createElement("div");
-  instructorEmailCol.className = "col-md-6";
-  const instructorEmailStrong = document.createElement("strong");
-  instructorEmailStrong.textContent = "Instructor Email:";
-  instructorEmailCol.appendChild(instructorEmailStrong);
-  instructorEmailCol.appendChild(
-    document.createTextNode(` ${clo.instructor_email || "N/A"}`),
-  );
-  instructorRow.appendChild(instructorEmailCol);
-
-  container.appendChild(instructorRow);
-
-  // Term / Assessment Tool
-  const termRow = document.createElement("div");
-  termRow.className = "row mb-3";
-
-  const termCol = document.createElement("div");
-  termCol.className = "col-md-6";
-  const termStrong = document.createElement("strong");
-  termStrong.textContent = "Term:";
-  termCol.appendChild(termStrong);
-  termCol.appendChild(document.createTextNode(` ${clo.term_name || "—"}`));
-  termRow.appendChild(termCol);
-
-  const toolCol = document.createElement("div");
-  toolCol.className = "col-md-6";
-  const toolStrong = document.createElement("strong");
-  toolStrong.textContent = "Assessment Tool:";
-  toolCol.appendChild(toolStrong);
-  toolCol.appendChild(
-    document.createTextNode(` ${clo.assessment_tool || "—"}`),
-  );
-  termRow.appendChild(toolCol);
-
-  container.appendChild(termRow);
-
-  // Attachments
-  const attachmentRow = document.createElement("div");
-  attachmentRow.className = "mb-3";
-  const attachmentStrong = document.createElement("strong");
-  attachmentStrong.textContent = "Attachments:";
-  attachmentRow.appendChild(attachmentStrong);
-  attachmentRow.appendChild(document.createElement("br"));
-  const attachmentBtn = document.createElement("button");
-  attachmentBtn.className = "btn btn-sm btn-outline-secondary";
-  attachmentBtn.disabled = true;
-  attachmentBtn.innerHTML =
-    '<i class="fas fa-paperclip"></i> View Attachments (Coming Soon)';
-  attachmentRow.appendChild(attachmentBtn);
-  container.appendChild(attachmentRow);
-
-  container.appendChild(document.createElement("hr"));
-
-  // Assessment Data
-  const dataH6 = document.createElement("h6");
-  dataH6.className = "mb-3";
-  dataH6.textContent = "Assessment Data";
-  container.appendChild(dataH6);
-
-  const assessmentRow = document.createElement("div");
-  assessmentRow.className = "row mb-3";
-
-  const studentsTook = clo.students_took || 0;
-  const studentsPassed = clo.students_passed || 0;
-  const percentage =
-    studentsTook > 0 ? Math.round((studentsPassed / studentsTook) * 100) : 0;
-
-  const stats = [
-    { value: studentsTook, label: "Students Took" },
-    { value: studentsPassed, label: "Students Passed" },
-    { value: `${percentage}%`, label: "Success Rate" },
-  ];
-
-  stats.forEach((stat) => {
-    const col = document.createElement("div");
-    col.className = "col-md-4";
-    const box = document.createElement("div");
-    box.className = "text-center p-3 bg-light rounded";
-    const h4 = document.createElement("h4");
-    h4.className = "mb-0";
-    h4.textContent = stat.value;
-    const small = document.createElement("small");
-    small.className = "text-muted";
-    small.textContent = stat.label;
-    box.appendChild(h4);
-    box.appendChild(small);
-    col.appendChild(box);
-    assessmentRow.appendChild(col);
+  return auditCloActionsModule.renderCLODetails(clo, {
+    formatDate,
+    getStatusBadge,
   });
-  container.appendChild(assessmentRow);
-
-  // Narrative
-  if (clo.narrative) {
-    const narrativeRow = document.createElement("div");
-    narrativeRow.className = "mb-3";
-    const narrativeStrong = document.createElement("strong");
-    narrativeStrong.textContent = "Narrative:";
-    narrativeRow.appendChild(narrativeStrong);
-    const narrativeP = document.createElement("p");
-    narrativeP.className = "text-muted";
-    narrativeP.textContent = clo.narrative;
-    narrativeRow.appendChild(narrativeP);
-    container.appendChild(narrativeRow);
-  }
-
-  // Admin Feedback
-  if (clo.feedback_comments) {
-    const feedbackRow = document.createElement("div");
-    feedbackRow.className = "mb-3";
-    const feedbackStrong = document.createElement("strong");
-    feedbackStrong.textContent = "Admin Feedback:";
-    feedbackRow.appendChild(feedbackStrong);
-    const feedbackP = document.createElement("p");
-    feedbackP.className = "text-muted";
-    feedbackP.textContent = clo.feedback_comments;
-    feedbackRow.appendChild(feedbackP);
-    container.appendChild(feedbackRow);
-  }
-
-  // History (full list in modal)
-  if (clo.history && clo.history.length > 0) {
-    const historyRow = document.createElement("div");
-    historyRow.className = "mb-3";
-    const historyStrong = document.createElement("strong");
-    historyStrong.textContent = "History:";
-    historyRow.appendChild(historyStrong);
-    const historyList = document.createElement("ul");
-    historyList.className = "list-unstyled text-muted small mt-2";
-    clo.history.forEach((entry) => {
-      const li = document.createElement("li");
-      li.className = "mb-1";
-      const icon = document.createElement("i");
-      icon.className = "fas fa-clock me-2";
-      li.appendChild(icon);
-      li.appendChild(
-        document.createTextNode(
-          `${entry.event} - ${formatDate(entry.occurred_at)}`,
-        ),
-      );
-      historyList.appendChild(li);
-    });
-    historyRow.appendChild(historyList);
-    container.appendChild(historyRow);
-  }
-
-  // Reviewer Info
-  if (clo.reviewed_by_name) {
-    const reviewerRow = document.createElement("div");
-    reviewerRow.className = "mt-3 text-muted small";
-    const em = document.createElement("em");
-    em.textContent = `Reviewed by ${clo.reviewed_by_name} on ${formatDate(clo.reviewed_at)}`;
-    reviewerRow.appendChild(em);
-    container.appendChild(reviewerRow);
-  }
-
-  return container;
 }
 
 // Global variables
@@ -555,234 +282,31 @@ globalThis.submitReminder = submitReminder;
  * Direct Approve from Table
  */
 async function approveOutcome(outcomeId) {
-  try {
-    const csrfToken = document.querySelector(
-      'meta[name="csrf-token"]',
-    )?.content;
-    const res = await fetch(`/api/outcomes/${outcomeId}/approve`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": csrfToken,
-      },
-    });
-    if (res.ok) {
-      await globalThis.loadCLOs();
-      return true;
-    } else {
-      const err = await res.json();
-      alert("Failed to approve: " + (err.error || "Unknown error"));
-      return false;
-    }
-  } catch (e) {
-    alert("Error approving outcome: " + e.message);
-    return false;
-  }
+  return auditCloActionsModule.approveOutcome(outcomeId);
 }
 
 /**
  * Assign Instructor (Native Modal)
  */
-let currentAssignSectionId = null;
-
 async function assignOutcome(outcomeId) {
-  const clo = allCLOs.find(
-    (c) => c.id === outcomeId || c.outcome_id === outcomeId,
+  return auditCloActionsModule.assignOutcome(
+    outcomeId,
+    allCLOs,
+    loadInstructors,
+    handleAssignSubmit,
   );
-  if (!clo) return;
-
-  // Ensure form is bound
-  const form = document.getElementById("assignInstructorForm");
-  if (form) form.onsubmit = handleAssignSubmit;
-
-  // Use section_id derived from backend
-  if (!clo.section_id) {
-    alert("Cannot identify section for assignment. Please contact support.");
-    return;
-  }
-
-  currentAssignSectionId = clo.section_id;
-
-  const modalEl = document.getElementById("assignInstructorModal");
-  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-  modal.show();
-
-  await loadInstructors();
 }
 
 async function loadInstructors() {
-  const select = document.getElementById("assignInstructorSelect");
-  if (!select || select.dataset.loaded === "true") return;
-
-  try {
-    const res = await fetch("/api/instructors");
-    const data = await res.json();
-
-    if (data.success) {
-      select.innerHTML = '<option value="">Select Instructor...</option>';
-      data.instructors.forEach((inst) => {
-        const opt = document.createElement("option");
-        opt.value = inst.user_id || inst.id;
-        opt.textContent = `${inst.last_name}, ${inst.first_name} (${inst.email})`;
-        select.appendChild(opt);
-      });
-      select.dataset.loaded = "true";
-    } else {
-      select.innerHTML = "<option>Error loading instructors</option>";
-    }
-  } catch (e) {
-    console.error(e);
-    select.innerHTML = "<option>Error loading instructors</option>";
-  }
+  return auditCloActionsModule.loadInstructors();
 }
 
 async function handleAssignSubmit(e) {
-  e.preventDefault();
-  const select = document.getElementById("assignInstructorSelect");
-  const instructorId = select.value;
-
-  if (!instructorId) {
-    alert("Please select an instructor");
-    return;
-  }
-
-  try {
-    const csrfToken = document.querySelector(
-      'meta[name="csrf-token"]',
-    )?.content;
-    const res = await fetch(
-      `/api/sections/${currentAssignSectionId}/instructor`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": csrfToken,
-        },
-        body: JSON.stringify({ instructor_id: instructorId }),
-      },
-    );
-
-    if (res.ok) {
-      const modalEl = document.getElementById("assignInstructorModal");
-      bootstrap.Modal.getInstance(modalEl).hide();
-      await globalThis.loadCLOs();
-      alert("Instructor assigned successfully.");
-    } else {
-      const json = await res.json();
-      alert("Failed to assign: " + (json.error || "Unknown"));
-    }
-  } catch (err) {
-    alert("Error: " + err.message);
-  }
+  return auditCloActionsModule.handleAssignSubmit(e);
 }
 
 async function handleInviteInstructorSubmit(event) {
-  event.preventDefault();
-
-  const emailInput = document.getElementById("inviteEmail");
-  const firstNameInput = document.getElementById("inviteFirstName");
-  const lastNameInput = document.getElementById("inviteLastName");
-  const alertBox = document.getElementById("inviteInstructorAlert");
-  const submitBtn = document.getElementById("sendInviteBtn");
-
-  if (!emailInput || !firstNameInput || !lastNameInput) {
-    alert("Invite form is missing required fields.");
-    return;
-  }
-
-  if (!currentAssignSectionId) {
-    alert("Missing section context for this invitation.");
-    return;
-  }
-
-  const form = event.target;
-  if (form && !form.checkValidity()) {
-    form.classList.add("was-validated");
-    return;
-  }
-
-  if (alertBox) {
-    alertBox.classList.add("d-none");
-    alertBox.classList.remove("alert-success", "alert-danger");
-    alertBox.textContent = "";
-  }
-
-  if (submitBtn) {
-    submitBtn.disabled = true;
-  }
-
-  try {
-    const csrfToken = document.querySelector(
-      'meta[name="csrf-token"]',
-    )?.content;
-
-    const response = await fetch("/api/auth/invite", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(csrfToken && { "X-CSRFToken": csrfToken }),
-      },
-      body: JSON.stringify({
-        invitee_email: emailInput.value.trim(),
-        invitee_role: "instructor",
-        first_name: firstNameInput.value.trim(),
-        last_name: lastNameInput.value.trim(),
-        section_id: currentAssignSectionId,
-        replace_existing: true,
-      }),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok || !result.success) {
-      throw new Error(result.error || "Failed to send invitation");
-    }
-
-    if (alertBox) {
-      alertBox.classList.remove("d-none");
-      alertBox.classList.add("alert-success");
-      alertBox.textContent = result.message || "Invitation sent successfully!";
-    }
-
-    const modalEl = document.getElementById("inviteInstructorModal");
-    const modal = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
-    if (modal) {
-      modal.hide();
-    }
-
-    const successModalEl = document.getElementById("inviteSuccessModal");
-    if (successModalEl) {
-      const successMessage = document.getElementById("inviteSuccessMessage");
-      if (successMessage) {
-        successMessage.textContent =
-          result.message || "Invitation sent successfully.";
-      }
-      bootstrap.Modal.getOrCreateInstance(successModalEl).show();
-    }
-
-    if (form) {
-      form.reset();
-      form.classList.remove("was-validated");
-    }
-  } catch (error) {
-    if (alertBox) {
-      alertBox.classList.remove("d-none");
-      alertBox.classList.add("alert-danger");
-      alertBox.textContent =
-        error.message || "Failed to send invitation. Please try again.";
-    } else {
-      alert("Failed to send invitation: " + error.message);
-    }
-  } finally {
-    if (submitBtn) {
-      submitBtn.disabled = false;
-    }
-    // Refresh the list to show the assigned instructor
-    if (typeof globalThis.loadCLOs === "function") {
-      await globalThis.loadCLOs();
-      document.dispatchEvent(new CustomEvent("faculty-invited"));
-    }
-  }
+  return auditCloActionsModule.handleInviteInstructorSubmit(event);
 }
 
 /**
@@ -822,8 +346,6 @@ async function reopenOutcome(outcomeId) {
   }
 }
 
-let reminderContext = null;
-
 function formatShortDate(dateString) {
   if (!dateString) return null;
   const date = new Date(dateString);
@@ -837,164 +359,19 @@ function formatShortDate(dateString) {
  * Send Reminder (opens modal and populates message)
  */
 async function remindOutcome(outcomeId, instructorId, courseId) {
-  if (!confirm("Are you sure you want to send a reminder?")) return;
-  if (!instructorId || !courseId) {
-    alert("Missing instructor or course information for this outcome.");
-    return;
-  }
-
-  const clo = allCLOs.find(
-    (c) => c.id === outcomeId || c.outcome_id === outcomeId,
-  );
-  const modalEl = document.getElementById("sendReminderModal");
-  if (!modalEl) {
-    alert("Reminder modal is not available. Please refresh and try again.");
-    return;
-  }
-
-  reminderContext = {
+  return auditCloActionsModule.remindOutcome(
     outcomeId,
     instructorId,
     courseId,
-    sectionId: clo?.section_id || null,
-  };
-
-  const reminderCloDescription = document.getElementById(
-    "reminderCloDescription",
+    allCLOs,
   );
-  const reminderCourseDescription = document.getElementById(
-    "reminderCourseDescription",
-  );
-  const reminderInstructorEmail = document.getElementById(
-    "reminderInstructorEmail",
-  );
-  const reminderMessage = document.getElementById("reminderMessage");
-
-  const courseNumber = clo?.course_number || "Course";
-  const courseTitle = clo?.course_title || "";
-  const sectionLabel = clo?.section_number
-    ? `Section ${clo.section_number}`
-    : "Section";
-  const cloLabel = clo?.clo_number ? `CLO #${clo.clo_number}` : "CLO";
-  const termLabel = clo?.term_name ? `${clo.term_name} - ` : "";
-
-  const courseDisplay = courseTitle
-    ? `${courseNumber} - ${courseTitle}`
-    : courseNumber;
-
-  if (reminderCloDescription) {
-    reminderCloDescription.textContent = `${courseNumber} • ${sectionLabel} • ${cloLabel}`;
-  }
-  if (reminderCourseDescription) {
-    reminderCourseDescription.textContent = courseDisplay;
-  }
-
-  let instructorName = clo?.instructor_name || "Instructor";
-  let instructorEmail = clo?.instructor_email || "";
-  let dueDateText = null;
-
-  try {
-    const instructorResponse = await fetch(`/api/users/${instructorId}`);
-    if (instructorResponse.ok) {
-      const instructorData = await instructorResponse.json();
-      const user = instructorData.user || {};
-      instructorName =
-        user.display_name ||
-        `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
-        instructorName;
-      instructorEmail = user.email || instructorEmail;
-    }
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn("Failed to load instructor details:", error);
-  }
-
-  if (reminderInstructorEmail) {
-    reminderInstructorEmail.textContent =
-      instructorEmail || "Instructor email unavailable";
-  }
-
-  if (reminderContext.sectionId) {
-    try {
-      const sectionResponse = await fetch(
-        `/api/sections/${reminderContext.sectionId}`,
-      );
-      if (sectionResponse.ok) {
-        const sectionData = await sectionResponse.json();
-        const dueDate = sectionData.section?.assessment_due_date;
-        if (dueDate) {
-          dueDateText = formatShortDate(dueDate);
-        }
-      }
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.warn("Failed to load section due date:", error);
-    }
-  }
-
-  if (reminderMessage) {
-    const dueLine = dueDateText ? `\nSubmission due date: ${dueDateText}` : "";
-    reminderMessage.value =
-      `Dear ${instructorName},\n\n` +
-      "This is a friendly reminder to submit your assessment results for " +
-      `${termLabel}${courseNumber} (${sectionLabel}) ${cloLabel}.` +
-      `${dueLine}\n\n` +
-      "Thank you.";
-  }
-
-  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-  modal.show();
 }
 
 /**
  * Submit reminder email
  */
 async function submitReminder(event) {
-  if (event && typeof event.preventDefault === "function") {
-    event.preventDefault();
-  }
-
-  if (!reminderContext) {
-    alert("Reminder context is missing. Please try again.");
-    return;
-  }
-
-  const reminderMessage = document.getElementById("reminderMessage");
-  const message = reminderMessage?.value?.trim() || "";
-  if (!message) {
-    alert("Please provide a reminder message.");
-    return;
-  }
-
-  try {
-    const csrfToken = document.querySelector(
-      'meta[name="csrf-token"]',
-    )?.content;
-    const res = await fetch("/api/send-course-reminder", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": csrfToken,
-      },
-      body: JSON.stringify({
-        instructor_id: reminderContext.instructorId,
-        course_id: reminderContext.courseId,
-        message,
-      }),
-    });
-
-    if (res.ok) {
-      const modalEl = document.getElementById("sendReminderModal");
-      const modal = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
-      if (modal) modal.hide();
-      alert("Reminder sent successfully.");
-    } else {
-      const err = await res.json();
-      alert("Failed to send reminder: " + (err.error || "Unknown error"));
-    }
-  } catch (e) {
-    alert("Error sending reminder: " + e.message);
-  }
+  return auditCloActionsModule.submitReminder(event);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -1304,297 +681,16 @@ document.addEventListener("DOMContentLoaded", () => {
    * Render CLO list
    */
   function renderCLOList() {
-    // Prevent layout shift/scroll jumping by locking the height
-    if (cloListContainer.offsetHeight > 0) {
-      cloListContainer.style.minHeight = `${cloListContainer.offsetHeight}px`;
-    }
-
-    cloListContainer.textContent = ""; // Clear current content
-
-    const tableResp = document.createElement("div");
-    tableResp.className = "table-responsive";
-
-    const table = document.createElement("table");
-    table.className = "table table-hover align-middle";
-
-    // Header
-    const thead = document.createElement("thead");
-    const headerRow = document.createElement("tr");
-    [
-      "Status",
-      "Course",
-      "Section",
-      "Outcome #",
-      "Description",
-      "Instructor",
-      "History",
-      "Actions",
-    ].forEach((text) => {
-      const th = document.createElement("th");
-      th.textContent = text;
-      headerRow.appendChild(th);
+    return auditCloListModule.renderCLOList({
+      allCLOs,
+      cloListContainer,
+      getStatusBadge,
+      renderHistoryCellContent,
+      sortCLOs,
+      approveOutcome,
+      assignOutcome,
+      remindOutcome,
     });
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-
-    // Body
-    const tbody = document.createElement("tbody");
-
-    if (allCLOs.length === 0) {
-      const emptyRow = document.createElement("tr");
-      const emptyCell = document.createElement("td");
-      emptyCell.colSpan = 8;
-      emptyCell.className = "text-center text-muted py-4";
-      emptyCell.textContent = "No Outcomes found for the selected filter.";
-      emptyRow.appendChild(emptyCell);
-      tbody.appendChild(emptyRow);
-      table.appendChild(tbody);
-      tableResp.appendChild(table);
-      cloListContainer.appendChild(tableResp);
-      return;
-    }
-
-    // Sort CLOs
-    const sorted = sortCLOs([...allCLOs]);
-
-    // Grouping Logic
-    const groupedData = {};
-    sorted.forEach((clo) => {
-      const courseKey = `${clo.course_number || "Unknown"} - ${clo.course_title || ""}`;
-      if (!groupedData[courseKey]) groupedData[courseKey] = {};
-
-      const sectionKey = clo.section_number
-        ? `Section ${clo.section_number}`
-        : "Unassigned Section";
-      if (!groupedData[courseKey][sectionKey]) {
-        groupedData[courseKey][sectionKey] = [];
-      }
-
-      groupedData[courseKey][sectionKey].push(clo);
-    });
-
-    Object.keys(groupedData)
-      .sort()
-      .forEach((courseKey) => {
-        const safeKey = courseKey.replace(/[^a-zA-Z0-9]/g, "");
-
-        // Course Header Row
-        const courseRow = document.createElement("tr");
-        courseRow.className = "table-light";
-        const courseCell = document.createElement("td");
-        courseCell.colSpan = 8;
-
-        // Build course header using safe DOM construction
-        const courseDiv = document.createElement("div");
-        courseDiv.className = "d-flex align-items-center";
-        courseDiv.style.cursor = "pointer";
-        courseDiv.setAttribute("data-bs-toggle", "collapse");
-        courseDiv.setAttribute("data-bs-target", `.group-${safeKey}`);
-
-        const chevronIcon = document.createElement("i");
-        chevronIcon.className = "fas fa-chevron-down me-2";
-        courseDiv.appendChild(chevronIcon);
-
-        const courseStrong = document.createElement("strong");
-        courseStrong.textContent = courseKey;
-        courseDiv.appendChild(courseStrong);
-
-        courseCell.appendChild(courseDiv);
-        courseRow.appendChild(courseCell);
-        tbody.appendChild(courseRow);
-
-        const sectionGroups = groupedData[courseKey];
-        Object.keys(sectionGroups)
-          .sort()
-          .forEach((sectionKey) => {
-            const sectionSafeKey = `${safeKey}-${sectionKey.replace(/[^a-zA-Z0-9]/g, "")}`;
-
-            // Section Header
-            const sectionRow = document.createElement("tr");
-            sectionRow.className = `table-secondary group-${safeKey} collapse show`; // Collapsible
-            const sectionCell = document.createElement("td");
-            sectionCell.colSpan = 8;
-            sectionCell.style.paddingLeft = "30px";
-            sectionCell.classList.add("fw-semibold");
-
-            // Build section header using safe DOM construction
-            const sectionDiv = document.createElement("div");
-            sectionDiv.className = "d-flex align-items-center";
-            sectionDiv.style.cursor = "pointer";
-            sectionDiv.setAttribute("data-bs-toggle", "collapse");
-            sectionDiv.setAttribute(
-              "data-bs-target",
-              `.section-${sectionSafeKey}`,
-            );
-
-            const sectionChevron = document.createElement("i");
-            sectionChevron.className = "fas fa-chevron-down me-2";
-            sectionDiv.appendChild(sectionChevron);
-
-            const sectionStrong = document.createElement("strong");
-            sectionStrong.className = "text-secondary";
-            sectionStrong.textContent = sectionKey;
-            sectionDiv.appendChild(sectionStrong);
-            sectionCell.appendChild(sectionDiv);
-
-            sectionRow.appendChild(sectionCell);
-            tbody.appendChild(sectionRow);
-
-            // CLO Rows
-            sectionGroups[sectionKey].forEach((clo) => {
-              const outcomeId = clo.id || clo.outcome_id || "";
-              const tr = document.createElement("tr");
-              tr.className = `clo-row group-${safeKey} section-${sectionSafeKey} collapse show`; // Collapsible
-              tr.style.cursor = "pointer";
-              tr.dataset.outcomeId = outcomeId;
-
-              // Status
-              const tdStatus = document.createElement("td");
-              tdStatus.appendChild(getStatusBadge(clo.status));
-              tr.appendChild(tdStatus);
-
-              // Course (Redundant but requested)
-              const tdCourse = document.createElement("td");
-              tdCourse.textContent = clo.course_number || "N/A";
-              tr.appendChild(tdCourse);
-
-              // Section (Requested)
-              const tdSection = document.createElement("td");
-              tdSection.textContent = clo.section_number || "N/A";
-              tr.appendChild(tdSection);
-
-              // CLO #
-              const tdCloNum = document.createElement("td");
-              tdCloNum.textContent = clo.clo_number || "N/A";
-              tr.appendChild(tdCloNum);
-
-              // Description (with 3-line clamp in inner div)
-              const tdDesc = document.createElement("td");
-              tdDesc.style.maxWidth = "250px";
-              const descDiv = document.createElement("div");
-              descDiv.textContent = clo.description || "";
-              descDiv.title = clo.description;
-              descDiv.style.display = "-webkit-box";
-              descDiv.style.webkitLineClamp = "3";
-              descDiv.style.webkitBoxOrient = "vertical";
-              descDiv.style.overflow = "hidden";
-              tdDesc.appendChild(descDiv);
-              tr.appendChild(tdDesc);
-
-              // Instructor
-              const tdInst = document.createElement("td");
-              tdInst.textContent = clo.instructor_name || "N/A";
-              tr.appendChild(tdInst);
-
-              // History (up to 2 events inline + "and X more")
-              const tdHistory = document.createElement("td");
-              const historyContainer = renderHistoryCellContent(clo);
-              tdHistory.appendChild(historyContainer);
-              tr.appendChild(tdHistory);
-
-              // Actions (same as before)
-              const tdActions = document.createElement("td");
-              tdActions.className = "clo-actions";
-              const btnGroup = document.createElement("div");
-              btnGroup.className = "btn-group btn-group-sm";
-
-              const actionBtns = [];
-
-              // Approve Button - Available for Awaiting Approval, In Progress, and Needs Rework
-              if (
-                [
-                  "awaiting_approval",
-                  "in_progress",
-                  "approval_pending",
-                ].includes(clo.status)
-              ) {
-                const approveBtn = document.createElement("button");
-                approveBtn.type = "button";
-                approveBtn.className = "btn btn-success text-white";
-                approveBtn.title = "Approve Outcome";
-                approveBtn.innerHTML = '<i class="fas fa-check"></i>';
-                approveBtn.onclick = (e) => {
-                  e.stopPropagation();
-                  approveOutcome(clo.id || clo.outcome_id);
-                };
-                actionBtns.push(approveBtn);
-              }
-
-              // Rework Button - Only for Awaiting Approval
-              if (clo.status === "awaiting_approval") {
-                const reworkBtn = document.createElement("button");
-                reworkBtn.type = "button";
-                reworkBtn.className = "btn btn-warning text-dark";
-                reworkBtn.title = "Request Rework";
-                reworkBtn.innerHTML =
-                  '<i class="fas fa-exclamation-triangle"></i>';
-                reworkBtn.onclick = (e) => {
-                  e.stopPropagation();
-                  globalThis.pendingReworkOutcomeId =
-                    clo.id || clo.outcome_id || null;
-                  globalThis.showCLODetails(outcomeId);
-                };
-                actionBtns.push(reworkBtn);
-              }
-
-              // Assign Button
-              if (clo.status === "unassigned") {
-                const btn = document.createElement("button");
-                btn.type = "button";
-                btn.className = "btn btn-primary text-white";
-                btn.title = "Assign Instructor";
-                btn.innerHTML = '<i class="fas fa-user-plus"></i>';
-                btn.onclick = (e) => {
-                  e.stopPropagation();
-                  assignOutcome(clo.id || clo.outcome_id);
-                };
-                actionBtns.push(btn);
-              }
-
-              // Reminder Button
-              if (
-                ["in_progress", "approval_pending", "assigned"].includes(
-                  clo.status,
-                )
-              ) {
-                const btn = document.createElement("button");
-                btn.type = "button";
-                btn.className = "btn btn-info text-white";
-                btn.title = "Send Reminder";
-                btn.innerHTML = '<i class="fas fa-bell"></i>';
-                btn.onclick = (e) => {
-                  e.stopPropagation();
-                  remindOutcome(outcomeId, clo.instructor_id, clo.course_id);
-                };
-                actionBtns.push(btn);
-              }
-
-              const viewBtn = document.createElement("button");
-              viewBtn.type = "button";
-              viewBtn.className = "btn btn-outline-secondary";
-              viewBtn.dataset.outcomeId = clo.id || clo.outcome_id;
-              viewBtn.title = "View Details";
-              viewBtn.innerHTML = '<i class="fas fa-eye"></i>';
-              viewBtn.onclick = (e) => {
-                e.stopPropagation();
-                globalThis.showCLODetails(outcomeId);
-              };
-
-              actionBtns.forEach((btn) => {
-                btnGroup.appendChild(btn);
-              });
-              btnGroup.appendChild(viewBtn);
-              tdActions.appendChild(btnGroup);
-              tr.appendChild(tdActions);
-
-              tbody.appendChild(tr);
-            });
-          });
-      });
-
-    table.appendChild(tbody);
-    tableResp.appendChild(table);
-    cloListContainer.appendChild(tableResp);
   }
 
   /**
