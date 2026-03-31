@@ -256,11 +256,18 @@ function initializeCreateSectionModal() {
         const result = await response.json();
 
         // Success - close modal and reset form
-        const modal = bootstrap.Modal.getInstance(
-          document.getElementById("createSectionModal"),
-        );
+        const modalEl = document.getElementById("createSectionModal");
+        const modal = bootstrap.Modal.getInstance(modalEl);
         if (modal) {
           modal.hide();
+        } else if (modalEl) {
+          modalEl.classList.remove("show");
+          modalEl.style.display = "none";
+          modalEl.setAttribute("aria-hidden", "true");
+          modalEl.removeAttribute("aria-modal");
+          document.body.classList.remove("modal-open");
+          const backdrop = document.querySelector(".modal-backdrop");
+          if (backdrop) backdrop.remove();
         }
 
         resetCreateSectionForm(form, termSelect, offeringSelect);
@@ -350,11 +357,18 @@ function initializeEditSectionModal() {
         const result = await response.json();
 
         // Success - close modal
-        const modal = bootstrap.Modal.getInstance(
-          document.getElementById("editSectionModal"),
-        );
+        const editModalEl = document.getElementById("editSectionModal");
+        const modal = bootstrap.Modal.getInstance(editModalEl);
         if (modal) {
           modal.hide();
+        } else if (editModalEl) {
+          editModalEl.classList.remove("show");
+          editModalEl.style.display = "none";
+          editModalEl.setAttribute("aria-hidden", "true");
+          editModalEl.removeAttribute("aria-modal");
+          document.body.classList.remove("modal-open");
+          const backdrop = document.querySelector(".modal-backdrop");
+          if (backdrop) backdrop.remove();
         }
 
         alert(result.message || "Section updated successfully!");

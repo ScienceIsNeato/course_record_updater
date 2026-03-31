@@ -185,6 +185,14 @@ function closeModal(modalId) {
     const bsModal = bootstrap.Modal.getInstance(modal);
     if (bsModal) {
       bsModal.hide();
+    } else {
+      modal.classList.remove("show");
+      modal.style.display = "none";
+      modal.setAttribute("aria-hidden", "true");
+      modal.removeAttribute("aria-modal");
+      document.body.classList.remove("modal-open");
+      const backdrop = document.querySelector(".modal-backdrop");
+      if (backdrop) backdrop.remove();
     }
   }
 }
