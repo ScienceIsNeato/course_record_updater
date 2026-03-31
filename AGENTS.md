@@ -2,7 +2,7 @@
 
 > **⚠️ AUTO-GENERATED FILE - DO NOT EDIT DIRECTLY**
 > 
-> **Last Updated:** 2026-03-14 09:17:24 UTC  
+> **Last Updated:** 2026-03-31 09:37:52 UTC  
 > **Source:** `cursor-rules/.cursor/rules/`  
 > **To modify:** Edit source files in `cursor-rules/.cursor/rules/*.mdc` and run `cursor-rules/build_agent_instructions.sh`
 
@@ -429,10 +429,10 @@ Don't bother apologizing or commiting to improbable outcomes, just do your earne
 ## Issue Creation Process
 
 ### Steps
-1. **Prepare the Issue Content**: Write the content in Markdown and save it to a temporary Markdown file (`/tmp/issue_body.md`).
+1. **Prepare the Issue Content**: Write the content in Markdown and save it to a temporary Markdown file (`/tmp/lc_issue_$$.md`).
 2. **Create the Issue Using `gh` CLI**: Use the `gh issue create` command with the `--body-file` option to specify the path of the Markdown file. For example:
    ```bash
-   gh issue create --title "TITLE" --body-file "/tmp/issue_body.md" --label "TYPE"
+   gh issue create --title "TITLE" --body-file "/tmp/lc_issue_$$.md" --label "TYPE"
    ```
 3. **Delete the Markdown File** (Optional): Remove the file after creation to clean up the `/tmp/` directory.
 4. **Display Created Issue URL**
@@ -469,6 +469,55 @@ Credits should play completely without being cut off.
 - Use appropriate labels
 - Link related issues if applicable
 - Follow template structure consistently
+
+# my_voice
+
+# My Voice Protocol 🗣️
+
+## Purpose
+
+When generating text that must pass as human-authored (trajectory prompts, coached interactions, developer chat), apply these rules. This is NOT optional - every generated prompt that will appear in a trajectory MUST go through this filter.
+
+## Voice Rules
+
+- Write like a developer talking to a peer. Casual, direct, peer-review style.
+- NO LLM tells: "based on the requirements", "the instruction says", "according to the spec".
+- Give directional guidance, not copy-paste solutions.
+- Use contractions, sentence fragments, and natural developer shorthand.
+- Occasional hedging is fine: "I think", "pretty sure", "might be off".
+- Use regular hyphens (-), NOT em dashes. The human never uses em dashes.
+- Keep sentences short. Break up long explanations into multiple short sentences.
+- Include an intentional typo or two - signals human origin.
+
+## Length and Structure Variation
+
+**Vary response length unpredictably.** Humans don't write messages of uniform length. Sometimes a single word ("yeah"), sometimes one terse sentence, sometimes a dense multi-paragraph screed. Match the energy of what's being said - a simple acknowledgment doesn't need three sentences, but a complex observation might sprawl.
+
+**Vary structure too.** Don't fall into a predictable format (greeting + observation + suggestion + sign-off). Sometimes just drop a thought with no preamble. Sometimes break lines
+for
+impact.
+Sometimes fire off a wall of text. Predictable structure is an LLM tell.
+
+**No consistent paragraph count or sentence cadence.** If every prompt is 2-3 sentences across 1-2 paragraphs, that's a pattern. Smash the pattern.
+
+## Anti-Patterns
+
+- ❌ Referencing instruction.md, specs, requirements, test expectations, or task metadata
+- ❌ Framing as "the requirement states X" instead of "hey, I noticed X might be wrong because Y"
+- ❌ Referencing running tests or test results - the human character doesn't have a test suite
+- ❌ Revealing test function names, expected values, or assertion structure
+- ❌ Consistent message length across prompts
+- ❌ Predictable structural patterns (always greeting + body + closing)
+- ❌ Em dashes (use hyphens)
+
+## What TO Do
+
+- ✅ Frame observations as code review insights: "I think the logic for X case looks right but Y case might be off because Z"
+- ✅ One-word responses when that's all that's needed
+- ✅ Multi-paragraph rants when the situation calls for it
+- ✅ Line breaks for emphasis when it fits
+- ✅ Dense walls of text when you're on a roll
+- ✅ Fragments. Just thoughts. No preamble.
 
 # path_management
 
@@ -629,19 +678,74 @@ ps -o pid,command            # not ps aux
 
 ### Agent Command Discipline
 
+**🚨 Temp File Naming — NEVER use bare names in /tmp/ 🚨**
+
+`/tmp/` is shared across every project, agent session, and tool on the machine.
+Bare names like `/tmp/commit_msg.txt` collide across repos — a write in repo A
+poisons a read in repo B (exactly the stale-message bug we hit).
+
+**Rule**: Every temp file MUST include a project slug and either `$$` (PID) or
+`$(date +%s)` (epoch seconds) to guarantee uniqueness.
+
+```bash
+# ❌ WRONG - bare name, will collide across repos/sessions
+printf '%s\n' 'fix: summary' > /tmp/commit_msg.txt
+
+# ✅ CORRECT - project-scoped + PID-unique
+printf '%s\n' 'fix: summary' > /tmp/lc_commit_msg_$$.txt
+git commit --file /tmp/lc_commit_msg_$$.txt
+
+# ✅ ALSO CORRECT - mktemp for maximum safety
+MSGFILE=$(mktemp /tmp/lc_commit_XXXXXX.txt)
+printf '%s\n' 'fix: summary' > "$MSGFILE"
+git commit --file "$MSGFILE"
+```
+
+**Naming pattern**: `/tmp/<project>_<purpose>_<uniquifier>.<ext>`
+- `<project>`: short slug (`lc`, `ganglia`, etc.)
+- `<purpose>`: what it's for (`commit_msg`, `query`, `issue_body`)
+- `<uniquifier>`: `$$` (PID) or `XXXXXX` (mktemp) or `$(date +%s)`
+
+**🚨 NEVER let the outer shared agent shell parse an inline heredoc 🚨**
+
+```bash
+# ❌ WRONG - inline heredoc parsed by the outer shared shell
+cat > /tmp/lc_file_$$.txt << 'EOF'
+hello
+EOF
+printf 'next command\n'
+```
+
+In this agent environment, the unsafe thing is not zsh itself and not heredoc
+syntax in the abstract. The unsafe thing is letting the **outer persistent
+shared shell** parse a heredoc embedded directly in a terminal tool command.
+The terminal bridge can mis-detect completion after the heredoc terminator,
+leaving trailing input stranded to execute on the next tool call.
+
+Scope this correctly:
+- **Unsafe**: heredoc text embedded directly in the outer terminal command
+- **Usually fine**: heredocs inside checked-in shell scripts run as files
+- **Usually fine**: heredocs parsed by a child shell (`zsh -c`, `bash -lc`, `printf ... | zsh`) instead of the outer shared shell
+
+Use one of these instead:
+- `printf '%s\n' ... > /tmp/<project>_<purpose>_$$.txt` for temp files
+- `create_file` / `apply_patch` for workspace files
+- existing script files for complex shell flows
+- a child shell if heredoc syntax is genuinely the clearest tool
+
 **Git Commits — ALWAYS use `--file`:**
 ```bash
 # ❌ WRONG - message wraps at col 80, becomes garbled noise
 git commit -m "fix: long message here..."
 
-# ✅ CORRECT - write message to file, commit cleanly
-cat > /tmp/commit_msg.txt << 'EOF'
-fix: short summary
-
-- Detail line 1
-- Detail line 2
-EOF
-git commit --file /tmp/commit_msg.txt
+# ✅ CORRECT - write message to file without outer-shell heredoc parsing
+printf '%s\n' \
+  'fix: short summary' \
+  '' \
+  '- Detail line 1' \
+  '- Detail line 2' \
+  > /tmp/lc_commit_msg_$$.txt
+git commit --file /tmp/lc_commit_msg_$$.txt
 ```
 
 **Complex Commands — break onto multiple lines:**
@@ -649,15 +753,26 @@ git commit --file /tmp/commit_msg.txt
 # ❌ WRONG - unreadable when wrapped at 80 chars
 gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "PRRT_xxx"}) { thread { id isResolved }}}' --jq '.data'
 
-# ✅ CORRECT - use temp files for multi-line content
-cat > /tmp/query.graphql << 'EOF'
-mutation {
-  resolveReviewThread(input: {threadId: "PRRT_xxx"}) {
-    thread { id isResolved }
-  }
-}
-EOF
-gh api graphql -f query="$(cat /tmp/query.graphql)"
+# ✅ CORRECT - use temp files without outer-shell heredoc parsing
+printf '%s\n' \
+  'mutation {' \
+  '  resolveReviewThread(input: {threadId: "PRRT_xxx"}) {' \
+  '    thread { id isResolved }' \
+  '  }' \
+  '}' \
+  > /tmp/lc_query_$$.graphql
+gh api graphql -f query="$(cat /tmp/lc_query_$$.graphql)"
+
+# ✅ ALSO CORRECT - if heredoc is clearer, let a child shell parse it
+printf '%s\n' \
+  'cat > /tmp/lc_query_$$.graphql <<'"'"'EOF'"'"'' \
+  'mutation {' \
+  '  resolveReviewThread(input: {threadId: "PRRT_xxx"}) {' \
+  '    thread { id isResolved }' \
+  '  }' \
+  '}' \
+  'EOF' \
+  | zsh
 ```
 
 **General Rules:**
@@ -722,7 +837,7 @@ sm buff resolve <PR> PRRT_xxx --scenario no_longer_applicable --message "Already
 sm buff resolve <PR> PRRT_xxx --scenario invalid_with_explanation --message "[Why this doesn't apply]"
 ```
 
-Create `/tmp/PR_{PR}_RESOLUTION_PLAN.md` containing:
+Create `/tmp/lc_pr_{PR}_resolution_$$.md` containing:
 
 ```markdown
 # PR #{PR} Resolution Plan
@@ -752,7 +867,7 @@ Create `/tmp/PR_{PR}_RESOLUTION_PLAN.md` containing:
 
 ## Resolution Mapping
 Comment PRRT_xxx will be resolved by commits:
-  - fix: standardize CI database to loopcloser_ci.db
+  - fix: standardize CI database to course_records_ci.db
   
 Comment PRRT_yyy will be resolved by commits:
   - fix: store session dates as datetime objects
@@ -1341,12 +1456,12 @@ Prioritize by risk/impact (CRITICAL > HIGH > MEDIUM > LOW)
 **Step 5: Reply to comments**
 ```bash
 # Create comment file
-cat > /tmp/pr_comment.md << 'EOF'
-## Response to feedback...
-EOF
+printf '%s\n' \
+  '## Response to feedback...' \
+  > /tmp/lc_pr_comment_$$.md
 
 # Post comment
-gh pr comment <PR_NUMBER> --body-file /tmp/pr_comment.md
+gh pr comment <PR_NUMBER> --body-file /tmp/lc_pr_comment_$$.md
 ```
 
 ### Common gh CLI Commands
@@ -1358,7 +1473,7 @@ gh pr comment <PR_NUMBER> --body-file /tmp/pr_comment.md
 - Check status: `gh pr status`
 
 **Issues:**
-- Create: `gh issue create --title "..." --body-file /tmp/issue.md`
+- Create: `gh issue create --title "..." --body-file /tmp/lc_issue_$$.md`
 - List: `gh issue list`
 - View: `gh issue view <NUMBER>`
 
@@ -1378,10 +1493,10 @@ gh pr comment <PR_NUMBER> --body-file /tmp/pr_comment.md
 
 _Including project rules matching: 
 
-✓ Including: project instructions
+✓ Including: loopcloser.mdc
 # loopcloser
 
-# LoopCloser Project Rules 📚
+# Loopcloser Project Rules 📚
 
 ## 🔄 PR Closing Protocol
 
