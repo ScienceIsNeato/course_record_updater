@@ -256,10 +256,17 @@
       `/api/outcomes/${outcomeId}/reopen`,
       "Failed to reopen",
       async () => {
-        const modal = bootstrap.Modal.getInstance(
-          document.getElementById("cloDetailModal"),
-        );
-        if (modal) modal.hide();
+        const modalEl = document.getElementById("cloDetailModal");
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) {
+          modal.hide();
+        } else {
+          modalEl.classList.remove("show");
+          modalEl.style.display = "none";
+          modalEl.setAttribute("aria-hidden", "true");
+          document.body.classList.remove("modal-open");
+          document.querySelector(".modal-backdrop")?.remove();
+        }
         await globalThis.loadCLOs();
       },
       "Error reopening outcome",

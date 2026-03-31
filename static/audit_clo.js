@@ -334,7 +334,16 @@ async function reopenOutcome(outcomeId) {
     if (res.ok) {
       const modalEl = document.getElementById("cloDetailModal");
       const modal = bootstrap.Modal.getInstance(modalEl);
-      if (modal) modal.hide();
+      if (modal) {
+        modal.hide();
+      } else {
+        // Fallback: force-close when Bootstrap loses the instance
+        modalEl.classList.remove("show");
+        modalEl.style.display = "none";
+        modalEl.setAttribute("aria-hidden", "true");
+        document.body.classList.remove("modal-open");
+        document.querySelector(".modal-backdrop")?.remove();
+      }
 
       await globalThis.loadCLOs();
     } else {

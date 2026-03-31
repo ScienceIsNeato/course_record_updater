@@ -248,7 +248,7 @@
       "dependency-risk.py": {
         "enabled": true,
         "auto_fix": false,
-        "config_file_path": null,
+        "config_file_path": ".secrets.baseline",
         "scanners": [
           "bandit",
           "semgrep",
@@ -291,7 +291,7 @@
       "vulnerability-blindness.py": {
         "enabled": true,
         "auto_fix": false,
-        "config_file_path": null,
+        "config_file_path": ".secrets.baseline",
         "scanners": [
           "bandit",
           "semgrep",
