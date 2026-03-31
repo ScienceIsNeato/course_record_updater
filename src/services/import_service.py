@@ -15,10 +15,14 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, TypedDict
 from src.adapters.adapter_registry import AdapterRegistryError, get_adapter_registry
 from src.database.database_service import (  # noqa: F401  re-export for execution mixin + test patches
     create_course,
+    create_course_offering,
     create_course_outcome,
+    create_course_section,
     create_user,
     get_course_by_number,
+    get_course_offering_by_course_and_term,
     get_course_outcomes,
+    get_term_by_name,
     get_user_by_email,
     update_course,
     update_user,
