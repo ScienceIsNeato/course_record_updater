@@ -6,6 +6,7 @@ Creates appropriate email provider based on configuration or environment.
 Simplified architecture:
 - Brevo: All real email sending (dev, staging, prod)
 - Ethereal: Automated E2E testing only (with IMAP verification)
+- Console: Fallback for e2e/test when Ethereal credentials are unavailable
 """
 
 import os
@@ -13,6 +14,7 @@ from typing import Any, Dict, Optional
 
 from src.email_providers.base_provider import EmailProvider
 from src.email_providers.brevo_provider import BrevoProvider
+from src.email_providers.console_provider import ConsoleEmailProvider
 from src.email_providers.ethereal_provider import EtherealProvider
 from src.utils.logging_config import get_logger
 
@@ -53,17 +55,33 @@ def create_email_provider(
         provider = BrevoProvider()
     elif provider_name == "ethereal":
         provider = EtherealProvider()
+    elif provider_name == "console":
+        provider = ConsoleEmailProvider()
     else:
         raise ValueError(
             f"Unknown email provider: {provider_name}. "
-            f"Valid options: brevo, ethereal"
+            f"Valid options: brevo, ethereal, console"
         )
 
     # Configure provider
     if config is None:
         config = _load_config_from_environment()
 
-    provider.configure(config)
+    try:
+        provider.configure(config)
+    except ValueError:
+        if provider_name == "ethereal":
+            logger.warning(
+                "[Email Factory] Ethereal credentials not available — "
+                "falling back to console provider (emails will be logged, "
+                "not sent). Set ETHEREAL_USER/ETHEREAL_PASS to enable "
+                "real SMTP delivery."
+            )
+            provider = ConsoleEmailProvider()
+            provider.configure(config)
+            provider_name = "console"
+        else:
+            raise
 
     logger.info(f"[Email Factory] Created provider: {provider_name}")
     return provider

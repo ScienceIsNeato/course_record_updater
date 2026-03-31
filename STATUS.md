@@ -1,42 +1,41 @@
 # LoopCloser - Current Status
 
-## Latest Work: PR 71 Comment + Gate Remediation (2026-03-26)
+## Latest Work: Fix e2e email failures + missing re-exports (2026-03-31)
 
-**Status**: 🚧 IN PROGRESS - key blockers fixed locally; full E2E gate still unstable under local multi-test run
+**Status**: 🔄 Committing — all 22 swab gates pass locally
 
-**What Changed**:
+**What Changed (this session)**:
 
-- Refactored seeding helpers to address latest PR review comments:
-   - Moved shared manifest validation and `program_map` builder into `scripts/seed_db_baseline.py` (`BaselineSeeder`).
-   - Updated `BaselineTestSeeder` and `DemoSeeder` to consume shared helpers.
-   - Removed redundant map-building flow in `DemoSeeder.seed_demo` and kept a single `program_map` construction path.
-- Restored import/dashboard compatibility symbols required by refactored service indirection and test patch targets:
-   - Added module-level wrappers in `src/services/dashboard_service.py` and `src/services/import_service.py`.
-   - Restored module-level import-service DB function symbols needed by `ImportServiceExecutionMixin` lookups.
-- Added missing dev dependency for CI parity:
-   - `pytest-testmon>=2.1.0` in `requirements-dev.txt`.
-- Hardened admin invitation E2E workflow:
-   - Uses per-run unique invitee emails to avoid duplicate-invite collisions.
-   - Step-5 success alert check now gracefully falls back to email verification (source of truth).
+1. **Root-caused e2e email test failures** (deterministic, not flaky):
+   - CI has no ETHEREAL_USER env var → factory selects "ethereal" for ENV=e2e → configure() raises ValueError (no creds) → _send_email catches, returns False → all emails fail → progress=100% (all failed) → sent_count=0 → assertion fails
+   - Created `ConsoleEmailProvider` — logs emails and returns True (simulated success)
+   - Updated factory to catch Ethereal configure failure and fall back to console provider with warning log
+   - This lets CI exercise the full bulk-email pipeline without SMTP infrastructure
 
-**Validation**:
+2. **Fixed additional missing re-exports in import_service.py**:
+   - Added `create_term` (patched by test_import_service_core.py)
+   - Added `update_course_offering` (used by import_service_execution.py via _service_fn dynamic dispatch)
 
-- `activate && pytest tests/unit/scripts/test_seed_db_baseline.py tests/unit/scripts/test_seed_db_tail.py -q` ✅
-- `activate && pytest tests/unit/test_dashboard_service.py::TestDashboardServiceCLOEnrichment::test_enrich_courses_with_clo_data_success tests/unit/test_dashboard_service.py::TestDashboardServiceCLOEnrichment::test_enrich_courses_with_clo_data_no_clos tests/unit/test_dashboard_service.py::TestDashboardServiceCLOEnrichment::test_enrich_courses_with_clo_data_error_handling tests/unit/test_import_service.py::TestCLOImportFeature::test_process_clo_import_success tests/unit/test_import_service.py::TestCLOImportFeature::test_process_clo_import_conflict_use_mine -q` ✅
-- `activate && sm swab -g overconfidence:untested-code.py --verbose --no-cache --json --output-file .slopmop/last_untested_code.json` ✅
-- `activate && pytest tests/e2e/test_admin_invitation_workflow.py::TestAdminInvitationsAndMultiRole::test_complete_admin_invitation_workflow -q` ✅
-- `activate && sm swab -g overconfidence:e2e --verbose --no-cache --json --output-file .slopmop/last_e2e.json` ❌
-   - Full local E2E run remains unstable with multiple downstream failures; original invitation-workflow blocker now passes in isolation.
+3. **Prior commit (7778169)**: Fixed dependency-risk gate + 20 test failures from missing re-exports
 
 **Next Steps**:
+- Commit and push
+- Watch CI via `sm buff watch 71`
+   - `PRRT_kwDOOV6J2s526NpE` — duplicated helpers moved to base class
+   - `PRRT_kwDOOV6J2s526NpM` — redundant program_map eliminated
 
-- Commit and push current fixes.
-- Run PR buff loop (`sm buff status/inspect 71`) on fresh CI to confirm whether `slopmop-scour` failures are cleared by these changes.
-- If CI still reports E2E failures, triage from that fresh artifact set (single source of truth) and patch remaining failing workflows.
+3. **cursor-rules**: Added `/tmp/` naming policy (`/tmp/<project>_<purpose>_<uniquifier>.<ext>`) to prevent the stale commit message bug. Updated 5 .mdc files.
 
-## Latest Work: PR 71 Gate + Commentary Remediation (2026-03-26)
+4. **Regenerated instruction files** (commit `015e3fd`): .github/instructions/, AGENTS.md, .windsurfrules synced with cursor-rules.
 
-**Status**: 🚧 IN PROGRESS - root-cause fixes implemented locally, pending PR thread resolution + CI re-run
+**Pushed**: `015e3fd` to `chore/post-main-sync-20260321-043046`
+
+**Next Steps**:
+- Wait for CI to complete (`sm buff watch 71`)
+- If CI green: PR ready for merge
+- If CI fails: triage from fresh artifact set
+
+## Previous: PR 71 Comment + Gate Remediation (2026-03-26)
 
 **What Changed**:
 

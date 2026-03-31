@@ -18,6 +18,7 @@ from src.database.database_service import (  # noqa: F401  re-export for executi
     create_course_offering,
     create_course_outcome,
     create_course_section,
+    create_term,
     create_user,
     get_course_by_number,
     get_course_offering_by_course_and_term,
@@ -25,6 +26,7 @@ from src.database.database_service import (  # noqa: F401  re-export for executi
     get_term_by_name,
     get_user_by_email,
     update_course,
+    update_course_offering,
     update_user,
 )
 from src.services.import_service_execution import ImportServiceExecutionMixin
