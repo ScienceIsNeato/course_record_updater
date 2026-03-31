@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
-from src.database.database_service import (
+from src.database.database_service import (  # noqa: F401  re-export for enrichment mixin + test patches
     get_active_terms,
     get_all_course_offerings,
     get_all_courses,
@@ -23,9 +23,6 @@ from src.services.dashboard_service_enrichment import DashboardServiceEnrichment
 from src.services.dashboard_service_support import DashboardServiceSupportMixin
 from src.utils.logging_config import get_logger
 from src.utils.time_utils import get_current_time
-
-# Keep legacy patch targets available in this module for unit tests.
-_COMPAT_PATCH_TARGETS = (get_course_outcomes,)
 
 
 class DashboardServiceError(Exception):

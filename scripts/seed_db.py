@@ -56,18 +56,6 @@ class BaselineTestSeeder(BaselineSeeder):
         project_root = os.path.dirname(script_dir)
         return os.path.join(project_root, self.DEFAULT_MANIFEST_PATH)
 
-    def _build_program_map(
-        self, manifest_data: Dict[str, Any], prog_ids: List[str]
-    ) -> Dict[str, str]:
-        """Build program code -> ID map for code-based lookups."""
-        program_map: Dict[str, str] = {}
-        for i, prog_data in enumerate(manifest_data["programs"]):
-            if i < len(prog_ids):
-                code = prog_data.get("code", "")
-                if code:
-                    program_map[code] = prog_ids[i]
-        return program_map
-
     def _extract_instructor_ids(
         self, manifest_data: Dict[str, Any], user_ids: List[Optional[str]]
     ) -> List[str]:
@@ -93,36 +81,6 @@ class BaselineTestSeeder(BaselineSeeder):
                 offering["_term_id"] = term_ids[term_idx]
         return term_ids[1] if len(term_ids) > 1 else term_ids[0]
 
-    def _validate_required_manifest_sections(
-        self, manifest_data: Dict[str, Any], required_sections: List[str]
-    ) -> bool:
-        """Validate that all required manifest sections exist and are populated."""
-        for section in required_sections:
-            if not manifest_data.get(section):
-                self.log(f"❌ '{section}' required in manifest")
-                return False
-        return True
-
-    def _resolve_required_manifest(
-        self,
-        manifest_data: Optional[Dict[str, Any]],
-        required_sections: List[str],
-    ) -> Optional[Dict[str, Any]]:
-        """Load and validate the baseline manifest."""
-        if manifest_data is None:
-            manifest_path = self._get_manifest_path()
-            manifest_data = self.load_manifest(manifest_path)
-
-        if not manifest_data:
-            self.log("❌ Manifest is required for baseline seeding")
-            return None
-
-        if not self._validate_required_manifest_sections(
-            manifest_data, required_sections
-        ):
-            return None
-        return manifest_data
-
     def seed_baseline(self, manifest_data: Optional[Dict[str, Any]] = None) -> bool:
         """Seed baseline data from manifest - REQUIRED"""
         self.log("🌱 Seeding baseline E2E infrastructure...")
@@ -134,6 +92,16 @@ class BaselineTestSeeder(BaselineSeeder):
 
         database_service.refresh_connection()
 
+        # Load manifest - REQUIRED
+        if manifest_data is None:
+            manifest_path = self._get_manifest_path()
+            manifest_data = self.load_manifest(manifest_path)
+
+        if not manifest_data:
+            self.log("❌ Manifest is required for baseline seeding")
+            return False
+
+        # Validate required sections
         required_sections = [
             "institutions",
             "programs",
@@ -142,10 +110,9 @@ class BaselineTestSeeder(BaselineSeeder):
             "users",
             "offerings",
         ]
-        manifest_data = self._resolve_required_manifest(
+        if not self._validate_required_manifest_sections(
             manifest_data, required_sections
-        )
-        if not manifest_data:
+        ):
             return False
 
         # Create institutions
@@ -159,7 +126,7 @@ class BaselineTestSeeder(BaselineSeeder):
         )
 
         # Build program_map: code -> ID (for manifests using program_code)
-        program_map = self._build_program_map(manifest_data, prog_ids)
+        program_map = self._build_program_map(manifest_data["programs"], prog_ids)
 
         # Create terms
         self.log("📅 Creating academic terms...")
@@ -179,24 +146,10 @@ class BaselineTestSeeder(BaselineSeeder):
         # Build course_map by index for offerings
         course_map = {str(i): cid for i, cid in enumerate(course_ids)}
 
-        # Create users (site_admin, instructors, program admins, institution admins)
-        self.log("👥 Creating users...")
-        from src.utils.constants import GENERIC_PASSWORD
-
-        default_hash = hash_password(GENERIC_PASSWORD)
-        # Use program_map if any user uses program_code, else fall back to list
-        uses_program_code_users = any(
-            "program_code" in u for u in manifest_data.get("users", [])
+        # Create users and extract instructor IDs for section assignment
+        user_ids, instructor_ids = self._create_baseline_users(
+            manifest_data, inst_ids, prog_ids, program_map
         )
-        user_program_ref = (
-            program_map if uses_program_code_users and program_map else prog_ids
-        )
-        user_ids = self.create_users_from_manifest(
-            inst_ids, manifest_data["users"], user_program_ref, default_hash
-        )
-
-        # Filter instructor IDs for section assignment
-        instructor_ids = self._extract_instructor_ids(manifest_data, user_ids)
 
         # Create offerings and sections
         self.log("📝 Creating course offerings and sections...")
@@ -217,6 +170,30 @@ class BaselineTestSeeder(BaselineSeeder):
         self.log("✅ Baseline seeding completed!")
         self.print_summary()
         return True
+
+    def _create_baseline_users(
+        self,
+        manifest_data: Dict[str, Any],
+        inst_ids: List[str],
+        prog_ids: List[str],
+        program_map: Dict[str, str],
+    ) -> tuple[List[str], List[str]]:
+        """Create users from manifest and extract instructor IDs."""
+        self.log("👥 Creating users...")
+        from src.utils.constants import GENERIC_PASSWORD
+
+        default_hash = hash_password(GENERIC_PASSWORD)
+        uses_program_code_users = any(
+            "program_code" in u for u in manifest_data.get("users", [])
+        )
+        user_program_ref = (
+            program_map if uses_program_code_users and program_map else prog_ids
+        )
+        user_ids = self.create_users_from_manifest(
+            inst_ids, manifest_data["users"], user_program_ref, default_hash
+        )
+        instructor_ids = self._extract_instructor_ids(manifest_data, user_ids)
+        return user_ids, instructor_ids
 
     def print_summary(self) -> None:
         """Print seeding summary"""
@@ -302,66 +279,37 @@ class DemoSeeder(BaselineSeeder):
             self._manifest_cache = {}
             return {}
 
-    def _build_program_map(
-        self, manifest_data: Dict[str, Any], prog_ids: List[str]
-    ) -> Dict[str, str]:
-        """Build program code -> ID map for code-based lookups."""
-        program_map: Dict[str, str] = {}
-        for i, prog_data in enumerate(manifest_data["programs"]):
-            if i < len(prog_ids):
-                code = prog_data.get("code", "")
-                if code:
-                    program_map[code] = prog_ids[i]
-        return program_map
-
-    def _validate_required_manifest_sections(
-        self, manifest_data: Dict[str, Any], required_sections: List[str]
-    ) -> bool:
-        """Validate that all required manifest sections exist and are populated."""
-        for section in required_sections:
-            if not manifest_data.get(section):
-                self.log(f"❌ '{section}' required in manifest")
-                return False
-        return True
-
-    def _resolve_required_manifest(
-        self, required_sections: List[str]
-    ) -> Optional[Dict[str, Any]]:
-        """Load and validate the demo manifest."""
-        manifest = self.load_demo_manifest()
-        if not manifest:
-            self.log("❌ Manifest is required for demo seeding")
-            return None
-        if not self._validate_required_manifest_sections(manifest, required_sections):
-            return None
-        return manifest
-
     def _build_demo_reference_maps(
         self,
         manifest: Dict[str, Any],
-        prog_ids: List[str],
         term_ids: List[str],
         course_ids: List[str],
-    ) -> tuple[Dict[str, str], Dict[str, str], Dict[str, str]]:
-        """Build code-based maps needed for later manifest-driven relationships."""
-        program_map = self._build_program_map(manifest, prog_ids)
-        term_map = {}
-        for i, term in enumerate(manifest["terms"]):
-            if i < len(term_ids):
-                term_map[term.get("term_code") or term.get("code")] = term_ids[i]
+    ) -> tuple[Dict[str, str], Dict[str, str]]:
+        """Build term and course lookup maps for offering creation."""
+        term_map: Dict[str, str] = {}
+        for index, term in enumerate(manifest["terms"]):
+            if index < len(term_ids):
+                term_map[term.get("term_code") or term.get("code")] = term_ids[index]
 
-        course_map = {}
-        for i, course in enumerate(manifest["courses"]):
+        course_map: Dict[str, str] = {}
+        for index, course in enumerate(manifest["courses"]):
             target_code = course.get("code") or course.get("course_number")
-            if i < len(course_ids):
-                course_map[target_code] = course_ids[i]
+            if target_code and index < len(course_ids):
+                course_map[target_code] = course_ids[index]
 
-        return program_map, term_map, course_map
+        return term_map, course_map
 
     def seed_demo(self) -> bool:
         """Seed complete data for product demo - manifest required."""
         self.log("🎬 Seeding demo environment...")
 
+        # Load manifest - REQUIRED
+        manifest = self.load_demo_manifest()
+        if not manifest:
+            self.log("❌ Manifest is required for demo seeding")
+            return False
+
+        # Validate required sections
         required = [
             "institutions",
             "programs",
@@ -370,8 +318,9 @@ class DemoSeeder(BaselineSeeder):
             "users",
             "offerings",
         ]
-        manifest = self._resolve_required_manifest(required)
-        if not manifest:
+        if not self._validate_required_manifest_sections(
+            manifest, required, require_non_empty=True
+        ):
             return False
 
         # 1. Create Institutions
@@ -383,7 +332,9 @@ class DemoSeeder(BaselineSeeder):
         # 2. Create Programs
         self.log("📚 Creating demo programs...")
         prog_ids = self.create_programs_from_manifest(inst_ids, manifest["programs"])
-        program_map = self._build_program_map(manifest, prog_ids)
+
+        # Build map
+        program_map = self._build_program_map(manifest["programs"], prog_ids)
 
         # 3. Create Terms
         self.log("📅 Creating terms...")
@@ -394,8 +345,8 @@ class DemoSeeder(BaselineSeeder):
         course_ids = self.create_courses_from_manifest(
             inst_ids, manifest["courses"], program_map
         )
-        program_map, term_map, course_map = self._build_demo_reference_maps(
-            manifest, prog_ids, term_ids, course_ids
+        term_map, course_map = self._build_demo_reference_maps(
+            manifest, term_ids, course_ids
         )
 
         # 5. Create CLOs
@@ -430,32 +381,38 @@ class DemoSeeder(BaselineSeeder):
             f"   ✅ Created {len(result['offering_ids'])} offerings and {result['section_count']} sections"
         )
 
-        # 8. Apply section-specific CLO overrides (post-seeding)
+        # Apply post-seeding enrichments (CLO overrides + PLOs)
+        self._apply_demo_enrichments(manifest, inst_ids[0], term_map, program_map)
+
+        self.log("✅ Demo seeding completed!")
+        self.print_summary()
+        return True
+
+    def _apply_demo_enrichments(
+        self,
+        manifest: Dict[str, Any],
+        institution_id: str,
+        term_map: Dict[str, str],
+        program_map: Dict[str, str],
+    ) -> None:
+        """Apply post-seeding enrichments: section CLO overrides and PLOs."""
         if "section_outcome_overrides" in manifest:
             self.log("🔧 Applying section-specific CLO overrides...")
             override_count = self.apply_section_outcome_overrides(
-                manifest["section_outcome_overrides"], inst_ids[0], term_map
+                manifest["section_outcome_overrides"], institution_id, term_map
             )
             self.log(f"   ✅ Applied {override_count} section outcome overrides")
 
-        # 9. Create Program Learning Outcomes + publish PLO↔CLO mappings.
-        #    Runs last so all CLO templates already exist for the mapping
-        #    lookup. Seeding is optional — only runs if the manifest has a
-        #    program_outcomes section — so older manifests keep working.
         if manifest.get("program_outcomes"):
             self.log("🗺️  Creating Program Learning Outcomes + mappings...")
             plo_stats = self._create_plos_from_manifest(
-                manifest["program_outcomes"], program_map, inst_ids[0]
+                manifest["program_outcomes"], program_map, institution_id
             )
             self.log(
                 f"   ✅ Created {plo_stats['plo_count']} PLOs, "
                 f"mapped {plo_stats['entry_count']} CLOs, "
                 f"published {plo_stats['published_count']} mapping version(s)"
             )
-
-        self.log("✅ Demo seeding completed!")
-        self.print_summary()
-        return True
 
     def apply_section_outcome_overrides(
         self,

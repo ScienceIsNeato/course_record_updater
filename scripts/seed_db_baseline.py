@@ -80,6 +80,35 @@ class BaselineSeeder(ABC):
             self.log(f"⚠️  Failed to load manifest: {e}")
             return {}
 
+    def _validate_required_manifest_sections(
+        self,
+        manifest_data: Dict[str, Any],
+        required_sections: List[str],
+        require_non_empty: bool = False,
+    ) -> bool:
+        """Validate that all required manifest sections are present."""
+        for section in required_sections:
+            if section not in manifest_data:
+                self.log(f"❌ '{section}' required in manifest")
+                return False
+            if require_non_empty and not manifest_data.get(section):
+                self.log(f"❌ '{section}' required in manifest")
+                return False
+        return True
+
+    def _build_program_map(
+        self, programs_data: List[Dict[str, Any]], prog_ids: List[str]
+    ) -> Dict[str, str]:
+        """Build program code -> ID map for code-based lookups."""
+        program_map: Dict[str, str] = {}
+        for index, program_data in enumerate(programs_data):
+            if index >= len(prog_ids):
+                continue
+            code = program_data.get("code", "")
+            if code:
+                program_map[code] = prog_ids[index]
+        return program_map
+
     def create_institutions_from_manifest(
         self, institutions_data: List[Dict[str, Any]]
     ) -> List[str]:

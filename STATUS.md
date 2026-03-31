@@ -1,5 +1,39 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR 71 Comment + Gate Remediation (2026-03-26)
+
+**Status**: 🚧 IN PROGRESS - key blockers fixed locally; full E2E gate still unstable under local multi-test run
+
+**What Changed**:
+
+- Refactored seeding helpers to address latest PR review comments:
+   - Moved shared manifest validation and `program_map` builder into `scripts/seed_db_baseline.py` (`BaselineSeeder`).
+   - Updated `BaselineTestSeeder` and `DemoSeeder` to consume shared helpers.
+   - Removed redundant map-building flow in `DemoSeeder.seed_demo` and kept a single `program_map` construction path.
+- Restored import/dashboard compatibility symbols required by refactored service indirection and test patch targets:
+   - Added module-level wrappers in `src/services/dashboard_service.py` and `src/services/import_service.py`.
+   - Restored module-level import-service DB function symbols needed by `ImportServiceExecutionMixin` lookups.
+- Added missing dev dependency for CI parity:
+   - `pytest-testmon>=2.1.0` in `requirements-dev.txt`.
+- Hardened admin invitation E2E workflow:
+   - Uses per-run unique invitee emails to avoid duplicate-invite collisions.
+   - Step-5 success alert check now gracefully falls back to email verification (source of truth).
+
+**Validation**:
+
+- `activate && pytest tests/unit/scripts/test_seed_db_baseline.py tests/unit/scripts/test_seed_db_tail.py -q` ✅
+- `activate && pytest tests/unit/test_dashboard_service.py::TestDashboardServiceCLOEnrichment::test_enrich_courses_with_clo_data_success tests/unit/test_dashboard_service.py::TestDashboardServiceCLOEnrichment::test_enrich_courses_with_clo_data_no_clos tests/unit/test_dashboard_service.py::TestDashboardServiceCLOEnrichment::test_enrich_courses_with_clo_data_error_handling tests/unit/test_import_service.py::TestCLOImportFeature::test_process_clo_import_success tests/unit/test_import_service.py::TestCLOImportFeature::test_process_clo_import_conflict_use_mine -q` ✅
+- `activate && sm swab -g overconfidence:untested-code.py --verbose --no-cache --json --output-file .slopmop/last_untested_code.json` ✅
+- `activate && pytest tests/e2e/test_admin_invitation_workflow.py::TestAdminInvitationsAndMultiRole::test_complete_admin_invitation_workflow -q` ✅
+- `activate && sm swab -g overconfidence:e2e --verbose --no-cache --json --output-file .slopmop/last_e2e.json` ❌
+   - Full local E2E run remains unstable with multiple downstream failures; original invitation-workflow blocker now passes in isolation.
+
+**Next Steps**:
+
+- Commit and push current fixes.
+- Run PR buff loop (`sm buff status/inspect 71`) on fresh CI to confirm whether `slopmop-scour` failures are cleared by these changes.
+- If CI still reports E2E failures, triage from that fresh artifact set (single source of truth) and patch remaining failing workflows.
+
 ## Latest Work: PR 71 Gate + Commentary Remediation (2026-03-26)
 
 **Status**: 🚧 IN PROGRESS - root-cause fixes implemented locally, pending PR thread resolution + CI re-run

@@ -16,6 +16,7 @@ pytest>=7.4.0              # Testing framework
 pytest-cov>=4.1.0          # Coverage reporting for pytest
 pytest-mock>=3.11.0        # Mock utilities for pytest
 pytest-asyncio>=0.21.0     # Async testing support
+pytest-testmon>=2.1.0      # Test impact analysis plugin required by untested-code gate
 pytest-xdist>=3.6.1        # Parallel test execution (35% faster)
 
 # Security scanning

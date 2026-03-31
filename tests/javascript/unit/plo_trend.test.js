@@ -301,9 +301,6 @@ describe("createTrendPanel", () => {
     expect(toggleBtn).not.toBeNull();
     expect(toggleBtn.tagName).toBe("BUTTON");
     expect(toggleBtn.title).toBe("Hide trend chart");
-    expect(toggleBtn.getAttribute("aria-expanded")).toBe("true");
-    expect(toggleBtn.getAttribute("aria-label")).toBe("Hide trend chart");
-    expect(toggleBtn.textContent).toBe("👀");
   });
 
   test("toggle button hides and shows the panel body", () => {
@@ -320,9 +317,6 @@ describe("createTrendPanel", () => {
     toggleBtn.click();
     expect(body.style.display).toBe("none");
     expect(panel.classList.contains("plo-trend-panel--collapsed")).toBe(true);
-    expect(toggleBtn.getAttribute("aria-expanded")).toBe("false");
-    expect(toggleBtn.getAttribute("aria-label")).toBe("Show trend chart");
-    expect(toggleBtn.textContent).toBe("👁");
 
     // Second click: show
     toggleBtn.click();

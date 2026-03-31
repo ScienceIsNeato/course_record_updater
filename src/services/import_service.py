@@ -13,20 +13,14 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple, TypedDict
 
 from src.adapters.adapter_registry import AdapterRegistryError, get_adapter_registry
-from src.database.database_service import (
+from src.database.database_service import (  # noqa: F401  re-export for execution mixin + test patches
     create_course,
-    create_course_offering,
     create_course_outcome,
-    create_course_section,
-    create_term,
     create_user,
     get_course_by_number,
-    get_course_offering_by_course_and_term,
     get_course_outcomes,
-    get_term_by_name,
     get_user_by_email,
     update_course,
-    update_course_offering,
     update_user,
 )
 from src.services.import_service_execution import ImportServiceExecutionMixin
@@ -35,18 +29,6 @@ from src.utils.time_utils import get_current_time
 
 # Constants for datetime formatting
 UTC_OFFSET = "+00:00"
-
-# Keep legacy patch targets available in this module for unit tests.
-_COMPAT_PATCH_TARGETS = (
-    create_course_offering,
-    create_course_outcome,
-    create_course_section,
-    create_term,
-    get_course_offering_by_course_and_term,
-    get_course_outcomes,
-    get_term_by_name,
-    update_course_offering,
-)
 
 # Import our models and services
 
