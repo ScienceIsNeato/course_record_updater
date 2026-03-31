@@ -36,6 +36,7 @@ tox>=4.6.0                 # Testing across multiple Python versions
 # Security patch minimums (safety scan)
 filelock>=3.20.1
 authlib>=1.6.5
+cryptography>=46.0.6       # CVE-2026-34073 (transitive via Authlib)
 requests>=2.33.0
 
 # Documentation

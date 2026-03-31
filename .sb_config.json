@@ -317,7 +317,7 @@
           ".pytest_cache",
           ".ruff_cache",
           ".slopmop",
-          ".secrets.baseline",
+          "secrets.baseline",
           "logs",
           "tests",
           "*/.venv",
