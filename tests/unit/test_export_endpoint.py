@@ -124,7 +124,7 @@ class TestExportEndpoint:
             response = _validate_export_output_path(sibling / "evil.xlsx")
 
         assert response is not None
-        body, status = response  # type: ignore[misc]
+        body, status = response  # type: ignore[misc, str-unpack]
         body = body if isinstance(body, Response) else None
         assert status == 400
         assert body is not None
