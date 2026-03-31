@@ -229,6 +229,7 @@ def test_duplicate_course_and_reminder_paths() -> None:
 def test_run_semester_end_and_main_dispatch(monkeypatch: Any) -> None:
     module = _load_advance_demo_module()
     db = Mock()
+    morgan_user = {"institution_id": "inst-1", "user_id": "morgan"}
     biol = {"institution_id": "inst-1", "course_id": "bio-1"}
     zool = {"id": "zoo-1"}
 
@@ -237,7 +238,7 @@ def test_run_semester_end_and_main_dispatch(monkeypatch: Any) -> None:
             module,
             "_get_semester_end_context",
             return_value=(
-                Mock(),
+                morgan_user,
                 Mock(),
                 Mock(),
                 "morgan",

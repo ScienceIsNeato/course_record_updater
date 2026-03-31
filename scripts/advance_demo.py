@@ -374,7 +374,7 @@ def run_semester_end(app: Flask, db: ModuleType) -> None:
 
     try:
         (
-            _morgan,
+            morgan,
             _patel,
             _admin,
             morgan_id,
@@ -387,7 +387,7 @@ def run_semester_end(app: Flask, db: ModuleType) -> None:
         logger.error(str(error))
         return
 
-    institution_id = biol101.get("institution_id")
+    institution_id = morgan.get("institution_id")
     biol101_id = biol101.get("course_id") or biol101.get("id")
     zool101_id = zool101.get("course_id") or zool101.get("id")
     logger.info("Found users and courses. Creating CLOs...")

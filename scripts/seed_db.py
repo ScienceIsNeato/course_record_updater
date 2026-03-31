@@ -177,7 +177,7 @@ class BaselineTestSeeder(BaselineSeeder):
         inst_ids: List[str],
         prog_ids: List[str],
         program_map: Dict[str, str],
-    ) -> tuple[List[str], List[str]]:
+    ) -> tuple[List[Optional[str]], List[str]]:
         """Create users from manifest and extract instructor IDs."""
         self.log("👥 Creating users...")
         from src.utils.constants import GENERIC_PASSWORD

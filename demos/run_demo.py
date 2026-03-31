@@ -42,10 +42,6 @@ RED = '\033[0;31m'
 BOLD = '\033[1m'
 NC = '\033[0m'  # No Color
 
-API_SUCCESS_FMT = "{GREEN}  ✓ Success: {status_code}{NC}"
-API_FAILURE_FMT = "{RED}  ✗ Failed: {status_code}{NC}"
-API_ERROR_FMT = "{RED}  Error: {response_text}{NC}"
-API_EXCEPTION_FMT = "{RED}  ✗ API call failed: {error}{NC}"
 
 class DemoRunner:
     def __init__(self, demo_file: Path, env: str, auto_mode: bool = False, start_step: int = 1,
@@ -79,21 +75,15 @@ class DemoRunner:
             return False
 
     def _print_api_success(self, status_code: int) -> None:
-        print(API_SUCCESS_FMT.format(GREEN=GREEN, status_code=status_code, NC=NC))
+        print(f"{GREEN}  ✓ Success: {status_code}{NC}")
 
     def _print_api_failure(self, status_code: int, response_text: str = "") -> None:
-        print(API_FAILURE_FMT.format(RED=RED, status_code=status_code, NC=NC))
+        print(f"{RED}  ✗ Failed: {status_code}{NC}")
         if response_text:
-            print(
-                API_ERROR_FMT.format(
-                    RED=RED,
-                    response_text=response_text[:200],
-                    NC=NC,
-                )
-            )
+            print(f"{RED}  Error: {response_text[:200]}{NC}")
 
     def _print_api_exception(self, error: Exception) -> None:
-        print(API_EXCEPTION_FMT.format(RED=RED, error=error, NC=NC))
+        print(f"{RED}  ✗ API call failed: {error}{NC}")
 
     def setup_artifacts(self):
         """Create artifact directory for this demo run."""
