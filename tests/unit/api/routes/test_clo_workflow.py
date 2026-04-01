@@ -13,7 +13,9 @@ from src.api.routes.clo_workflow import clo_workflow_bp
 
 
 @pytest.fixture(scope="module", autouse=True)
-def bypass_permissions() -> Generator[None, None, None]:
+def bypass_permissions() -> (  # noqa: ambiguity-mine - test fixture name is intentionally generic
+    Generator[None, None, None]
+):
     """Bypass permission checks for all CLO workflow route tests."""
 
     with patch(
@@ -24,7 +26,7 @@ def bypass_permissions() -> Generator[None, None, None]:
 
 
 @pytest.fixture
-def app() -> Any:
+def app() -> Any:  # noqa: ambiguity-mine - pytest fixture convention
     """Create Flask app for testing."""
     app = Flask(__name__)
     app.config["SECRET_KEY"] = "test-secret"
@@ -34,7 +36,7 @@ def app() -> Any:
 
 
 @pytest.fixture
-def client(app: Any) -> Any:
+def client(app: Any) -> Any:  # noqa: ambiguity-mine - pytest fixture convention
     """Create Flask test client."""
     return app.test_client()
 

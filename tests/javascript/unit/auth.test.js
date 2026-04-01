@@ -80,6 +80,35 @@ describe("auth module", () => {
     expect(auth.validatePasswordMatch()).toBe(true);
   });
 
+  it("guards date override parsing for non-json responses", async () => {
+    global.fetch.mockResolvedValue({
+      ok: false,
+      headers: { get: () => "text/html" },
+    });
+
+    const result = await auth.submitDateOverrideRequest("POST", {
+      date: "2025-01-01T00:00:00.000Z",
+    });
+
+    expect(result.result.success).toBe(false);
+    expect(result.result.error).toContain("unexpected response");
+  });
+
+  it("guards date override parsing for invalid json", async () => {
+    global.fetch.mockResolvedValue({
+      ok: false,
+      headers: { get: () => "application/json" },
+      json: async () => {
+        throw new Error("bad json");
+      },
+    });
+
+    const result = await auth.submitDateOverrideRequest("DELETE");
+
+    expect(result.result.success).toBe(false);
+    expect(result.result.error).toContain("invalid response");
+  });
+
   it("handles successful login flow", async () => {
     setBody(`
       <meta name="csrf-token" content="test-csrf-token">

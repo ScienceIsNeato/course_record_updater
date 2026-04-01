@@ -7,9 +7,13 @@ from flask.typing import ResponseReturnValue
 
 from src.api.utils import (
     InstitutionContextMissingError,
+    format_missing_required_field,
     get_current_institution_id_safe,
     get_current_user_id_safe,
     get_current_user_safe,
+)
+from src.api.utils import get_request_json_object as _get_request_json
+from src.api.utils import (
     handle_api_error,
     resolve_institution_scope,
 )
@@ -30,7 +34,9 @@ from src.database.database_service import (
 from src.models.models import Program
 from src.services.auth_service import UserRole, permission_required
 from src.utils.constants import (
+    AUTHENTICATION_REQUIRED_MSG,
     COURSE_NOT_FOUND_MSG,
+    INSTITUTION_CONTEXT_REQUIRED_MSG,
     NO_DATA_PROVIDED_MSG,
     PROGRAM_NOT_FOUND_MSG,
     USER_NOT_FOUND_MSG,
@@ -39,16 +45,6 @@ from src.utils.logging_config import get_logger
 
 programs_bp = Blueprint("programs", __name__, url_prefix="/api")
 logger = get_logger(__name__)
-
-
-def _get_request_json() -> Dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return (
-        cast(Dict[str, Any], payload)
-        if isinstance(payload, dict)
-        else cast(Dict[str, Any], {})
-    )
 
 
 @programs_bp.route("/programs", methods=["GET"])
@@ -60,7 +56,7 @@ def list_programs() -> ResponseReturnValue:
             _, institution_ids, is_global = resolve_institution_scope()
         except InstitutionContextMissingError:
             return (
-                jsonify({"success": False, "error": "Institution context required"}),
+                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
                 400,
             )
 
@@ -92,7 +88,10 @@ def create_program_api() -> ResponseReturnValue:
             if field not in data:
                 return (
                     jsonify(
-                        {"success": False, "error": f"Missing required field: {field}"}
+                        {
+                            "success": False,
+                            "error": format_missing_required_field(field),
+                        }
                     ),
                     400,
                 )
@@ -115,7 +114,7 @@ def create_program_api() -> ResponseReturnValue:
                     jsonify(
                         {
                             "success": False,
-                            "error": "Institution context required to create program",
+                            "error": f"{INSTITUTION_CONTEXT_REQUIRED_MSG} to create program",
                         }
                     ),
                     400,
@@ -123,7 +122,10 @@ def create_program_api() -> ResponseReturnValue:
 
         user_id = get_current_user_id_safe()
         if not user_id:
-            return jsonify({"success": False, "error": "Authentication required"}), 401
+            return (
+                jsonify({"success": False, "error": AUTHENTICATION_REQUIRED_MSG}),
+                401,
+            )
 
         name = str(data.get("name", "")).strip()
         short_name = str(data.get("short_name", "")).strip()

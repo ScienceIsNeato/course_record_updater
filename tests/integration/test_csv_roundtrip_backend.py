@@ -126,63 +126,34 @@ def compare_zip_files(export1_path: str, export2_path: str) -> dict[str, Any]:
     }
 
 
-def main() -> Any:
-    """Run complete roundtrip validation."""
-    logger.info("=" * 70)
-    logger.info("🔄 CSV Roundtrip Validation - Full Bidirectionality Test")
-    logger.info("=" * 70)
-
-    db = get_database_service()
-
-    # Use MockU institution (from seed_db)
-    institution_id = "2560a0b3-1357-4e60-bd0c-f73722e2b08d"
-    institution_name = "California Engineering Institute"
-
-    # Output paths using secure tempfile (B108 fix)
+def create_roundtrip_paths() -> tuple[Path, str, str]:
+    """Create an output directory and paired export paths."""
     import tempfile
 
     output_dir = Path(tempfile.mkdtemp(prefix="csv_roundtrip_test_"))
-
     export1_path = str(output_dir / "export1_before_import.zip")
     export2_path = str(output_dir / "export2_after_roundtrip.zip")
+    return output_dir, export1_path, export2_path
 
-    logger.info(f"📍 Testing institution: {institution_name}")
-    logger.info(f"📁 Output directory: {output_dir}")
-    logger.info("")
 
-    # Step 1: Export initial state
-    logger.info("STEP 1: Export initial database state")
-    logger.info("-" * 70)
-    export1_result = export_database(institution_id, export1_path)
-
-    if not export1_result:
-        logger.error("❌ Initial export failed!")
-        return 1
-
-    logger.info(f"📊 Initial export: {export1_result['records']} records")
-    logger.info(f"📊 Entity counts: {export1_result['manifest']['entity_counts']}")
-    logger.info("")
-
-    # Step 2: Note current data for verification
-    logger.info("STEP 2: Record current database state")
-    logger.info("-" * 70)
-
+def log_current_database_state(institution_id: str) -> None:
+    """Log current user, course, and term counts before import."""
     from src.database.database_service import (
         get_active_terms,
         get_all_courses,
         get_all_users,
     )
 
-    original_users_count = len(get_all_users(institution_id))
-    original_courses_count = len(get_all_courses(institution_id))
-    original_terms_count = len(get_active_terms(institution_id))
-
-    logger.info(f"   Users: {original_users_count}")
-    logger.info(f"   Courses: {original_courses_count}")
-    logger.info(f"   Terms: {original_terms_count}")
+    logger.info("STEP 2: Record current database state")
+    logger.info("-" * 70)
+    logger.info(f"   Users: {len(get_all_users(institution_id))}")
+    logger.info(f"   Courses: {len(get_all_courses(institution_id))}")
+    logger.info(f"   Terms: {len(get_active_terms(institution_id))}")
     logger.info("")
 
-    # Step 3: Import the CSV (simulates restore)
+
+def import_roundtrip_export(institution_id: str, export1_path: str) -> int:
+    """Import the first export back into the database."""
     logger.info("STEP 3: Import CSV back into database")
     logger.info("-" * 70)
 
@@ -203,28 +174,15 @@ def main() -> Any:
     logger.info(f"   Records created: {import_result.records_created}")
     logger.info(f"   Records updated: {import_result.records_updated}")
     logger.info("")
+    return 0
 
-    # Step 4: Export again after import
-    logger.info("STEP 4: Export database after import (roundtrip complete)")
-    logger.info("-" * 70)
-    export2_result = export_database(institution_id, export2_path)
 
-    if not export2_result:
-        logger.error("❌ Second export failed!")
-        return 1
-
-    logger.info(f"📊 Second export: {export2_result['records']} records")
-    logger.info(f"📊 Entity counts: {export2_result['manifest']['entity_counts']}")
-    logger.info("")
-
-    # Step 5: Compare exports
-    logger.info("STEP 5: Compare before/after exports")
-    logger.info("-" * 70)
-    comparison = compare_zip_files(export1_path, export2_path)
-
+def log_roundtrip_result(
+    comparison: dict[str, Any], export1_path: str, export2_path: str
+) -> None:
+    """Log final roundtrip comparison outcome and artifact paths."""
     logger.info("")
     logger.info("=" * 70)
-
     if comparison["identical"]:
         logger.info("🎉 ROUNDTRIP VALIDATION: SUCCESS!")
         logger.info("✅ Export files are identical - perfect bidirectionality!")
@@ -245,6 +203,63 @@ def main() -> Any:
     logger.info(
         "🔍 You can extract and inspect both ZIP files to verify data integrity"
     )
+
+
+def main() -> Any:
+    """Run complete roundtrip validation."""
+    logger.info("=" * 70)
+    logger.info("🔄 CSV Roundtrip Validation - Full Bidirectionality Test")
+    logger.info("=" * 70)
+
+    db = get_database_service()
+
+    # Use MockU institution (from seed_db)
+    institution_id = "2560a0b3-1357-4e60-bd0c-f73722e2b08d"
+    institution_name = "California Engineering Institute"
+
+    output_dir, export1_path, export2_path = create_roundtrip_paths()
+
+    logger.info(f"📍 Testing institution: {institution_name}")
+    logger.info(f"📁 Output directory: {output_dir}")
+    logger.info("")
+
+    # Step 1: Export initial state
+    logger.info("STEP 1: Export initial database state")
+    logger.info("-" * 70)
+    export1_result = export_database(institution_id, export1_path)
+
+    if not export1_result:
+        logger.error("❌ Initial export failed!")
+        return 1
+
+    logger.info(f"📊 Initial export: {export1_result['records']} records")
+    logger.info(f"📊 Entity counts: {export1_result['manifest']['entity_counts']}")
+    logger.info("")
+
+    log_current_database_state(institution_id)
+
+    if import_roundtrip_export(institution_id, export1_path):
+        return 1
+
+    # Step 4: Export again after import
+    logger.info("STEP 4: Export database after import (roundtrip complete)")
+    logger.info("-" * 70)
+    export2_result = export_database(institution_id, export2_path)
+
+    if not export2_result:
+        logger.error("❌ Second export failed!")
+        return 1
+
+    logger.info(f"📊 Second export: {export2_result['records']} records")
+    logger.info(f"📊 Entity counts: {export2_result['manifest']['entity_counts']}")
+    logger.info("")
+
+    # Step 5: Compare exports
+    logger.info("STEP 5: Compare before/after exports")
+    logger.info("-" * 70)
+    comparison = compare_zip_files(export1_path, export2_path)
+
+    log_roundtrip_result(comparison, export1_path, export2_path)
 
     return 0
 

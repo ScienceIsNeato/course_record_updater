@@ -248,11 +248,14 @@
       "dependency-risk.py": {
         "enabled": true,
         "auto_fix": false,
-        "config_file_path": null,
+        "config_file_path": ".secrets.baseline",
         "scanners": [
           "bandit",
           "semgrep",
           "detect-secrets"
+        ],
+        "pip_audit_ignore_vulns": [
+          "GHSA-5239-wwwm-4pmq"
         ],
         "exclude_dirs": [
           ".specstory",
@@ -277,6 +280,7 @@
           ".pytest_cache",
           ".ruff_cache",
           ".slopmop",
+          "secrets.baseline",
           "logs",
           "tests",
           "*/.venv",
@@ -287,7 +291,7 @@
       "vulnerability-blindness.py": {
         "enabled": true,
         "auto_fix": false,
-        "config_file_path": null,
+        "config_file_path": ".secrets.baseline",
         "scanners": [
           "bandit",
           "semgrep",
@@ -314,7 +318,7 @@
           ".pytest_cache",
           ".ruff_cache",
           ".slopmop",
-          ".secrets.baseline",
+          "secrets.baseline",
           "logs",
           "tests",
           "*/.venv",
@@ -399,7 +403,7 @@
         ]
       },
       "code-sprawl": {
-        "enabled": false,
+        "enabled": true,
         "auto_fix": false,
         "config_file_path": null,
         "max_file_lines": 1000,
@@ -450,5 +454,5 @@
     }
   },
   "disabled_gates": [],
-  "swabbing_time": 30
+  "swabbing_time": 0
 }

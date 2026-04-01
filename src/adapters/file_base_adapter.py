@@ -10,6 +10,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, cast
 
+from src.utils.constants import FILE_NOT_FOUND_MSG
+
 
 class FileCompatibilityError(Exception):
     """Raised when a file is incompatible with an adapter"""
@@ -311,7 +313,7 @@ class FileBaseAdapter(ABC):
         try:
             path = Path(file_path)
             if not path.exists():
-                return False, f"File not found: {file_path}"
+                return False, FILE_NOT_FOUND_MSG.format(file_path=file_path)
 
             if not path.is_file():
                 return False, f"Path is not a file: {file_path}"

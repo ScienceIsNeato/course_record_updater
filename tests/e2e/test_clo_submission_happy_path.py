@@ -46,7 +46,7 @@ def _create_test_program(admin_page: Any, csrf_token: Any, institution_id: Any) 
     return program_response.json()["program_id"]
 
 
-def _create_test_course(
+def _create_test_course(  # noqa: ambiguity-mine - test-local setup helper
     admin_page: Any, csrf_token: Any, institution_id: Any, program_id: Any
 ) -> Any:
     """Create test course via API."""
@@ -314,35 +314,14 @@ def _verify_section_isolation(
         ), f"Section 003 wrongly submitted!"
 
 
-@pytest.mark.skip(reason="Uses non-existent /api/outcomes/{id}/assign endpoint")
-def test_clo_submission_happy_path(authenticated_institution_admin_page: Page) -> None:
-    """
-    Test full CLO submission workflow for instructor.
-
-    Steps:
-    1. Create test instructor with assigned course section
-    2. Create CLOs in ASSIGNED status
-    3. Instructor logs in and edits CLO (auto-marks IN_PROGRESS)
-    4. Instructor submits CLO
-    5. Verify CLO status is AWAITING_APPROVAL
-    """
-    admin_page = authenticated_institution_admin_page
-
-    # Get institution ID from admin user
+def _setup_happy_path_fixture(admin_page: Page) -> dict[str, Any]:
+    """Create the program, instructor assignment, sections, and target CLO."""
     institution_id = get_institution_id_from_user(admin_page)
-
-    # === STEP 1: Create test data via API ===
-
-    # Get CSRF token
     csrf_token = admin_page.evaluate(
         "document.querySelector('meta[name=\"csrf-token\"]')?.content"
     )
-
-    # Create test data using helpers
     program_id = _create_test_program(admin_page, csrf_token, institution_id)
     course_id = _create_test_course(admin_page, csrf_token, institution_id, program_id)
-
-    # Create instructor
     instructor = create_test_user_via_api(
         admin_page=admin_page,
         base_url=BASE_URL,
@@ -354,25 +333,19 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page) -
         program_ids=[program_id],
     )
     instructor_id = instructor["user_id"]
-
-    # Create term and offering
     term_id = _create_test_term(admin_page, csrf_token, institution_id)
-    section_id = _create_test_offering(
+    offering_id = _create_test_offering(
         admin_page, csrf_token, course_id, term_id, instructor_id, institution_id
     )
-
-    # Create sections using helper
     section_001_id = _create_test_section(
-        admin_page, csrf_token, section_id, "001", instructor_id
+        admin_page, csrf_token, offering_id, "001", instructor_id
     )
     section_002_id = _create_test_section(
-        admin_page, csrf_token, section_id, "002", instructor_id
+        admin_page, csrf_token, offering_id, "002", instructor_id
     )
     section_003_id = _create_test_section(
-        admin_page, csrf_token, section_id, "003", instructor_id
+        admin_page, csrf_token, offering_id, "003", instructor_id
     )
-
-    # Create CLO for section 002
     clo1_response = admin_page.request.post(
         f"{BASE_URL}/api/courses/{course_id}/outcomes",
         headers={"Content-Type": "application/json", "X-CSRFToken": csrf_token or ""},
@@ -387,14 +360,36 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page) -
     )
     assert clo1_response.ok
     clo1_id = clo1_response.json()["outcome_id"]
-
-    # Assign CLO to section 002
     assign_response = admin_page.request.post(
         f"{BASE_URL}/api/outcomes/{clo1_id}/assign",
         headers={"Content-Type": "application/json", "X-CSRFToken": csrf_token or ""},
         data=json.dumps({"section_id": section_002_id}),
     )
     assert assign_response.ok
+    return {
+        "course_id": course_id,
+        "csrf_token": csrf_token,
+        "section_001_id": section_001_id,
+        "section_002_id": section_002_id,
+        "section_003_id": section_003_id,
+        "clo1_id": clo1_id,
+    }
+
+
+@pytest.mark.skip(reason="Uses non-existent /api/outcomes/{id}/assign endpoint")
+def test_clo_submission_happy_path(authenticated_institution_admin_page: Page) -> None:
+    """
+    Test full CLO submission workflow for instructor.
+
+    Steps:
+    1. Create test instructor with assigned course section
+    2. Create CLOs in ASSIGNED status
+    3. Instructor logs in and edits CLO (auto-marks IN_PROGRESS)
+    4. Instructor submits CLO
+    5. Verify CLO status is AWAITING_APPROVAL
+    """
+    admin_page = authenticated_institution_admin_page
+    fixture = _setup_happy_path_fixture(admin_page)
 
     # Login as instructor and execute workflow
     instructor_page = admin_page.context.new_page()
@@ -404,7 +399,11 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page) -
 
     # Execute the entire submission workflow
     _execute_clo_submission_workflow(
-        admin_page, instructor_page, course_id, section_002_id, clo1_id
+        admin_page,
+        instructor_page,
+        fixture["course_id"],
+        fixture["section_002_id"],
+        fixture["clo1_id"],
     )
 
     # Verify final status
@@ -418,11 +417,11 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page) -
     # Verify section isolation
     _verify_section_isolation(
         admin_page,
-        csrf_token,
-        course_id,
-        section_002_id,
-        section_001_id,
-        section_003_id,
+        fixture["csrf_token"],
+        fixture["course_id"],
+        fixture["section_002_id"],
+        fixture["section_001_id"],
+        fixture["section_003_id"],
     )
     print("\n✅ Test passed: Section isolation verified!")
 

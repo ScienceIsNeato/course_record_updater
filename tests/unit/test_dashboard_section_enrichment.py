@@ -11,14 +11,14 @@ import pytest
 from src.services.dashboard_service import DashboardService
 
 
-@pytest.fixture
-def service() -> Any:
+@pytest.fixture(name="service")
+def dashboard_section_service_fixture() -> Any:
     """Create dashboard service instance"""
     return DashboardService()
 
 
 @pytest.fixture
-def sample_sections() -> Any:
+def dashboard_sample_sections() -> Any:
     """Sample section data"""
     return [
         {
@@ -75,13 +75,13 @@ class TestDashboardSectionEnrichment:
     def test_enrich_sections_with_course_data(
         self,
         service: Any,
-        sample_sections: Any,
+        dashboard_sample_sections: Any,
         course_index: Any,
         offering_to_course: Any,
     ) -> None:
         """Test enriching sections with course information"""
         enriched = service._enrich_sections_with_course_data(
-            sample_sections, course_index, offering_to_course
+            dashboard_sample_sections, course_index, offering_to_course
         )
 
         # Should return same number of sections

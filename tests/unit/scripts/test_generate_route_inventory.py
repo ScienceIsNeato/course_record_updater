@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 
-def _load_module() -> Any:
+def _load_route_inventory_module() -> Any:
     root = Path(__file__).resolve().parents[3]
     script_path = root / "scripts" / "generate_route_inventory.py"
     spec = importlib.util.spec_from_file_location(
@@ -20,8 +20,11 @@ def _load_module() -> Any:
     return module
 
 
+_load_module = _load_route_inventory_module
+
+
 def test_extract_routes_from_file_and_regex(tmp_path: Path) -> None:
-    module = _load_module()
+    module = _load_route_inventory_module()
 
     api_routes_dir = tmp_path / "api" / "routes"
     api_routes_dir.mkdir(parents=True)
@@ -55,7 +58,7 @@ def test_extract_routes_from_file_and_regex(tmp_path: Path) -> None:
 
 
 def test_extract_routes_from_file_error(tmp_path: Path, capsys: Any) -> None:
-    module = _load_module()
+    module = _load_route_inventory_module()
 
     bad_file = tmp_path / "broken.py"
     bad_file.write_text("def x(:\n", encoding="utf-8")

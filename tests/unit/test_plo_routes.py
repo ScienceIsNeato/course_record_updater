@@ -29,8 +29,8 @@ INST_DATA = {
 }
 
 
-@pytest.fixture
-def client() -> Generator[Any, None, None]:
+@pytest.fixture(name="client")
+def plo_routes_client_fixture() -> Generator[Any, None, None]:
     """Flask test client with an authenticated site-admin session."""
     app.config["TESTING"] = True
     with app.test_client() as c:

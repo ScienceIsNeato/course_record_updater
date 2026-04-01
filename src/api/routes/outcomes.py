@@ -5,13 +5,19 @@ Provides endpoints for managing course learning outcomes (CLOs),
 including CRUD operations, assessment data updates, and submission workflows.
 """
 
-from typing import Any, Dict, cast
+from typing import Any, Dict
 
 from flask import Blueprint, jsonify, request, session
 from flask.typing import ResponseReturnValue
 
 import src.database.database_service as database_service
-from src.api.utils import get_current_institution_id_safe, handle_api_error
+from src.api.utils import (
+    get_current_institution_id_safe,
+)
+from src.api.utils import get_request_json_object as _get_request_json
+from src.api.utils import (
+    handle_api_error,
+)
 from src.database.database_service import (
     delete_course_outcome,
     get_course_by_id,
@@ -28,19 +34,15 @@ from src.services.auth_service import (
 )
 from src.utils.constants import (
     COURSE_NOT_FOUND_MSG,
+    FAILED_TO_CREATE_COURSE_OUTCOME_MSG,
     NO_JSON_DATA_PROVIDED_MSG,
     OUTCOME_NOT_FOUND_MSG,
+    USER_NOT_AUTHENTICATED_MSG,
 )
 from src.utils.logging_config import get_logger
 
 outcomes_bp = Blueprint("outcomes", __name__, url_prefix="/api")
 logger = get_logger(__name__)
-
-
-def _get_request_json() -> Dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
 
 
 @outcomes_bp.route("/outcomes", methods=["GET"])
@@ -110,7 +112,9 @@ def create_outcome_endpoint() -> ResponseReturnValue:
             )
         else:
             return (
-                jsonify({"success": False, "error": "Failed to create course outcome"}),
+                jsonify(
+                    {"success": False, "error": FAILED_TO_CREATE_COURSE_OUTCOME_MSG}
+                ),
                 500,
             )
 
@@ -135,10 +139,7 @@ def get_course_outcomes_endpoint_get(course_id: str) -> ResponseReturnValue:
         # Get course details for the response
         course = get_course_by_id(course_id)
         if not course:
-            return (
-                jsonify({"success": False, "error": f"Course not found: {course_id}"}),
-                404,
-            )
+            return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
         if not course.get("course_number"):
             return (
                 jsonify(
@@ -242,13 +243,17 @@ def create_course_outcome_endpoint(course_id: str) -> ResponseReturnValue:
             )
         else:
             return (
-                jsonify({"success": False, "error": "Failed to create course outcome"}),
+                jsonify(
+                    {"success": False, "error": FAILED_TO_CREATE_COURSE_OUTCOME_MSG}
+                ),
                 500,
             )
 
     except Exception as e:
         return handle_api_error(
-            e, "Create course outcome", "Failed to create course outcome"
+            e,
+            "Create course outcome",
+            FAILED_TO_CREATE_COURSE_OUTCOME_MSG,
         )
 
 
@@ -267,7 +272,10 @@ def submit_course_for_approval_endpoint(course_id: str) -> ResponseReturnValue:
         # Get current user
         user_id = session.get("user_id")
         if not user_id:
-            return jsonify({"success": False, "error": "User not authenticated"}), 401
+            return (
+                jsonify({"success": False, "error": USER_NOT_AUTHENTICATED_MSG}),
+                401,
+            )
 
         # Get optional section_id from request body
         data = _get_request_json()
@@ -327,7 +335,7 @@ def get_outcome_audit_details_endpoint(outcome_id: str) -> ResponseReturnValue:
     try:
         outcome = CLOWorkflowService.get_outcome_with_details(outcome_id)
         if not outcome:
-            return jsonify({"success": False, "error": "Outcome not found"}), 404
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         return jsonify({"success": True, "outcome": outcome}), 200
     except Exception as e:
@@ -394,7 +402,7 @@ def update_outcome_assessment_endpoint(outcome_id: str) -> ResponseReturnValue:
         # Verify outcome exists (this is a Section Outcome ID from frontend)
         outcome = get_section_outcome(outcome_id)
         if not outcome:
-            return jsonify({"success": False, "error": "Outcome not found"}), 404
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         logger.info(f"Outcome found, section_id={outcome['section_id']}")
 

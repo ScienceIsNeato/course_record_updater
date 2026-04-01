@@ -25,7 +25,7 @@ from src.api.utils import (
 from src.database.database_service import get_all_institutions
 from src.services.auth_service import UserRole, login_required
 from src.services.export_service import ExportConfig, create_export_service
-from src.utils.constants import USER_NOT_AUTHENTICATED_MSG
+from src.utils.constants import ADAPTER_NOT_FOUND_MSG, USER_NOT_AUTHENTICATED_MSG
 from src.utils.logging_config import get_logger
 
 # Create blueprint
@@ -36,6 +36,108 @@ logger = get_logger(__name__)
 
 # Local constant matching the monolith's private constant
 _DEFAULT_EXPORT_EXTENSION = DEFAULT_EXPORT_EXTENSION
+
+
+def _sanitize_export_data_request() -> tuple[str, str, bool]:
+    """Read and sanitize export query parameters."""
+    data_type_raw = request.args.get("export_data_type", "courses")
+    adapter_id_raw = request.args.get("export_adapter", "cei_excel_format_v1")
+    data_type = re.sub(r"\W", "", data_type_raw) or "courses"
+    adapter_id = re.sub(r"[^a-zA-Z0-9_-]", "", adapter_id_raw) or "cei_excel_format_v1"
+    include_metadata = request.args.get("include_metadata", "true").lower() == "true"
+    return data_type, adapter_id, include_metadata
+
+
+def _resolve_export_extension(
+    export_service: Any, adapter_id: str
+) -> tuple[str, ResponseReturnValue | None]:
+    """Return adapter file extension or an API error response."""
+    try:
+        adapter = export_service.registry.get_adapter_by_id(adapter_id)
+        if not adapter:
+            adapter_not_found_msg = ADAPTER_NOT_FOUND_MSG.format(adapter_id=adapter_id)
+            logger.error("[EXPORT] %s", adapter_not_found_msg)
+            return "", (
+                jsonify({"success": False, "error": adapter_not_found_msg}),
+                400,
+            )
+
+        adapter_info = adapter.get_adapter_info()
+        supported_formats = adapter_info.get(
+            "supported_formats", [_DEFAULT_EXPORT_EXTENSION]
+        )
+        file_extension = (
+            supported_formats[0] if supported_formats else _DEFAULT_EXPORT_EXTENSION
+        )
+        return file_extension, None
+    except Exception as adapter_error:
+        logger.error(f"[EXPORT] Error getting adapter info: {str(adapter_error)}")
+        return _DEFAULT_EXPORT_EXTENSION, None
+
+
+def _build_export_response_payload(
+    export_service: Any,
+    institution_id: str,
+    data_type: str,
+    adapter_id: str,
+    include_metadata: bool,
+) -> tuple[ExportConfig, Path, str]:
+    """Build config and secure output path for an export request."""
+    file_extension, _ = _resolve_export_extension(export_service, adapter_id)
+    output_format = (
+        file_extension.lstrip(".") if file_extension.startswith(".") else file_extension
+    )
+    config = ExportConfig(
+        institution_id=institution_id,
+        adapter_id=adapter_id,
+        export_view="standard",
+        include_metadata=include_metadata,
+        output_format=output_format,
+    )
+
+    temp_dir = Path(tempfile.gettempdir())
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{data_type}_export_{timestamp}{file_extension}"
+    output_path = temp_dir / filename
+    return config, output_path, filename
+
+
+def _validate_export_output_path(output_path: Path) -> ResponseReturnValue | None:
+    """Ensure the export file stays inside the temp directory."""
+    resolved_output_parent = output_path.parent.resolve()
+    resolved_temp_dir = Path(tempfile.gettempdir()).resolve()
+    if (
+        resolved_output_parent != resolved_temp_dir
+        and resolved_temp_dir not in resolved_output_parent.parents
+    ):
+        logger.error(f"[EXPORT] Path traversal attempt detected: {output_path}")
+        return jsonify({"success": False, "error": "Invalid export path"}), 400
+    return None
+
+
+def _send_export_file(
+    output_path: Path, filename: str, file_extension: str
+) -> ResponseReturnValue:
+    """Return download response and register temp-file cleanup."""
+    mimetype = get_mimetype_for_extension(file_extension)
+    file_to_cleanup = output_path
+
+    @after_this_request
+    def cleanup_temp_file(response: Any) -> Any:
+        try:
+            if file_to_cleanup.exists():
+                file_to_cleanup.unlink()
+                logger.debug(f"[EXPORT] Cleaned up temp file: {file_to_cleanup}")
+        except Exception as cleanup_error:
+            logger.warning(f"[EXPORT] Failed to cleanup temp file: {cleanup_error}")
+        return response
+
+    return send_file(
+        str(output_path),
+        as_attachment=True,
+        download_name=filename,
+        mimetype=mimetype,
+    )
 
 
 @exports_bp.route("/adapters", methods=["GET"])
@@ -135,89 +237,23 @@ def export_data() -> ResponseReturnValue:
             )
             return jsonify({"success": False, "error": "No institution context"}), 400
 
-        # Get parameters
-        data_type_raw = request.args.get("export_data_type", "courses")
-        adapter_id_raw = request.args.get("export_adapter", "cei_excel_format_v1")
-
-        # Sanitize data_type to prevent path traversal (security fix for S2083)
-        # Only allow alphanumeric characters and underscores
-        data_type = re.sub(r"\W", "", data_type_raw)
-        if not data_type:
-            data_type = "courses"  # Fallback to safe default
-
-        # Sanitize adapter_id to prevent log injection (security fix for S5145)
-        # Only allow alphanumeric characters, underscores, and hyphens
-        adapter_id = re.sub(r"[^a-zA-Z0-9_-]", "", adapter_id_raw)
-        if not adapter_id:
-            adapter_id = "cei_excel_format_v1"  # Fallback to safe default
-
+        data_type, adapter_id, include_metadata = _sanitize_export_data_request()
         logger.info(
             f"[EXPORT] Request: institution_id={institution_id}, data_type={data_type}, adapter={adapter_id}"
         )
-        include_metadata = (
-            request.args.get("include_metadata", "true").lower() == "true"
-        )
-
-        # Create export service and get adapter info
         export_service = create_export_service()
-
-        # Query adapter for its supported format
-        try:
-            adapter = export_service.registry.get_adapter_by_id(adapter_id)
-            if not adapter:
-                logger.error(f"[EXPORT] Adapter not found: {adapter_id}")
-                return (
-                    jsonify(
-                        {"success": False, "error": f"Adapter not found: {adapter_id}"}
-                    ),
-                    400,
-                )
-
-            adapter_info = adapter.get_adapter_info()
-            supported_formats = adapter_info.get(
-                "supported_formats", [_DEFAULT_EXPORT_EXTENSION]
-            )
-            # Use first supported format from adapter
-            file_extension = (
-                supported_formats[0] if supported_formats else _DEFAULT_EXPORT_EXTENSION
-            )
-        except Exception as adapter_error:
-            logger.error(f"[EXPORT] Error getting adapter info: {str(adapter_error)}")
-            # Fallback to xlsx if adapter query fails
-            file_extension = _DEFAULT_EXPORT_EXTENSION
-
-        # Determine output format from file extension (remove leading dot)
-        output_format = (
-            file_extension.lstrip(".")
-            if file_extension.startswith(".")
-            else file_extension
+        file_extension, adapter_error = _resolve_export_extension(
+            export_service, adapter_id
         )
-
-        # Create export config
-        config = ExportConfig(
-            institution_id=institution_id,
-            adapter_id=adapter_id,
-            export_view="standard",
-            include_metadata=include_metadata,
-            output_format=output_format,
+        if adapter_error:
+            return adapter_error
+        config, output_path, filename = _build_export_response_payload(
+            export_service, institution_id, data_type, adapter_id, include_metadata
         )
+        path_error = _validate_export_output_path(output_path)
+        if path_error:
+            return path_error
 
-        # Create temp file for export in secure temp directory
-        temp_dir = Path(tempfile.gettempdir())
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        # filename now uses sanitized data_type and adapter-determined extension
-        filename = f"{data_type}_export_{timestamp}{file_extension}"
-        output_path = temp_dir / filename
-
-        # Verify output path is within temp directory (defense in depth)
-        # Resolve parent directory first since output file doesn't exist yet
-        resolved_output_parent = output_path.parent.resolve()
-        resolved_temp_dir = temp_dir.resolve()
-        if not str(resolved_output_parent).startswith(str(resolved_temp_dir)):
-            logger.error(f"[EXPORT] Path traversal attempt detected: {output_path}")
-            return jsonify({"success": False, "error": "Invalid export path"}), 400
-
-        # Perform export
         result = export_service.export_data(config, str(output_path))
 
         if not result.success:
@@ -237,29 +273,7 @@ def export_data() -> ResponseReturnValue:
             f"[EXPORT] Export successful: {result.records_exported} records, file: {result.file_path}"
         )
 
-        # Get appropriate mimetype from adapter's file extension
-        mimetype = get_mimetype_for_extension(file_extension)
-
-        # Schedule temp file cleanup after response is sent
-        file_to_cleanup = output_path  # Capture for closure
-
-        @after_this_request
-        def cleanup_temp_file(response: Any) -> Any:
-            try:
-                if file_to_cleanup.exists():
-                    file_to_cleanup.unlink()
-                    logger.debug(f"[EXPORT] Cleaned up temp file: {file_to_cleanup}")
-            except Exception as cleanup_error:
-                logger.warning(f"[EXPORT] Failed to cleanup temp file: {cleanup_error}")
-            return response
-
-        # Send file as download
-        return send_file(
-            str(output_path),
-            as_attachment=True,
-            download_name=filename,
-            mimetype=mimetype,
-        )
+        return _send_export_file(output_path, filename, file_extension)
 
     except Exception as e:
         logger.error(f"Error during export: {str(e)}", exc_info=True)
@@ -397,6 +411,38 @@ def _create_system_manifest(
     }
 
 
+def _prepare_system_export_dir() -> tuple[Path, Path, str, str]:
+    """Create and return the temp directory context for a system export."""
+    temp_base = Path(tempfile.gettempdir())
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    unique_id = uuid.uuid4().hex[:8]
+    system_export_dir = temp_base / f"system_export_{timestamp}_{unique_id}"
+    system_export_dir.mkdir(parents=True, exist_ok=True)
+    return temp_base, system_export_dir, timestamp, unique_id
+
+
+def _resolve_system_export_format(
+    export_service: Any, adapter_id: str
+) -> tuple[str, str] | None:
+    """Return adapter file extension and output format for system export."""
+    adapter = export_service.registry.get_adapter_by_id(adapter_id)
+    if not adapter:
+        return None
+    file_extension = _get_adapter_file_extension(export_service, adapter_id)
+    output_format = (
+        file_extension.lstrip(".") if file_extension.startswith(".") else file_extension
+    )
+    return file_extension, output_format
+
+
+def _cleanup_system_export_dir(system_export_dir: Path) -> None:
+    """Best-effort cleanup for failed system export temp directories."""
+    try:
+        shutil.rmtree(system_export_dir)
+    except Exception as cleanup_error:
+        logger.error(f"[EXPORT] Failed to cleanup temp directory: {str(cleanup_error)}")
+
+
 def _export_all_institutions(current_user: Dict[str, Any]) -> ResponseReturnValue:
     """
     Export all institutions for Site Admin as a zip of folders.
@@ -414,8 +460,7 @@ def _export_all_institutions(current_user: Dict[str, Any]) -> ResponseReturnValu
     Returns:
         Flask send_file response with system-wide export ZIP
     """
-    system_export_dir = None
-
+    system_export_dir: Path | None = None
     try:
         data_type, adapter_id, include_metadata = _sanitize_export_params()
         logger.info(
@@ -426,31 +471,20 @@ def _export_all_institutions(current_user: Dict[str, Any]) -> ResponseReturnValu
         if not institutions:
             return jsonify({"success": False, "error": "No institutions found"}), 404
 
-        # Setup export directory with UUID for uniqueness
-        temp_base = Path(tempfile.gettempdir())
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        unique_id = uuid.uuid4().hex[:8]
-        system_export_dir = temp_base / f"system_export_{timestamp}_{unique_id}"
-        system_export_dir.mkdir(parents=True, exist_ok=True)
-
+        temp_base, system_export_dir, timestamp, unique_id = (
+            _prepare_system_export_dir()
+        )
         export_service = create_export_service()
-        adapter = export_service.registry.get_adapter_by_id(adapter_id)
-        if not adapter:
+        export_format = _resolve_system_export_format(export_service, adapter_id)
+        if not export_format:
             return (
                 jsonify(
                     {"success": False, "error": f"Adapter not found: {adapter_id}"}
                 ),
                 400,
             )
+        file_extension, output_format = export_format
 
-        file_extension = _get_adapter_file_extension(export_service, adapter_id)
-        output_format = (
-            file_extension.lstrip(".")
-            if file_extension.startswith(".")
-            else file_extension
-        )
-
-        # Export institutions
         institution_results = [
             _export_institution(
                 export_service,
@@ -479,7 +513,6 @@ def _export_all_institutions(current_user: Dict[str, Any]) -> ResponseReturnValu
         with open(manifest_path, "w") as f:
             json.dump(system_manifest, f, indent=2)
 
-        # Create ZIP
         system_zip_path = _create_system_export_zip(
             system_export_dir, temp_base, timestamp, unique_id
         )
@@ -499,12 +532,7 @@ def _export_all_institutions(current_user: Dict[str, Any]) -> ResponseReturnValu
     except Exception as e:
         logger.error(f"[EXPORT] System export failed: {str(e)}", exc_info=True)
         if system_export_dir is not None and system_export_dir.exists():
-            try:
-                shutil.rmtree(system_export_dir)
-            except Exception as cleanup_error:
-                logger.error(
-                    f"[EXPORT] Failed to cleanup temp directory: {str(cleanup_error)}"
-                )
+            _cleanup_system_export_dir(system_export_dir)
         return (
             jsonify({"success": False, "error": f"System export failed: {str(e)}"}),
             500,

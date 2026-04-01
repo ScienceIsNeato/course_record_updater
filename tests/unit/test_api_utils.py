@@ -19,7 +19,7 @@ from src.services.auth_service import UserRole
 
 
 @pytest.fixture
-def app() -> Any:
+def app() -> Any:  # noqa: ambiguity-mine - pytest fixture convention
     """Create test Flask app."""
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -27,7 +27,7 @@ def app() -> Any:
 
 
 @pytest.fixture
-def client(app: Any) -> Any:
+def client(app: Any) -> Any:  # noqa: ambiguity-mine - pytest fixture convention
     """Create test client."""
     return app.test_client()
 

@@ -459,68 +459,10 @@ async function renderTermsTable() {
     // Update global state
     currentTerms = data.terms || [];
 
-    if (currentTerms.length === 0) {
-      // nosemgrep
-      container.innerHTML = `
-        <div class="alert alert-info">
-          <i class="fas fa-info-circle me-2"></i>
-          No terms found. Create a term to get started.
-        </div>
-      `;
-      return;
-    }
-
-    // Build table
-    let html = `
-      <div class="table-responsive">
-        <table class="table table-striped table-hover">
-          <thead>
-            <tr>
-              <th>Term Name</th>
-              <th>Start Date</th>
-              <th>End Date</th>
-              <th>Status</th>
-              <th>Offerings</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
-
-    currentTerms.forEach((term) => {
-      const statusValue = resolveTermStatus(term);
-      const statusBadge = renderTermStatusBadge(statusValue);
-      const offeringsCount = term.offerings_count || 0;
-      const termId = term.term_id || term.id;
-      const termName = escapeHtml(term.term_name || term.name || "-");
-
-      // Note: passing just the ID to openEditTermModal now
-      html += `
-        <tr>
-          <td><strong>${termName}</strong></td>
-          <td>${formatDate(term.start_date)}</td>
-          <td>${formatDate(term.end_date)}</td>
-          <td>${statusBadge}</td>
-          <td>${offeringsCount}</td>
-          <td>
-            <button class="btn btn-sm btn-outline-secondary" onclick='openEditTermModal("${termId}")'>
-              <i class="fas fa-edit"></i> Edit
-            </button>
-            <button class="btn btn-sm btn-outline-danger mt-1 mt-lg-0" onclick='deleteTerm("${termId}", "${termName.replace(/'/g, "\\'")}")'>
-              <i class="fas fa-trash"></i> Delete
-            </button>
-          </td>
-        </tr>
-      `;
-    });
-
-    html += `
-          </tbody>
-        </table>
-      </div>
-    `;
-
-    container.innerHTML = html; // nosemgrep
+    container.innerHTML =
+      currentTerms.length === 0
+        ? renderEmptyTermsState()
+        : renderTermsTableMarkup(currentTerms); // nosemgrep
   } catch (error) {
     console.error("Error loading terms:", error); // eslint-disable-line no-console
     // nosemgrep
@@ -531,6 +473,64 @@ async function renderTermsTable() {
       </div>
     `;
   }
+}
+
+function renderEmptyTermsState() {
+  return `
+    <div class="alert alert-info">
+      <i class="fas fa-info-circle me-2"></i>
+      No terms found. Create a term to get started.
+    </div>
+  `;
+}
+
+function renderTermRow(term) {
+  const statusValue = resolveTermStatus(term);
+  const statusBadge = renderTermStatusBadge(statusValue);
+  const offeringsCount = term.offerings_count || 0;
+  const termId = term.term_id || term.id;
+  const termName = escapeHtml(term.term_name || term.name || "-");
+  const escapedTermName = termName.replace(/'/g, "\\'");
+
+  return `
+    <tr>
+      <td><strong>${termName}</strong></td>
+      <td>${formatDate(term.start_date)}</td>
+      <td>${formatDate(term.end_date)}</td>
+      <td>${statusBadge}</td>
+      <td>${offeringsCount}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-secondary" onclick='openEditTermModal("${termId}")'>
+          <i class="fas fa-edit"></i> Edit
+        </button>
+        <button class="btn btn-sm btn-outline-danger mt-1 mt-lg-0" onclick='deleteTerm("${termId}", "${escapedTermName}")'>
+          <i class="fas fa-trash"></i> Delete
+        </button>
+      </td>
+    </tr>
+  `;
+}
+
+function renderTermsTableMarkup(terms) {
+  return `
+    <div class="table-responsive">
+      <table class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Term Name</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Status</th>
+            <th>Offerings</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${terms.map(renderTermRow).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
 /**

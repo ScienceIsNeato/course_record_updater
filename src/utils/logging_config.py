@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
+STANDARD_LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
 
 class SecureLogger(logging.Logger):
     """
@@ -83,7 +85,7 @@ def setup_logger(name: str, level: int = logging.INFO) -> SecureLogger:
 
     # Create formatter
     formatter = logging.Formatter(
-        fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        fmt=STANDARD_LOG_FORMAT,
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 

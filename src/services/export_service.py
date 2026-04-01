@@ -25,6 +25,7 @@ from src.database.database_service import (
     get_all_users,
     get_programs_by_institution,
 )
+from src.utils.constants import ADAPTER_NOT_FOUND_MSG, EXPORT_FAILED_MSG
 
 LOGGER = logging.getLogger(__name__)
 
@@ -96,7 +97,7 @@ class ExportService:
             # Check if adapter exists
             adapter = self.registry.get_adapter_by_id(adapter_id)
             if not adapter:
-                return False, f"Adapter not found: {adapter_id}"
+                return False, ADAPTER_NOT_FOUND_MSG.format(adapter_id=adapter_id)
 
             return True, "Access granted"
 
@@ -182,8 +183,9 @@ class ExportService:
             return result
 
         except Exception as e:
-            LOGGER.error(f"Export failed: {str(e)}")
-            return ExportResult(success=False, errors=[f"Export failed: {str(e)}"])
+            export_failed_msg = EXPORT_FAILED_MSG.format(error=str(e))
+            LOGGER.error(export_failed_msg)
+            return ExportResult(success=False, errors=[export_failed_msg])
 
     def _fetch_export_data(
         self, institution_id: str, filters: Optional[Dict[str, Any]] = None

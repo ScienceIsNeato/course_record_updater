@@ -13,6 +13,7 @@ from src.utils.logging_config import get_logger
 from src.utils.term_utils import get_term_status
 
 logger = get_logger(__name__)
+MAPPING_NOT_FOUND_MSG = "Mapping {mapping_id} not found"
 
 
 def _mapping_entries(mapping: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -42,12 +43,16 @@ def list_program_outcomes(
     )
 
 
-def get_program_outcome(plo_id: str) -> Optional[Dict[str, Any]]:
+def get_program_outcome(  # noqa: ambiguity-mine - service API intentionally mirrors storage verb
+    plo_id: str,
+) -> Optional[Dict[str, Any]]:
     """Return a single PLO by ID, or None."""
     return database_service.get_program_outcome(plo_id)
 
 
-def create_program_outcome(data: Dict[str, Any]) -> str:
+def create_program_outcome(  # noqa: ambiguity-mine - service API intentionally mirrors storage verb
+    data: Dict[str, Any],
+) -> str:
     """Create a new PLO template.
 
     Required keys: program_id, institution_id, description.
@@ -76,7 +81,9 @@ def create_program_outcome(data: Dict[str, Any]) -> str:
     return plo_id
 
 
-def update_program_outcome(plo_id: str, updates: Dict[str, Any]) -> bool:
+def update_program_outcome(  # noqa: ambiguity-mine - service API intentionally mirrors storage verb
+    plo_id: str, updates: Dict[str, Any]
+) -> bool:
     """Update a PLO template.  Returns True on success."""
     if not updates:
         raise ValueError("No update data provided")
@@ -86,7 +93,9 @@ def update_program_outcome(plo_id: str, updates: Dict[str, Any]) -> bool:
     return result
 
 
-def delete_program_outcome(plo_id: str) -> bool:
+def delete_program_outcome(  # noqa: ambiguity-mine - service API intentionally mirrors storage verb
+    plo_id: str,
+) -> bool:
     """Soft-delete a PLO template.  Returns True on success."""
     result = database_service.delete_program_outcome(plo_id)
     if result:
@@ -235,9 +244,9 @@ def get_mapping_matrix(
     if mapping_id:
         mapping = database_service.get_plo_mapping(mapping_id)
         if not mapping:
-            raise ValueError(f"Mapping {mapping_id} not found")
+            raise ValueError(MAPPING_NOT_FOUND_MSG.format(mapping_id=mapping_id))
         if str(mapping.get("program_id")) != str(program_id):
-            raise ValueError(f"Mapping {mapping_id} not found")
+            raise ValueError(MAPPING_NOT_FOUND_MSG.format(mapping_id=mapping_id))
     elif version is not None:
         mapping = database_service.get_plo_mapping_by_version(program_id, version)
         if not mapping:

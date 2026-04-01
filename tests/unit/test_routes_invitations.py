@@ -242,6 +242,26 @@ class TestInvitationEndpoints:
         assert call_args["invitee_email"] == "instructor@test.com"
         assert call_args["invitee_role"] == "instructor"
 
+    @patch("src.api.routes.auth_invitations.InvitationService")
+    def test_create_invitation_public_api_missing_email_stays_empty(
+        self, mock_invitation_service: Any
+    ) -> None:
+        """Missing alias email should not be normalized into the string 'None'."""
+        from src.services.invitation_service import InvitationError
+
+        self._login_institution_admin()
+        mock_invitation_service.create_invitation.side_effect = InvitationError(
+            "Missing required field: invitee_email"
+        )
+
+        response = self.client.post(
+            "/api/invitations",
+            json={"role": "instructor"},
+        )
+
+        assert response.status_code == 400
+        mock_invitation_service.create_invitation.assert_not_called()
+
 
 class TestAcceptInvitationEndpoints:
     """Test accept invitation API endpoints (Story 2.2)"""

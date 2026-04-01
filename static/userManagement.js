@@ -67,6 +67,57 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeAddUserModal();
 });
 
+function setModalSubmitButtonLoading(button, isLoading) {
+  const btnText = button.querySelector(".btn-text");
+  const btnSpinner = button.querySelector(".btn-spinner");
+  btnText.classList.toggle("d-none", isLoading);
+  btnSpinner.classList.toggle("d-none", !isLoading);
+  button.disabled = isLoading;
+}
+
+function buildInvitationData(roleSelect) {
+  const invitationData = {
+    invitee_email: document.getElementById("inviteEmail").value,
+    invitee_role: roleSelect.value,
+    personal_message: document.getElementById("inviteMessage").value || "",
+  };
+
+  if (roleSelect.value === "program_admin") {
+    const programsSelect = document.getElementById("invitePrograms");
+    invitationData.program_ids = Array.from(programsSelect.selectedOptions).map(
+      (opt) => opt.value,
+    );
+  }
+
+  return invitationData;
+}
+
+function getEditUserContext(form) {
+  const roleSelect = document.getElementById("editUserRole");
+  const newRole = roleSelect?.value;
+  const currentUserRole =
+    globalThis.currentUser?.role || document.body.dataset.currentRole || "";
+
+  return {
+    userId: document.getElementById("editUserId").value,
+    roleSelect,
+    newRole,
+    originalRole: roleSelect?.dataset.originalRole || newRole,
+    canEditRoles:
+      currentUserRole === "institution_admin" ||
+      currentUserRole === "site_admin",
+    saveBtn: form.querySelector('button[type="submit"]'),
+    updateData: {
+      first_name: document.getElementById("editFirstName").value,
+      last_name: document.getElementById("editLastName").value,
+      email: document.getElementById("editUserEmail").value,
+      ...(document.getElementById("editDisplayName")?.value && {
+        display_name: document.getElementById("editDisplayName").value,
+      }),
+    },
+  };
+}
+
 /**
  * Initialize Invite User Modal
  * Sets up form submission and role-based field visibility
@@ -92,33 +143,9 @@ function initializeInviteUserModal() {
   // Handle form submission
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-
-    const emailInput = document.getElementById("inviteEmail");
-    const messageInput = document.getElementById("inviteMessage");
-    const programsSelect = document.getElementById("invitePrograms");
     const sendBtn = document.getElementById("sendInviteBtn");
-    const btnText = sendBtn.querySelector(".btn-text");
-    const btnSpinner = sendBtn.querySelector(".btn-spinner");
-
-    // Collect form data
-    const invitationData = {
-      invitee_email: emailInput.value,
-      invitee_role: roleSelect.value,
-      personal_message: messageInput.value || "",
-    };
-
-    // Include program_ids if program_admin role
-    if (roleSelect.value === "program_admin") {
-      const selectedPrograms = Array.from(programsSelect.selectedOptions).map(
-        (opt) => opt.value,
-      );
-      invitationData.program_ids = selectedPrograms;
-    }
-
-    // Show loading state
-    btnText.classList.add("d-none");
-    btnSpinner.classList.remove("d-none");
-    sendBtn.disabled = true;
+    const invitationData = buildInvitationData(roleSelect);
+    setModalSubmitButtonLoading(sendBtn, true);
 
     try {
       // Get CSRF token
@@ -172,10 +199,7 @@ function initializeInviteUserModal() {
         "Failed to send invitation. Please check your connection and try again.",
       );
     } finally {
-      // Restore button state
-      btnText.classList.remove("d-none");
-      btnSpinner.classList.add("d-none");
-      sendBtn.disabled = false;
+      setModalSubmitButtonLoading(sendBtn, false);
     }
   });
 }
@@ -194,36 +218,16 @@ function initializeEditUserModal() {
   // Handle form submission
   form.addEventListener("submit", async function (e) {
     e.preventDefault();
-
-    const userId = document.getElementById("editUserId").value;
-    const firstName = document.getElementById("editFirstName").value;
-    const lastName = document.getElementById("editLastName").value;
-    const email = document.getElementById("editUserEmail").value;
-    const displayName = document.getElementById("editDisplayName")?.value;
-    const roleSelect = document.getElementById("editUserRole");
-    const newRole = roleSelect?.value;
-    const originalRole = roleSelect?.dataset.originalRole || newRole;
-    const currentUserRole =
-      globalThis.currentUser?.role || document.body.dataset.currentRole || "";
-    const canEditRoles =
-      currentUserRole === "institution_admin" ||
-      currentUserRole === "site_admin";
-
-    const updateData = {
-      first_name: firstName,
-      last_name: lastName,
-      email,
-      ...(displayName && { display_name: displayName }),
-    };
-
-    const saveBtn = this.querySelector('button[type="submit"]');
-    const btnText = saveBtn.querySelector(".btn-text");
-    const btnSpinner = saveBtn.querySelector(".btn-spinner");
-
-    // Show loading state
-    btnText.classList.add("d-none");
-    btnSpinner.classList.remove("d-none");
-    saveBtn.disabled = true;
+    const {
+      canEditRoles,
+      newRole,
+      originalRole,
+      roleSelect,
+      saveBtn,
+      updateData,
+      userId,
+    } = getEditUserContext(this);
+    setModalSubmitButtonLoading(saveBtn, true);
 
     try {
       // Get CSRF token
@@ -294,10 +298,7 @@ function initializeEditUserModal() {
         "Failed to update user. Please check your connection and try again.",
       );
     } finally {
-      // Restore button state
-      btnText.classList.remove("d-none");
-      btnSpinner.classList.add("d-none");
-      saveBtn.disabled = false;
+      setModalSubmitButtonLoading(saveBtn, false);
     }
   });
 }

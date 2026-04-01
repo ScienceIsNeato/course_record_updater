@@ -267,7 +267,9 @@ class TestBuildCloTrends:
 # ---------------------------------------------------------------------------
 
 
-def _wire(suffix: str, num_clos: int = 2) -> Any:
+def _wire(  # noqa: ambiguity-mine - test-local wiring helper
+    suffix: str, num_clos: int = 2
+) -> Any:
     """Build institution + program + 1 course + CLOs. Returns (inst_id, prog_id, [clo_ids])."""
     inst_id = database_service.create_institution(
         {**INST_DATA, "name": f"TTU {suffix}", "short_name": f"TTU{suffix}"}
@@ -304,7 +306,9 @@ def _wire(suffix: str, num_clos: int = 2) -> Any:
     return inst_id, prog_id, clo_ids
 
 
-def _make_plo(prog_id: str, inst_id: str, n: int) -> str:
+def _make_plo(  # noqa: ambiguity-mine - test-local PLO factory helper
+    prog_id: str, inst_id: str, n: int
+) -> str:
     return database_service.create_program_outcome(
         {
             "program_id": prog_id,
@@ -315,7 +319,9 @@ def _make_plo(prog_id: str, inst_id: str, n: int) -> str:
     )
 
 
-def _publish(prog_id: str, entries: list[tuple[str, str]]) -> str:
+def _publish(  # noqa: ambiguity-mine - test-local publish helper
+    prog_id: str, entries: list[tuple[str, str]]
+) -> str:
     draft = database_service.get_or_create_plo_mapping_draft(prog_id)
     mapping_id = draft["id"]
     for plo_id, clo_id in entries:

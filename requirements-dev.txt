@@ -16,6 +16,7 @@ pytest>=7.4.0              # Testing framework
 pytest-cov>=4.1.0          # Coverage reporting for pytest
 pytest-mock>=3.11.0        # Mock utilities for pytest
 pytest-asyncio>=0.21.0     # Async testing support
+pytest-testmon>=2.1.0      # Test impact analysis plugin required by untested-code gate
 pytest-xdist>=3.6.1        # Parallel test execution (35% faster)
 
 # Security scanning
@@ -35,7 +36,8 @@ tox>=4.6.0                 # Testing across multiple Python versions
 # Security patch minimums (safety scan)
 filelock>=3.20.1
 authlib>=1.6.5
-requests>=2.32.4
+cryptography>=46.0.6       # CVE-2026-34073 (transitive via Authlib)
+requests>=2.33.0
 
 # Documentation
 sphinx>=7.1.0              # Documentation generator

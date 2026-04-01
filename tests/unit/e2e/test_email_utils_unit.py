@@ -11,7 +11,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 
-def _load_module() -> Any:
+def _load_email_utils_module() -> Any:
     root = Path(__file__).resolve().parents[3]
     file_path = root / "tests" / "e2e" / "email_utils.py"
     spec = importlib.util.spec_from_file_location("email_utils", file_path)
@@ -22,8 +22,11 @@ def _load_module() -> Any:
     return module
 
 
+_load_module = _load_email_utils_module
+
+
 def test_mailtrap_auth_and_api_calls(monkeypatch: Any) -> None:
-    module = _load_module()
+    module = _load_email_utils_module()
 
     monkeypatch.setenv("MAILTRAP_API_USERNAME", "u")
     monkeypatch.setenv("MAILTRAP_API_PASSWORD", "p")
@@ -36,7 +39,7 @@ def test_mailtrap_auth_and_api_calls(monkeypatch: Any) -> None:
 
 @patch("requests.get")
 def test_get_inbox_emails_and_filters(mock_get: Any) -> None:
-    module = _load_module()
+    module = _load_email_utils_module()
     payload = [
         {"subject": "Welcome", "to_email": "x@test.edu"},
         {"subject": "Reset Password", "to_email": "y@test.edu, x@test.edu"},
@@ -55,7 +58,7 @@ def test_get_inbox_emails_and_filters(mock_get: Any) -> None:
 
 @patch("requests.get")
 def test_get_inbox_emails_request_error(mock_get: Any) -> None:
-    module = _load_module()
+    module = _load_email_utils_module()
     mock_get.side_effect = module.requests.exceptions.RequestException("boom")
 
     with patch.object(module, "get_mailtrap_auth", return_value=("u", "p")):
@@ -64,7 +67,7 @@ def test_get_inbox_emails_request_error(mock_get: Any) -> None:
 
 
 def test_wait_for_email_delegation_and_legacy_paths() -> None:
-    module = _load_module()
+    module = _load_email_utils_module()
 
     with patch.object(
         module, "wait_for_email_via_imap", return_value={"ok": True}

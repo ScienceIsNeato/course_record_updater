@@ -27,11 +27,13 @@ from flask import Flask
 # Add parent dir to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from src.utils.logging_config import STANDARD_LOG_FORMAT
+
 # Setup Logging
 os.makedirs("logs", exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    format=STANDARD_LOG_FORMAT,
     handlers=[logging.FileHandler("logs/demo_advancer.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger("demo_advancer")
@@ -132,95 +134,139 @@ def run_generate_logs(app: Flask, db: ModuleType) -> None:
         logger.error(f"Import failed: {e}")
 
 
-def run_semester_end(app: Flask, db: ModuleType) -> None:
-    """Fast-forwards to Phase 4 (Submissions, Duplications, Reminders)."""
-    from src.models.models import CourseOutcome
-    from src.services.bulk_email_service import BulkEmailService
-    from src.services.clo_workflow_service import CLOWorkflowService
-    from src.utils.constants import CLOStatus
+def _ensure_demo_clo(
+    db: ModuleType,
+    course_outcome_cls: Any,
+    clo_status: Any,
+    course_id: str,
+    clo_num: Any,
+    desc: str,
+    method: str = "Exam Question",
+) -> str:
+    """Create the requested demo CLO if it does not already exist."""
+    existing = db.get_course_outcomes(course_id)
+    for clo in existing:
+        if str(clo.get("clo_number")) == str(clo_num):
+            outcome_id = clo.get("outcome_id") or clo.get("id")
+            if outcome_id is None:
+                logger.error("Existing CLO missing outcome id for course %s", course_id)
+                raise RuntimeError("Existing CLO has no outcome id")
+            return outcome_id
 
-    logger.info("=== Target: Semester End (Phase 4 Setup) ===")
+    schema = course_outcome_cls.create_schema(
+        course_id=course_id,
+        clo_number=str(clo_num),
+        description=desc,
+        assessment_method=method,
+    )
+    schema["status"] = clo_status.ASSIGNED
+    outcome_id = db.create_course_outcome(schema)
+    if outcome_id is None:
+        logger.error("Failed to create CLO %s for course %s", clo_num, course_id)
+        raise RuntimeError("Failed to create course outcome")
+    logger.info(f"Created CLO {clo_num} for course {course_id}")
+    return outcome_id
 
-    # 1. Find Users
+
+def _get_semester_end_context(
+    db: ModuleType,
+) -> tuple[Any, Any, Any, str, str, str, Any, Any]:
+    """Load the users and courses needed for semester-end setup."""
     morgan = db.get_user_by_email("dr.morgan@demo.example.com")
     patel = db.get_user_by_email("dr.patel@demo.example.com")
     admin = db.get_user_by_email("demo2025.admin@example.com")
-
     if not morgan or not patel or not admin:
-        logger.error(
+        raise RuntimeError(
             "Users not found. Please run 'python scripts/seed_db.py --demo --clear --env dev' first."
         )
-        return
 
     institution_id = morgan.get("institution_id")
-    morgan_id = morgan.get("user_id") or morgan.get("id")
-    patel_id = patel.get("user_id") or patel.get("id")
-    admin_id = admin.get("user_id") or admin.get("id")
-
-    # 2. Find Courses
     biol101 = db.get_course_by_number("BIOL-101", institution_id)
     zool101 = db.get_course_by_number("ZOOL-101", institution_id)
+    if not biol101 or not zool101:
+        raise RuntimeError("Semester-end demo courses are missing.")
 
-    if not biol101:
-        logger.error("BIOL-101 not found.")
-        return
-
-    if not zool101:
-        logger.error("ZOOL-101 not found.")
-        return
-
-    biol101_id = biol101.get("course_id") or biol101.get("id")
-    zool101_id = zool101.get("course_id") or zool101.get("id")
-
-    logger.info("Found users and courses. Creating CLOs...")
-
-    # 3. Create CLOs (if not exist)
-    def ensure_clo(
-        course_id: str,
-        clo_num: Any,
-        desc: str,
-        method: str = "Exam Question",
-    ) -> str:
-        existing = db.get_course_outcomes(course_id)
-        for clo in existing:
-            if str(clo.get("clo_number")) == str(clo_num):
-                outcome_id = clo.get("outcome_id") or clo.get("id")
-                if outcome_id is None:
-                    logger.error(
-                        "Existing CLO missing outcome id for course %s", course_id
-                    )
-                    raise RuntimeError("Existing CLO has no outcome id")
-                return outcome_id
-
-        schema = CourseOutcome.create_schema(
-            course_id=course_id,
-            clo_number=str(clo_num),
-            description=desc,
-            assessment_method=method,
-        )
-        schema["status"] = CLOStatus.ASSIGNED
-
-        outcome_id = db.create_course_outcome(schema)
-        if outcome_id is None:
-            logger.error("Failed to create CLO %s for course %s", clo_num, course_id)
-            raise RuntimeError("Failed to create course outcome")
-        logger.info(f"Created CLO {clo_num} for course {course_id}")
-        return outcome_id
-
-    # Create CLOs for BIOL-101
-    biol_clo1_id = ensure_clo(biol101_id, 1, "Analyze cell structures", "Lab Report")
-    biol_clo2_id = ensure_clo(biol101_id, 2, "Explain metabolic pathways", "Final Exam")
-    biol_clo3_id = ensure_clo(
-        biol101_id, 3, "Apply scientific method", "Research Project"
+    return (
+        morgan,
+        patel,
+        admin,
+        morgan.get("user_id") or morgan.get("id"),
+        patel.get("user_id") or patel.get("id"),
+        admin.get("user_id") or admin.get("id"),
+        biol101,
+        zool101,
     )
 
-    # Create CLOs for ZOOL-101
-    zool_clo1_id = ensure_clo(
-        zool101_id, 1, "Identify vertebrate classes", "Field Observation"
-    )
-    zool_clo2_id = ensure_clo(zool101_id, 2, "Analyze animal behavior", "Lab Report")
 
-    # 4. Submit BIOL-101 CLO 1 → Awaiting Approval (good data, ready to approve)
+def _create_semester_end_clos(
+    db: ModuleType,
+    course_outcome_cls: Any,
+    clo_status: Any,
+    biol101_id: str,
+    zool101_id: str,
+) -> tuple[str, str, str, str, str]:
+    """Ensure the semester-end CLOs exist for both courses."""
+    biol_clo1_id = _ensure_demo_clo(
+        db,
+        course_outcome_cls,
+        clo_status,
+        biol101_id,
+        1,
+        "Analyze cell structures",
+        "Lab Report",
+    )
+    biol_clo2_id = _ensure_demo_clo(
+        db,
+        course_outcome_cls,
+        clo_status,
+        biol101_id,
+        2,
+        "Explain metabolic pathways",
+        "Final Exam",
+    )
+    biol_clo3_id = _ensure_demo_clo(
+        db,
+        course_outcome_cls,
+        clo_status,
+        biol101_id,
+        3,
+        "Apply scientific method",
+        "Research Project",
+    )
+    zool_clo1_id = _ensure_demo_clo(
+        db,
+        course_outcome_cls,
+        clo_status,
+        zool101_id,
+        1,
+        "Identify vertebrate classes",
+        "Field Observation",
+    )
+    zool_clo2_id = _ensure_demo_clo(
+        db,
+        course_outcome_cls,
+        clo_status,
+        zool101_id,
+        2,
+        "Analyze animal behavior",
+        "Lab Report",
+    )
+    return biol_clo1_id, biol_clo2_id, biol_clo3_id, zool_clo1_id, zool_clo2_id
+
+
+def _apply_semester_end_statuses(
+    db: ModuleType,
+    workflow_service: Any,
+    morgan_id: str,
+    patel_id: str,
+    admin_id: str,
+    biol_clo1_id: str,
+    biol_clo2_id: str,
+    biol_clo3_id: str,
+    zool_clo1_id: str,
+    zool_clo2_id: str,
+) -> None:
+    """Drive the semester-end CLO workflow states."""
     logger.info("Simulating BIOL-101 CLO 1 submission (Morgan) → Awaiting Approval...")
     db.update_outcome_assessment(
         biol_clo1_id,
@@ -228,10 +274,8 @@ def run_semester_end(app: Flask, db: ModuleType) -> None:
         students_passed=22,
         assessment_tool="Lab Report #4 - Microscopy",
     )
-    CLOWorkflowService.submit_clo_for_approval(biol_clo1_id, morgan_id)
-    logger.info(f"✓ BIOL-101 CLO 1: Awaiting Approval")
+    workflow_service.submit_clo_for_approval(biol_clo1_id, morgan_id)
 
-    # 5. Submit & Approve BIOL-101 CLO 2 → Approved
     logger.info(
         "Simulating BIOL-101 CLO 2 submission and approval (Morgan) → Approved..."
     )
@@ -241,35 +285,32 @@ def run_semester_end(app: Flask, db: ModuleType) -> None:
         students_passed=20,
         assessment_tool="Final Exam - Metabolic Pathways Section",
     )
-    CLOWorkflowService.submit_clo_for_approval(biol_clo2_id, morgan_id)
-    CLOWorkflowService.approve_clo(biol_clo2_id, admin_id)
-    logger.info(f"✓ BIOL-101 CLO 2: Approved")
+    workflow_service.submit_clo_for_approval(biol_clo2_id, morgan_id)
+    workflow_service.approve_clo(biol_clo2_id, admin_id)
 
-    # 6. Submit & Request Rework for ZOOL-101 CLO 1 → Needs Rework
     logger.info(
         "Simulating ZOOL-101 CLO 1 submission and rejection (Patel) → Needs Rework..."
     )
     db.update_outcome_assessment(
-        zool_clo1_id, students_took=0, students_passed=0, assessment_tool="Pending tool"
+        zool_clo1_id,
+        students_took=0,
+        students_passed=0,
+        assessment_tool="Pending tool",
     )
-    CLOWorkflowService.submit_clo_for_approval(zool_clo1_id, patel_id)
-    CLOWorkflowService.request_rework(
+    workflow_service.submit_clo_for_approval(zool_clo1_id, patel_id)
+    workflow_service.request_rework(
         zool_clo1_id,
         admin_id,
         "Please provide complete assessment data. Currently showing 0 students, which appears incomplete.",
     )
-    logger.info(f"✓ ZOOL-101 CLO 1: Needs Rework")
 
-    # 7. Mark BIOL-101 CLO 3 as NCI → Never Coming In
     logger.info("Marking BIOL-101 CLO 3 as Never Coming In...")
-    CLOWorkflowService.mark_as_nci(
+    workflow_service.mark_as_nci(
         biol_clo3_id,
         admin_id,
         "Instructor on extended leave; course not taught this semester.",
     )
-    logger.info(f"✓ BIOL-101 CLO 3: Never Coming In")
 
-    # 8. Submit ZOOL-101 CLO 2 → Awaiting Approval (second awaiting approval entry)
     logger.info("Simulating ZOOL-101 CLO 2 submission (Patel) → Awaiting Approval...")
     db.update_outcome_assessment(
         zool_clo2_id,
@@ -277,30 +318,38 @@ def run_semester_end(app: Flask, db: ModuleType) -> None:
         students_passed=15,
         assessment_tool="Lab Report - Animal Behavior Analysis",
     )
-    CLOWorkflowService.submit_clo_for_approval(zool_clo2_id, patel_id)
-    logger.info(f"✓ ZOOL-101 CLO 2: Awaiting Approval")
+    workflow_service.submit_clo_for_approval(zool_clo2_id, patel_id)
 
-    # 9. Simulate Course Duplication
+
+def _ensure_duplicate_course(db: ModuleType, institution_id: str, biol101: Any) -> None:
+    """Create the semester-end duplicate course if needed."""
     logger.info("Simulating Course Duplication for BIOL-101...")
     dup_course = db.get_course_by_number("BIOL-101-V2", institution_id)
-    if not dup_course:
-        dup_id = db.duplicate_course_record(
-            biol101, overrides={"course_number": "BIOL-101-V2", "active": True}
-        )
-        if dup_id:
-            logger.info(f"Successfully duplicated course. New ID: {dup_id}")
-        else:
-            logger.error("Failed to duplicate course.")
-    else:
+    if dup_course:
         logger.info("Duplicate course BIOL-101-V2 already exists.")
+        return
 
-    # 10. Trigger Reminders
+    dup_id = db.duplicate_course_record(
+        biol101, overrides={"course_number": "BIOL-101-V2", "active": True}
+    )
+    if dup_id:
+        logger.info(f"Successfully duplicated course. New ID: {dup_id}")
+    else:
+        logger.error("Failed to duplicate course.")
+
+
+def _trigger_semester_end_reminders(
+    db: ModuleType,
+    bulk_email_service: Any,
+    morgan_id: str,
+    patel_id: str,
+    admin_id: str,
+) -> None:
+    """Kick off the reminder workflow for the semester-end state."""
     logger.info("Triggering Reminder Runbook...")
     try:
-        # Access private _db_service to get sqlite session
         session = db._db_service.sqlite.get_session()
-
-        job_id = BulkEmailService.send_instructor_reminders(
+        job_id = bulk_email_service.send_instructor_reminders(
             db=session,
             instructor_ids=[morgan_id, patel_id],
             created_by_user_id=admin_id,
@@ -310,9 +359,46 @@ def run_semester_end(app: Flask, db: ModuleType) -> None:
         logger.info(f"Bulk email job started: {job_id}")
         time.sleep(2)
         logger.info("Reminder job processing in background...")
-
     except Exception as e:
         logger.error(f"Failed to trigger reminders: {e}")
+
+
+def run_semester_end(app: Flask, db: ModuleType) -> None:
+    """Fast-forwards to Phase 4 (Submissions, Duplications, Reminders)."""
+    from src.models.models import CourseOutcome
+    from src.services.bulk_email_service import BulkEmailService
+    from src.services.clo_workflow_service import CLOWorkflowService
+    from src.utils.constants import CLOStatus
+
+    logger.info("=== Target: Semester End (Phase 4 Setup) ===")
+
+    try:
+        (
+            morgan,
+            _patel,
+            _admin,
+            morgan_id,
+            patel_id,
+            admin_id,
+            biol101,
+            zool101,
+        ) = _get_semester_end_context(db)
+    except RuntimeError as error:
+        logger.error(str(error))
+        return
+
+    institution_id = morgan.get("institution_id")
+    biol101_id = biol101.get("course_id") or biol101.get("id")
+    zool101_id = zool101.get("course_id") or zool101.get("id")
+    logger.info("Found users and courses. Creating CLOs...")
+    clo_ids = _create_semester_end_clos(
+        db, CourseOutcome, CLOStatus, biol101_id, zool101_id
+    )
+    _apply_semester_end_statuses(
+        db, CLOWorkflowService, morgan_id, patel_id, admin_id, *clo_ids
+    )
+    _ensure_duplicate_course(db, institution_id, biol101)
+    _trigger_semester_end_reminders(db, BulkEmailService, morgan_id, patel_id, admin_id)
 
 
 def main() -> None:

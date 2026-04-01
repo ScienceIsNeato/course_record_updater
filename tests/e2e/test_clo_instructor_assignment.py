@@ -12,19 +12,19 @@ from tests.e2e.test_helpers import (
 )
 
 
-def _setup_unassigned_clo(admin_page: Any, institution_id: Any) -> Any:
-    """
-    Sets up an unassigned CLO for testing.
-    """
-    csrf_token = admin_page.evaluate(
-        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
-    )
-    headers = {
+def _assignment_headers(csrf_token: Any) -> dict[str, str]:
+    return {
         "Content-Type": "application/json",
         "X-CSRFToken": csrf_token if csrf_token else "",
     }
 
-    # 1. Create Program
+
+def _create_assignment_entities(
+    admin_page: Any, institution_id: Any, csrf_token: Any
+) -> tuple[str, str]:
+    """Create program, course, term, instructor, offering, and section."""
+    headers = _assignment_headers(csrf_token)
+
     program_resp = admin_page.request.post(
         f"{BASE_URL}/api/programs",
         headers=headers,
@@ -39,7 +39,6 @@ def _setup_unassigned_clo(admin_page: Any, institution_id: Any) -> Any:
     assert program_resp.ok
     program_id = program_resp.json()["program_id"]
 
-    # 2. Create Course
     course_resp = admin_page.request.post(
         f"{BASE_URL}/api/courses",
         headers=headers,
@@ -56,7 +55,6 @@ def _setup_unassigned_clo(admin_page: Any, institution_id: Any) -> Any:
     assert course_resp.ok
     course_id = course_resp.json()["course_id"]
 
-    # 3. Create Term
     term_resp = admin_page.request.post(
         f"{BASE_URL}/api/terms",
         headers=headers,
@@ -73,7 +71,6 @@ def _setup_unassigned_clo(admin_page: Any, institution_id: Any) -> Any:
     assert term_resp.ok
     term_id = term_resp.json()["term_id"]
 
-    # 4. Create Offering
     unique_id = str(uuid.uuid4())[:8]
     instructor_email = f"instructor.invite.{unique_id}@test.com"
     instructor = create_test_user_via_api(
@@ -103,7 +100,6 @@ def _setup_unassigned_clo(admin_page: Any, institution_id: Any) -> Any:
     assert offering_resp.ok
     offering_id = offering_resp.json()["offering_id"]
 
-    # 5. Create Section
     section_resp = admin_page.request.post(
         f"{BASE_URL}/api/sections",
         headers=headers,
@@ -117,11 +113,16 @@ def _setup_unassigned_clo(admin_page: Any, institution_id: Any) -> Any:
     )
     assert section_resp.ok
     section_id = section_resp.json()["section_id"]
+    return course_id, section_id
 
-    # 6. Create CLO Template
+
+def _create_unassigned_assignment_clo(
+    admin_page: Any, course_id: str, csrf_token: Any
+) -> tuple[str, Any]:
+    """Create the unassigned CLO template and resolve its section outcome id."""
     clo_resp = admin_page.request.post(
         f"{BASE_URL}/api/courses/{course_id}/outcomes",
-        headers=headers,
+        headers=_assignment_headers(csrf_token),
         data=json.dumps(
             {
                 "course_id": course_id,
@@ -134,20 +135,35 @@ def _setup_unassigned_clo(admin_page: Any, institution_id: Any) -> Any:
     assert clo_resp.ok
     clo_id = clo_resp.json()["outcome_id"]
 
-    # 7. Get Section Outcome ID
     audit_resp = admin_page.request.get(
         f"{BASE_URL}/api/outcomes/audit?course_id={course_id}",
-        headers=headers,
+        headers=_assignment_headers(csrf_token),
     )
     assert audit_resp.ok
     outcomes = audit_resp.json().get("outcomes", [])
     target = next((o for o in outcomes if o.get("outcome_id") == clo_id), None)
+    return clo_id, target["id"] if target else None
+
+
+def _setup_unassigned_clo(admin_page: Any, institution_id: Any) -> Any:
+    """
+    Sets up an unassigned CLO for testing.
+    """
+    csrf_token = admin_page.evaluate(
+        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
+    )
+    course_id, section_id = _create_assignment_entities(
+        admin_page, institution_id, csrf_token
+    )
+    clo_id, section_outcome_id = _create_unassigned_assignment_clo(
+        admin_page, course_id, csrf_token
+    )
 
     return {
         "course_id": course_id,
         "section_id": section_id,
         "clo_id": clo_id,
-        "section_outcome_id": target["id"] if target else None,
+        "section_outcome_id": section_outcome_id,
     }
 
 

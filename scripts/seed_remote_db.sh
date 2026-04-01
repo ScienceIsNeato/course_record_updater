@@ -268,23 +268,10 @@ cleanup() {
     fi
 }
 
-# =============================================================================
-# Main Script
-# =============================================================================
+configure_environment() {
+    local environment=$1
 
-main() {
-    # Parse arguments
-    if [ $# -lt 1 ]; then
-        print_usage
-        exit 1
-    fi
-    
-    ENVIRONMENT=$1
-    shift
-    SEED_FLAGS=("$@")
-    
-    # Validate environment
-    case "$ENVIRONMENT" in
+    case "$environment" in
         dev)
             SERVICE_NAME="loopcloser-dev"
             BUCKET="loopcloser-db-dev"
@@ -307,18 +294,79 @@ main() {
             ORIGINAL_MAX_INSTANCES=10
             ;;
         *)
-            log_error "Invalid environment: $ENVIRONMENT"
+            log_error "Invalid environment: $environment"
             print_usage
             exit 1
             ;;
     esac
-    
-    # Print banner
+}
+
+print_main_banner() {
+    local environment=$1
     echo ""
     echo "╔════════════════════════════════════════════════════════════╗"
-    echo "║  Remote Database Seeding - $(echo "$ENVIRONMENT" | tr '[:lower:]' '[:upper:]') Environment"
+    echo "║  Remote Database Seeding - $(echo "$environment" | tr '[:lower:]' '[:upper:]') Environment"
     echo "╚════════════════════════════════════════════════════════════╝"
     echo ""
+}
+
+validate_seeded_database() {
+    local environment=$1
+    local bucket=$2
+    local local_db=$3
+    local service_url="https://${environment}.loopcloser.io"
+
+    echo ""
+    log_info "Validating seeding..."
+    sleep 5
+
+    log_info "Checking service health at $service_url/api/health..."
+    if curl -sf "$service_url/api/health" > /dev/null 2>&1; then
+        log_success "Service is responding"
+        log_info "Verifying database contents..."
+        gsutil cp "gs://${bucket}/loopcloser.db" "/tmp/validate_${local_db}"
+
+        USER_COUNT=$(sqlite3 "/tmp/validate_${local_db}" "SELECT COUNT(*) FROM users" 2>/dev/null || echo "0")
+        rm "/tmp/validate_${local_db}"
+
+        if [ "$USER_COUNT" -gt 0 ]; then
+            log_success "Database has $USER_COUNT users - seeding verified!"
+        else
+            log_warning "Database appears empty - seeding may not have worked"
+        fi
+    else
+        log_warning "Service not responding yet - may take a few moments to start"
+        log_info "Check manually: $service_url"
+    fi
+
+    echo ""
+    log_success "Remote database seeding complete!"
+    echo ""
+    log_info "Service URL: $service_url"
+    log_info "Backup location: gs://${bucket}/backups/"
+    echo ""
+    log_info "Demo credentials:"
+    echo "  Email: loopcloser_demo_admin@proton.me"
+    echo "  Password: Demo123!"
+    echo ""
+}
+
+# =============================================================================
+# Main Script
+# =============================================================================
+
+main() {
+    # Parse arguments
+    if [ $# -lt 1 ]; then
+        print_usage
+        exit 1
+    fi
+    
+    ENVIRONMENT=$1
+    shift
+    SEED_FLAGS=("$@")
+    configure_environment "$ENVIRONMENT"
+    print_main_banner "$ENVIRONMENT"
     
     # Run checks
     check_prerequisites
@@ -368,48 +416,7 @@ main() {
     # Step 8: Cleanup
     cleanup "$LOCAL_DB"
     
-    # Step 9: Validate seeding (verify service can access the data)
-    echo ""
-    log_info "Validating seeding..."
-    
-    # Wait a moment for service to fully restart
-    sleep 5
-    
-    # Try to query the health endpoint and then check if we can query user count
-    SERVICE_URL="https://${ENVIRONMENT}.loopcloser.io"
-    
-    log_info "Checking service health at $SERVICE_URL/api/health..."
-    if curl -sf "$SERVICE_URL/api/health" > /dev/null 2>&1; then
-        log_success "Service is responding"
-        
-        # Download the database again to verify it matches what we uploaded
-        log_info "Verifying database contents..."
-        gsutil cp "gs://${BUCKET}/loopcloser.db" "/tmp/validate_${LOCAL_DB}"
-        
-        USER_COUNT=$(sqlite3 "/tmp/validate_${LOCAL_DB}" "SELECT COUNT(*) FROM users" 2>/dev/null || echo "0")
-        rm "/tmp/validate_${LOCAL_DB}"
-        
-        if [ "$USER_COUNT" -gt 0 ]; then
-            log_success "Database has $USER_COUNT users - seeding verified!"
-        else
-            log_warning "Database appears empty - seeding may not have worked"
-        fi
-    else
-        log_warning "Service not responding yet - may take a few moments to start"
-        log_info "Check manually: $SERVICE_URL"
-    fi
-    
-    # Success message
-    echo ""
-    log_success "Remote database seeding complete!"
-    echo ""
-    log_info "Service URL: $SERVICE_URL"
-    log_info "Backup location: gs://${BUCKET}/backups/"
-    echo ""
-    log_info "Demo credentials:"
-    echo "  Email: loopcloser_demo_admin@proton.me"
-    echo "  Password: Demo123!"
-    echo ""
+    validate_seeded_database "$ENVIRONMENT" "$BUCKET" "$LOCAL_DB"
 }
 
 # Run main function

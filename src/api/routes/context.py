@@ -25,6 +25,12 @@ from src.services.auth_service import (
     login_required,
     set_current_program_id,
 )
+from src.utils.constants import (
+    ADMIN_ACCESS_REQUIRED_MSG,
+    INSTITUTION_CONTEXT_REQUIRED_MSG,
+    PROGRAM_NOT_FOUND_MSG,
+    SESSION_USER_ID_NOT_FOUND_MSG,
+)
 from src.utils.logging_config import get_logger
 
 # Create blueprint
@@ -100,7 +106,7 @@ def validate_context() -> Optional[ResponseReturnValue]:
                 jsonify(
                     {
                         "success": False,
-                        "error": "Institution context required",
+                        "error": INSTITUTION_CONTEXT_REQUIRED_MSG,
                         "code": "MISSING_INSTITUTION_CONTEXT",
                     }
                 ),
@@ -182,7 +188,7 @@ def switch_program_context(program_id: str) -> ResponseReturnValue:
         # Verify program exists
         program = get_program_by_id(program_id)
         if not program:
-            return jsonify({"success": False, "error": "Program not found"}), 404
+            return jsonify({"success": False, "error": PROGRAM_NOT_FOUND_MSG}), 404
 
         # Switch context
         if set_current_program_id(program_id):
@@ -239,7 +245,9 @@ def clear_program_context() -> ResponseReturnValue:
 
 
 @context_bp.route("/me", methods=["GET"])
-def get_current_user_info() -> ResponseReturnValue:
+def get_current_user_info() -> (  # noqa: ambiguity-mine - route handler intentionally mirrors service verb
+    ResponseReturnValue
+):
     """
     Get current authenticated user's information
 
@@ -287,7 +295,7 @@ def get_system_date() -> ResponseReturnValue:
         # Check role - only admins can access
         role = current_user.get("role", "")
         if role not in ["institution_admin", "site_admin"]:
-            return jsonify({"success": False, "error": "Admin access required"}), 403
+            return jsonify({"success": False, "error": ADMIN_ACCESS_REQUIRED_MSG}), 403
 
         override = current_user.get("system_date_override")
         return jsonify(
@@ -319,7 +327,7 @@ def set_system_date() -> ResponseReturnValue:
         # Check role - only admins can access
         role = current_user.get("role", "")
         if role not in ["institution_admin", "site_admin"]:
-            return jsonify({"success": False, "error": "Admin access required"}), 403
+            return jsonify({"success": False, "error": ADMIN_ACCESS_REQUIRED_MSG}), 403
 
         data = request.get_json()
         if not data or "date" not in data:
@@ -334,9 +342,7 @@ def set_system_date() -> ResponseReturnValue:
         user_id = get_current_user_id_safe()
         if not user_id:
             return (
-                jsonify(
-                    {"success": False, "error": "Session error: user ID not found"}
-                ),
+                jsonify({"success": False, "error": SESSION_USER_ID_NOT_FOUND_MSG}),
                 401,
             )
         update_user(user_id, {"system_date_override": override_date})
@@ -370,15 +376,13 @@ def clear_system_date() -> ResponseReturnValue:
         # Check role - only admins can access
         role = current_user.get("role", "")
         if role not in ["institution_admin", "site_admin"]:
-            return jsonify({"success": False, "error": "Admin access required"}), 403
+            return jsonify({"success": False, "error": ADMIN_ACCESS_REQUIRED_MSG}), 403
 
         # Clear override
         user_id = get_current_user_id_safe()
         if not user_id:
             return (
-                jsonify(
-                    {"success": False, "error": "Session error: user ID not found"}
-                ),
+                jsonify({"success": False, "error": SESSION_USER_ID_NOT_FOUND_MSG}),
                 401,
             )
         update_user(user_id, {"system_date_override": None})

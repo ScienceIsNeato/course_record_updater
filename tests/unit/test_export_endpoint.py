@@ -10,6 +10,7 @@ from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
+from flask import Response
 
 from src.services.export_service import ExportResult
 
@@ -110,6 +111,24 @@ class TestExportEndpoint:
         finally:
             # Cleanup
             Path(temp_path).unlink(missing_ok=True)
+
+    def test_validate_export_output_path_uses_parent_membership(self) -> None:
+        """Sibling temp-like directories should fail the containment check."""
+        from src.api.routes.exports import _validate_export_output_path
+        from src.app import app
+
+        real_temp = Path(tempfile.gettempdir()).resolve()
+        sibling = real_temp.parent / f"{real_temp.name}_sibling"
+
+        with app.app_context():
+            response = _validate_export_output_path(sibling / "evil.xlsx")
+
+        assert response is not None
+        body, status = response  # type: ignore[misc, str-unpack]
+        body = body if isinstance(body, Response) else None
+        assert status == 400
+        assert body is not None
+        assert body.get_json()["error"] == "Invalid export path"
 
     @patch("src.api.routes.exports.create_export_service")
     def test_export_handles_failure(

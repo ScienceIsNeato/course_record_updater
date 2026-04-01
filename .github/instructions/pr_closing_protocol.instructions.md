@@ -56,7 +56,7 @@ sm buff resolve <PR> PRRT_xxx --scenario no_longer_applicable --message "Already
 sm buff resolve <PR> PRRT_xxx --scenario invalid_with_explanation --message "[Why this doesn't apply]"
 ```
 
-Create `/tmp/PR_{PR}_RESOLUTION_PLAN.md` containing:
+Create `/tmp/lc_pr_{PR}_resolution_$$.md` containing:
 
 ```markdown
 # PR #{PR} Resolution Plan
@@ -86,7 +86,7 @@ Create `/tmp/PR_{PR}_RESOLUTION_PLAN.md` containing:
 
 ## Resolution Mapping
 Comment PRRT_xxx will be resolved by commits:
-      - fix: standardize CI database to loopcloser_ci.db
+  - fix: standardize CI database to course_records_ci.db
   
 Comment PRRT_yyy will be resolved by commits:
   - fix: store session dates as datetime objects
@@ -183,10 +183,10 @@ git push origin <branch-name>
 ```
 
 ### Step 6: Monitor CI Until Complete (AUTOMATED)
-**🔑 CRITICAL: Use GitHub CLI watch mode - it runs unattended until CI finishes (even if it takes hours/days)**
+**🔑 CRITICAL: Use watch mode - it runs unattended until CI finishes (even if it takes hours/days)**
 
 ```bash
-gh pr checks ${PR_NUMBER} --watch
+cd ${AGENT_HOME} && python3 cursor-rules/scripts/pr_status.py --watch ${PR_NUMBER}
 ```
 
 **What watch mode does:**
@@ -203,11 +203,10 @@ gh pr checks ${PR_NUMBER} --watch
 - Script handles the waiting, you handle the fixing
 - Clear signal when ready for next iteration
 
-**Alternative (if you need to follow one specific workflow run):**
+**Alternative (if watch script not available):**
 ```bash
-gh pr checks ${PR_NUMBER}              # Manual check
-gh run list --branch <HEAD_BRANCH> --limit 5
-gh run watch <RUN_ID>                 # Watch single run
+gh pr checks ${PR_NUMBER}  # Manual check
+gh run watch              # Watch single run
 ```
 
 **Do NOT:**

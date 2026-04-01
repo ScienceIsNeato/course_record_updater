@@ -9,6 +9,14 @@ let currentPage = 1;
 const itemsPerPage = 20;
 let totalItems = 0;
 let currentTab = "users";
+const adminInvitesModule =
+  typeof module !== "undefined" && module.exports
+    ? require("./admin_invites")
+    : globalThis.AdminInvites;
+const adminEventListenersModule =
+  typeof module !== "undefined" && module.exports
+    ? require("./admin_event_listeners")
+    : globalThis.AdminEventListeners;
 let filters = {
   search: "",
   role: "",
@@ -23,38 +31,51 @@ function hasInvitationsView() {
   return document.getElementById("invitationsTableBody") !== null;
 }
 
-const inviteModalWorkflows = new Map();
-const DEFAULT_INVITE_WORKFLOW = "default";
-const INVITATION_EMAIL_FAILED_MESSAGE =
-  "Invitation created but email failed to send";
+const {
+  DEFAULT_INVITE_WORKFLOW,
+  INVITATION_EMAIL_FAILED_MESSAGE,
+  getInviteModalWorkflow: _getInviteModalWorkflow,
+  getInviteModalWorkflowNames: __getInviteModalWorkflows,
+  handleRoleSelectionChange,
+  isInvitationDeliveryFailedMessage,
+  loadPrograms,
+  openInviteModal: openInviteModalInternal,
+  registerDefaultInviteWorkflows,
+  registerInviteModalWorkflow,
+  resetInviteModalWorkflows: __resetInviteModalWorkflows,
+  setProgramSelectionVisibility,
+} = adminInvitesModule;
 
-function registerInviteModalWorkflow(name, { reset, setup } = {}) {
-  inviteModalWorkflows.set(name, {
-    reset: typeof reset === "function" ? reset : () => {},
-    setup: typeof setup === "function" ? setup : () => {},
-  });
-}
-
-function _getInviteModalWorkflow(name) {
-  return (
-    inviteModalWorkflows.get(name) ||
-    inviteModalWorkflows.get(DEFAULT_INVITE_WORKFLOW) || {
-      reset: () => {},
-      setup: () => {},
-    }
+function displayInvitationResult(message, detail) {
+  adminInvitesModule.displayInvitationResult(
+    message,
+    detail,
+    showWarning,
+    showSuccess,
   );
 }
 
-function __resetInviteModalWorkflows() {
-  inviteModalWorkflows.clear();
+async function handleInviteUser(event) {
+  await adminInvitesModule.handleInviteUser(event, {
+    hasInvitationsView,
+    loadInvitations,
+    setButtonLoadingState,
+    showError,
+    showSuccess,
+    showWarning,
+  });
 }
 
-function __getInviteModalWorkflows() {
-  return Array.from(inviteModalWorkflows.keys());
+function openInviteModal(options = {}) {
+  if (!__getInviteModalWorkflows().includes(DEFAULT_INVITE_WORKFLOW)) {
+    registerDefaultInviteWorkflows();
+  }
+  openInviteModalInternal(options);
 }
 
 // DOM Content Loaded
 document.addEventListener("DOMContentLoaded", () => {
+  registerDefaultInviteWorkflows();
   initializeAdminInterface();
 });
 
@@ -84,100 +105,31 @@ function initializeAdminInterface() {
 
 // Event Listeners
 function initializeEventListeners() {
-  // Only initialize user management page elements if they exist
-  const searchInput = document.getElementById("searchInput");
-  const roleFilter = document.getElementById("roleFilter");
-  const statusFilter = document.getElementById("statusFilter");
-  const clearFiltersBtn = document.getElementById("clearFilters");
-  const selectAllUsers = document.getElementById("selectAllUsers");
-  const selectAllInvitations = document.getElementById("selectAllInvitations");
-  const bulkResendInvitations = document.getElementById(
-    "bulkResendInvitations",
-  );
-
-  const editUserForm = document.getElementById("editUserForm");
-  const usersTableBody = document.getElementById("usersTableBody");
-
-  // Search and filters (only on user management page)
-  if (searchInput) {
-    searchInput.addEventListener("input", debounce(handleSearchChange, 300));
-  }
-  if (roleFilter) {
-    roleFilter.addEventListener("change", handleFilterChange);
-  }
-  if (statusFilter) {
-    statusFilter.addEventListener("change", handleFilterChange);
-  }
-  if (clearFiltersBtn) {
-    clearFiltersBtn.addEventListener("click", clearFilters);
-  }
-
-  // Bulk selection (only on user management page)
-  if (selectAllUsers) {
-    selectAllUsers.addEventListener("change", handleSelectAllUsers);
-  }
-  if (selectAllInvitations) {
-    selectAllInvitations.addEventListener("change", handleSelectAllInvitations);
-  }
-
-  // Bulk actions (only on user management page)
-  if (bulkResendInvitations) {
-    bulkResendInvitations.addEventListener(
-      "click",
-      handleBulkResendInvitations,
-    );
-  }
-
-  // Forms - inviteUserForm should exist on all pages with the modal
-  const inviteUserForm = document.getElementById("inviteUserForm");
-  if (inviteUserForm) {
-    inviteUserForm.addEventListener("submit", handleInviteUser);
-  }
-
-  if (editUserForm) {
-    editUserForm.addEventListener("submit", handleEditUser);
-  }
-
-  // Role selection for program assignment (in invite modal)
-  const inviteRole = document.getElementById("inviteRole");
-  if (inviteRole) {
-    inviteRole.addEventListener("change", handleRoleSelectionChange);
-  }
-
-  // Event delegation for user action buttons (only on user management page)
-  if (usersTableBody) {
-    usersTableBody.addEventListener("click", (event) => {
-      const button = event.target.closest("button[data-action]");
-      if (!button) return;
-
-      const action = button.dataset.action;
-      const userId = button.dataset.userId;
-
-      if (action === "edit-user") {
-        editUser(userId);
-      } else if (action === "toggle-user-status") {
-        toggleUserStatus(userId);
-      }
-    });
-  }
-
-  // Event delegation for invitation action buttons
-  const invitationsTableBody = document.getElementById("invitationsTableBody");
-  if (invitationsTableBody) {
-    invitationsTableBody.addEventListener("click", (event) => {
-      const button = event.target.closest("button[data-action]");
-      if (!button) return;
-
-      const action = button.dataset.action;
-      const invitationId = button.dataset.invitationId;
-
-      if (action === "resend-invitation") {
-        resendInvitation(invitationId);
-      } else if (action === "cancel-invitation") {
-        cancelInvitation(invitationId);
-      }
-    });
-  }
+  adminEventListenersModule.initializeAdminEventListeners({
+    debounce,
+    handleBulkResendInvitations,
+    handleEditUser,
+    handleFilterChange,
+    handleInviteUserSubmit: (event) =>
+      adminInvitesModule.handleInviteUser(event, {
+        hasInvitationsView,
+        loadInvitations,
+        setButtonLoadingState,
+        showError,
+        showSuccess,
+        showWarning,
+      }),
+    handleRoleSelectionChange,
+    handleSearchChange,
+    handleSelectAllInvitations,
+    handleSelectAllUsers,
+    hasInvitationsView,
+    clearFilters,
+    editUser,
+    resendInvitation,
+    cancelInvitation,
+    toggleUserStatus,
+  });
 }
 
 // Initialize Filters
@@ -290,30 +242,6 @@ async function loadInvitations() {
     console.error("Error loading invitations:", error); // eslint-disable-line no-console
     showError("Failed to load invitations: " + error.message);
     showEmpty("invitations");
-  }
-}
-
-// Load Programs for invitation form
-async function loadPrograms() {
-  try {
-    const response = await fetch("/api/programs");
-    if (response.ok) {
-      const data = await response.json();
-      if (data.success) {
-        const programSelect = document.getElementById("invitePrograms");
-        if (!programSelect) return;
-        programSelect.innerHTML = ""; // nosemgrep
-
-        data.programs.forEach((program) => {
-          const option = document.createElement("option");
-          option.value = program.id;
-          option.textContent = program.name;
-          programSelect.appendChild(option);
-        });
-      }
-    }
-  } catch (error) {
-    console.warn("Error loading programs:", error); // eslint-disable-line no-console
   }
 }
 
@@ -639,226 +567,8 @@ async function handleBulkResendInvitations() {
 }
 
 // User Management Functions
-async function handleInviteUser(event) {
-  event.preventDefault();
-
-  const form = event.target;
-  const formData = new FormData(form);
-  const submitBtn = document.getElementById("sendInviteBtn");
-
-  if (!form.checkValidity()) {
-    form.classList.add("was-validated");
-    return;
-  }
-
-  setButtonLoadingState(submitBtn, true);
-
-  try {
-    const data = {
-      invitee_email: formData.get("invitee_email"),
-      invitee_role: formData.get("invitee_role"),
-      personal_message: formData.get("personal_message") || undefined,
-    };
-    const firstName = formData.get("first_name");
-    const lastName = formData.get("last_name");
-    if (firstName) {
-      data.first_name = firstName;
-    }
-    if (lastName) {
-      data.last_name = lastName;
-    }
-
-    // Add program IDs if role is program_admin
-    if (data.invitee_role === "program_admin") {
-      const programIds = Array.from(
-        document.getElementById("invitePrograms").selectedOptions,
-      ).map((option) => option.value);
-      if (programIds.length > 0) {
-        data.program_ids = programIds;
-      }
-    }
-
-    // Add section ID if provided (for section assignment)
-    const sectionId = formData.get("section_id");
-    if (sectionId) {
-      data.section_id = sectionId;
-    }
-
-    // Get CSRF token
-    const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-    const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
-
-    const response = await fetch("/api/auth/invite", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(csrfToken && { "X-CSRFToken": csrfToken }),
-      },
-      body: JSON.stringify(data),
-    });
-
-    const result = await response.json();
-
-    if (response.ok && result.success) {
-      const successMessage = result.message || "Invitation sent successfully!";
-      displayInvitationResult(successMessage, result.email_error);
-      bootstrap.Modal.getInstance(
-        document.getElementById("inviteUserModal"),
-      ).hide();
-      if (hasInvitationsView()) {
-        loadInvitations();
-      }
-
-      // Notify other components that a faculty member has been invited/assigned
-      document.dispatchEvent(new CustomEvent("faculty-invited"));
-    } else {
-      throw new Error(result.error || "Failed to send invitation");
-    }
-  } catch (error) {
-    console.error("Error sending invitation:", error); // eslint-disable-line no-console
-    showError("Failed to send invitation: " + error.message);
-  } finally {
-    setButtonLoadingState(submitBtn, false);
-  }
-}
-
-/**
- * Unified function to open the invite user modal with optional pre-population
- * @param {Object} options - Configuration options
- * @param {string} options.sectionId - Section ID to assign instructor to (optional)
- * @param {string} options.prefillRole - Role to pre-select (optional)
- * @param {string} options.programId - Program ID to pre-select for program_admin (optional)
- */
-function openInviteModal(options = {}) {
-  const modalElement = document.getElementById("inviteUserModal");
-  if (!modalElement) {
-    console.warn("Invite modal is not present in the current DOM.");
-    return;
-  }
-
-  const workflowName = options.workflow || DEFAULT_INVITE_WORKFLOW;
-  const workflow = _getInviteModalWorkflow(workflowName);
-  const context = {
-    modal: modalElement,
-    form: document.getElementById("inviteUserForm"),
-    sectionGroup: document.getElementById("sectionAssignmentGroup"),
-    sectionIdField: document.getElementById("inviteSectionId"),
-    roleSelect: document.getElementById("inviteRole"),
-    firstNameField: document.getElementById("inviteFirstName"),
-    lastNameField: document.getElementById("inviteLastName"),
-    programSelection: document.getElementById("programSelection"),
-    inviteProgramsSelect: document.getElementById("invitePrograms"),
-    options,
-  };
-
-  workflow.reset(context);
-  workflow.setup(context);
-  const modal = new bootstrap.Modal(modalElement);
-  modal.show();
-}
-
 // Make function globally available for onclick handlers
 globalThis.openInviteModal = openInviteModal;
-
-function handleRoleSelectionChange(event) {
-  const selectedRole = event.target.value;
-
-  setProgramSelectionVisibility(selectedRole);
-}
-
-function setProgramSelectionVisibility(role) {
-  const programSelection = document.getElementById("programSelection");
-  const invitePrograms = document.getElementById("invitePrograms");
-  if (!programSelection || !invitePrograms) return;
-
-  if (role === "program_admin") {
-    programSelection.style.display = "block";
-    invitePrograms.required = true;
-  } else {
-    programSelection.style.display = "none";
-    invitePrograms.required = false;
-  }
-}
-
-registerInviteModalWorkflow(DEFAULT_INVITE_WORKFLOW, {
-  reset({ form, sectionGroup, sectionIdField, roleSelect }) {
-    if (form) {
-      form.reset();
-      form.classList.remove("was-validated");
-    }
-    if (sectionGroup) {
-      sectionGroup.style.display = "none";
-    }
-    if (sectionIdField) {
-      sectionIdField.value = "";
-    }
-    if (roleSelect) {
-      roleSelect.value = "instructor";
-      setProgramSelectionVisibility("instructor");
-    }
-  },
-  setup({
-    options = {},
-    sectionGroup,
-    sectionIdField,
-    roleSelect,
-    inviteProgramsSelect,
-    firstNameField,
-    lastNameField,
-  }) {
-    const hasSection = Boolean(options.sectionId);
-    if (hasSection && sectionGroup) {
-      sectionGroup.style.display = "block";
-      if (sectionIdField) {
-        sectionIdField.value = options.sectionId;
-      }
-    }
-
-    const roleToApply =
-      options.prefillRole ||
-      (hasSection ? "instructor" : roleSelect?.value) ||
-      "instructor";
-    if (roleSelect) {
-      roleSelect.value = roleToApply;
-    }
-    setProgramSelectionVisibility(roleToApply);
-
-    if (firstNameField) {
-      firstNameField.value = options.firstName || "";
-    }
-    if (lastNameField) {
-      lastNameField.value = options.lastName || "";
-    }
-
-    if (
-      options.programId &&
-      roleToApply === "program_admin" &&
-      inviteProgramsSelect
-    ) {
-      const applySelection = () => {
-        Array.from(inviteProgramsSelect.options).forEach((opt) => {
-          opt.selected = opt.value === options.programId;
-        });
-      };
-      if (inviteProgramsSelect.options.length === 0) {
-        setTimeout(applySelection, 50);
-      } else {
-        applySelection();
-      }
-    }
-  },
-});
-
-registerInviteModalWorkflow("sectionAssignment", {
-  reset: _getInviteModalWorkflow(DEFAULT_INVITE_WORKFLOW).reset,
-  setup(context) {
-    const defaultWorkflow = _getInviteModalWorkflow(DEFAULT_INVITE_WORKFLOW);
-    defaultWorkflow.setup(context);
-    if (context.modal) {
-      context.modal.dataset.workflow = "sectionAssignment";
-    }
-  },
-});
 
 async function editUser(userId) {
   const user = currentUsers.find((u) => u.id === userId);
@@ -1272,28 +982,6 @@ function showMessage(message, type) {
   }
 
   messageDiv.scrollIntoView({ behavior: "smooth", block: "nearest" });
-}
-
-function isInvitationDeliveryFailedMessage(message) {
-  return message === INVITATION_EMAIL_FAILED_MESSAGE;
-}
-
-function displayInvitationResult(message, detail) {
-  if (isInvitationDeliveryFailedMessage(message)) {
-    showWarning(message);
-  } else {
-    showSuccess(message);
-  }
-
-  if (detail) {
-    const alert = document.querySelector(".admin-message-dynamic");
-    if (alert) {
-      const detailEl = document.createElement("div");
-      detailEl.className = "text-muted small mt-1";
-      detailEl.textContent = `Reason: ${detail}`;
-      alert.appendChild(detailEl);
-    }
-  }
 }
 
 async function showConfirmation(title, message) {

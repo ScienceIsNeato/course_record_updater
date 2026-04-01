@@ -14,8 +14,8 @@ import pytest
 from src.app import app
 
 
-@pytest.fixture
-def client() -> Generator[Any, None, None]:
+@pytest.fixture(name="client")
+def password_reset_client_fixture() -> Generator[Any, None, None]:
     """Create test client"""
     app.config["TESTING"] = True
     app.config["SECRET_KEY"] = "test-secret-key"

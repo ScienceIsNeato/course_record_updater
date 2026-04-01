@@ -7,8 +7,12 @@ from flask.typing import ResponseReturnValue
 
 from src.api.utils import (
     InstitutionContextMissingError,
+    format_missing_required_fields,
     get_current_institution_id_safe,
     get_current_user_safe,
+)
+from src.api.utils import get_request_json_object as _get_request_json
+from src.api.utils import (
     handle_api_error,
     resolve_institution_scope,
 )
@@ -33,6 +37,7 @@ from src.services.auth_service import (
 )
 from src.utils.constants import (
     COURSE_NOT_FOUND_MSG,
+    FAILED_TO_CREATE_COURSE_MSG,
     INSTITUTION_CONTEXT_REQUIRED_MSG,
     NO_DATA_PROVIDED_MSG,
     NO_JSON_DATA_PROVIDED_MSG,
@@ -42,16 +47,6 @@ from src.utils.logging_config import get_logger
 
 courses_bp = Blueprint("courses", __name__, url_prefix="/api")
 logger = get_logger(__name__)
-
-
-def _get_request_json() -> Dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return (
-        cast(Dict[str, Any], payload)
-        if isinstance(payload, dict)
-        else cast(Dict[str, Any], {})
-    )
 
 
 @courses_bp.route("/courses", methods=["GET"])
@@ -229,7 +224,7 @@ def create_course_api() -> ResponseReturnValue:
         required_fields = ["course_number", "course_title", "department"]
         missing_fields = [f for f in required_fields if not data.get(f)]
         if missing_fields:
-            msg = f'Missing required fields: {", ".join(missing_fields)}'
+            msg = format_missing_required_fields(missing_fields)
             return jsonify({"success": False, "error": msg}), 400
 
         institution_id = get_current_institution_id_safe()
@@ -255,10 +250,13 @@ def create_course_api() -> ResponseReturnValue:
                 201,
             )
         else:
-            return jsonify({"success": False, "error": "Failed to create course"}), 500
+            return (
+                jsonify({"success": False, "error": FAILED_TO_CREATE_COURSE_MSG}),
+                500,
+            )
 
     except Exception as e:
-        return handle_api_error(e, "Create course", "Failed to create course")
+        return handle_api_error(e, "Create course", FAILED_TO_CREATE_COURSE_MSG)
 
 
 @courses_bp.route("/courses/<course_number>", methods=["GET"])

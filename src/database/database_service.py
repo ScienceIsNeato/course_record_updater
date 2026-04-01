@@ -174,7 +174,9 @@ def delete_institution(institution_id: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def create_user(user_data: Dict[str, Any]) -> Optional[str]:
+def create_user(  # noqa: ambiguity-mine - service facade intentionally mirrors storage verb
+    user_data: Dict[str, Any],
+) -> Optional[str]:
     return _db_service.create_user(user_data)
 
 
@@ -621,7 +623,9 @@ def get_program_by_name_and_institution(
     return _db_service.get_program_by_name_and_institution(program_name, institution_id)
 
 
-def update_program(program_id: str, updates: Dict[str, Any]) -> bool:
+def update_program(  # noqa: ambiguity-mine - service facade intentionally mirrors domain verb
+    program_id: str, updates: Dict[str, Any]
+) -> bool:
     return _db_service.update_program(program_id, updates)
 
 
@@ -841,17 +845,23 @@ def get_outcome_history(section_outcome_id: str) -> List[Dict[str, Any]]:
 # Program Outcome (PLO) operations
 
 
-def create_program_outcome(outcome_data: Dict[str, Any]) -> str:
+def create_program_outcome(  # noqa: ambiguity-mine - service facade intentionally mirrors domain verb
+    outcome_data: Dict[str, Any],
+) -> str:
     """Create a new Program Level Outcome template."""
     return _db_service.create_program_outcome(outcome_data)
 
 
-def update_program_outcome(outcome_id: str, outcome_data: Dict[str, Any]) -> bool:
+def update_program_outcome(  # noqa: ambiguity-mine - service facade intentionally mirrors domain verb
+    outcome_id: str, outcome_data: Dict[str, Any]
+) -> bool:
     """Update a Program Level Outcome template."""
     return _db_service.update_program_outcome(outcome_id, outcome_data)
 
 
-def delete_program_outcome(outcome_id: str) -> bool:
+def delete_program_outcome(  # noqa: ambiguity-mine - service facade intentionally mirrors domain verb
+    outcome_id: str,
+) -> bool:
     """Soft-delete a PLO by setting is_active=False."""
     return _db_service.delete_program_outcome(outcome_id)
 
@@ -863,7 +873,9 @@ def get_program_outcomes(
     return _db_service.get_program_outcomes(program_id, include_inactive)
 
 
-def get_program_outcome(outcome_id: str) -> Optional[Dict[str, Any]]:
+def get_program_outcome(  # noqa: ambiguity-mine - service facade intentionally mirrors domain verb
+    outcome_id: str,
+) -> Optional[Dict[str, Any]]:
     """Get a single PLO by ID."""
     return _db_service.get_program_outcome(outcome_id)
 

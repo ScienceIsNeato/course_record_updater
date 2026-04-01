@@ -10,7 +10,14 @@ from typing import Any, Dict, cast
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 
-from src.api.utils import get_current_user_safe, handle_api_error
+from src.api.utils import (
+    format_missing_required_fields,
+    get_current_user_safe,
+)
+from src.api.utils import get_request_json_object as _get_request_json
+from src.api.utils import (
+    handle_api_error,
+)
 from src.database.database_service import (
     create_new_institution,
     delete_institution,
@@ -34,12 +41,6 @@ institutions_bp = Blueprint("institutions", __name__, url_prefix="/api")
 
 # Initialize logger
 logger = get_logger(__name__)
-
-
-def _get_request_json() -> Dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return cast(Dict[str, Any], payload) if isinstance(payload, dict) else {}
 
 
 @institutions_bp.route("/institutions", methods=["GET"])
@@ -82,7 +83,7 @@ def create_institution_admin() -> ResponseReturnValue:
                 jsonify(
                     {
                         "success": False,
-                        "error": f'Missing required fields: {", ".join(missing_fields)}',
+                        "error": format_missing_required_fields(missing_fields),
                     }
                 ),
                 400,

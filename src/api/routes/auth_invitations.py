@@ -11,8 +11,12 @@ from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 
 from src.api.utils import (
+    format_missing_required_field,
     get_current_institution_id_safe,
     get_current_user_safe,
+)
+from src.api.utils import get_request_json_object as _get_request_json
+from src.api.utils import (
     handle_api_error,
 )
 from src.services.auth_service import permission_required
@@ -36,14 +40,69 @@ auth_invitations_bp = Blueprint("auth_invitations", __name__, url_prefix="/api")
 logger = get_logger(__name__)
 
 
-def _get_request_json() -> Dict[str, Any]:
-    """Return a typed JSON object body or an empty dict."""
-    payload = request.get_json(silent=True)
-    return (
-        cast(Dict[str, Any], payload)
-        if isinstance(payload, dict)
-        else cast(Dict[str, Any], {})
+def _require_invitation_payload(required_fields: List[str]) -> Dict[str, Any] | None:
+    """Read JSON payload and validate required fields."""
+    data = _get_request_json()
+    if not data:
+        return None
+    for field in required_fields:
+        if field not in data:
+            raise ValueError(format_missing_required_field(field))
+    return data
+
+
+def _build_invitation_request(
+    current_user: Dict[str, Any], institution_id: str, data: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Normalize invitation payload into service arguments."""
+    raw_program_ids = data.get("program_ids")
+    program_id_values: List[Any] = (
+        cast(List[Any], raw_program_ids) if isinstance(raw_program_ids, list) else []
     )
+    return {
+        "inviter_user_id": current_user["user_id"],
+        "inviter_email": current_user["email"],
+        "invitee_email": str(data.get("invitee_email", "")).strip().lower(),
+        "invitee_role": str(data.get("invitee_role", "")).strip(),
+        "institution_id": institution_id,
+        "program_ids": [
+            str(program_id_value)
+            for program_id_value in program_id_values
+            if program_id_value
+        ],
+        "personal_message": (
+            str(data.get("personal_message")) if data.get("personal_message") else None
+        ),
+        "first_name": str(data.get("first_name")) if data.get("first_name") else None,
+        "last_name": str(data.get("last_name")) if data.get("last_name") else None,
+        "section_id": str(data.get("section_id")) if data.get("section_id") else None,
+        "replace_existing": bool(data.get("replace_existing", False)),
+    }
+
+
+def _create_invitation_response(invitation: Dict[str, Any]) -> ResponseReturnValue:
+    """Send the invitation email and build the API response."""
+    email_sent, email_error = InvitationService.send_invitation(invitation)
+    response_body: Dict[str, Any] = {
+        "success": True,
+        "invitation_id": invitation["id"],
+        "message": (
+            INVITATION_CREATED_AND_SENT_MSG
+            if email_sent and not email_error
+            else INVITATION_CREATED_EMAIL_FAILED_MSG
+        ),
+    }
+    if email_error:
+        response_body["email_error"] = email_error
+    return jsonify(response_body), 201
+
+
+def _build_public_invitation_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize `/api/invitations` aliases to the internal invitation shape."""
+    data = dict(payload)
+    data["invitee_email"] = payload.get("invitee_email") or payload.get("email") or ""
+    data["invitee_role"] = payload.get("invitee_role") or payload.get("role") or ""
+    return data
 
 
 # ===== INVITATION API ENDPOINTS =====
@@ -71,23 +130,10 @@ def create_invitation_api() -> ResponseReturnValue:
         500: Server error
     """
     try:
-        # Get request data (silent=True prevents 415 exception, returns None instead)
-        data = _get_request_json()
+        data = _require_invitation_payload(["invitee_email", "invitee_role"])
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
-        # Validate required fields
-        required_fields = ["invitee_email", "invitee_role"]
-        for field in required_fields:
-            if field not in data:
-                return (
-                    jsonify(
-                        {"success": False, "error": f"Missing required field: {field}"}
-                    ),
-                    400,
-                )
-
-        # Get current user and institution
         current_user = get_current_user_safe()
         if not current_user:
             return jsonify({"success": False, "error": USER_NOT_AUTHENTICATED_MSG}), 401
@@ -99,57 +145,13 @@ def create_invitation_api() -> ResponseReturnValue:
                 400,
             )
 
-        invitee_email = str(data.get("invitee_email", "")).strip().lower()
-        invitee_role = str(data.get("invitee_role", "")).strip()
-        raw_program_ids = data.get("program_ids")
-        program_id_values: List[Any] = (
-            cast(List[Any], raw_program_ids)
-            if isinstance(raw_program_ids, list)
-            else []
-        )
-        program_ids: List[str] = [
-            str(program_id_value)
-            for program_id_value in program_id_values
-            if program_id_value
-        ]
-        personal_message = data.get("personal_message")
-        first_name = data.get("first_name")
-        last_name = data.get("last_name")
-        section_id = data.get("section_id")
-        replace_existing = bool(data.get("replace_existing", False))
-
-        # Create invitation
         invitation = InvitationService.create_invitation(
-            inviter_user_id=current_user["user_id"],
-            inviter_email=current_user["email"],
-            invitee_email=invitee_email,
-            invitee_role=invitee_role,
-            institution_id=institution_id,
-            program_ids=program_ids,
-            personal_message=str(personal_message) if personal_message else None,
-            first_name=str(first_name) if first_name else None,
-            last_name=str(last_name) if last_name else None,
-            section_id=str(section_id) if section_id else None,
-            replace_existing=replace_existing,
+            **_build_invitation_request(current_user, institution_id, data)
         )
+        return _create_invitation_response(invitation)
 
-        # Send invitation email
-        email_sent, email_error = InvitationService.send_invitation(invitation)
-
-        response_body: Dict[str, Any] = {
-            "success": True,
-            "invitation_id": invitation["id"],
-            "message": (
-                INVITATION_CREATED_AND_SENT_MSG
-                if email_sent and not email_error
-                else INVITATION_CREATED_EMAIL_FAILED_MSG
-            ),
-        }
-        if email_error:
-            response_body["email_error"] = email_error
-
-        return jsonify(response_body), 201
-
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
     except InvitationError as e:
         logger.error(f"Invitation error: {e}")
         # Return 409 if conflict, else 400
@@ -199,7 +201,10 @@ def accept_invitation_api() -> ResponseReturnValue:
             if field not in data:
                 return (
                     jsonify(
-                        {"success": False, "error": f"Missing required field: {field}"}
+                        {
+                            "success": False,
+                            "error": format_missing_required_field(field),
+                        }
                     ),
                     400,
                 )
@@ -448,31 +453,9 @@ def create_invitation_public_api() -> ResponseReturnValue:
         if not payload:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
-        # Normalize fields
-        invitee_email = (
-            str(payload.get("invitee_email") or payload.get("email") or "")
-            .strip()
-            .lower()
-        )
-        invitee_role = str(
-            payload.get("invitee_role") or payload.get("role") or ""
-        ).strip()
-        raw_program_ids = payload.get("program_ids")
-        program_id_values: List[Any] = (
-            cast(List[Any], raw_program_ids)
-            if isinstance(raw_program_ids, list)
-            else []
-        )
-        program_ids: List[str] = [
-            str(program_id_value)
-            for program_id_value in program_id_values
-            if program_id_value
-        ]
-        personal_message = payload.get("personal_message")
-        first_name = payload.get("first_name")
-        last_name = payload.get("last_name")
-        section_id = payload.get("section_id")
-        replace_existing = bool(payload.get("replace_existing", False))
+        invitation_data = _build_public_invitation_payload(payload)
+        invitee_email = str(invitation_data.get("invitee_email", "")).strip().lower()
+        invitee_role = str(invitation_data.get("invitee_role", "")).strip()
 
         if not invitee_email:
             return (
@@ -496,38 +479,10 @@ def create_invitation_public_api() -> ResponseReturnValue:
                 400,
             )
 
-        # Create and send invitation
         invitation = InvitationService.create_invitation(
-            inviter_user_id=current_user["user_id"],
-            inviter_email=current_user["email"],
-            invitee_email=invitee_email,
-            invitee_role=invitee_role,
-            institution_id=institution_id,
-            program_ids=program_ids,
-            personal_message=str(personal_message) if personal_message else None,
-            first_name=str(first_name) if first_name else None,
-            last_name=str(last_name) if last_name else None,
-            section_id=str(section_id) if section_id else None,
-            replace_existing=replace_existing,
+            **_build_invitation_request(current_user, institution_id, invitation_data)
         )
-
-        email_sent, email_error = InvitationService.send_invitation(invitation)
-
-        return (
-            jsonify(
-                {
-                    "success": True,
-                    "invitation_id": invitation["id"],
-                    "message": (
-                        INVITATION_CREATED_AND_SENT_MSG
-                        if email_sent and not email_error
-                        else INVITATION_CREATED_EMAIL_FAILED_MSG
-                    ),
-                    **({"email_error": email_error} if email_error else {}),
-                }
-            ),
-            201,
-        )
+        return _create_invitation_response(invitation)
 
     except InvitationError as exc:
         return handle_api_error(exc, "Create invitation", str(exc), 400)

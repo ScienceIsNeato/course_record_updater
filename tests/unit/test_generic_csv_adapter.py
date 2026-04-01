@@ -703,29 +703,30 @@ class TestGenericCSVAdapterImport:
             assert entity in result
             assert len(result[entity]) > 0
 
-    def _create_comprehensive_test_data(self) -> Any:
-        """Create realistic mini-university dataset."""
+    def _comprehensive_institutions(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "id": "hogwarts-001",
+                "name": "Hogwarts School of Witchcraft",
+                "short_name": "HOGW",
+                "admin_email": "dumbledore@hogwarts.edu",
+                "is_active": True,
+                "allow_self_registration": False,
+                "created_at": datetime(2024, 9, 1, 8, 0, 0),
+            },
+            {
+                "id": "starfleet-002",
+                "name": "Starfleet Academy",
+                "short_name": "SFA",
+                "admin_email": "picard@starfleet.edu",
+                "is_active": True,
+                "allow_self_registration": True,
+                "created_at": datetime(2024, 9, 1, 9, 0, 0),
+            },
+        ]
+
+    def _comprehensive_program_data(self) -> dict[str, list[dict[str, Any]]]:
         return {
-            "institutions": [
-                {
-                    "id": "hogwarts-001",
-                    "name": "Hogwarts School of Witchcraft",
-                    "short_name": "HOGW",
-                    "admin_email": "dumbledore@hogwarts.edu",
-                    "is_active": True,
-                    "allow_self_registration": False,
-                    "created_at": datetime(2024, 9, 1, 8, 0, 0),
-                },
-                {
-                    "id": "starfleet-002",
-                    "name": "Starfleet Academy",
-                    "short_name": "SFA",
-                    "admin_email": "picard@starfleet.edu",
-                    "is_active": True,
-                    "allow_self_registration": True,
-                    "created_at": datetime(2024, 9, 1, 9, 0, 0),
-                },
-            ],
             "programs": [
                 {
                     "id": "prog-gryff",
@@ -752,13 +753,29 @@ class TestGenericCSVAdapterImport:
                     "is_default": True,
                 },
             ],
+            "user_programs": [
+                {"user_id": "user-harry", "program_id": "prog-gryff"},
+                {"user_id": "user-harry", "program_id": "prog-slytherin"},
+                {"user_id": "user-hermione", "program_id": "prog-gryff"},
+                {"user_id": "user-kirk", "program_id": "prog-command"},
+            ],
+            "course_programs": [
+                {"course_id": "course-potions", "program_id": "prog-gryff"},
+                {"course_id": "course-defense", "program_id": "prog-gryff"},
+                {"course_id": "course-defense", "program_id": "prog-slytherin"},
+                {"course_id": "course-warp", "program_id": "prog-command"},
+            ],
+        }
+
+    def _comprehensive_user_data(self) -> dict[str, list[dict[str, Any]]]:
+        return {
             "users": [
                 {
                     "id": "user-harry",
                     "email": "harry@hogwarts.edu",
                     "first_name": "Harry",
                     "last_name": "Potter",
-                    "display_name": None,  # NULL test
+                    "display_name": None,
                     "role": "instructor",
                     "institution_id": "hogwarts-001",
                 },
@@ -770,7 +787,7 @@ class TestGenericCSVAdapterImport:
                     "display_name": "Prof. Granger",
                     "role": "program_admin",
                     "institution_id": "hogwarts-001",
-                    "oauth_provider": "google",  # OAuth test
+                    "oauth_provider": "google",
                 },
                 {
                     "id": "user-kirk",
@@ -782,15 +799,32 @@ class TestGenericCSVAdapterImport:
                     "institution_id": "starfleet-002",
                 },
             ],
-            "user_programs": [  # Many-to-many relationships
-                {"user_id": "user-harry", "program_id": "prog-gryff"},
+            "user_invitations": [
                 {
-                    "user_id": "user-harry",
-                    "program_id": "prog-slytherin",
-                },  # Multi-program
-                {"user_id": "user-hermione", "program_id": "prog-gryff"},
-                {"user_id": "user-kirk", "program_id": "prog-command"},
+                    "id": "invite-snape",
+                    "email": "snape@hogwarts.edu",
+                    "role": "instructor",
+                    "institution_id": "hogwarts-001",
+                    "invited_by": "user-hermione",
+                    "invited_at": datetime(2024, 10, 1),
+                    "status": "pending",
+                    "personal_message": "We need your expertise in potions!",
+                },
+                {
+                    "id": "invite-spock",
+                    "email": "spock@starfleet.edu",
+                    "role": "instructor",
+                    "institution_id": "starfleet-002",
+                    "invited_by": "user-kirk",
+                    "invited_at": datetime(2024, 10, 5),
+                    "status": "pending",
+                    "personal_message": None,
+                },
             ],
+        }
+
+    def _comprehensive_catalog_data(self) -> dict[str, list[dict[str, Any]]]:
+        return {
             "courses": [
                 {
                     "id": "course-potions",
@@ -826,17 +860,8 @@ class TestGenericCSVAdapterImport:
                     "department": "Old",
                     "credit_hours": 0,
                     "institution_id": "hogwarts-001",
-                    "active": False,  # Inactive course test
+                    "active": False,
                 },
-            ],
-            "course_programs": [  # Many-to-many
-                {"course_id": "course-potions", "program_id": "prog-gryff"},
-                {"course_id": "course-defense", "program_id": "prog-gryff"},
-                {
-                    "course_id": "course-defense",
-                    "program_id": "prog-slytherin",
-                },  # Multi-program
-                {"course_id": "course-warp", "program_id": "prog-command"},
             ],
             "terms": [
                 {
@@ -858,6 +883,10 @@ class TestGenericCSVAdapterImport:
                     "institution_id": "starfleet-002",
                 },
             ],
+        }
+
+    def _comprehensive_delivery_data(self) -> dict[str, list[dict[str, Any]]]:
+        return {
             "course_offerings": [
                 {
                     "id": "offer-potions-f24",
@@ -888,7 +917,7 @@ class TestGenericCSVAdapterImport:
                     "section_number": "001",
                     "enrollment": 15,
                     "status": "in_progress",
-                    "grade_distribution": {"O": 5, "E": 6, "A": 3, "P": 1},  # JSON
+                    "grade_distribution": {"O": 5, "E": 6, "A": 3, "P": 1},
                 },
                 {
                     "id": "section-pot-002",
@@ -917,7 +946,7 @@ class TestGenericCSVAdapterImport:
                     "description": "Students will brew basic potions correctly",
                     "assessment_method": "Practical Exam",
                     "active": True,
-                    "assessment_data": {"pass_rate": 0.95, "avg_score": 88.5},  # JSON
+                    "assessment_data": {"pass_rate": 0.95, "avg_score": 88.5},
                 },
                 {
                     "id": "outcome-def-clo1",
@@ -934,32 +963,25 @@ class TestGenericCSVAdapterImport:
                     "clo_number": "CLO2",
                     "description": "Students will recognize dark magic",
                     "assessment_method": "Written Exam",
-                    "active": False,  # Inactive outcome
-                    "assessment_data": None,  # NULL JSON field
+                    "active": False,
+                    "assessment_data": None,
                 },
             ],
-            "user_invitations": [
-                {
-                    "id": "invite-snape",
-                    "email": "snape@hogwarts.edu",
-                    "role": "instructor",
-                    "institution_id": "hogwarts-001",
-                    "invited_by": "user-hermione",
-                    "invited_at": datetime(2024, 10, 1),
-                    "status": "pending",
-                    "personal_message": "We need your expertise in potions!",
-                },
-                {
-                    "id": "invite-spock",
-                    "email": "spock@starfleet.edu",
-                    "role": "instructor",
-                    "institution_id": "starfleet-002",
-                    "invited_by": "user-kirk",
-                    "invited_at": datetime(2024, 10, 5),
-                    "status": "pending",
-                    "personal_message": None,  # NULL message
-                },
-            ],
+        }
+
+    def _comprehensive_curriculum_data(self) -> dict[str, list[dict[str, Any]]]:
+        return {
+            **self._comprehensive_catalog_data(),
+            **self._comprehensive_delivery_data(),
+        }
+
+    def _create_comprehensive_test_data(self) -> Any:
+        """Create realistic mini-university dataset."""
+        return {
+            "institutions": self._comprehensive_institutions(),
+            **self._comprehensive_program_data(),
+            **self._comprehensive_user_data(),
+            **self._comprehensive_curriculum_data(),
         }
 
     def _find_by_id(self, collection: Any, entity_id: Any) -> Any:

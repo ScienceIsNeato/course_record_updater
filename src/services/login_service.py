@@ -390,13 +390,17 @@ def logout_user() -> Dict[str, Any]:
     return LoginService.logout_user()
 
 
-def is_user_logged_in() -> bool:
+def is_user_logged_in() -> (  # noqa: ambiguity-mine - login service intentionally mirrors session accessor
+    bool
+):
     """Convenience function to check if user is logged in"""
     status = LoginService.get_login_status()
     return status.get("logged_in", False)
 
 
-def get_current_user_info() -> Optional[Dict[str, Any]]:
+def get_current_user_info() -> (  # noqa: ambiguity-mine - login service intentionally mirrors route verb
+    Optional[Dict[str, Any]]
+):
     """Convenience function to get current user info"""
     status = LoginService.get_login_status()
     if status.get("logged_in"):

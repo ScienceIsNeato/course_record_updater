@@ -46,6 +46,7 @@ def seeded_integration_db(tmp_path_factory: Any) -> Generator[Any, None, None]:
 
     os.environ["DATABASE_URL"] = f"sqlite:///{session_db}"
     os.environ["DATABASE_TYPE"] = "sqlite"
+    database_service.close_connection()
     database_service.refresh_connection()
 
     # Load E2E manifest
@@ -65,6 +66,7 @@ def seeded_integration_db(tmp_path_factory: Any) -> Generator[Any, None, None]:
     print(f"✅ Seeded integration session database: {session_db}")
 
     yield session_db
+    database_service.close_connection()
 
 
 @pytest.fixture(autouse=True)
@@ -86,9 +88,11 @@ def isolated_integration_db(
 
     # Point database service at the forked copy
     os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
+    database_service.close_connection()
     database_service.refresh_connection()
 
     yield test_db
+    database_service.close_connection()
     # Cleanup is automatic via tmp_path - no reset needed
 
 
