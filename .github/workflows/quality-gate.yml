@@ -92,3 +92,22 @@ jobs:
             semgrep-report.json
             coverage.xml
             test-results.xml
+      - name: Generate slopmop SARIF
+        if: always()
+        continue-on-error: true
+        run: |
+          source venv/bin/activate
+          sm swab \
+            --sarif \
+            --no-auto-fix \
+            --no-fail-fast \
+            --no-cache \
+            --output-file slopmop-swab.sarif
+        env:
+          PYTHONPATH: .
+      - name: Upload SARIF to GitHub Code Scanning
+        if: always() && hashFiles('slopmop-swab.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: slopmop-swab.sarif
+          category: slopmop-swab
