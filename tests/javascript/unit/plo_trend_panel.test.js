@@ -318,6 +318,43 @@ describe("buildTrendOptions — onClick handler", () => {
     expect(onPointClick).toHaveBeenCalledWith(MOCK_TERMS[1]);
   });
 
+  test("onClick with onPointClick does NOT change term filter", () => {
+    const deps = makeMockDeps();
+    const onPointClick = jest.fn();
+    const model = {
+      clos: [],
+      currentTermIndices: new Set(),
+      data: [72, 78, 85],
+      discontinuities: [],
+      failRadii: [4, 4, 4],
+      labels: ["Fall 2024", "Spring 2025", "Fall 2025"],
+      lineColor: "#0d6efd",
+      pointBorders: ["#0d6efd", "#0d6efd", "#0d6efd"],
+      pointColors: ["#0d6efd", "#0d6efd", "#0d6efd"],
+      threshold: 70,
+      title: "Test",
+    };
+    const datasets = [];
+    const optsWithCb = buildTrendOptions(
+      MOCK_TERMS,
+      MOCK_TREND_POINTS,
+      model,
+      datasets,
+      deps,
+      { onPointClick },
+    );
+
+    const termFilter = document.getElementById("ploTermFilter");
+    const changeSpy = jest.fn();
+    termFilter.addEventListener("change", changeSpy);
+    const origValue = termFilter.value;
+
+    optsWithCb.onClick({}, [{ index: 1 }]);
+    // Term filter must NOT be touched — re-render would destroy the panel
+    expect(termFilter.value).toBe(origValue);
+    expect(changeSpy).not.toHaveBeenCalled();
+  });
+
   test("onClick without onPointClick callback does not throw", () => {
     const deps = makeMockDeps();
     const model = {
@@ -344,5 +381,37 @@ describe("buildTrendOptions — onClick handler", () => {
     );
 
     expect(() => optsNoCb.onClick({}, [{ index: 0 }])).not.toThrow();
+  });
+
+  test("onHover sets pointer cursor when hovering over elements", () => {
+    const deps = makeMockDeps();
+    const model = {
+      clos: [],
+      currentTermIndices: new Set(),
+      data: [72],
+      discontinuities: [],
+      failRadii: [4],
+      labels: ["Fall 2024"],
+      lineColor: "#0d6efd",
+      pointBorders: ["#0d6efd"],
+      pointColors: ["#0d6efd"],
+      threshold: 70,
+      title: "Test",
+    };
+    const datasets = [];
+    const opts = buildTrendOptions(
+      MOCK_TERMS,
+      MOCK_TREND_POINTS,
+      model,
+      datasets,
+      deps,
+    );
+
+    const canvas = document.createElement("canvas");
+    opts.onHover({ native: { target: canvas } }, [{ index: 0 }]);
+    expect(canvas.style.cursor).toBe("pointer");
+
+    opts.onHover({ native: { target: canvas } }, []);
+    expect(canvas.style.cursor).toBe("");
   });
 });

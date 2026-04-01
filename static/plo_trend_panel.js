@@ -278,13 +278,23 @@
         const idx = elements[0].index;
         const term = terms[idx];
         if (!term) return;
-        const termFilter = document.getElementById("ploTermFilter");
-        if (termFilter) {
-          termFilter.value = term.term_id;
-          termFilter.dispatchEvent(new Event("change"));
-        }
         if (callbacks.onPointClick) {
+          // Drill-down mode: show detail panel instead of changing term filter
           callbacks.onPointClick(term);
+        } else {
+          // Legacy mode: change term filter (triggers full dashboard re-render)
+          const termFilter = document.getElementById("ploTermFilter");
+          if (termFilter) {
+            termFilter.value = term.term_id;
+            termFilter.dispatchEvent(new Event("change"));
+          }
+        }
+      },
+      onHover(event, elements) {
+        var canvas = event.native ? event.native.target : null;
+        if (canvas) {
+          canvas.style.cursor =
+            elements && elements.length > 0 ? "pointer" : "";
         }
       },
     };
