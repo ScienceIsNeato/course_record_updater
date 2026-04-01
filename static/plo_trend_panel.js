@@ -225,7 +225,8 @@
     chart.update();
   }
 
-  function buildTrendOptions(terms, trendPoints, model, datasets, deps) {
+  function buildTrendOptions(terms, trendPoints, model, datasets, deps, extra) {
+    var callbacks = extra || {};
     const { computeYRange } = deps;
     return {
       responsive: true,
@@ -281,6 +282,9 @@
         if (termFilter) {
           termFilter.value = term.term_id;
           termFilter.dispatchEvent(new Event("change"));
+        }
+        if (callbacks.onPointClick) {
+          callbacks.onPointClick(term);
         }
       },
     };
@@ -348,13 +352,28 @@
     });
   }
 
-  function renderTrendChart(canvas, terms, trendPoints, model, datasets, deps) {
+  function renderTrendChart(
+    canvas,
+    terms,
+    trendPoints,
+    model,
+    datasets,
+    deps,
+    extra,
+  ) {
     requestAnimationFrame(() => {
       if (typeof Chart === "undefined") return;
       new Chart(canvas, {
         type: "line",
         data: { labels: model.labels, datasets },
-        options: buildTrendOptions(terms, trendPoints, model, datasets, deps),
+        options: buildTrendOptions(
+          terms,
+          trendPoints,
+          model,
+          datasets,
+          deps,
+          extra,
+        ),
         plugins: buildTrendPlugins(model),
       });
     });
@@ -379,12 +398,16 @@
 
     const model = getTrendPanelModel(trendPoints, terms, opts, deps);
     const datasets = buildTrendDatasets(model, deps, opts);
-    renderTrendChart(canvas, terms, trendPoints, model, datasets, deps);
+    var extra =
+      opts && opts.onPointClick
+        ? { onPointClick: opts.onPointClick }
+        : undefined;
+    renderTrendChart(canvas, terms, trendPoints, model, datasets, deps, extra);
     appendCompositionBar(body, model, terms, createCompositionBar);
     return panel;
   }
 
-  const exportsObj = { createTrendPanel };
+  const exportsObj = { buildTrendOptions, createTrendPanel };
   if (typeof globalThis !== "undefined") {
     globalThis.PloTrendPanel = exportsObj;
   }

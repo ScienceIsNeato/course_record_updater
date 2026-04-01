@@ -550,6 +550,7 @@
      */
     async loadTrend(programId, selectedTermId) {
       if (!programId) return;
+      this.programId = programId;
       if (selectedTermId !== undefined) this.selectedTermId = selectedTermId;
 
       // Track the latest request to ignore stale responses
@@ -725,6 +726,61 @@
     },
 
     /**
+     * Build an onPointClick callback for a PLO trend chart data point.
+     * Fetches the PLO detail (CLO → section breakdown) for the clicked term
+     * and renders an inline detail panel below the trend chart.
+     *
+     * @param {string} ploId - PLO to fetch detail for
+     * @param {{el: HTMLElement}} ref - object whose .el will be set to the container element after panel creation
+     */
+    _makePointClickHandler(ploId, ref) {
+      var self = this;
+      return function onPointClick(term) {
+        if (!term || !term.term_id) return;
+        var DetailPanel =
+          typeof globalThis !== "undefined" && globalThis.PloDetailPanel;
+        if (!DetailPanel) return;
+        var container = ref && ref.el;
+        if (!container) return;
+
+        // Remove any existing detail panel in this container
+        DetailPanel.destroyDetailPanel(container);
+
+        var programId = self.programId;
+        if (!programId) return;
+
+        var url =
+          "/api/programs/" +
+          encodeURIComponent(programId) +
+          "/plo-dashboard?plo_id=" +
+          encodeURIComponent(ploId) +
+          "&term_id=" +
+          encodeURIComponent(term.term_id);
+
+        fetch(url, {
+          credentials: "include",
+          headers: { Accept: "application/json" },
+        })
+          .then(function (resp) {
+            if (!resp.ok) return null;
+            return resp.json();
+          })
+          .then(function (data) {
+            if (!data || !data.success) return;
+            var plos = data.tree && data.tree.plos;
+            if (!plos || plos.length === 0) return;
+            var ploData = plos[0];
+            var termLabel = term.term_name || term.name || "";
+            var detailEl = DetailPanel.createDetailPanel(ploData, termLabel);
+            container.appendChild(detailEl);
+          })
+          .catch(function () {
+            /* silently ignore network errors */
+          });
+      };
+    },
+
+    /**
      * Toggle a trend chart panel below the summary row containing the clicked sparkline.
      */
     _toggleSummaryTrendPanel(slot, plo, terms) {
@@ -752,11 +808,14 @@
         });
       }
 
+      var panelRef = { el: null };
       const panel = createTrendPanel(plo.trend, terms, {
         title: "PLO-" + plo.plo_number + ": " + plo.description,
         clos: plo.clos || [],
         discontinuities: plo.discontinuities || [],
+        onPointClick: this._makePointClickHandler(plo.id, panelRef),
       });
+      panelRef.el = panel;
       panel.dataset.ploId = String(plo.id);
       row.after(panel);
     },
@@ -837,7 +896,19 @@
         return;
       }
 
-      const panel = createTrendPanel(trendPoints, terms, opts);
+      // For PLO-level nodes, wire the drill-down detail panel
+      var mergedOpts = opts;
+      var panelRef = null;
+      var ploId = nodeEl.dataset && nodeEl.dataset.ploId;
+      if (ploId && opts && opts.clos) {
+        panelRef = { el: null };
+        mergedOpts = Object.assign({}, opts, {
+          onPointClick: this._makePointClickHandler(ploId, panelRef),
+        });
+      }
+
+      const panel = createTrendPanel(trendPoints, terms, mergedOpts);
+      if (panelRef) panelRef.el = panel;
       // Insert after the header, before children
       const header = nodeEl.querySelector(".plo-tree-header");
       if (header && header.nextSibling) {

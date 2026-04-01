@@ -295,6 +295,7 @@ def get_plo_dashboard_tree(
     program_id: str,
     institution_id: str,
     term_id: Optional[str] = None,
+    plo_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Build the hierarchical PLO → CLO → section-outcome tree for the dashboard.
 
@@ -345,6 +346,8 @@ def get_plo_dashboard_tree(
         mapping_status = "draft" if mapping else "none"
 
     plos = database_service.get_program_outcomes(program_id)
+    if plo_id:
+        plos = [p for p in plos if p["id"] == plo_id]
     entries = _mapping_entries(mapping)
 
     # Build plo_id → [clo_id, ...] and collect the universe of mapped CLOs

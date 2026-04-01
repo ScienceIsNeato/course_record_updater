@@ -541,12 +541,14 @@ def plo_dashboard(program_id: str) -> ResponseReturnValue:
     assert program is not None
 
     term_id = request.args.get("term_id") or None
+    plo_id = request.args.get("plo_id") or None
 
     try:
         tree = get_plo_dashboard_tree(
             program_id,
             institution_id=program["institution_id"],
             term_id=term_id,
+            plo_id=plo_id,
         )
         return jsonify({"success": True, **tree}), 200
     except Exception as exc:
