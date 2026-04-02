@@ -412,7 +412,7 @@ describe("buildTrendOptions — onClick handler", () => {
     expect(canvas.style.cursor).toBe("pointer");
 
     opts.onHover({ native: { target: canvas } }, []);
-    expect(canvas.style.cursor).toBe("");
+    expect(canvas.style.cursor).toBe("default");
   });
 });
 

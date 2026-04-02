@@ -66,33 +66,32 @@ describe("createDetailPanel — CLO rows", () => {
     expect(firstClo.textContent).toContain("CLO 3");
   });
 
+  test("CLO row shows course title when available", () => {
+    const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
+    const firstClo = panel.querySelector(".plo-detail-clo");
+    expect(firstClo.textContent).toContain("Biology Lab");
+  });
+
   test("CLO row shows aggregate pass rate", () => {
     const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
     const firstClo = panel.querySelector(".plo-detail-clo");
     expect(firstClo.textContent).toContain("80%");
   });
 
-  test("CLO row is collapsible — starts collapsed", () => {
+  test("CLO rows start expanded", () => {
     const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
     const firstClo = panel.querySelector(".plo-detail-clo");
-    expect(firstClo.classList.contains("expanded")).toBe(false);
-  });
-
-  test("clicking CLO header expands it", () => {
-    const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
-    const firstClo = panel.querySelector(".plo-detail-clo");
-    const header = firstClo.querySelector(".plo-detail-clo-header");
-    header.click();
     expect(firstClo.classList.contains("expanded")).toBe(true);
   });
 
-  test("clicking expanded CLO header collapses it", () => {
+  test("clicking CLO header toggles collapsed", () => {
     const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
     const firstClo = panel.querySelector(".plo-detail-clo");
     const header = firstClo.querySelector(".plo-detail-clo-header");
-    header.click(); // expand
     header.click(); // collapse
     expect(firstClo.classList.contains("expanded")).toBe(false);
+    header.click(); // expand again
+    expect(firstClo.classList.contains("expanded")).toBe(true);
   });
 });
 
@@ -127,6 +126,12 @@ describe("createDetailPanel — section rows", () => {
     expect(sections[0].textContent).toContain("27/30");
   });
 
+  test("section row shows enrollment count", () => {
+    const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
+    const sections = panel.querySelectorAll(".plo-detail-section");
+    expect(sections[0].textContent).toContain("enrolled: 32");
+  });
+
   test("section row has a pass/fail badge", () => {
     const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
     const badge = panel.querySelector(
@@ -141,6 +146,42 @@ describe("createDetailPanel — section rows", () => {
     expect(link).not.toBeNull();
     expect(link.getAttribute("href")).toContain("/sections");
     expect(link.getAttribute("href")).toContain("off-1");
+  });
+
+  test("section row shows assessment method from template", () => {
+    const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
+    const method = panel.querySelector(".plo-detail-section-method");
+    expect(method).not.toBeNull();
+    expect(method.textContent).toContain("Lab Report Rubric");
+  });
+
+  test("section row shows instructor narratives when available", () => {
+    const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
+    const narratives = panel.querySelectorAll(".plo-detail-narrative");
+    // First section has celebrations, challenges, changes (3) + feedback_comments (1) = 4
+    expect(narratives.length).toBeGreaterThanOrEqual(3);
+    const texts = Array.from(narratives).map((n) => n.textContent);
+    expect(texts.some((t) => t.includes("excellent collaboration"))).toBe(true);
+    expect(texts.some((t) => t.includes("Time management"))).toBe(true);
+    expect(texts.some((t) => t.includes("mid-project checkpoint"))).toBe(true);
+  });
+
+  test("section row shows reviewer feedback when present", () => {
+    const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
+    const narratives = panel.querySelectorAll(".plo-detail-narrative");
+    const texts = Array.from(narratives).map((n) => n.textContent);
+    expect(texts.some((t) => t.includes("Strong methodological rigor"))).toBe(
+      true,
+    );
+  });
+
+  test("section row omits narratives when null", () => {
+    const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
+    // Third section (STAT-201) has all null narratives
+    const allClos = panel.querySelectorAll(".plo-detail-clo");
+    const statClo = allClos[1]; // second CLO is STAT-201
+    const statNarr = statClo.querySelectorAll(".plo-detail-narrative");
+    expect(statNarr.length).toBe(0);
   });
 });
 

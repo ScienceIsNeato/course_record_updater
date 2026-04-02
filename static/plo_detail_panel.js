@@ -10,6 +10,21 @@
     return span;
   }
 
+  function narrativeBlock(label, text) {
+    if (!text) return null;
+    var wrap = document.createElement("div");
+    wrap.className = "plo-detail-narrative";
+    var lbl = document.createElement("span");
+    lbl.className = "plo-detail-narrative-label";
+    lbl.textContent = label;
+    var body = document.createElement("span");
+    body.className = "plo-detail-narrative-text";
+    body.textContent = text;
+    wrap.appendChild(lbl);
+    wrap.appendChild(body);
+    return wrap;
+  }
+
   function sectionRow(sec) {
     const li = document.createElement("li");
     li.className = "plo-detail-section";
@@ -23,6 +38,10 @@
         ? (sec.students_passed / sec.students_took) * 100
         : null;
 
+    /* top line: section link + summary info + badge */
+    var topLine = document.createElement("div");
+    topLine.className = "plo-detail-section-top";
+
     const link = document.createElement("a");
     const offeringId =
       sec._offering && sec._offering.offering_id
@@ -34,16 +53,48 @@
 
     const info = document.createElement("span");
     info.className = "plo-detail-section-info";
-    info.textContent =
-      instructor +
-      " \u2014 " +
-      (sec.assessment_tool || "") +
-      " \u2014 " +
-      counts;
+    var infoParts = [instructor];
+    if (sec.assessment_tool) infoParts.push(sec.assessment_tool);
+    infoParts.push(counts);
+    var secObj = sec._section || {};
+    if (secObj.enrollment != null) {
+      infoParts.push("enrolled: " + secObj.enrollment);
+    }
+    info.textContent = infoParts.join(" \u2014 ");
 
-    li.appendChild(link);
-    li.appendChild(info);
-    li.appendChild(passRateBadge(passRate));
+    topLine.appendChild(link);
+    topLine.appendChild(info);
+    topLine.appendChild(passRateBadge(passRate));
+    li.appendChild(topLine);
+
+    /* assessment method from CLO template */
+    var tpl = sec._template || {};
+    if (tpl.assessment_method) {
+      var method = document.createElement("div");
+      method.className = "plo-detail-section-method";
+      method.textContent = "Method: " + tpl.assessment_method;
+      li.appendChild(method);
+    }
+
+    /* instructor narratives */
+    var narr = sec._section || {};
+    var blocks = [
+      narrativeBlock("Celebrations:", narr.narrative_celebrations),
+      narrativeBlock("Challenges:", narr.narrative_challenges),
+      narrativeBlock("Changes planned:", narr.narrative_changes),
+      narrativeBlock("Reconciliation:", narr.reconciliation_note),
+    ];
+    blocks.forEach(function (b) {
+      if (b) li.appendChild(b);
+    });
+
+    /* reviewer feedback on this section outcome */
+    if (sec.feedback_comments) {
+      li.appendChild(
+        narrativeBlock("Reviewer feedback:", sec.feedback_comments),
+      );
+    }
+
     return li;
   }
 
@@ -51,7 +102,7 @@
 
   function cloRow(clo) {
     const div = document.createElement("div");
-    div.className = "plo-detail-clo";
+    div.className = "plo-detail-clo expanded";
 
     const header = document.createElement("div");
     header.className = "plo-detail-clo-header";
@@ -60,9 +111,13 @@
 
     const label = document.createElement("span");
     label.className = "plo-detail-clo-label";
+    var labelParts = [];
+    if (clo.course_number) labelParts.push(clo.course_number);
+    if (clo.course_title) labelParts.push(clo.course_title);
+    var courseInfo = labelParts.join(" \u2014 ");
     label.textContent =
-      (clo.course_number || "") +
-      " \u2014 CLO " +
+      (courseInfo ? courseInfo + " \u2014 " : "") +
+      "CLO " +
       clo.clo_number +
       ": " +
       clo.description;

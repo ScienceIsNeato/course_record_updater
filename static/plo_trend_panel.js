@@ -232,6 +232,7 @@
       responsive: true,
       maintainAspectRatio: false,
       animation: { duration: 300 },
+      interaction: { mode: "index", intersect: false },
       plugins: {
         legend: {
           display: model.clos.length > 0,
@@ -295,7 +296,7 @@
         var canvas = event.native ? event.native.target : null;
         if (canvas) {
           canvas.style.cursor =
-            elements && elements.length > 0 ? "pointer" : "";
+            elements && elements.length > 0 ? "pointer" : "default";
         }
       },
     };

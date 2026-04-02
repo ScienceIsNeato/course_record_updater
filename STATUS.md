@@ -1,32 +1,33 @@
 # LoopCloser - Current Status
 
-## Latest Work: PR #71 CI + Review Resolution (2026-03-31)
+## Latest Work: PLO Drill-Down Detail Panel (PR #72)
 
-**Status**: 🔄 CI green, resolving Bugbot threads
+**Status**: ✅ Pushed, CI running
 
-**Branch**: `chore/post-main-sync-20260321-043046` (PR #71)
-**HEAD**: `718cd29` — fix: restore SARIF upload to CI workflow
+**Branch**: `feat/plo-drill-down` (PR #72)
+**HEAD**: `837d0f1` — feat: add PLO drill-down detail panel to trend charts
 
-**What Changed (across sessions)**:
+**What Changed**:
 
-1. **Fixed e2e email test failures**: Created `ConsoleEmailProvider` fallback for CI (no SMTP creds)
-2. **Fixed missing re-exports** in `import_service.py` (`create_term`, `update_course_offering`)
-3. **Fixed diff-coverage**: `fetch-depth: 0` in CI checkout
-4. **Fixed E2E modal close failures**: DOM fallback when `bootstrap.Modal.getInstance()` returns null (audit_clo, sectionManagement, management_utils)
-5. **Fixed mypy str-unpack**: Added type ignore annotation
-6. **Fixed detect-secrets BrokenPipeError**: Added top-level `exclude.files` to `.secrets.baseline` for pre-scan exclusion
-7. **Set `swabbing_time: 0`**: Ensures all gates run to completion (no time budget skip)
-8. **Fixed Bugbot feedback**: Return type annotation (seed_db), f-strings (run_demo), institution_id source (advance_demo)
-9. **Restored SARIF upload**: Re-added `sm swab --sarif` + `upload-sarif@v3` step to consolidated CI job
+1. **Backend plo_id filter**: Added `plo_id` query param to `/plo-dashboard` endpoint, filters response to single PLO
+2. **Frontend detail panel**: New `plo_detail_panel.js` IIFE module — `createDetailPanel(ploData, termLabel)` builds CLO → section breakdown DOM
+3. **Click handler wiring**: Extended `buildTrendOptions` with `onPointClick` callback; `plo_trend.js` passes handler that fetches detail data and renders panel
+4. **CSS slide animation**: New styles in `plo_dashboard.css` with `max-height` transition, collapsible CLO rows, section links
+5. **Template**: Added `<script>` tag for `plo_detail_panel.js` in `plo_dashboard.html`
 
-**CI History**: 6 runs — 3 fail → 1 fail → 2 fail → pass → pass → pass (current)
+**Tests (TDD)**:
+- 13 characterization tests for `plo_trend_panel.js`
+- 20 unit tests for `plo_detail_panel.js` DOM contract
+- 2 tests for `onPointClick` callback in `buildTrendOptions`
+- 7 Python tests for `plo_id` filter (3 route, 4 service)
+
+**Quality**: `sm swab` all 22 gates green locally
 
 **Next Steps**:
-- Resolve any remaining Bugbot threads from latest push
-- Confirm `sm buff verify` + `sm buff status` both clean
-- PR ready for merge
+- Monitor CI on PR #72
+- Address any review feedback
 
-## Previous: PR 71 Comment + Gate Remediation (2026-03-26)
+## Previous: PR #71 CI + Review Resolution (2026-03-31)
 
 **What Changed**:
 
