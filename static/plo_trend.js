@@ -767,7 +767,7 @@
           })
           .then(function (data) {
             if (!data || !data.success) return;
-            var plos = data.tree && data.tree.plos;
+            var plos = data.plos;
             if (!plos || plos.length === 0) return;
             var ploData = plos[0];
             var termLabel = term.term_name || term.name || "";

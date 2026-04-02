@@ -792,16 +792,14 @@ describe("PloTrend._makePointClickHandler guard clauses", () => {
         json: () =>
           Promise.resolve({
             success: true,
-            tree: {
-              plos: [
-                {
-                  id: "PLO-1",
-                  plo_number: "1",
-                  description: "Test PLO",
-                  clos: [],
-                },
-              ],
-            },
+            plos: [
+              {
+                id: "PLO-1",
+                plo_number: "1",
+                description: "Test PLO",
+                clos: [],
+              },
+            ],
           }),
       }),
     );
@@ -908,7 +906,7 @@ describe("onClick → onPointClick integration", () => {
         json: () =>
           Promise.resolve({
             success: true,
-            tree: { plos: [{ id: "PLO-1", clos: [] }] },
+            plos: [{ id: "PLO-1", clos: [] }],
           }),
       }),
     );
