@@ -315,7 +315,7 @@ describe("buildTrendOptions — onClick handler", () => {
 
     optsWithCb.onClick({}, [{ index: 1 }]);
     expect(onPointClick).toHaveBeenCalledTimes(1);
-    expect(onPointClick).toHaveBeenCalledWith(MOCK_TERMS[1]);
+    expect(onPointClick).toHaveBeenCalledWith(MOCK_TERMS[1], {});
   });
 
   test("onClick with onPointClick does NOT change term filter", () => {
@@ -448,7 +448,7 @@ describe("createTrendPanel integration — onPointClick threading", () => {
     // Simulate clicking on the second data point (Spring 2025)
     chartConfig.options.onClick({}, [{ index: 1 }]);
     expect(onPointClick).toHaveBeenCalledTimes(1);
-    expect(onPointClick).toHaveBeenCalledWith(MOCK_TERMS[1]);
+    expect(onPointClick).toHaveBeenCalledWith(MOCK_TERMS[1], {});
   });
 
   test("Chart onClick does NOT call onPointClick when opts lacks it", () => {
@@ -488,7 +488,7 @@ describe("createTrendPanel integration — onPointClick threading", () => {
     chartConfig.options.onClick({}, [{ index: 1 }]);
     expect(termFilter.value).toBe(origValue);
     expect(changeSpy).not.toHaveBeenCalled();
-    expect(onPointClick).toHaveBeenCalledWith(MOCK_TERMS[1]);
+    expect(onPointClick).toHaveBeenCalledWith(MOCK_TERMS[1], {});
   });
 
   test("Chart options include onHover cursor handler", () => {

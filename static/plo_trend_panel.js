@@ -185,6 +185,17 @@
       filter: (item) => item.raw !== null && !isNaN(item.raw),
       afterBody: (items) =>
         buildDiscontinuityTooltip(items, model.discontinuities),
+      footer: function (items) {
+        if (!items || items.length === 0) return "";
+        var chart = items[0].chart;
+        if (!chart || !chart.canvas) return "";
+        var parent = chart.canvas.closest(".plo-trend-panel");
+        if (!parent) return "";
+        if (parent.querySelector(".plo-detail-panel, .plo-detail-compare")) {
+          return "\u21e7 Shift+click to compare terms";
+        }
+        return "";
+      },
     };
   }
 
@@ -274,14 +285,14 @@
           grid: { color: "rgba(0,0,0,0.05)" },
         },
       },
-      onClick(_event, elements) {
+      onClick(event, elements) {
         if (!elements || elements.length === 0) return;
         const idx = elements[0].index;
         const term = terms[idx];
         if (!term) return;
         var handled = false;
         if (callbacks.onPointClick) {
-          handled = callbacks.onPointClick(term);
+          handled = callbacks.onPointClick(term, event);
         }
         if (!handled) {
           // Fallback: change term filter (gives user immediate feedback)

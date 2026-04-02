@@ -629,6 +629,15 @@
       );
       li.appendChild(header);
 
+      /* narrative progress indicator */
+      var pillFn =
+        typeof globalThis !== "undefined" && globalThis.narrativeProgressPill;
+      var pill = pillFn ? pillFn(plo) : null;
+      if (pill) {
+        var meta = header.querySelector(".plo-tree-meta");
+        if (meta) meta.insertBefore(pill, meta.firstChild);
+      }
+
       const children = document.createElement("ul");
       children.className = "plo-tree-children";
       if (!plo.clos || plo.clos.length === 0) {

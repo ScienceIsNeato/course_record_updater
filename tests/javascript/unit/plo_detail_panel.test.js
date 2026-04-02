@@ -78,20 +78,20 @@ describe("createDetailPanel — CLO rows", () => {
     expect(firstClo.textContent).toContain("80%");
   });
 
-  test("CLO rows start expanded", () => {
+  test("CLO rows start collapsed", () => {
     const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
     const firstClo = panel.querySelector(".plo-detail-clo");
-    expect(firstClo.classList.contains("expanded")).toBe(true);
+    expect(firstClo.classList.contains("expanded")).toBe(false);
   });
 
-  test("clicking CLO header toggles collapsed", () => {
+  test("clicking CLO header toggles expanded", () => {
     const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
     const firstClo = panel.querySelector(".plo-detail-clo");
     const header = firstClo.querySelector(".plo-detail-clo-header");
-    header.click(); // collapse
-    expect(firstClo.classList.contains("expanded")).toBe(false);
-    header.click(); // expand again
+    header.click(); // expand
     expect(firstClo.classList.contains("expanded")).toBe(true);
+    header.click(); // collapse again
+    expect(firstClo.classList.contains("expanded")).toBe(false);
   });
 });
 

@@ -668,3 +668,78 @@
   font-style: italic;
   font-size: 0.85rem;
 }
+
+/* --- Color-coded narrative borders --- */
+.plo-detail-narrative--celebrations {
+  border-left-color: #198754;
+}
+.plo-detail-narrative--challenges {
+  border-left-color: #fd7e14;
+}
+.plo-detail-narrative--changes {
+  border-left-color: #0d6efd;
+}
+.plo-detail-narrative--reconciliation {
+  border-left-color: #6f42c1;
+}
+.plo-detail-narrative--feedback {
+  border-left-color: #6f42c1;
+}
+
+/* --- Side-by-side comparison --- */
+.plo-detail-compare {
+  display: flex;
+  gap: 0.75rem;
+}
+.plo-detail-compare .plo-detail-panel {
+  flex: 1;
+  min-width: 0;
+}
+
+/* --- Flag for follow-up --- */
+.plo-detail-flag-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: #adb5bd;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
+  flex-shrink: 0;
+}
+.plo-detail-flag-btn:hover {
+  color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.08);
+}
+.plo-detail-flag-btn.flagged {
+  color: #dc3545;
+}
+
+/* --- CLO collapse indicator --- */
+.plo-detail-clo-toggle {
+  font-size: 0.65rem;
+  color: #6c757d;
+  margin-right: 0.25rem;
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+.plo-detail-clo.expanded .plo-detail-clo-toggle {
+  transform: rotate(90deg);
+}
+
+/* --- Narrative progress pill --- */
+.plo-narrative-progress {
+  font-size: 0.7rem;
+  color: #6c757d;
+  padding: 0.1rem 0.4rem;
+  background-color: #f8f9fa;
+  border-radius: 0.75rem;
+  white-space: nowrap;
+}
+.plo-narrative-progress.complete {
+  background-color: rgba(25, 135, 84, 0.1);
+  color: #198754;
+}

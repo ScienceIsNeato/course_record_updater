@@ -10,10 +10,11 @@
     return span;
   }
 
-  function narrativeBlock(label, text) {
+  function narrativeBlock(label, text, type) {
     if (!text) return null;
     var wrap = document.createElement("div");
     wrap.className = "plo-detail-narrative";
+    if (type) wrap.classList.add("plo-detail-narrative--" + type);
     var lbl = document.createElement("span");
     lbl.className = "plo-detail-narrative-label";
     lbl.textContent = label;
@@ -23,6 +24,32 @@
     wrap.appendChild(lbl);
     wrap.appendChild(body);
     return wrap;
+  }
+
+  function flagButton(storageKey) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "plo-detail-flag-btn";
+    btn.title = "Flag for follow-up";
+    var isFlagged = false;
+    try {
+      isFlagged = localStorage.getItem(storageKey) === "1";
+    } catch (_) {
+      /* ignore */
+    }
+    if (isFlagged) btn.classList.add("flagged");
+    btn.innerHTML = '<i class="fas fa-flag"></i>';
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var now = btn.classList.toggle("flagged");
+      try {
+        if (now) localStorage.setItem(storageKey, "1");
+        else localStorage.removeItem(storageKey);
+      } catch (_) {
+        /* ignore */
+      }
+    });
+    return btn;
   }
 
   function sectionRow(sec) {
@@ -65,6 +92,14 @@
     topLine.appendChild(link);
     topLine.appendChild(info);
     topLine.appendChild(passRateBadge(passRate));
+
+    var flagKey =
+      "plo-followup-" +
+      (offeringId || "") +
+      "-" +
+      (sec._section ? sec._section.section_number : "");
+    topLine.appendChild(flagButton(flagKey));
+
     li.appendChild(topLine);
 
     /* assessment method from CLO template */
@@ -79,10 +114,18 @@
     /* instructor narratives */
     var narr = sec._section || {};
     var blocks = [
-      narrativeBlock("Celebrations:", narr.narrative_celebrations),
-      narrativeBlock("Challenges:", narr.narrative_challenges),
-      narrativeBlock("Changes planned:", narr.narrative_changes),
-      narrativeBlock("Reconciliation:", narr.reconciliation_note),
+      narrativeBlock(
+        "Celebrations:",
+        narr.narrative_celebrations,
+        "celebrations",
+      ),
+      narrativeBlock("Challenges:", narr.narrative_challenges, "challenges"),
+      narrativeBlock("Changes planned:", narr.narrative_changes, "changes"),
+      narrativeBlock(
+        "Reconciliation:",
+        narr.reconciliation_note,
+        "reconciliation",
+      ),
     ];
     blocks.forEach(function (b) {
       if (b) li.appendChild(b);
@@ -91,7 +134,7 @@
     /* reviewer feedback on this section outcome */
     if (sec.feedback_comments) {
       li.appendChild(
-        narrativeBlock("Reviewer feedback:", sec.feedback_comments),
+        narrativeBlock("Reviewer feedback:", sec.feedback_comments, "feedback"),
       );
     }
 
@@ -102,12 +145,16 @@
 
   function cloRow(clo) {
     const div = document.createElement("div");
-    div.className = "plo-detail-clo expanded";
+    div.className = "plo-detail-clo";
 
     const header = document.createElement("div");
     header.className = "plo-detail-clo-header";
     header.setAttribute("role", "button");
     header.setAttribute("tabindex", "0");
+
+    var toggle = document.createElement("span");
+    toggle.className = "plo-detail-clo-toggle";
+    toggle.textContent = "\u25B6";
 
     const label = document.createElement("span");
     label.className = "plo-detail-clo-label";
@@ -124,6 +171,7 @@
 
     const badge = passRateBadge(clo.aggregate ? clo.aggregate.pass_rate : null);
 
+    header.appendChild(toggle);
     header.appendChild(label);
     header.appendChild(badge);
     div.appendChild(header);

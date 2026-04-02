@@ -640,6 +640,8 @@
 
       // Populate summary bar sparklines
       this._injectSummarySparklines(container, plos, terms, selectedTermIndex);
+
+      this._restoreFromHash();
     },
 
     /**
@@ -735,7 +737,7 @@
      */
     _makePointClickHandler(ploId, ref) {
       var self = this;
-      return function onPointClick(term) {
+      return function onPointClick(term, chartEvent) {
         if (!term || !term.term_id) return false;
         var DetailPanel =
           typeof globalThis !== "undefined" && globalThis.PloDetailPanel;
@@ -743,8 +745,15 @@
         var container = ref && ref.el;
         if (!container) return false;
 
-        // Remove any existing detail panel in this container
-        DetailPanel.destroyDetailPanel(container);
+        var nativeEvt = chartEvent && (chartEvent.native || chartEvent);
+        var isShift = nativeEvt && nativeEvt.shiftKey;
+        var existingPanel = container.querySelector(".plo-detail-panel");
+
+        if (!isShift || !existingPanel) {
+          DetailPanel.destroyDetailPanel(container);
+          var cmpWrap = container.querySelector(".plo-detail-compare");
+          if (cmpWrap) cmpWrap.remove();
+        }
 
         var programId = self.programId;
         if (!programId) return false;
@@ -772,7 +781,26 @@
             var ploData = plos[0];
             var termLabel = term.term_name || term.name || "";
             var detailEl = DetailPanel.createDetailPanel(ploData, termLabel);
-            container.appendChild(detailEl);
+
+            if (isShift && existingPanel) {
+              var cw = container.querySelector(".plo-detail-compare");
+              if (!cw) {
+                cw = document.createElement("div");
+                cw.className = "plo-detail-compare";
+                existingPanel.parentNode.insertBefore(cw, existingPanel);
+                cw.appendChild(existingPanel);
+                self._wireCompareClose(existingPanel, cw);
+              }
+              if (cw.children.length >= 2) {
+                cw.children[1].remove();
+              }
+              cw.appendChild(detailEl);
+              self._wireCompareClose(detailEl, cw);
+            } else {
+              container.appendChild(detailEl);
+            }
+
+            self._updateHash(ploId);
           })
           .catch(function () {
             /* silently ignore network errors */
@@ -797,6 +825,7 @@
       ) {
         _destroyCharts(next);
         next.remove();
+        this._clearHash();
         return;
       }
 
@@ -819,6 +848,7 @@
       panelRef.el = panel;
       panel.dataset.ploId = String(plo.id);
       row.after(panel);
+      this._updateHash(plo.id);
     },
 
     /**
@@ -894,6 +924,7 @@
       if (existing) {
         _destroyCharts(existing);
         existing.remove();
+        this._clearHash();
         return;
       }
 
@@ -917,6 +948,87 @@
       } else {
         nodeEl.appendChild(panel);
       }
+
+      if (ploId) this._updateHash(ploId);
+    },
+
+    /**
+     * Re-wire a detail panel's close button to handle compare-wrapper cleanup.
+     */
+    _wireCompareClose(panel, wrapper) {
+      var btn = panel.querySelector(".plo-detail-panel-close");
+      if (!btn) return;
+      var newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+      newBtn.addEventListener("click", function () {
+        panel.remove();
+        if (wrapper.children.length <= 1 && wrapper.parentNode) {
+          var remaining = wrapper.firstElementChild;
+          if (remaining) {
+            wrapper.parentNode.insertBefore(remaining, wrapper);
+          }
+          wrapper.remove();
+        }
+      });
+    },
+
+    _updateHash(ploId) {
+      if (!this.trendData || !ploId) return;
+      var plo = (this.trendData.plos || []).find(function (p) {
+        return String(p.id) === String(ploId);
+      });
+      if (!plo) return;
+      try {
+        history.replaceState(null, "", "#plo=" + plo.plo_number);
+      } catch (_) {
+        /* ignore */
+      }
+    },
+
+    _clearHash() {
+      try {
+        if (window.location.hash) {
+          history.replaceState(
+            null,
+            "",
+            window.location.pathname + window.location.search,
+          );
+        }
+      } catch (_) {
+        /* ignore */
+      }
+    },
+
+    _restoreFromHash() {
+      if (this._hashRestored) return;
+      var hash = window.location.hash.slice(1);
+      if (!hash) return;
+      var params;
+      try {
+        params = new URLSearchParams(hash);
+      } catch (_) {
+        return;
+      }
+      var ploNum = params.get("plo");
+      if (!ploNum || !this.trendData) return;
+      this._hashRestored = true;
+
+      var plo = (this.trendData.plos || []).find(function (p) {
+        return String(p.plo_number) === String(ploNum);
+      });
+      if (!plo || !plo.trend) return;
+
+      var container = document.getElementById("ploTreeContainer");
+      if (!container) return;
+      var ploNode = container.querySelector("[data-plo-id='" + plo.id + "']");
+      if (!ploNode) return;
+
+      ploNode.classList.add("expanded");
+      this._toggleTrendPanel(ploNode, plo.trend, this.trendData.terms, {
+        title: "PLO-" + plo.plo_number + ": " + plo.description,
+        clos: plo.clos || [],
+        discontinuities: plo.discontinuities || [],
+      });
     },
   };
 
