@@ -320,7 +320,7 @@ describe("buildTrendOptions — onClick handler", () => {
 
   test("onClick with onPointClick does NOT change term filter", () => {
     const deps = makeMockDeps();
-    const onPointClick = jest.fn();
+    const onPointClick = jest.fn().mockReturnValue(true);
     const model = {
       clos: [],
       currentTermIndices: new Set(),
@@ -413,5 +413,93 @@ describe("buildTrendOptions — onClick handler", () => {
 
     opts.onHover({ native: { target: canvas } }, []);
     expect(canvas.style.cursor).toBe("");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Integration: createTrendPanel → Chart → onClick → onPointClick
+// ---------------------------------------------------------------------------
+describe("createTrendPanel integration — onPointClick threading", () => {
+  beforeEach(() => {
+    global.Chart.mockClear();
+    setBody(`<select id="ploTermFilter">
+      <option value="">All Terms</option>
+      <option value="t-fa24">Fall 2024</option>
+      <option value="t-sp25">Spring 2025</option>
+      <option value="t-fa25">Fall 2025</option>
+    </select>`);
+  });
+
+  test("Chart receives onClick when onPointClick is in opts", () => {
+    const deps = makeMockDeps();
+    const onPointClick = jest.fn();
+    const opts = {
+      ...MOCK_OPTS,
+      onPointClick,
+    };
+
+    createTrendPanel(MOCK_TREND_POINTS, MOCK_TERMS, opts, deps);
+
+    // Chart constructor should have been called
+    expect(global.Chart).toHaveBeenCalledTimes(1);
+    const chartConfig = global.Chart.mock.calls[0][1];
+    expect(chartConfig.options.onClick).toBeDefined();
+
+    // Simulate clicking on the second data point (Spring 2025)
+    chartConfig.options.onClick({}, [{ index: 1 }]);
+    expect(onPointClick).toHaveBeenCalledTimes(1);
+    expect(onPointClick).toHaveBeenCalledWith(MOCK_TERMS[1]);
+  });
+
+  test("Chart onClick does NOT call onPointClick when opts lacks it", () => {
+    const deps = makeMockDeps();
+    // No onPointClick in opts
+    createTrendPanel(MOCK_TREND_POINTS, MOCK_TERMS, MOCK_OPTS, deps);
+
+    expect(global.Chart).toHaveBeenCalledTimes(1);
+    const chartConfig = global.Chart.mock.calls[0][1];
+
+    // Simulate clicking — should change term filter instead
+    const termFilter = document.getElementById("ploTermFilter");
+    const changeSpy = jest.fn();
+    termFilter.addEventListener("change", changeSpy);
+
+    chartConfig.options.onClick({}, [{ index: 1 }]);
+    expect(termFilter.value).toBe("t-sp25");
+    expect(changeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test("Chart onClick with onPointClick does NOT change term filter", () => {
+    const deps = makeMockDeps();
+    const onPointClick = jest.fn().mockReturnValue(true);
+    const opts = {
+      ...MOCK_OPTS,
+      onPointClick,
+    };
+
+    createTrendPanel(MOCK_TREND_POINTS, MOCK_TERMS, opts, deps);
+
+    const chartConfig = global.Chart.mock.calls[0][1];
+    const termFilter = document.getElementById("ploTermFilter");
+    const origValue = termFilter.value;
+    const changeSpy = jest.fn();
+    termFilter.addEventListener("change", changeSpy);
+
+    chartConfig.options.onClick({}, [{ index: 1 }]);
+    expect(termFilter.value).toBe(origValue);
+    expect(changeSpy).not.toHaveBeenCalled();
+    expect(onPointClick).toHaveBeenCalledWith(MOCK_TERMS[1]);
+  });
+
+  test("Chart options include onHover cursor handler", () => {
+    const deps = makeMockDeps();
+    createTrendPanel(MOCK_TREND_POINTS, MOCK_TERMS, MOCK_OPTS, deps);
+
+    const chartConfig = global.Chart.mock.calls[0][1];
+    expect(chartConfig.options.onHover).toBeDefined();
+
+    const canvas = document.createElement("canvas");
+    chartConfig.options.onHover({ native: { target: canvas } }, [{ index: 0 }]);
+    expect(canvas.style.cursor).toBe("pointer");
   });
 });

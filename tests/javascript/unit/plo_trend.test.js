@@ -762,3 +762,311 @@ describe("createTrendPanel with CLO overlays", () => {
     expect(labelCb({ raw: NaN, datasetIndex: 0, dataIndex: 0 })).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// _makePointClickHandler — diagnostic tests
+// Exposes silent guard-clause failures that cause clicks to do nothing.
+// ---------------------------------------------------------------------------
+describe("PloTrend._makePointClickHandler guard clauses", () => {
+  let trend;
+  let originalPloDetailPanel;
+
+  beforeEach(() => {
+    // Create a fresh PloTrend-like object for each test
+    trend = Object.create(PloTrend);
+    trend.programId = "PROG-123";
+    trend.trendData = null;
+    trend._loadTrendGen = 0;
+
+    // Save and set up PloDetailPanel on globalThis
+    originalPloDetailPanel = globalThis.PloDetailPanel;
+    globalThis.PloDetailPanel = {
+      createDetailPanel: jest.fn(() => document.createElement("div")),
+      destroyDetailPanel: jest.fn(),
+    };
+
+    // Mock fetch
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            success: true,
+            tree: {
+              plos: [
+                {
+                  id: "PLO-1",
+                  plo_number: "1",
+                  description: "Test PLO",
+                  clos: [],
+                },
+              ],
+            },
+          }),
+      }),
+    );
+  });
+
+  afterEach(() => {
+    globalThis.PloDetailPanel = originalPloDetailPanel;
+    delete global.fetch;
+  });
+
+  test("returns a function", () => {
+    const ref = { el: document.createElement("div") };
+    const handler = trend._makePointClickHandler("PLO-1", ref);
+    expect(typeof handler).toBe("function");
+  });
+
+  test("returns false when term is missing", () => {
+    const ref = { el: document.createElement("div") };
+    const handler = trend._makePointClickHandler("PLO-1", ref);
+    expect(handler(null)).toBe(false);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("returns false when term.term_id is missing", () => {
+    const ref = { el: document.createElement("div") };
+    const handler = trend._makePointClickHandler("PLO-1", ref);
+    expect(handler({ name: "Fall 2024" })).toBe(false);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("returns false when PloDetailPanel is missing", () => {
+    globalThis.PloDetailPanel = undefined;
+    const ref = { el: document.createElement("div") };
+    const handler = trend._makePointClickHandler("PLO-1", ref);
+    expect(handler({ term_id: "FA2024", name: "Fall 2024" })).toBe(false);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("returns false when container (ref.el) is null", () => {
+    const ref = { el: null };
+    const handler = trend._makePointClickHandler("PLO-1", ref);
+    expect(handler({ term_id: "FA2024", name: "Fall 2024" })).toBe(false);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("returns false when programId is not set", () => {
+    trend.programId = null;
+    const ref = { el: document.createElement("div") };
+    const handler = trend._makePointClickHandler("PLO-1", ref);
+    expect(handler({ term_id: "FA2024", name: "Fall 2024" })).toBe(false);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("returns true and fetches when all dependencies present", async () => {
+    const container = document.createElement("div");
+    const ref = { el: container };
+    const handler = trend._makePointClickHandler("PLO-1", ref);
+    expect(handler({ term_id: "FA2024", name: "Fall 2024" })).toBe(true);
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    const url = global.fetch.mock.calls[0][0];
+    expect(url).toContain("/api/programs/PROG-123/plo-dashboard");
+    expect(url).toContain("plo_id=PLO-1");
+    expect(url).toContain("term_id=FA2024");
+
+    // Flush promises to let the .then chain run
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(globalThis.PloDetailPanel.destroyDetailPanel).toHaveBeenCalledWith(
+      container,
+    );
+    expect(globalThis.PloDetailPanel.createDetailPanel).toHaveBeenCalled();
+    expect(container.children.length).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Integration: onClick → onPointClick callback chain
+// Verifies the full flow from Chart.js onClick through to the handler.
+// ---------------------------------------------------------------------------
+describe("onClick → onPointClick integration", () => {
+  let trend;
+  let originalPloDetailPanel;
+
+  const terms = [
+    { term_id: "FA2024", name: "Fall 2024" },
+    { term_id: "SP2025", name: "Spring 2025" },
+  ];
+  const points = [{ pass_rate: 80 }, { pass_rate: 85 }];
+
+  beforeEach(() => {
+    trend = Object.create(PloTrend);
+    trend.programId = "PROG-123";
+
+    originalPloDetailPanel = globalThis.PloDetailPanel;
+    globalThis.PloDetailPanel = {
+      createDetailPanel: jest.fn(() => document.createElement("div")),
+      destroyDetailPanel: jest.fn(),
+    };
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            success: true,
+            tree: { plos: [{ id: "PLO-1", clos: [] }] },
+          }),
+      }),
+    );
+  });
+
+  afterEach(() => {
+    globalThis.PloDetailPanel = originalPloDetailPanel;
+    delete global.fetch;
+  });
+
+  test("clicking a data point when all deps present triggers fetch", () => {
+    const ref = { el: null };
+    const onPointClick = trend._makePointClickHandler("PLO-1", ref);
+
+    Chart.mockClear();
+    const panel = createTrendPanel(points, terms, { onPointClick });
+    ref.el = panel; // Simulate the ref wiring done after createTrendPanel
+
+    // Extract the onClick handler Chart.js received
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const onClick = chartCall[1].options.onClick;
+
+    // Simulate clicking the second data point
+    onClick({}, [{ index: 1 }]);
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch.mock.calls[0][0]).toContain("term_id=SP2025");
+  });
+
+  test("falls back to term filter when PloDetailPanel missing", () => {
+    globalThis.PloDetailPanel = undefined;
+    const ref = { el: null };
+    const onPointClick = trend._makePointClickHandler("PLO-1", ref);
+
+    // Set up term filter DOM element with matching options for fallback
+    const termFilter = document.createElement("select");
+    termFilter.id = "ploTermFilter";
+    terms.forEach((t) => {
+      const opt = document.createElement("option");
+      opt.value = t.term_id;
+      opt.textContent = t.name;
+      termFilter.appendChild(opt);
+    });
+    document.body.appendChild(termFilter);
+    const changeSpy = jest.fn();
+    termFilter.addEventListener("change", changeSpy);
+
+    Chart.mockClear();
+    const panel = createTrendPanel(points, terms, { onPointClick });
+    ref.el = panel;
+
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const onClick = chartCall[1].options.onClick;
+
+    onClick({}, [{ index: 0 }]);
+
+    // onPointClick returned false → onClick falls back to term filter
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(termFilter.value).toBe("FA2024");
+    expect(changeSpy).toHaveBeenCalledTimes(1);
+
+    document.body.removeChild(termFilter);
+  });
+
+  test("falls back to term filter when programId missing", () => {
+    trend.programId = null;
+    const ref = { el: null };
+    const onPointClick = trend._makePointClickHandler("PLO-1", ref);
+
+    const termFilter = document.createElement("select");
+    termFilter.id = "ploTermFilter";
+    terms.forEach((t) => {
+      const opt = document.createElement("option");
+      opt.value = t.term_id;
+      opt.textContent = t.name;
+      termFilter.appendChild(opt);
+    });
+    document.body.appendChild(termFilter);
+    const changeSpy = jest.fn();
+    termFilter.addEventListener("change", changeSpy);
+
+    Chart.mockClear();
+    const panel = createTrendPanel(points, terms, { onPointClick });
+    ref.el = panel;
+
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const onClick = chartCall[1].options.onClick;
+
+    onClick({}, [{ index: 1 }]);
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(termFilter.value).toBe("SP2025");
+    expect(changeSpy).toHaveBeenCalledTimes(1);
+
+    document.body.removeChild(termFilter);
+  });
+
+  test("falls back to term filter when container null", () => {
+    const ref = { el: null }; // Never set ref.el
+    const onPointClick = trend._makePointClickHandler("PLO-1", ref);
+
+    const termFilter = document.createElement("select");
+    termFilter.id = "ploTermFilter";
+    terms.forEach((t) => {
+      const opt = document.createElement("option");
+      opt.value = t.term_id;
+      opt.textContent = t.name;
+      termFilter.appendChild(opt);
+    });
+    document.body.appendChild(termFilter);
+    const changeSpy = jest.fn();
+    termFilter.addEventListener("change", changeSpy);
+
+    Chart.mockClear();
+    createTrendPanel(points, terms, { onPointClick });
+    // Deliberately NOT setting ref.el
+
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const onClick = chartCall[1].options.onClick;
+
+    onClick({}, [{ index: 0 }]);
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(termFilter.value).toBe("FA2024");
+    expect(changeSpy).toHaveBeenCalledTimes(1);
+
+    document.body.removeChild(termFilter);
+  });
+
+  test("does NOT change term filter when onPointClick succeeds", () => {
+    const ref = { el: null };
+    const onPointClick = trend._makePointClickHandler("PLO-1", ref);
+
+    const termFilter = document.createElement("select");
+    termFilter.id = "ploTermFilter";
+    terms.forEach((t) => {
+      const opt = document.createElement("option");
+      opt.value = t.term_id;
+      opt.textContent = t.name;
+      termFilter.appendChild(opt);
+    });
+    document.body.appendChild(termFilter);
+    const changeSpy = jest.fn();
+    termFilter.addEventListener("change", changeSpy);
+
+    Chart.mockClear();
+    const panel = createTrendPanel(points, terms, { onPointClick });
+    ref.el = panel;
+
+    const chartCall = Chart.mock.calls[Chart.mock.calls.length - 1];
+    const onClick = chartCall[1].options.onClick;
+
+    onClick({}, [{ index: 0 }]);
+
+    // onPointClick returned true → no term filter change
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(changeSpy).not.toHaveBeenCalled();
+
+    document.body.removeChild(termFilter);
+  });
+});

@@ -736,18 +736,18 @@
     _makePointClickHandler(ploId, ref) {
       var self = this;
       return function onPointClick(term) {
-        if (!term || !term.term_id) return;
+        if (!term || !term.term_id) return false;
         var DetailPanel =
           typeof globalThis !== "undefined" && globalThis.PloDetailPanel;
-        if (!DetailPanel) return;
+        if (!DetailPanel) return false;
         var container = ref && ref.el;
-        if (!container) return;
+        if (!container) return false;
 
         // Remove any existing detail panel in this container
         DetailPanel.destroyDetailPanel(container);
 
         var programId = self.programId;
-        if (!programId) return;
+        if (!programId) return false;
 
         var url =
           "/api/programs/" +
@@ -777,6 +777,7 @@
           .catch(function () {
             /* silently ignore network errors */
           });
+        return true;
       };
     },
 

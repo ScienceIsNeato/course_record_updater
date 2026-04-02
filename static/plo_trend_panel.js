@@ -278,11 +278,12 @@
         const idx = elements[0].index;
         const term = terms[idx];
         if (!term) return;
+        var handled = false;
         if (callbacks.onPointClick) {
-          // Drill-down mode: show detail panel instead of changing term filter
-          callbacks.onPointClick(term);
-        } else {
-          // Legacy mode: change term filter (triggers full dashboard re-render)
+          handled = callbacks.onPointClick(term);
+        }
+        if (!handled) {
+          // Fallback: change term filter (gives user immediate feedback)
           const termFilter = document.getElementById("ploTermFilter");
           if (termFilter) {
             termFilter.value = term.term_id;
