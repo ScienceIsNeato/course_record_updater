@@ -403,6 +403,20 @@ class DemoSeeder(BaselineSeeder):
             )
             self.log(f"   ✅ Applied {override_count} section outcome overrides")
 
+        if manifest.get("section_narrative_overrides"):
+            self.log("📝 Applying instructor narrative overrides...")
+            narr_count = self._apply_section_narrative_overrides(
+                manifest["section_narrative_overrides"], institution_id, term_map
+            )
+            self.log(f"   ✅ Applied {narr_count} section narrative overrides")
+
+        if manifest.get("section_feedback_overrides"):
+            self.log("💬 Applying reviewer feedback overrides...")
+            fb_count = self._apply_section_feedback_overrides(
+                manifest["section_feedback_overrides"], institution_id, term_map
+            )
+            self.log(f"   ✅ Applied {fb_count} section feedback overrides")
+
         if manifest.get("program_outcomes"):
             self.log("🗺️  Creating Program Learning Outcomes + mappings...")
             plo_stats = self._create_plos_from_manifest(
@@ -519,6 +533,106 @@ class DemoSeeder(BaselineSeeder):
                     )
 
         return applied_count
+
+    def _apply_section_narrative_overrides(
+        self,
+        overrides: List[Dict[str, Any]],
+        institution_id: str,
+        term_map: Optional[Dict[str, str]] = None,
+    ) -> int:
+        """Update CourseSection records with instructor narrative text.
+
+        Each override specifies a course_code + section_number + term_code and
+        one or more narrative fields to set on the section row.
+        """
+        narrative_fields = {
+            "narrative_celebrations",
+            "narrative_challenges",
+            "narrative_changes",
+            "reconciliation_note",
+            "students_passed",
+            "students_dfic",
+        }
+        applied = 0
+        for entry in overrides:
+            if "_comment" in entry and len(entry) <= 2:
+                continue
+            course_code = entry.get("course_code")
+            section_number = entry.get("section_number")
+            term_code = entry.get("term_code")
+            if not course_code or not section_number:
+                continue
+
+            term_id = (term_map or {}).get(term_code) if term_code else None
+            section_id = self._resolve_section_id(
+                course_code, section_number, institution_id, term_id
+            )
+            if not section_id:
+                self.log(
+                    f"   ⚠️ Section not found: {course_code} Sec {section_number}"
+                    + (f" term={term_code}" if term_code else "")
+                )
+                continue
+
+            updates = {k: v for k, v in entry.items() if k in narrative_fields}
+            if not updates:
+                continue
+            if database_service.db.update_course_section(section_id, updates):
+                applied += 1
+        return applied
+
+    def _apply_section_feedback_overrides(
+        self,
+        overrides: List[Dict[str, Any]],
+        institution_id: str,
+        term_map: Optional[Dict[str, str]] = None,
+    ) -> int:
+        """Set feedback_comments on specific CourseSectionOutcome records."""
+        applied = 0
+        for entry in overrides:
+            if "_comment" in entry and len(entry) <= 2:
+                continue
+            course_code = entry.get("course_code")
+            section_number = entry.get("section_number")
+            clo_number = str(entry.get("clo_number"))
+            feedback = entry.get("feedback_comments")
+            if not course_code or not section_number or not feedback:
+                continue
+
+            term_code = entry.get("term_code")
+            term_id = (term_map or {}).get(term_code) if term_code else None
+
+            section_outcome = self._find_section_outcome(
+                course_code, section_number, clo_number, institution_id, term_id
+            )
+            if not section_outcome:
+                self.log(
+                    f"   ⚠️ Section outcome not found: {course_code} "
+                    f"Sec {section_number} CLO {clo_number}"
+                )
+                continue
+
+            if database_service.db.update_section_outcome(
+                section_outcome["id"], {"feedback_comments": feedback}
+            ):
+                applied += 1
+        return applied
+
+    def _resolve_section_id(
+        self,
+        course_code: str,
+        section_number: str,
+        institution_id: str,
+        term_id: Optional[str] = None,
+    ) -> Optional[str]:
+        """Find a section ID by course code and section number."""
+        course = database_service.db.get_course_by_number(course_code, institution_id)
+        if not course:
+            return None
+        course_id = course.get("id") or course.get("course_id")
+        if not course_id:
+            return None
+        return self._find_section_id(course_id, section_number, term_id)
 
     def _create_plos_from_manifest(
         self,

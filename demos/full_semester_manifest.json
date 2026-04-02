@@ -2495,5 +2495,107 @@
       ]
     }
   },
+  "section_narrative_overrides": [
+    {
+      "_comment": "FA2024 — all sections completed, instructors reflect on the semester"
+    },
+    {
+      "course_code": "BIOL-101", "section_number": "001", "term_code": "FA2024",
+      "narrative_celebrations": "Lab reports showed a major jump in data-analysis quality compared to last year. Several students cited the new graphing workshop as the turning point.",
+      "narrative_challenges": "Two lab groups fell behind on the invertebrate dissection unit. Time management is the recurring theme — students underestimate write-up time.",
+      "narrative_changes": "Moving the graphing workshop to Week 2 instead of Week 4. Adding a 'dry run' submission checkpoint before the full report is due.",
+      "students_passed": 22, "students_dfic": 3
+    },
+    {
+      "course_code": "BIOL-101", "section_number": "002", "term_code": "FA2024",
+      "narrative_celebrations": "Online discussion boards were lively this semester — several threads continued well beyond the assignment window. Students are genuinely curious.",
+      "narrative_challenges": "The genetics unit felt rushed. Multiple students asked for an extra week on Mendelian genetics before moving to molecular topics.",
+      "narrative_changes": "Restructuring the genetics module into three sub-units with mini-assessments at each stage instead of one big exam.",
+      "students_passed": 20, "students_dfic": 3
+    },
+    {
+      "course_code": "BIOL-201", "section_number": "001", "term_code": "FA2024",
+      "narrative_celebrations": "Microscopy skills improved dramatically. Every student could prepare and stain a proper slide by mid-semester.",
+      "narrative_challenges": "Cell signalling pathways remain abstract for many students. The textbook diagrams are not sufficient on their own.",
+      "narrative_changes": "Introducing a 3D cell-signalling simulation tool next term. Piloting an interactive problem set instead of the written homework.",
+      "students_passed": 17, "students_dfic": 3
+    },
+    {
+      "course_code": "BIOL-301", "section_number": "001", "term_code": "FA2024",
+      "narrative_celebrations": "Capstone research proposals were the strongest we have seen — two students submitted to the undergraduate research symposium.",
+      "narrative_challenges": "Statistical analysis continues to be the bottleneck. Students can design experiments but struggle to choose appropriate tests.",
+      "narrative_changes": "Partnering with the Stats department to offer a 'Stats for Biologists' co-lab in Spring. Will require R-based analysis for the final project."
+    },
+    {
+      "course_code": "BIOL-250", "section_number": "001", "term_code": "FA2024",
+      "narrative_celebrations": "Field trip to the estuary yielded outstanding specimen collections. Students connected lecture concepts directly to living examples.",
+      "narrative_challenges": "Lab safety protocols need reinforcement — two minor incidents with reagent handling during the first month.",
+      "narrative_changes": "Mandatory safety quiz before each new reagent category. Reducing the number of concurrent field specimens per group from 5 to 3."
+    },
+    {
+      "_comment": "SP2025 — approved sections with completed reflections"
+    },
+    {
+      "course_code": "BIOL-101", "section_number": "001", "term_code": "SP2025",
+      "narrative_celebrations": "The new graphing workshop at Week 2 paid off immediately — lab report quality was noticeably higher from the first assignment.",
+      "narrative_challenges": "Attendance dipped in the last three weeks. Need strategies to keep engagement through the end-of-semester crunch.",
+      "narrative_changes": "Experimenting with a low-stakes 'attendance bonus' that feeds into participation grades. Also adding a review game before the final.",
+      "students_passed": 19, "students_dfic": 3
+    },
+    {
+      "course_code": "BIOL-201", "section_number": "001", "term_code": "SP2025",
+      "narrative_celebrations": "The 3D signalling simulation was a hit — students referred to it unprompted in their final essays. Retention of pathway concepts visibly improved.",
+      "narrative_challenges": "Lab groups were uneven in participation. Some students carried the load while others coasted.",
+      "narrative_changes": "Introducing peer evaluation within lab groups next semester. Also randomising group composition at mid-term to prevent stagnation.",
+      "students_passed": 16, "students_dfic": 2
+    },
+    {
+      "course_code": "BIOL-301", "section_number": "001", "term_code": "SP2025",
+      "narrative_celebrations": "The Stats-for-Biologists co-lab made a real dent in the analysis bottleneck. Students' confidence with R went from 'never heard of it' to 'comfortable' in 8 weeks.",
+      "narrative_challenges": "Literature reviews still lack depth. Students default to textbook sources rather than primary research articles.",
+      "narrative_changes": "Requiring a minimum of 10 primary sources per literature review. Scheduling a library research methods session in Week 3."
+    },
+    {
+      "course_code": "BIOL-251", "section_number": "001", "term_code": "SP2025",
+      "narrative_celebrations": "Students designed creative experiments for the enzyme kinetics project — one group's approach was novel enough to present at the departmental seminar.",
+      "narrative_challenges": "Equipment availability is a bottleneck. Spectrometer booking conflicts caused three delayed submissions this semester.",
+      "narrative_changes": "Requesting a second spectrometer for Fall. In the meantime, staggering experiment start dates across groups."
+    },
+    {
+      "course_code": "BIOL-252", "section_number": "001", "term_code": "SP2025",
+      "narrative_celebrations": "Phylogenetic tree construction exercise generated genuine excitement. Several students expressed interest in bioinformatics as a career path.",
+      "narrative_challenges": "The software tools (MEGA/BLAST) have a steep learning curve. Students need more supported practice before the graded assignment.",
+      "narrative_changes": "Adding two ungraded practice sessions before the formal phylogenetics assignment. Creating a video walkthrough for common BLAST pitfalls."
+    }
+  ],
+  "section_feedback_overrides": [
+    {
+      "_comment": "Reviewer feedback on specific section+CLO outcomes — adds program-admin perspective"
+    },
+    {
+      "course_code": "BIOL-101", "section_number": "001", "clo_number": 1, "term_code": "FA2024",
+      "feedback_comments": "Strong improvement from FA2023. The graphing workshop change is clearly working — keep iterating on it."
+    },
+    {
+      "course_code": "BIOL-101", "section_number": "002", "clo_number": 2, "term_code": "FA2024",
+      "feedback_comments": "The genetics restructure is a good call. Consider coordinating with BIOL-201 so the molecular genetics content dovetails."
+    },
+    {
+      "course_code": "BIOL-201", "section_number": "001", "clo_number": 3, "term_code": "FA2024",
+      "feedback_comments": "Excited about the simulation tool. Please share your evaluation of it after next semester so other courses can adopt if it works."
+    },
+    {
+      "course_code": "BIOL-301", "section_number": "001", "clo_number": 1, "term_code": "FA2024",
+      "feedback_comments": "The Stats co-lab partnership is exactly the kind of cross-departmental collaboration we want to see more of. Let's make it permanent."
+    },
+    {
+      "course_code": "BIOL-101", "section_number": "001", "clo_number": 1, "term_code": "SP2025",
+      "feedback_comments": "Week-2 workshop is validated by the data. Let's present this as a best-practice at the next faculty meeting."
+    },
+    {
+      "course_code": "BIOL-252", "section_number": "001", "clo_number": 1, "term_code": "SP2025",
+      "feedback_comments": "Great to see bioinformatics enthusiasm. Coordinate with CS department on cross-listing opportunities for interested students."
+    }
+  ],
   "system_settings": {}
 }
