@@ -1,5 +1,28 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR #72 CI Follow-Up After Push (2026-04-03)
+
+**Status**: ✅ Fixed locally, ready to commit/push and resolve new PR threads
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Detached compare-panel guard**:
+   - Updated `static/plo_trend.js` so shift-click compare uses the current in-DOM detail panel after the async fetch resolves instead of relying on a stale pre-fetch reference.
+   - If the original panel was closed while the request was in flight, the new detail panel now falls back to normal single-panel rendering instead of throwing against a detached node.
+2. **Hash restore term highlighting**:
+   - `_restoreFromHash()` now forwards `selectedTermIndex` to `_toggleTrendPanel()` so restored charts still highlight the active term filter.
+3. **Test maintenance / sprawl cleanup**:
+   - Added regressions for the detached compare-panel case and selected-term restore behavior.
+   - Split the oversized `plo_trend.test.js` file by moving drill-down/controller coverage into `tests/javascript/unit/plo_trend_drilldown.test.js`.
+
+**Validation**:
+
+- `npx jest tests/javascript/unit/plo_trend.test.js tests/javascript/unit/plo_trend_drilldown.test.js --runInBand` ✅
+- `sm swab --static` ✅ (`22` checks passed)
+- `sm scour` ✅ (`26` checks passed)
+
 ## Latest Work: PR #72 Seed Coverage Closeout (2026-04-03)
 
 **Status**: ✅ Fixed locally, full PR validation green, ready to commit/push

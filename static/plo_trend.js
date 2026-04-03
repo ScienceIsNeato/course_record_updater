@@ -809,14 +809,15 @@
               return;
             }
 
-            if (isShift && existingPanel) {
+            var currentPanel = container.querySelector(".plo-detail-panel");
+            if (isShift && currentPanel && currentPanel.parentNode) {
               var cw = container.querySelector(".plo-detail-compare");
               if (!cw) {
                 cw = document.createElement("div");
                 cw.className = "plo-detail-compare";
-                existingPanel.parentNode.insertBefore(cw, existingPanel);
-                cw.appendChild(existingPanel);
-                self._wireCompareClose(existingPanel, cw);
+                currentPanel.parentNode.insertBefore(cw, currentPanel);
+                cw.appendChild(currentPanel);
+                self._wireCompareClose(currentPanel, cw);
               }
               if (cw.children.length >= 2) {
                 cw.children[1].remove();
@@ -1061,11 +1062,17 @@
 
       ploNode.classList.add("expanded");
       this._hashRestored = true;
+      var selectedTermIndex = this.selectedTermId
+        ? this.trendData.terms.findIndex(
+            (t) => String(t.term_id) === String(this.selectedTermId),
+          )
+        : -1;
       this._toggleTrendPanel(ploNode, plo.trend, this.trendData.terms, {
         title: "PLO-" + plo.plo_number + ": " + plo.description,
         clos: plo.clos || [],
         discontinuities: plo.discontinuities || [],
         programId: this.programId,
+        selectedTermIndex,
       });
     },
   };
