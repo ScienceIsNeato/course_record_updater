@@ -12,6 +12,8 @@ Test Naming Convention:
 - test_tc_crud_pa_XXX: Matches UAT test case ID (TC-CRUD-PA-XXX)
 """
 
+import time
+
 import pytest
 from playwright.sync_api import Page
 
@@ -285,6 +287,8 @@ def test_tc_crud_pa_005_create_sections(program_admin_authenticated_page: Page) 
     program_admin_authenticated_page.goto(f"{BASE_URL}/sections")
     program_admin_authenticated_page.wait_for_load_state("networkidle")
 
+    section_number = f"9{int(time.time()) % 10000:04d}"
+
     # Click "Create Section" button
     program_admin_authenticated_page.click('button:has-text("Create Section")')
     program_admin_authenticated_page.wait_for_selector(
@@ -301,7 +305,7 @@ def test_tc_crud_pa_005_create_sections(program_admin_authenticated_page: Page) 
     program_admin_authenticated_page.select_option("#sectionOfferingId", index=1)
 
     # Fill section form
-    program_admin_authenticated_page.fill("#sectionNumber", "999")
+    program_admin_authenticated_page.fill("#sectionNumber", section_number)
     program_admin_authenticated_page.fill("#sectionCapacity", "30")
     program_admin_authenticated_page.select_option("#sectionStatus", "open")
 
@@ -314,7 +318,8 @@ def test_tc_crud_pa_005_create_sections(program_admin_authenticated_page: Page) 
     # Verify section appears in sections list
     program_admin_authenticated_page.wait_for_load_state("networkidle")
     program_admin_authenticated_page.wait_for_function(
-        "document.querySelector('#sectionsTableContainer')?.innerText?.includes('999')",
+        "sectionNumber => document.querySelector('#sectionsTableContainer')?.innerText?.includes(sectionNumber)",
+        arg=section_number,
         timeout=5000,
     )
 

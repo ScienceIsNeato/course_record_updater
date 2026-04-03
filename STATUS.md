@@ -1,5 +1,26 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR #72 CI Follow-Up for Program Admin Section Creation (2026-04-03)
+
+**Status**: ✅ Fixed locally, ready to commit/push with full uncached rails green
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **CI-only section creation flake**:
+   - `tests/e2e/test_crud_program_admin.py::test_tc_crud_pa_005_create_sections` no longer hardcodes section number `999`.
+   - The test now generates a unique section number per run and waits for that exact value in the sections table, avoiding false negatives from long-suite data collisions on shared worker databases.
+2. **Bugbot triage**:
+   - Verified locally that Python’s built-in exception name is `AssertionError`, so the newly raised Bugbot thread on the invitation-alert tolerance block appears to be a false positive rather than a real runtime defect.
+
+**Validation**:
+
+- `pytest tests/e2e/test_crud_program_admin.py::test_tc_crud_pa_005_create_sections -q` ✅ (`1` passed)
+- `sm swab -g overconfidence:e2e --no-cache --verbose` ✅ (`1` check passed)
+- `sm swab --static` ✅ (`22` checks passed)
+- `sm scour --no-cache` ✅ (`26` checks passed)
+
 ## Latest Work: PR #72 Loop-013 E2E Stabilization + Seed Backfill Retry Guard (2026-04-03)
 
 **Status**: ✅ Fixed locally, full targeted regressions green, running full uncached validation before commit/push
