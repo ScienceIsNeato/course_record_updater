@@ -43,6 +43,43 @@
     btn.setAttribute("aria-expanded", allExpanded ? "true" : "false");
   }
 
+  function buildPanelContext(termLabel) {
+    var context = document.createElement("div");
+    context.className = "plo-detail-panel-context";
+
+    var contextCopy = document.createElement("div");
+    contextCopy.className = "plo-detail-panel-context-copy";
+
+    var contextLabel = document.createElement("div");
+    contextLabel.className = "plo-detail-panel-context-label";
+    contextLabel.textContent = "Chart drill-through";
+
+    var contextHint = document.createElement("div");
+    contextHint.className = "plo-detail-panel-context-hint";
+    contextHint.textContent =
+      "Selected term details pulled directly from the chart point you clicked.";
+
+    var termWrap = document.createElement("div");
+    termWrap.className = "plo-detail-panel-term";
+
+    var termEyebrow = document.createElement("span");
+    termEyebrow.className = "plo-detail-panel-term-eyebrow";
+    termEyebrow.textContent = "Selected term";
+
+    var termBadge = document.createElement("span");
+    termBadge.className = "plo-detail-panel-term-badge";
+    termBadge.textContent = termLabel;
+
+    contextCopy.appendChild(contextLabel);
+    contextCopy.appendChild(contextHint);
+    termWrap.appendChild(termEyebrow);
+    termWrap.appendChild(termBadge);
+    context.appendChild(contextCopy);
+    context.appendChild(termWrap);
+
+    return context;
+  }
+
   function flagButton(storageKey) {
     var btn = document.createElement("button");
     btn.type = "button";
@@ -227,6 +264,8 @@
       panel.remove();
     });
     panel.appendChild(closeBtn);
+
+    panel.appendChild(buildPanelContext(termLabel));
 
     /* header */
     var header = document.createElement("div");

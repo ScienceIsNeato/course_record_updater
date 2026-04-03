@@ -519,10 +519,14 @@
   position: relative;
   padding: 0.75rem 1rem;
   margin-top: 0.5rem;
-  background-color: #fff;
-  border: 1px solid #dee2e6;
+  background:
+    linear-gradient(180deg, rgba(237, 245, 255, 0.9) 0%, #ffffff 22%),
+    #fff;
+  border: 1px solid #c7d7ee;
+  border-top: 4px solid #2f6fed;
   border-radius: 0.5rem;
   overflow: hidden;
+  box-shadow: 0 10px 28px rgba(47, 111, 237, 0.08);
   max-height: 0;
   opacity: 0;
   transition: max-height 0.35s ease, opacity 0.25s ease, padding 0.35s ease;
@@ -554,12 +558,74 @@
   opacity: 1;
 }
 
+.plo-detail-panel-context {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  margin: 0 1.75rem 0.75rem 0;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(47, 111, 237, 0.14);
+  border-radius: 0.5rem;
+}
+
+.plo-detail-panel-context-copy {
+  min-width: 0;
+}
+
+.plo-detail-panel-context-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #2f6fed;
+  margin-bottom: 0.15rem;
+}
+
+.plo-detail-panel-context-hint {
+  font-size: 0.78rem;
+  color: #5b6470;
+  line-height: 1.35;
+}
+
+.plo-detail-panel-term {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+
+.plo-detail-panel-term-eyebrow {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6c757d;
+}
+
+.plo-detail-panel-term-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2f6fed 0%, #5aa0ff 100%);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  box-shadow: 0 6px 14px rgba(47, 111, 237, 0.22);
+}
+
 .plo-detail-panel-header {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #495057;
-  margin-bottom: 0.5rem;
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: #2f3440;
+  margin-bottom: 0.65rem;
   padding-right: 1.5rem;
+  line-height: 1.4;
 }
 
 .plo-detail-panel-controls {
@@ -586,6 +652,18 @@
 .plo-detail-panel-toggle-all:hover {
   background: #e9ecef;
   border-color: #adb5bd;
+}
+
+@media (max-width: 768px) {
+  .plo-detail-panel-context {
+    flex-direction: column;
+    align-items: stretch;
+    margin-right: 1.5rem;
+  }
+
+  .plo-detail-panel-term {
+    align-items: flex-start;
+  }
 }
 
 .plo-detail-clo {

@@ -48,6 +48,20 @@ describe("createDetailPanel — container", () => {
     expect(header.textContent).toContain("Fall 2025");
   });
 
+  test("panel shows a drill-through context block with selected term badge", () => {
+    const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
+    const context = panel.querySelector(".plo-detail-panel-context");
+    const eyebrow = panel.querySelector(".plo-detail-panel-term-eyebrow");
+    const badge = panel.querySelector(".plo-detail-panel-term-badge");
+
+    expect(context).not.toBeNull();
+    expect(context.textContent).toContain("Chart drill-through");
+    expect(eyebrow).not.toBeNull();
+    expect(eyebrow.textContent).toBe("Selected term");
+    expect(badge).not.toBeNull();
+    expect(badge.textContent).toBe("Fall 2025");
+  });
+
   test("panel includes expand-all toggle when CLO data exists", () => {
     const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
     const toggle = panel.querySelector(".plo-detail-panel-toggle-all");

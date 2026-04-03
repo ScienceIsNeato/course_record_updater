@@ -1,5 +1,31 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR #72 Drill-Through Visual Grouping (2026-04-03)
+
+**Status**: ✅ Fixed locally, validated in browser, ready to push
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Sharper drill-through grouping**:
+   - Added a dedicated drill-through context block at the top of the detail panel.
+   - Promoted the clicked term into a separate high-contrast badge with a `Selected term` eyebrow label.
+   - Strengthened the panel card styling with a top accent, softer blue-tinted surface, and more explicit visual separation from the rest of the tree.
+2. **Tests**:
+   - Added DOM contract coverage for the new context block and selected-term badge in `plo_detail_panel.test.js`.
+3. **Quality**:
+   - Refactored the new panel context markup into a helper so `createDetailPanel()` stays under the repo's function-length limit.
+
+**Validation**:
+
+- `plo_detail_panel.test.js` ✅ (`30` tests passed)
+- `sm swab --static` ✅ (`22` checks passed)
+- Browser validation ✅
+  - Live panel now exposes `Chart drill-through`
+  - `Selected term` badge renders as `Spring 2025` for the clicked point
+  - Expand/collapse-all control still works after the visual regrouping
+
 ## Latest Work: PR #72 Detail Panel Toggle + Demo Data Enrichment (2026-04-03)
 
 **Status**: ✅ Fixed locally, reseeded, validated in browser, ready to push
