@@ -723,6 +723,7 @@ class DemoSeeder(BaselineSeeder):
         narrative_count = 0
         feedback_count = 0
         seen_sections: set[tuple[str, str, Optional[str]]] = set()
+        attempted_sections: set[tuple[str, str, Optional[str]]] = set()
         resolved_section_ids: Dict[tuple[str, str, Optional[str]], Optional[str]] = {}
 
         for entry in outcome_overrides:
@@ -747,7 +748,9 @@ class DemoSeeder(BaselineSeeder):
             if (
                 section_key not in explicit_narratives
                 and section_key not in seen_sections
+                and section_key not in attempted_sections
             ):
+                attempted_sections.add(section_key)
                 if section_key not in resolved_section_ids:
                     resolved_section_ids[section_key] = self._resolve_section_id(
                         course_code, section_number, institution_id, term_id

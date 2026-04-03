@@ -1,5 +1,32 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR #72 Loop-013 E2E Stabilization + Seed Backfill Retry Guard (2026-04-03)
+
+**Status**: ✅ Fixed locally, full targeted regressions green, running full uncached validation before commit/push
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Seed backfill retry guard**:
+   - `scripts/seed_db.py` now tracks attempted sections during `_backfill_demo_story_data()` so a failed `update_course_section()` does not trigger repeated no-op narrative update attempts for the same section.
+   - Added regression coverage in `tests/unit/scripts/test_seed_db_tail.py` proving failed narrative updates are not retried.
+2. **Institution-admin login hardening**:
+   - `tests/e2e/conftest.py` now uses the robust login flow for `authenticated_institution_admin_page`, matching the already-hardened generic admin fixture.
+   - The fixture now wraps submit with `page.expect_response(...)`, waits on `dashboard*`, and uses longer session-context timeouts before handing control to UI tests.
+   - Updated `tests/unit/e2e/test_conftest_db_paths.py` to match the new login contract.
+3. **Email-flow stabilization at the root**:
+   - `src/email_providers/ethereal_provider.py` now retries transient SMTP throttling/rate-limit failures instead of failing the entire send on the first `429`-class response.
+   - Added focused send-provider unit coverage for retryable vs terminal SMTP failures.
+   - Widened the most failure-prone IMAP polling windows in the admin invitation and registration/password-management E2E workflows, and made the registration workflow use a unique Ethereal address per run.
+4. **Admin invitation UX tolerance**:
+   - `tests/e2e/test_admin_invitation_workflow.py` no longer hard-fails solely on a missing transient success alert before checking the actual invitation email outcome.
+
+**Validation**:
+
+- `pytest tests/unit/test_ethereal_send.py tests/unit/e2e/test_conftest_db_paths.py tests/unit/scripts/test_seed_db_tail.py -q` ✅ (`29` passed)
+- `pytest tests/e2e/test_admin_invitation_workflow.py::TestAdminInvitationsAndMultiRole::test_complete_admin_invitation_workflow tests/e2e/test_bulk_reminders_workflow.py::TestBulkInstructorReminders::test_complete_bulk_reminder_workflow tests/e2e/test_edge_cases.py::TestEdgeCases::test_complete_edge_cases_workflow tests/e2e/test_registration_password_workflow.py::TestRegistrationAndPasswordManagement::test_complete_registration_and_password_workflow -q` ✅ (`4` passed)
+
 ## Latest Work: PR #72 Final Selector + Sprawl Root Fix (2026-04-03)
 
 **Status**: ✅ Fixed locally, ready to commit/push and resolve latest PR thread

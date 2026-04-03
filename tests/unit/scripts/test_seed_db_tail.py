@@ -601,6 +601,44 @@ def test_backfill_demo_story_data_ignores_incomplete_explicit_override_keys() ->
     update_outcome.assert_called_once()
 
 
+def test_backfill_demo_story_data_does_not_retry_failed_narrative_updates() -> None:
+    module = _load_seed_module()
+    seeder = module.DemoSeeder(env="local")
+    seeder._resolve_section_id = Mock(return_value="section-1")
+    seeder._find_section_outcome = Mock(return_value=None)
+
+    manifest = {
+        "section_outcome_overrides": [
+            {
+                "course_code": "BIOL-101",
+                "section_number": "001",
+                "term_code": "FA2023",
+                "clo_number": 1,
+                "students_took": 25,
+                "students_passed": 22,
+            },
+            {
+                "course_code": "BIOL-101",
+                "section_number": "001",
+                "term_code": "FA2023",
+                "clo_number": 2,
+                "students_took": 24,
+                "students_passed": 20,
+            },
+        ],
+    }
+
+    with patch.object(
+        module.database_service.db, "update_course_section", return_value=False
+    ) as update_section:
+        stats = seeder._backfill_demo_story_data(
+            manifest, "inst-1", {"FA2023": "term-1"}
+        )
+
+    assert stats == {"narratives": 0, "feedback": 0}
+    update_section.assert_called_once()
+
+
 def test_resolve_section_id_handles_missing_course_and_missing_course_id() -> None:
     module = _load_seed_module()
     seeder = module.DemoSeeder(env="local")

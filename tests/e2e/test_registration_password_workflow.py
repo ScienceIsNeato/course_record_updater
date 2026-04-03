@@ -14,6 +14,7 @@ Uses Ethereal Email (IMAP) for automated email verification in E2E tests.
 Estimated Duration: 3-4 minutes
 """
 
+import time
 from collections.abc import Generator
 
 import pytest
@@ -75,7 +76,7 @@ class TestRegistrationAndPasswordManagement:
             verification_email = wait_for_email_via_imap(
                 recipient_email=self.TEST_EMAIL,
                 subject_substring="Verify",
-                timeout=60,
+                timeout=90,
             )
             assert verification_email is not None, "Verification email not received"
 
@@ -161,7 +162,7 @@ class TestRegistrationAndPasswordManagement:
         reset_email = wait_for_email_via_imap(
             recipient_email=self.TEST_EMAIL,
             subject_substring="Reset",
-            timeout=60,
+            timeout=90,
         )
         assert reset_email is not None, "Password reset email not received"
         reset_link = extract_password_reset_link_from_email(reset_email)
@@ -203,7 +204,7 @@ class TestRegistrationAndPasswordManagement:
         confirmation_email = wait_for_email_via_imap(
             recipient_email=self.TEST_EMAIL,
             subject_substring="password",
-            timeout=60,
+            timeout=90,
         )
         assert (
             confirmation_email is not None
@@ -226,6 +227,9 @@ class TestRegistrationAndPasswordManagement:
     @pytest.fixture(autouse=True)
     def setup_and_teardown(self) -> Generator[None, None, None]:
         """Setup and teardown for E2E test: test."""
+        unique_suffix = int(time.time())
+        self.TEST_EMAIL = f"jane.smith+{unique_suffix}@ethereal.email"
+
         # Clear any stale emails from previous test runs
         if not SKIP_EMAIL_VERIFICATION:
             clear_ethereal_inbox()

@@ -433,12 +433,16 @@ def authenticated_page(page: Page) -> Page:
     # Use MockU institution admin from baseline seed
     page.fill('input[name="email"]', INSTITUTION_ADMIN_EMAIL)
     page.fill('input[name="password"]', INSTITUTION_ADMIN_PASSWORD)
-    page.click('button[type="submit"]')
+    with page.expect_response(
+        lambda response: response.url.endswith("/api/auth/login")
+        and response.request.method == "POST"
+    ):
+        page.click('button[type="submit"]')
 
     try:
         page.wait_for_url(
-            f"{BASE_URL}/dashboard",
-            timeout=15000,
+            f"{BASE_URL}/dashboard*",
+            timeout=30000,
             wait_until="domcontentloaded",
         )
         page.wait_for_load_state("networkidle")
@@ -447,7 +451,7 @@ def authenticated_page(page: Page) -> Page:
         # This prevents flaky tests where the session wasn't fully propagated
         page.wait_for_function(
             "window.currentUser && window.currentUser.institutionId && window.currentUser.institutionId.length > 0",
-            timeout=15000,
+            timeout=30000,
         )
 
         return page
@@ -498,12 +502,16 @@ def authenticated_institution_admin_page(page: Page) -> Page:
     # Use MockU institution admin from baseline seed
     page.fill('input[name="email"]', INSTITUTION_ADMIN_EMAIL)
     page.fill('input[name="password"]', INSTITUTION_ADMIN_PASSWORD)
-    page.click('button[type="submit"]')
+    with page.expect_response(
+        lambda response: response.url.endswith("/api/auth/login")
+        and response.request.method == "POST"
+    ):
+        page.click('button[type="submit"]')
 
     try:
         page.wait_for_url(
-            f"{BASE_URL}/dashboard",
-            timeout=15000,
+            f"{BASE_URL}/dashboard*",
+            timeout=30000,
             wait_until="domcontentloaded",
         )
         page.wait_for_load_state("networkidle")
@@ -511,7 +519,7 @@ def authenticated_institution_admin_page(page: Page) -> Page:
         # Verify session is properly established with institution context
         page.wait_for_function(
             "window.currentUser && window.currentUser.institutionId && window.currentUser.institutionId.length > 0",
-            timeout=15000,
+            timeout=30000,
         )
 
         return page
