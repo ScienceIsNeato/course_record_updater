@@ -269,12 +269,11 @@ class TestAdminInvitationsAndMultiRole:
         # Submit registration
         page.click('button[type="submit"]')
 
-        # Verify account created successfully and redirected to login
-        expect(page).to_have_url(re.compile(r"/login(\?.*)?$"), timeout=10000)
         success_alert = page.locator(
             ".alert-success:has-text('Account created successfully')"
         ).first
-        expect(success_alert).to_be_visible(timeout=5000)
+        expect(success_alert).to_be_visible(timeout=20000)
+        expect(page).to_have_url(re.compile(r"/login(\?.*)?$"), timeout=30000)
 
         print(
             f"✅ Registration completed for {self.INSTRUCTOR_FIRST_NAME} {self.INSTRUCTOR_LAST_NAME}"
@@ -388,12 +387,12 @@ class TestAdminInvitationsAndMultiRole:
             recipient_email=program_admin_email,
             subject_substring="invit",  # Matches both "invited" and "invitation"
             unique_identifier=str(unique_timestamp_pa),
-            timeout=60,
+            timeout=90,
         )
 
         assert (
             pa_invitation_email is not None
-        ), "Program admin invitation email not received within 60 seconds"
+        ), "Program admin invitation email not received within 90 seconds"
 
         print("✅ Program admin invitation email received")
 
@@ -433,11 +432,11 @@ class TestAdminInvitationsAndMultiRole:
         page.click('button[type="submit"]')
 
         # Verify account created
-        expect(page).to_have_url(re.compile(r"/login(\?.*)?$"), timeout=10000)
         success_alert = page.locator(
             ".alert-success:has-text('Account created successfully')"
         ).first
-        expect(success_alert).to_be_visible(timeout=5000)
+        expect(success_alert).to_be_visible(timeout=20000)
+        expect(page).to_have_url(re.compile(r"/login(\?.*)?$"), timeout=30000)
 
         print("✅ Program admin registration completed")
 

@@ -397,10 +397,12 @@ class DemoSeeder(BaselineSeeder):
         program_map: Dict[str, str],
     ) -> None:
         """Apply post-seeding enrichments: section CLO overrides and PLOs."""
-        if "section_outcome_overrides" in manifest:
+        section_outcome_overrides = manifest.get("section_outcome_overrides") or []
+
+        if section_outcome_overrides:
             self.log("🔧 Applying section-specific CLO overrides...")
             override_count = self.apply_section_outcome_overrides(
-                manifest["section_outcome_overrides"], institution_id, term_map
+                section_outcome_overrides, institution_id, term_map
             )
             self.log(f"   ✅ Applied {override_count} section outcome overrides")
 
@@ -418,8 +420,8 @@ class DemoSeeder(BaselineSeeder):
             )
             self.log(f"   ✅ Applied {fb_count} section feedback overrides")
 
-        if manifest.get("section_outcome_overrides"):
-            self.log("🧠 Backfilling demo narratives + reviewer feedback...")
+        if section_outcome_overrides:
+            self.log("🧠 Backfilling demo section narratives + reviewer feedback...")
             backfill_stats = self._backfill_demo_story_data(
                 manifest, institution_id, term_map
             )

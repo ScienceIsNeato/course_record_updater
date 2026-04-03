@@ -133,6 +133,19 @@ describe("PloTrend._makePointClickHandler guard clauses", () => {
     );
   });
 
+  test("uses explicit programId override even after singleton programId changes", () => {
+    const ref = { el: document.createElement("div") };
+    const handler = trend._makePointClickHandler("PLO-1", ref, "PROG-OVERRIDE");
+
+    trend.programId = "PROG-CHANGED";
+
+    expect(handler({ term_id: "FA2024", name: "Fall 2024" })).toBe(true);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch.mock.calls[0][0]).toContain(
+      "/api/programs/PROG-OVERRIDE/plo-dashboard",
+    );
+  });
+
   test("returns true and fetches when all dependencies present", async () => {
     const container = document.createElement("div");
     const ref = { el: container };

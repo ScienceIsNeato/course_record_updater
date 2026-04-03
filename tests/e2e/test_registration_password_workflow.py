@@ -67,7 +67,7 @@ class TestRegistrationAndPasswordManagement:
         expect(terms_checkbox).to_be_checked()
 
         page.click('button[type="submit"]')
-        page.wait_for_url(f"{BASE_URL}/login*", timeout=5000)
+        page.wait_for_url(f"{BASE_URL}/login*", timeout=10000)
 
     def _complete_email_verification_or_assert_blocked(self, page: Page) -> bool:
         """Verify account email or assert that unverified login is blocked."""

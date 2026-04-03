@@ -115,7 +115,7 @@ class TestEtherealProviderSending:
 
         assert result is True
         assert mock_server.send_message.call_count == 2
-        mock_sleep.assert_called_once_with(1)
+        mock_sleep.assert_called_once_with(2)
 
     @patch("src.email_providers.ethereal_provider.time.sleep")
     @patch("src.email_providers.ethereal_provider.smtplib.SMTP")

@@ -1,5 +1,33 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR #72 Email Concurrency Stabilization + Loop-017 Follow-Up (2026-04-03)
+
+**Status**: ✅ Fixed locally, ready to commit/push with full uncached rails green
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Ethereal SMTP concurrency hardening**:
+   - `src/email_providers/ethereal_provider.py` now serializes SMTP sends across workers with a cross-process file lock.
+   - Increased retry headroom from `3` to `5` attempts and lengthened retry backoff to better absorb Ethereal throttling during the full 14-worker E2E suite.
+2. **Invitation/registration timing**:
+   - `tests/e2e/test_registration_password_workflow.py` now allows longer login-page redirect time after registration.
+   - `tests/e2e/test_admin_invitation_workflow.py` now waits for the success alert before asserting the delayed redirect back to login, with longer redirect timeouts under suite load.
+3. **Loop-017 review follow-up**:
+   - `scripts/seed_db.py` now reuses a single normalized `section_outcome_overrides` value so the override and backfill guards stay aligned, and the backfill log message explicitly says it is filling section narratives + reviewer feedback.
+   - `tests/javascript/unit/plo_trend_drilldown.test.js` now proves that an explicit `programId` override continues to win even if the singleton `programId` changes later, which is the key evidence for the remaining All Programs Bugbot false positive.
+
+**Validation**:
+
+- `pytest tests/unit/test_ethereal_send.py -q` ✅ (`5` passed)
+- `pytest tests/unit/scripts/test_seed_db_tail.py -q` ✅ (`19` passed)
+- `npx jest tests/javascript/unit/plo_trend_drilldown.test.js --runInBand` ✅ (`22` passed)
+- `pytest tests/e2e/test_edge_cases.py tests/e2e/test_registration_password_workflow.py tests/e2e/test_admin_invitation_workflow.py -q` ✅ (`3` passed)
+- `sm swab -g overconfidence:e2e --no-cache --verbose` ✅ (`1` check passed)
+- `sm swab --static` ✅ (`22` checks passed)
+- `sm scour --no-cache` ✅ (`26` checks passed)
+
 ## Latest Work: PR #72 Final Bugbot Follow-Up for PLO Trend Hash Restore (2026-04-03)
 
 **Status**: ✅ Fixed locally, ready to commit/push with full uncached rails green
