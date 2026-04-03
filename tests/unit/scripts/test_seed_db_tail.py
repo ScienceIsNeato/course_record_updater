@@ -327,6 +327,36 @@ def test_apply_section_narrative_overrides_covers_skip_and_success_paths() -> No
     assert seeder.log.call_count == 1
 
 
+def test_apply_section_narrative_overrides_keeps_real_entries_with_comments() -> None:
+    module = _load_seed_module()
+    seeder = module.DemoSeeder(env="local")
+    seeder.log = Mock()
+    seeder._resolve_section_id = Mock(return_value="section-1")
+
+    overrides = [
+        {
+            "_comment": "context for this seeded example",
+            "course_code": "BIOL-101",
+            "section_number": "001",
+            "term_code": "FA2023",
+            "narrative_changes": "Keep the explanatory note and still apply",
+        }
+    ]
+
+    with patch.object(
+        module.database_service.db, "update_course_section", return_value=True
+    ) as update_section:
+        applied = seeder._apply_section_narrative_overrides(
+            overrides, "inst-1", {"FA2023": "term-1"}
+        )
+
+    assert applied == 1
+    update_section.assert_called_once_with(
+        "section-1",
+        {"narrative_changes": "Keep the explanatory note and still apply"},
+    )
+
+
 def test_apply_section_feedback_overrides_covers_skip_and_success_paths() -> None:
     module = _load_seed_module()
     seeder = module.DemoSeeder(env="local")
@@ -445,6 +475,41 @@ def test_backfill_demo_story_data_skips_explicit_missing_and_unassessed_entries(
     assert stats == {"narratives": 0, "feedback": 0}
     update_section.assert_not_called()
     update_outcome.assert_not_called()
+
+
+def test_backfill_demo_story_data_caches_missing_section_resolution() -> None:
+    module = _load_seed_module()
+    seeder = module.DemoSeeder(env="local")
+    seeder._resolve_section_id = Mock(return_value=None)
+    seeder._find_section_outcome = Mock(return_value=None)
+
+    manifest = {
+        "section_outcome_overrides": [
+            {
+                "course_code": "BIOL-101",
+                "section_number": "001",
+                "term_code": "FA2023",
+                "clo_number": 1,
+                "students_took": 25,
+                "students_passed": 22,
+            },
+            {
+                "course_code": "BIOL-101",
+                "section_number": "001",
+                "term_code": "FA2023",
+                "clo_number": 2,
+                "students_took": 24,
+                "students_passed": 20,
+            },
+        ],
+    }
+
+    stats = seeder._backfill_demo_story_data(manifest, "inst-1", {"FA2023": "term-1"})
+
+    assert stats == {"narratives": 0, "feedback": 0}
+    seeder._resolve_section_id.assert_called_once_with(
+        "BIOL-101", "001", "inst-1", "term-1"
+    )
 
 
 def test_resolve_section_id_handles_missing_course_and_missing_course_id() -> None:

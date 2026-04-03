@@ -471,7 +471,7 @@ class DemoSeeder(BaselineSeeder):
 
         for override in overrides:
             # Skip JSON comment-only entries
-            if "_comment" in override and len(override) == 1:
+            if self._is_comment_only_entry(override):
                 continue
             course_code = override.get("course_code")
             section_number = override.get("section_number")
@@ -567,7 +567,7 @@ class DemoSeeder(BaselineSeeder):
         }
         applied = 0
         for entry in overrides:
-            if "_comment" in entry and len(entry) <= 2:
+            if self._is_comment_only_entry(entry):
                 continue
             course_code = entry.get("course_code")
             section_number = entry.get("section_number")
@@ -602,7 +602,7 @@ class DemoSeeder(BaselineSeeder):
         """Set feedback_comments on specific CourseSectionOutcome records."""
         applied = 0
         for entry in overrides:
-            if "_comment" in entry and len(entry) <= 2:
+            if self._is_comment_only_entry(entry):
                 continue
             course_code = entry.get("course_code")
             section_number = entry.get("section_number")
@@ -638,6 +638,10 @@ class DemoSeeder(BaselineSeeder):
     @staticmethod
     def _demo_term_context(term_code: Optional[str]) -> str:
         return DEMO_TERM_CONTEXT.get(term_code or "", DEMO_TERM_CONTEXT[""])
+
+    @staticmethod
+    def _is_comment_only_entry(entry: Dict[str, Any]) -> bool:
+        return "_comment" in entry and len(entry) == 1
 
     def _build_demo_narrative_payload(
         self, course_code: str, term_code: Optional[str], section_number: str
@@ -696,7 +700,7 @@ class DemoSeeder(BaselineSeeder):
                 entry.get("term_code"),
             )
             for entry in narrative_overrides
-            if not ("_comment" in entry and len(entry) <= 2)
+            if not self._is_comment_only_entry(entry)
         }
         explicit_feedback = {
             (
@@ -706,16 +710,17 @@ class DemoSeeder(BaselineSeeder):
                 entry.get("term_code"),
             )
             for entry in feedback_overrides
-            if not ("_comment" in entry and len(entry) <= 2)
+            if not self._is_comment_only_entry(entry)
             if entry.get("clo_number") is not None
         }
 
         narrative_count = 0
         feedback_count = 0
         seen_sections: set[tuple[str, str, Optional[str]]] = set()
+        resolved_section_ids: Dict[tuple[str, str, Optional[str]], Optional[str]] = {}
 
         for entry in outcome_overrides:
-            if "_comment" in entry and len(entry) <= 2:
+            if self._is_comment_only_entry(entry):
                 continue
             course_code = entry.get("course_code")
             section_number = entry.get("section_number")
@@ -737,9 +742,11 @@ class DemoSeeder(BaselineSeeder):
                 section_key not in explicit_narratives
                 and section_key not in seen_sections
             ):
-                section_id = self._resolve_section_id(
-                    course_code, section_number, institution_id, term_id
-                )
+                if section_key not in resolved_section_ids:
+                    resolved_section_ids[section_key] = self._resolve_section_id(
+                        course_code, section_number, institution_id, term_id
+                    )
+                section_id = resolved_section_ids[section_key]
                 if section_id:
                     updates = self._build_demo_narrative_payload(
                         course_code, term_code, section_number
