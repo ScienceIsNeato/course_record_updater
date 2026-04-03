@@ -239,9 +239,15 @@ describe("PloDashboard — PLO create/edit modal", () => {
     expect(alert.textContent).toContain("PLO number already exists");
   });
 
-  test("PLO form uses method=dialog to prevent accidental page reload", () => {
-    const form = document.getElementById("ploForm");
-    expect(form.getAttribute("method")).toBe("dialog");
+  test("PLO form submit handler calls preventDefault", async () => {
+    setBody(SKELETON);
+    resetDashboardState(PloDashboard);
+    PloDashboard._cacheSelectors();
+    PloDashboard.currentProgramId = "prog-1";
+    const mockEvent = { preventDefault: jest.fn() };
+    // _submitPloForm calls e.preventDefault() as its first action
+    await PloDashboard._submitPloForm(mockEvent);
+    expect(mockEvent.preventDefault).toHaveBeenCalled();
   });
 });
 
@@ -389,9 +395,11 @@ describe("PloDashboard — Map CLO modal + publish", () => {
     expect(alert.textContent).toContain("Nothing to publish");
   });
 
-  test("Map CLO form uses method=dialog to prevent accidental page reload", () => {
-    const form = document.getElementById("mapCloForm");
-    expect(form.getAttribute("method")).toBe("dialog");
+  test("Map CLO form submit handler calls preventDefault", async () => {
+    const mockEvent = { preventDefault: jest.fn() };
+    // _submitMapCloForm calls e.preventDefault() as its first action
+    await PloDashboard._submitMapCloForm(mockEvent);
+    expect(mockEvent.preventDefault).toHaveBeenCalled();
   });
 });
 

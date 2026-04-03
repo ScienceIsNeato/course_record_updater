@@ -595,7 +595,7 @@
 
       (plos || []).forEach((plo) => {
         // Find the PLO node in the DOM
-        const ploNode = container.querySelector(`[data-plo-id="${plo.id}"]`);
+        const ploNode = container.querySelector(`li[data-plo-id="${plo.id}"]`);
         if (ploNode) {
           // Remove existing trend indicators/panels for THIS node only (avoids
           // wiping indicators from other programs in the All-Programs view)
@@ -1025,7 +1025,7 @@
 
       var container = document.getElementById("ploTreeContainer");
       if (!container) return;
-      var ploNode = container.querySelector("[data-plo-id='" + plo.id + "']");
+      var ploNode = container.querySelector("li[data-plo-id='" + plo.id + "']");
       if (!ploNode) return;
 
       ploNode.classList.add("expanded");

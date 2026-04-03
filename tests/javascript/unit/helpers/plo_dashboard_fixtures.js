@@ -19,7 +19,7 @@ const SKELETON = `
   <div id="ploTreeContainer"></div>
 
   <div id="ploModal">
-    <form id="ploForm" method="dialog">
+    <form id="ploForm">
       <input id="ploModalId" type="hidden">
       <div id="ploModalNumberGroup">
         <input id="ploModalNumber">
@@ -31,7 +31,7 @@ const SKELETON = `
   </div>
 
   <div id="mapCloModal">
-    <form id="mapCloForm" method="dialog">
+    <form id="mapCloForm">
       <select id="mapCloModalPlo"></select>
       <select id="mapCloModalClo"></select>
       <div id="mapCloModalAlert"></div>
