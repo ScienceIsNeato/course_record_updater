@@ -381,6 +381,46 @@ describe("PloTrend._restoreFromHash", () => {
     expect(PloTrend.trendData.program_id).toBe("prog-last");
     expect(PloTrend.programId).toBe("prog-last");
   });
+
+  test("restores original state even when hash restoration throws", () => {
+    PloTrend.trendData = {
+      program_id: "prog-last",
+      terms: [{ term_id: "t-last", term_name: "Last Term" }],
+      plos: [],
+    };
+    PloTrend.programId = "prog-last";
+
+    const restoreError = new Error("panel render failed");
+    const originalRestoreFromHash = PloTrend._restoreFromHash;
+    PloTrend._restoreFromHash = jest.fn(() => {
+      throw restoreError;
+    });
+
+    try {
+      expect(() => {
+        PloTrend._restoreAllProgramsFromHash([
+          {
+            program_id: "prog-1",
+            terms: [{ term_id: "t1", term_name: "Fall 2024" }],
+            plos: [
+              {
+                id: "p-2",
+                plo_number: 2,
+                description: "Matched PLO",
+                trend: [{ pass_rate: 75 }],
+              },
+            ],
+          },
+          PloTrend.trendData,
+        ]);
+      }).toThrow(restoreError);
+    } finally {
+      PloTrend._restoreFromHash = originalRestoreFromHash;
+    }
+
+    expect(PloTrend.trendData.program_id).toBe("prog-last");
+    expect(PloTrend.programId).toBe("prog-last");
+  });
 });
 
 describe("PloTrend._updateHash", () => {

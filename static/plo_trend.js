@@ -805,9 +805,12 @@
       var previousProgramId = this.programId;
       this.trendData = matchingData;
       this.programId = matchingData.program_id || this.programId;
-      this._restoreFromHash();
-      this.trendData = previousTrendData;
-      this.programId = previousProgramId;
+      try {
+        this._restoreFromHash();
+      } finally {
+        this.trendData = previousTrendData;
+        this.programId = previousProgramId;
+      }
     },
 
     _restoreFromHash() {

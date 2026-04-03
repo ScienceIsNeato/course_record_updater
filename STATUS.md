@@ -1,5 +1,25 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR #72 Final Bugbot Follow-Up for PLO Trend Hash Restore (2026-04-03)
+
+**Status**: ✅ Fixed locally, ready to commit/push with full uncached rails green
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Exception-safe all-program hash restore**:
+   - `static/plo_trend.js::_restoreAllProgramsFromHash()` now wraps its temporary `trendData` / `programId` swap in a `try/finally` block.
+   - This guarantees singleton state is restored even if `_restoreFromHash()` throws while opening the drill-down panel.
+2. **Regression coverage**:
+   - `tests/javascript/unit/plo_trend_drilldown.test.js` now forces `_restoreFromHash()` to throw and asserts the original singleton state is still restored afterward.
+
+**Validation**:
+
+- `npx jest tests/javascript/unit/plo_trend_drilldown.test.js --runInBand` ✅ (`21` passed)
+- `sm swab --static` ✅ (`22` checks passed)
+- `sm scour --no-cache` ✅ (`26` checks passed)
+
 ## Latest Work: PR #72 CI Follow-Up for Program Admin Section Creation (2026-04-03)
 
 **Status**: ✅ Fixed locally, ready to commit/push with full uncached rails green
