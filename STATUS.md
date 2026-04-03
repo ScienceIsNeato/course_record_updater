@@ -1,5 +1,31 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR #72 Drill-Through Summary + Expanded Default (2026-04-03)
+
+**Status**: ✅ Fixed locally, validated in browser, ready to push
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Useful term summary instead of filler copy**:
+   - Replaced the generic drill-through sentence with term-specific summary text derived from the loaded payload.
+   - Added compact summary chips for CLO count, section count, instructor-note coverage, and reviewer-comment coverage.
+2. **Open by default**:
+   - Drill-through panels now render with every CLO row expanded on first open.
+   - The panel-level control now starts as `Collapse all CLOs`, matching the default visible state.
+3. **Tests**:
+   - Updated DOM contract tests for the new summary content and expanded-by-default behavior.
+
+**Validation**:
+
+- `plo_detail_panel.test.js` ✅ (`30` tests passed)
+- `sm swab --static` ✅ (`22` checks passed)
+- Browser validation ✅
+  - Live drill-through now shows summaries like `2 mapped CLOs - 1 assessed section - 22 students assessed - 77% meeting target`
+  - Context chips render for CLO count, section count, notes coverage, and reviewer comments
+  - CLO rows open expanded by default and the live button starts at `Collapse all CLOs`
+
 ## Latest Work: PR #72 Drill-Through Visual Grouping (2026-04-03)
 
 **Status**: ✅ Fixed locally, validated in browser, ready to push

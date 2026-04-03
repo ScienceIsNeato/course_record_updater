@@ -51,23 +51,35 @@ describe("createDetailPanel — container", () => {
   test("panel shows a drill-through context block with selected term badge", () => {
     const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
     const context = panel.querySelector(".plo-detail-panel-context");
+    const hint = panel.querySelector(".plo-detail-panel-context-hint");
     const eyebrow = panel.querySelector(".plo-detail-panel-term-eyebrow");
     const badge = panel.querySelector(".plo-detail-panel-term-badge");
+    const metrics = Array.from(
+      panel.querySelectorAll(".plo-detail-panel-metric"),
+    ).map((el) => el.textContent);
 
     expect(context).not.toBeNull();
     expect(context.textContent).toContain("Chart drill-through");
+    expect(hint.textContent).toContain("2 mapped CLOs");
+    expect(hint.textContent).toContain("3 assessed sections");
+    expect(hint.textContent).toContain("80 students assessed");
+    expect(hint.textContent).toContain("80% meeting target");
     expect(eyebrow).not.toBeNull();
     expect(eyebrow.textContent).toBe("Selected term");
     expect(badge).not.toBeNull();
     expect(badge.textContent).toBe("Fall 2025");
+    expect(metrics).toContain("2 CLOs");
+    expect(metrics).toContain("3 sections");
+    expect(metrics).toContain("2 sections with notes");
+    expect(metrics).toContain("1 reviewer comment");
   });
 
   test("panel includes expand-all toggle when CLO data exists", () => {
     const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
     const toggle = panel.querySelector(".plo-detail-panel-toggle-all");
     expect(toggle).not.toBeNull();
-    expect(toggle.textContent).toBe("Expand all CLOs");
-    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle.textContent).toBe("Collapse all CLOs");
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
   });
 });
 
@@ -100,20 +112,20 @@ describe("createDetailPanel — CLO rows", () => {
     expect(firstClo.textContent).toContain("80%");
   });
 
-  test("CLO rows start collapsed", () => {
+  test("CLO rows start expanded", () => {
     const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
     const firstClo = panel.querySelector(".plo-detail-clo");
-    expect(firstClo.classList.contains("expanded")).toBe(false);
+    expect(firstClo.classList.contains("expanded")).toBe(true);
   });
 
   test("clicking CLO header toggles expanded", () => {
     const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
     const firstClo = panel.querySelector(".plo-detail-clo");
     const header = firstClo.querySelector(".plo-detail-clo-header");
-    header.click(); // expand
-    expect(firstClo.classList.contains("expanded")).toBe(true);
-    header.click(); // collapse again
+    header.click(); // collapse
     expect(firstClo.classList.contains("expanded")).toBe(false);
+    header.click(); // expand again
+    expect(firstClo.classList.contains("expanded")).toBe(true);
   });
 
   test("expand-all toggle expands and collapses every CLO row", () => {
@@ -123,17 +135,17 @@ describe("createDetailPanel — CLO rows", () => {
 
     toggle.click();
     cloRows.forEach((row) => {
-      expect(row.classList.contains("expanded")).toBe(true);
-    });
-    expect(toggle.textContent).toBe("Collapse all CLOs");
-    expect(toggle.getAttribute("aria-expanded")).toBe("true");
-
-    toggle.click();
-    cloRows.forEach((row) => {
       expect(row.classList.contains("expanded")).toBe(false);
     });
     expect(toggle.textContent).toBe("Expand all CLOs");
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
+
+    toggle.click();
+    cloRows.forEach((row) => {
+      expect(row.classList.contains("expanded")).toBe(true);
+    });
+    expect(toggle.textContent).toBe("Collapse all CLOs");
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
   });
 
   test("toggle label updates when individual CLO rows change", () => {
@@ -143,8 +155,9 @@ describe("createDetailPanel — CLO rows", () => {
 
     headers[0].click();
     expect(toggle.textContent).toBe("Expand all CLOs");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
 
-    headers[1].click();
+    headers[0].click();
     expect(toggle.textContent).toBe("Collapse all CLOs");
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
   });

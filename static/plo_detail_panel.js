@@ -43,7 +43,75 @@
     btn.setAttribute("aria-expanded", allExpanded ? "true" : "false");
   }
 
-  function buildPanelContext(termLabel) {
+  function pluralize(count, singular, plural) {
+    return count + " " + (count === 1 ? singular : plural || singular + "s");
+  }
+
+  function sectionHasNarrative(sec) {
+    var narr = sec._section || {};
+    return Boolean(
+      narr.narrative_celebrations ||
+        narr.narrative_challenges ||
+        narr.narrative_changes ||
+        narr.reconciliation_note,
+    );
+  }
+
+  function buildSummaryMetrics(ploData) {
+    var summary = {
+      cloCount: Array.isArray(ploData.clos) ? ploData.clos.length : 0,
+      sectionCount: 0,
+      assessedStudents: 0,
+      passRate: ploData.aggregate ? ploData.aggregate.pass_rate : null,
+      sectionsWithNarratives: 0,
+      sectionsWithFeedback: 0,
+    };
+
+    if (ploData.aggregate && ploData.aggregate.students_took != null) {
+      summary.assessedStudents = ploData.aggregate.students_took;
+    }
+
+    (ploData.clos || []).forEach(function (clo) {
+      (clo.sections || []).forEach(function (sec) {
+        summary.sectionCount += 1;
+        if (sectionHasNarrative(sec)) summary.sectionsWithNarratives += 1;
+        if (sec.feedback_comments) summary.sectionsWithFeedback += 1;
+      });
+    });
+
+    return summary;
+  }
+
+  function buildMetricChip(text, accent) {
+    var chip = document.createElement("span");
+    chip.className = "plo-detail-panel-metric";
+    if (accent) chip.classList.add("plo-detail-panel-metric--" + accent);
+    chip.textContent = text;
+    return chip;
+  }
+
+  function buildContextHint(summary) {
+    var parts = [];
+    if (summary.cloCount > 0) {
+      parts.push(pluralize(summary.cloCount, "mapped CLO"));
+    }
+    if (summary.sectionCount > 0) {
+      parts.push(pluralize(summary.sectionCount, "assessed section"));
+    }
+    if (summary.assessedStudents > 0) {
+      parts.push(pluralize(summary.assessedStudents, "student") + " assessed");
+    }
+    if (summary.passRate != null) {
+      parts.push(Math.round(summary.passRate) + "% meeting target");
+    }
+    if (parts.length === 0) {
+      return "No assessed sections are available for this term yet.";
+    }
+    return parts.join(" - ");
+  }
+
+  function buildPanelContext(ploData, termLabel) {
+    var summary = buildSummaryMetrics(ploData);
     var context = document.createElement("div");
     context.className = "plo-detail-panel-context";
 
@@ -56,8 +124,34 @@
 
     var contextHint = document.createElement("div");
     contextHint.className = "plo-detail-panel-context-hint";
-    contextHint.textContent =
-      "Selected term details pulled directly from the chart point you clicked.";
+    contextHint.textContent = buildContextHint(summary);
+
+    var metrics = document.createElement("div");
+    metrics.className = "plo-detail-panel-metrics";
+    metrics.appendChild(buildMetricChip(pluralize(summary.cloCount, "CLO")));
+    metrics.appendChild(
+      buildMetricChip(pluralize(summary.sectionCount, "section")),
+    );
+    if (summary.sectionsWithNarratives > 0) {
+      metrics.appendChild(
+        buildMetricChip(
+          pluralize(
+            summary.sectionsWithNarratives,
+            "section with notes",
+            "sections with notes",
+          ),
+          "notes",
+        ),
+      );
+    }
+    if (summary.sectionsWithFeedback > 0) {
+      metrics.appendChild(
+        buildMetricChip(
+          pluralize(summary.sectionsWithFeedback, "reviewer comment"),
+          "feedback",
+        ),
+      );
+    }
 
     var termWrap = document.createElement("div");
     termWrap.className = "plo-detail-panel-term";
@@ -72,6 +166,7 @@
 
     contextCopy.appendChild(contextLabel);
     contextCopy.appendChild(contextHint);
+    contextCopy.appendChild(metrics);
     termWrap.appendChild(termEyebrow);
     termWrap.appendChild(termBadge);
     context.appendChild(contextCopy);
@@ -197,9 +292,10 @@
 
   /* ---- CLO row -------------------------------------------------------- */
 
-  function cloRow(clo, onToggle) {
+  function cloRow(clo, onToggle, expandedByDefault) {
     const div = document.createElement("div");
     div.className = "plo-detail-clo";
+    if (expandedByDefault) div.classList.add("expanded");
 
     const header = document.createElement("div");
     header.className = "plo-detail-clo-header";
@@ -265,7 +361,7 @@
     });
     panel.appendChild(closeBtn);
 
-    panel.appendChild(buildPanelContext(termLabel));
+    panel.appendChild(buildPanelContext(ploData, termLabel));
 
     /* header */
     var header = document.createElement("div");
@@ -310,9 +406,13 @@
     } else {
       ploData.clos.forEach(function (clo) {
         panel.appendChild(
-          cloRow(clo, function () {
-            syncToggleAllButton(panel);
-          }),
+          cloRow(
+            clo,
+            function () {
+              syncToggleAllButton(panel);
+            },
+            true,
+          ),
         );
       });
       syncToggleAllButton(panel);

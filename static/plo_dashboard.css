@@ -589,6 +589,35 @@
   line-height: 1.35;
 }
 
+.plo-detail-panel-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.plo-detail-panel-metric {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.6rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(47, 111, 237, 0.08);
+  color: #36506f;
+  font-size: 0.73rem;
+  font-weight: 600;
+}
+
+.plo-detail-panel-metric--notes {
+  background: rgba(25, 135, 84, 0.1);
+  color: #16603d;
+}
+
+.plo-detail-panel-metric--feedback {
+  background: rgba(111, 66, 193, 0.1);
+  color: #5a36a3;
+}
+
 .plo-detail-panel-term {
   display: flex;
   flex-direction: column;
