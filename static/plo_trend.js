@@ -1011,13 +1011,25 @@
     },
 
     _updateHash(ploId) {
-      if (!this.trendData || !ploId) return;
-      var plo = (this.trendData.plos || []).find(function (p) {
-        return String(p.id) === String(ploId);
-      });
-      if (!plo) return;
+      if (!ploId) return;
+      var ploNumber = null;
+      if (this.trendData) {
+        var plo = (this.trendData.plos || []).find(function (p) {
+          return String(p.id) === String(ploId);
+        });
+        if (plo && plo.plo_number != null) {
+          ploNumber = plo.plo_number;
+        }
+      }
+      if (ploNumber == null) {
+        var ploNode = document.querySelector("li[data-plo-id='" + ploId + "']");
+        if (ploNode && ploNode.dataset && ploNode.dataset.ploNumber) {
+          ploNumber = ploNode.dataset.ploNumber;
+        }
+      }
+      if (ploNumber == null) return;
       try {
-        history.replaceState(null, "", "#plo=" + plo.plo_number);
+        history.replaceState(null, "", "#plo=" + ploNumber);
       } catch (_) {
         /* ignore */
       }

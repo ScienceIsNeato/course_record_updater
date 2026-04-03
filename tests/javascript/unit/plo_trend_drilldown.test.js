@@ -336,6 +336,35 @@ describe("PloTrend._restoreFromHash", () => {
   });
 });
 
+describe("PloTrend._updateHash", () => {
+  let originalReplaceState;
+
+  beforeEach(() => {
+    originalReplaceState = history.replaceState;
+    history.replaceState = jest.fn();
+  });
+
+  afterEach(() => {
+    history.replaceState = originalReplaceState;
+    document.body.innerHTML = "";
+  });
+
+  test("falls back to DOM plo number when trendData does not include the clicked program's PLO", () => {
+    PloTrend.trendData = {
+      plos: [{ id: "last-program-plo", plo_number: 9 }],
+    };
+    document.body.innerHTML = `
+      <div id="ploTreeContainer">
+        <li data-plo-id="other-program-plo" data-plo-number="3"></li>
+      </div>
+    `;
+
+    PloTrend._updateHash("other-program-plo");
+
+    expect(history.replaceState).toHaveBeenCalledWith(null, "", "#plo=3");
+  });
+});
+
 describe("onClick → onPointClick integration", () => {
   let trend;
   let originalPloDetailPanel;

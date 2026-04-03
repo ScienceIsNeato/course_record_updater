@@ -1,5 +1,29 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR #72 Post-CI Review Batch (2026-04-03)
+
+**Status**: ✅ Fixed locally, ready to commit/push and resolve latest PR threads
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Seed feedback override guard**:
+   - `_apply_section_feedback_overrides()` now treats missing `clo_number` as missing data instead of converting it to the string `"None"` and logging a spurious missing-outcome warning.
+2. **All Programs hash fallback**:
+   - PLO tree nodes now carry `data-plo-number`.
+   - `PloTrend._updateHash()` now falls back to the DOM node's `data-plo-number` when `this.trendData` belongs to a different program, preserving hash updates in All Programs mode.
+3. **Tests**:
+   - Added seed-db coverage for the missing-`clo_number` feedback override case.
+   - Added drilldown coverage proving `_updateHash()` can restore the hash from the DOM when `trendData` points at the last loaded program instead of the clicked one.
+
+**Validation**:
+
+- `pytest tests/unit/scripts/test_seed_db_tail.py -q` ✅ (`13` passed)
+- `npx jest tests/javascript/unit/plo_trend_drilldown.test.js --runInBand` ✅ (`17` passed)
+- `sm swab --static` ✅ (`22` checks passed)
+- `sm scour` ✅ (`26` checks passed)
+
 ## Latest Work: PR #72 CI Follow-Up After Push (2026-04-03)
 
 **Status**: ✅ Fixed locally, ready to commit/push and resolve new PR threads

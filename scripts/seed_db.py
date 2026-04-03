@@ -605,9 +605,10 @@ class DemoSeeder(BaselineSeeder):
                 continue
             course_code = entry.get("course_code")
             section_number = entry.get("section_number")
-            clo_number = str(entry.get("clo_number"))
+            clo_number_raw = entry.get("clo_number")
+            clo_number = str(clo_number_raw) if clo_number_raw is not None else None
             feedback = entry.get("feedback_comments")
-            if not course_code or not section_number or not feedback:
+            if not course_code or not section_number or not clo_number or not feedback:
                 continue
 
             term_code = entry.get("term_code")

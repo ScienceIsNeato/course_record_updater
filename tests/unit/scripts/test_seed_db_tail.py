@@ -318,6 +318,12 @@ def test_apply_section_feedback_overrides_covers_skip_and_success_paths() -> Non
         {
             "course_code": "BIOL-101",
             "section_number": "001",
+            "term_code": "FA2023",
+            "feedback_comments": "Missing clo number",
+        },
+        {
+            "course_code": "BIOL-101",
+            "section_number": "001",
             "clo_number": 1,
             "term_code": "FA2023",
             "feedback_comments": "Needs follow-up",

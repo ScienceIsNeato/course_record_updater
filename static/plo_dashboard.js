@@ -621,6 +621,7 @@
       const li = document.createElement("li");
       li.className = "plo-tree-node";
       li.dataset.ploId = plo.id;
+      li.dataset.ploNumber = plo.plo_number;
 
       const header = this._buildHeader(
         `PLO-${plo.plo_number}`,
