@@ -462,6 +462,7 @@
       if (termId) pt.selectedTermId = termId;
       for (const data of results) {
         if (!data) continue;
+        pt.programId = data.program_id || null;
         pt.trendData = data;
         pt.injectSparklines();
       }

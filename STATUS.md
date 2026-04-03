@@ -1,5 +1,34 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR #72 Drill-Through Fixes (2026-04-03)
+
+**Status**: ✅ Fixed locally, validated in browser, ready to push
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **PLO selector collision fix**: `plo_trend.js` now targets `li[data-plo-id="..."]` so tree nodes are not shadowed by summary-bar sparkline slots.
+2. **All Programs drill-through fix**: PLO trend point clicks now capture the correct `program_id` at injection time instead of reading the singleton `PloTrend.programId` later.
+3. **Removed red herring modal change**: Reverted `method="dialog"` from Bootstrap modal forms.
+4. **Regression tests**:
+    - Added a DOM-shape regression test for summary-slot vs tree-node `data-plo-id` collisions.
+    - Added coverage proving All Programs trend injection carries the correct `programId` per program.
+    - Added coverage proving `_makePointClickHandler()` honors an explicit program-id override.
+
+**Validation**:
+
+- Focused JS tests passing: `150` tests green across `plo_dashboard_interactions`, `plo_trend`, and `plo_trend_controller`
+- `sm swab --static` ✅ (`22` checks passed)
+- Browser validation ✅
+   - Single-program mode: clicking a PLO badge opens the chart; clicking a chart point opens the detail panel.
+   - All Programs mode: clicking a PLO badge opens the chart; clicking a chart point opens the detail panel instead of switching the term filter.
+
+**Root Causes Closed**:
+
+- Tree selectors were matching summary-bar nodes first, so PLO trend controls never appeared on the real tree.
+- All Programs mode injected multiple programs through one singleton controller, so point-click drill-through lost the originating `program_id` and fell back to changing the term.
+
 ## Latest Work: PLO Drill-Down Detail Panel (PR #72)
 
 **Status**: ✅ Pushed, CI running

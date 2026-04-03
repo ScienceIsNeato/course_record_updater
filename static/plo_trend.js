@@ -582,6 +582,8 @@
       if (!this.trendData) return;
       const { terms, plos } = this.trendData;
       if (!terms || terms.length < 2) return; // need ≥2 terms for a trend
+      const trendProgramId =
+        this.trendData.program_id || this.programId || null;
 
       // Find which term index the user has selected
       const selectedTermIndex = this.selectedTermId
@@ -611,6 +613,7 @@
             title: `PLO-${plo.plo_number}: ${plo.description}`,
             clos: plo.clos || [],
             discontinuities: plo.discontinuities || [],
+            programId: trendProgramId,
             selectedTermIndex,
           });
         }
@@ -639,7 +642,13 @@
       });
 
       // Populate summary bar sparklines
-      this._injectSummarySparklines(container, plos, terms, selectedTermIndex);
+      this._injectSummarySparklines(
+        container,
+        plos,
+        terms,
+        selectedTermIndex,
+        trendProgramId,
+      );
 
       this._restoreFromHash();
     },
@@ -649,7 +658,13 @@
      * Each slot is tagged with data-plo-id matching a PLO in the trend data.
      * Clicking a sparkline toggles a full trend panel below the category row.
      */
-    _injectSummarySparklines(container, plos, terms, selectedTermIndex) {
+    _injectSummarySparklines(
+      container,
+      plos,
+      terms,
+      selectedTermIndex,
+      programId,
+    ) {
       const slots = container.querySelectorAll(".plo-summary-sparkline-slot");
       slots.forEach((slot) => {
         const ploId = slot.dataset.ploId;
@@ -715,13 +730,13 @@
         );
         canvas.addEventListener("click", (e) => {
           e.stopPropagation();
-          this._toggleSummaryTrendPanel(slot, plo, terms);
+          this._toggleSummaryTrendPanel(slot, plo, terms, programId);
         });
         canvas.addEventListener("keydown", (e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             e.stopPropagation();
-            this._toggleSummaryTrendPanel(slot, plo, terms);
+            this._toggleSummaryTrendPanel(slot, plo, terms, programId);
           }
         });
       });
@@ -735,7 +750,7 @@
      * @param {string} ploId - PLO to fetch detail for
      * @param {{el: HTMLElement}} ref - object whose .el will be set to the container element after panel creation
      */
-    _makePointClickHandler(ploId, ref) {
+    _makePointClickHandler(ploId, ref, programIdOverride) {
       var self = this;
       return function onPointClick(term, chartEvent) {
         if (!term || !term.term_id) return false;
@@ -755,7 +770,7 @@
           if (cmpWrap) cmpWrap.remove();
         }
 
-        var programId = self.programId;
+        var programId = programIdOverride || self.programId;
         if (!programId) return false;
 
         var url =
@@ -812,7 +827,7 @@
     /**
      * Toggle a trend chart panel below the summary row containing the clicked sparkline.
      */
-    _toggleSummaryTrendPanel(slot, plo, terms) {
+    _toggleSummaryTrendPanel(slot, plo, terms, programId) {
       const row = slot.closest(".plo-summary-row");
       if (!row) return;
 
@@ -843,7 +858,8 @@
         title: "PLO-" + plo.plo_number + ": " + plo.description,
         clos: plo.clos || [],
         discontinuities: plo.discontinuities || [],
-        onPointClick: this._makePointClickHandler(plo.id, panelRef),
+        programId,
+        onPointClick: this._makePointClickHandler(plo.id, panelRef, programId),
       });
       panelRef.el = panel;
       panel.dataset.ploId = String(plo.id);
@@ -935,7 +951,11 @@
       if (ploId && opts && opts.clos) {
         panelRef = { el: null };
         mergedOpts = Object.assign({}, opts, {
-          onPointClick: this._makePointClickHandler(ploId, panelRef),
+          onPointClick: this._makePointClickHandler(
+            ploId,
+            panelRef,
+            opts.programId,
+          ),
         });
       }
 
