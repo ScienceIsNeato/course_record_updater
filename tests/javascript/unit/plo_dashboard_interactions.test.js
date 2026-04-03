@@ -712,8 +712,10 @@ describe("PloDashboard — _loadAllTrendData", () => {
       trendData: null,
       programId: null,
       selectedTermId: null,
-      injectSparklines: jest.fn(function () {
+      _restoreAllProgramsFromHash: jest.fn(),
+      injectSparklines: jest.fn(function (opts) {
         injectCalls.push({
+          options: opts,
           trendData: this.trendData,
           programId: this.programId,
         });
@@ -750,13 +752,19 @@ describe("PloDashboard — _loadAllTrendData", () => {
 
     expect(global.PloTrend.injectSparklines).toHaveBeenCalledTimes(2);
     expect(injectCalls[0]).toEqual({
+      options: { restoreFromHash: false },
       trendData: trendProg1,
       programId: "prog-1",
     });
     expect(injectCalls[1]).toEqual({
+      options: { restoreFromHash: false },
       trendData: trendProg2,
       programId: "prog-2",
     });
+    expect(global.PloTrend._restoreAllProgramsFromHash).toHaveBeenCalledWith([
+      trendProg1,
+      trendProg2,
+    ]);
     expect(global.PloTrend.selectedTermId).toBe("t-1");
   });
 

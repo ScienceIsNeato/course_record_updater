@@ -334,6 +334,53 @@ describe("PloTrend._restoreFromHash", () => {
       }),
     );
   });
+
+  test("restores from the matching program after all-program injections finish", () => {
+    PloTrend.trendData = {
+      program_id: "prog-last",
+      terms: [{ term_id: "t-last", term_name: "Last Term" }],
+      plos: [
+        {
+          id: "p-last",
+          plo_number: 9,
+          description: "Last PLO",
+          trend: [{ pass_rate: 68 }, { pass_rate: 74 }],
+        },
+      ],
+    };
+    PloTrend.programId = "prog-last";
+
+    PloTrend._restoreAllProgramsFromHash([
+      {
+        program_id: "prog-1",
+        terms: [{ term_id: "t1", term_name: "Fall 2024" }],
+        plos: [
+          {
+            id: "p'2]",
+            plo_number: 2,
+            description: "Matched PLO",
+            trend: [{ pass_rate: 75 }, { pass_rate: 82 }],
+            clos: [],
+            discontinuities: [],
+          },
+        ],
+      },
+      PloTrend.trendData,
+    ]);
+
+    expect(PloTrend._hashRestored).toBe(true);
+    expect(PloTrend._toggleTrendPanel).toHaveBeenCalledWith(
+      document.getElementById("target-plo-node"),
+      [{ pass_rate: 75 }, { pass_rate: 82 }],
+      [{ term_id: "t1", term_name: "Fall 2024" }],
+      expect.objectContaining({
+        programId: "prog-1",
+        selectedTermIndex: -1,
+      }),
+    );
+    expect(PloTrend.trendData.program_id).toBe("prog-last");
+    expect(PloTrend.programId).toBe("prog-last");
+  });
 });
 
 describe("PloTrend._updateHash", () => {

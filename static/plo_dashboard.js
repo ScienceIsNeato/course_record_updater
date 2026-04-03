@@ -464,7 +464,13 @@
         if (!data) continue;
         pt.programId = data.program_id || null;
         pt.trendData = data;
-        pt.injectSparklines();
+        pt.injectSparklines({ restoreFromHash: false });
+      }
+
+      if (typeof pt._restoreAllProgramsFromHash === "function") {
+        pt._restoreAllProgramsFromHash(results.filter(Boolean));
+      } else if (typeof pt._restoreFromHash === "function") {
+        pt._restoreFromHash();
       }
     },
 

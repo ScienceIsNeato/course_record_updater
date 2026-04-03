@@ -286,7 +286,7 @@
     /**
      * Walk the DOM tree and inject sparklines next to assessment badges.
      */
-    injectSparklines() {
+    injectSparklines(opts) {
       if (!this.trendData) return;
       const { terms, plos } = this.trendData;
       if (!terms || terms.length < 2) return; // need ≥2 terms for a trend
@@ -362,7 +362,9 @@
         trendProgramId,
       );
 
-      this._restoreFromHash();
+      if (!opts || opts.restoreFromHash !== false) {
+        this._restoreFromHash();
+      }
     },
 
     /**
@@ -777,6 +779,35 @@
       } catch (_) {
         /* ignore */
       }
+    },
+
+    _restoreAllProgramsFromHash(allTrendData) {
+      if (this._hashRestored) return;
+      var hash = window.location.hash.slice(1);
+      if (!hash || !Array.isArray(allTrendData)) return;
+      var params;
+      try {
+        params = new URLSearchParams(hash);
+      } catch (_) {
+        return;
+      }
+      var ploNum = params.get("plo");
+      if (!ploNum) return;
+
+      var matchingData = allTrendData.find(function (data) {
+        return (data && data.plos ? data.plos : []).some(function (plo) {
+          return String(plo.plo_number) === String(ploNum) && !!plo.trend;
+        });
+      });
+      if (!matchingData) return;
+
+      var previousTrendData = this.trendData;
+      var previousProgramId = this.programId;
+      this.trendData = matchingData;
+      this.programId = matchingData.program_id || this.programId;
+      this._restoreFromHash();
+      this.trendData = previousTrendData;
+      this.programId = previousProgramId;
     },
 
     _restoreFromHash() {
