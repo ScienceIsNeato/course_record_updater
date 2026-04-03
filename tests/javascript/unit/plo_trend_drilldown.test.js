@@ -422,6 +422,59 @@ describe("PloTrend._injectSummarySparklines", () => {
   });
 });
 
+describe("PloTrend.injectSparklines", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+    PloTrend.selectedTermId = null;
+    PloTrend.trendData = null;
+  });
+
+  test("matches PLO and CLO nodes by dataset value even when ids contain selector-breaking characters", () => {
+    document.body.innerHTML = `
+      <div id="ploTreeContainer">
+        <li data-plo-id="plo'1]">
+          <div class="plo-tree-header">
+            <div class="plo-tree-meta"></div>
+          </div>
+          <div data-clo-id="clo'1]">
+            <div class="plo-tree-header">
+              <div class="plo-tree-meta"></div>
+            </div>
+          </div>
+        </li>
+      </div>
+    `;
+
+    PloTrend.trendData = {
+      terms: [
+        { term_id: "t1", term_name: "Fall 2024" },
+        { term_id: "t2", term_name: "Spring 2025" },
+      ],
+      plos: [
+        {
+          id: "plo'1]",
+          plo_number: 1,
+          description: "Escaped PLO",
+          trend: [{ pass_rate: 70 }, { pass_rate: 82 }],
+          clos: [
+            {
+              outcome_id: "clo'1]",
+              clo_number: 1,
+              course_number: "CS101",
+              description: "Escaped CLO",
+              trend: [{ pass_rate: 68 }, { pass_rate: 80 }],
+            },
+          ],
+        },
+      ],
+    };
+
+    PloTrend.injectSparklines();
+
+    expect(document.querySelectorAll(".plo-trend-indicator")).toHaveLength(2);
+  });
+});
+
 describe("onClick → onPointClick integration", () => {
   let trend;
   let originalPloDetailPanel;

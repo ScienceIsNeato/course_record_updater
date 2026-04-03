@@ -1,5 +1,31 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR #72 Final Selector + Sprawl Root Fix (2026-04-03)
+
+**Status**: ✅ Fixed locally, ready to commit/push and resolve latest PR thread
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Remaining selector-safety fix**:
+   - `injectSparklines()` no longer interpolates raw `plo.id` / `clo.outcome_id` into CSS selectors.
+   - PLO and CLO node matching now iterates `[data-plo-id]` and `[data-clo-id]` elements by dataset value, consistent with the earlier `_updateHash()` / `_restoreFromHash()` hardening.
+2. **Code-sprawl root fix**:
+   - Extracted the sparkline rendering cluster from [static/plo_trend.js](/Users/pacey/Documents/SourceCode/loopcloser/static/plo_trend.js) into the new [static/plo_trend_sparkline.js](/Users/pacey/Documents/SourceCode/loopcloser/static/plo_trend_sparkline.js).
+   - Wired the new script into [templates/plo_dashboard.html](/Users/pacey/Documents/SourceCode/loopcloser/templates/plo_dashboard.html) ahead of [static/plo_trend.js](/Users/pacey/Documents/SourceCode/loopcloser/static/plo_trend.js).
+   - This dropped `plo_trend.js` below the `myopia:code-sprawl` ceiling in both targeted and full uncached `sm scour` runs.
+3. **Tests**:
+   - Added regression coverage proving `injectSparklines()` still decorates PLO/CLO nodes whose IDs contain selector-breaking characters.
+   - Re-ran both core PLO trend JS suites after the extraction.
+
+**Validation**:
+
+- `npx jest tests/javascript/unit/plo_trend.test.js tests/javascript/unit/plo_trend_drilldown.test.js --runInBand` ✅ (`88` passed)
+- `sm scour -g myopia:code-sprawl` ✅ (`1` check passed)
+- `sm swab --static` ✅ (`22` checks passed)
+- `sm scour --no-cache` ✅ (`26` checks passed)
+
 ## Latest Work: PR #72 Summary Panel + Safe Selector Follow-Up (2026-04-03)
 
 **Status**: ✅ Fixed locally, ready to commit/push and resolve latest PR threads
