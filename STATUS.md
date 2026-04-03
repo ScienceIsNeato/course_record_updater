@@ -1,5 +1,33 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR #72 Summary Panel + Safe Selector Follow-Up (2026-04-03)
+
+**Status**: ✅ Fixed locally, ready to commit/push and resolve latest PR threads
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Summary-bar selected term parity**:
+   - `_injectSummarySparklines()` now forwards `selectedTermIndex` into `_toggleSummaryTrendPanel()` for both click and keyboard activation.
+   - `_toggleSummaryTrendPanel()` now forwards that same `selectedTermIndex` into `createTrendPanel(...)`, matching the existing tree-node path.
+2. **Safe PLO node lookup**:
+   - `_updateHash()` and `_restoreFromHash()` no longer build CSS selectors by concatenating raw `ploId` strings.
+   - Both now locate `li[data-plo-id]` nodes by iterating dataset values, which handles IDs containing quotes or brackets safely.
+3. **Tests**:
+   - Added a regression proving `_restoreFromHash()` works when the matching `data-plo-id` contains selector-breaking characters.
+   - Added a regression proving `_updateHash()` can still resolve the DOM fallback with selector-breaking characters.
+   - Added a regression proving summary-bar sparkline activation forwards `selectedTermIndex` when opening the full trend panel.
+4. **Guardrail cleanup**:
+   - Reworked the safe lookup implementation to stay below the `myopia:code-sprawl` limit after the new fixes.
+
+**Validation**:
+
+- `npx jest tests/javascript/unit/plo_trend_drilldown.test.js --runInBand` ✅ (`18` passed)
+- `sm swab -g myopia:code-sprawl` ✅ (`1` check passed)
+- `sm swab --static` ✅ (`22` checks passed)
+- `sm scour` ✅ (`26` checks passed)
+
 ## Latest Work: PR #72 CI E2E + Seed Backfill Follow-Up (2026-04-03)
 
 **Status**: ✅ Fixed locally, ready to commit/push and resolve latest PR thread

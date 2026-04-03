@@ -730,13 +730,25 @@
         );
         canvas.addEventListener("click", (e) => {
           e.stopPropagation();
-          this._toggleSummaryTrendPanel(slot, plo, terms, programId);
+          this._toggleSummaryTrendPanel(
+            slot,
+            plo,
+            terms,
+            programId,
+            selectedTermIndex,
+          );
         });
         canvas.addEventListener("keydown", (e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             e.stopPropagation();
-            this._toggleSummaryTrendPanel(slot, plo, terms, programId);
+            this._toggleSummaryTrendPanel(
+              slot,
+              plo,
+              terms,
+              programId,
+              selectedTermIndex,
+            );
           }
         });
       });
@@ -840,7 +852,7 @@
     /**
      * Toggle a trend chart panel below the summary row containing the clicked sparkline.
      */
-    _toggleSummaryTrendPanel(slot, plo, terms, programId) {
+    _toggleSummaryTrendPanel(slot, plo, terms, programId, selectedTermIndex) {
       const row = slot.closest(".plo-summary-row");
       if (!row) return;
 
@@ -872,6 +884,7 @@
         clos: plo.clos || [],
         discontinuities: plo.discontinuities || [],
         programId,
+        selectedTermIndex,
         onPointClick: this._makePointClickHandler(plo.id, panelRef, programId),
       });
       panelRef.el = panel;
@@ -1022,7 +1035,12 @@
         }
       }
       if (ploNumber == null) {
-        var ploNode = document.querySelector("li[data-plo-id='" + ploId + "']");
+        var container = document.getElementById("ploTreeContainer");
+        var ploNode = container
+          ? Array.from(container.querySelectorAll("li[data-plo-id]")).find(
+              (node) => String(node.dataset.ploId) === String(ploId),
+            )
+          : null;
         if (ploNode && ploNode.dataset && ploNode.dataset.ploNumber) {
           ploNumber = ploNode.dataset.ploNumber;
         }
@@ -1069,7 +1087,9 @@
 
       var container = document.getElementById("ploTreeContainer");
       if (!container) return;
-      var ploNode = container.querySelector("li[data-plo-id='" + plo.id + "']");
+      var ploNode = Array.from(
+        container.querySelectorAll("li[data-plo-id]"),
+      ).find((node) => String(node.dataset.ploId) === String(plo.id));
       if (!ploNode) return;
 
       ploNode.classList.add("expanded");

@@ -274,7 +274,7 @@ describe("PloTrend._restoreFromHash", () => {
     PloTrend.selectedTermId = "t2";
     document.body.innerHTML = `
       <div id="ploTreeContainer">
-        <li data-plo-id="p2">
+        <li id="target-plo-node" data-plo-id="p'2]">
           <div class="plo-tree-header"></div>
         </li>
       </div>
@@ -311,7 +311,7 @@ describe("PloTrend._restoreFromHash", () => {
       terms: [{ term_id: "t2", term_name: "Spring 2025" }],
       plos: [
         {
-          id: "p2",
+          id: "p'2]",
           plo_number: 2,
           description: "Matched PLO",
           trend: [{ pass_rate: 75 }, { pass_rate: 82 }],
@@ -325,7 +325,7 @@ describe("PloTrend._restoreFromHash", () => {
 
     expect(PloTrend._hashRestored).toBe(true);
     expect(PloTrend._toggleTrendPanel).toHaveBeenCalledWith(
-      document.querySelector("li[data-plo-id='p2']"),
+      document.getElementById("target-plo-node"),
       [{ pass_rate: 75 }, { pass_rate: 82 }],
       [{ term_id: "t2", term_name: "Spring 2025" }],
       expect.objectContaining({
@@ -355,13 +355,70 @@ describe("PloTrend._updateHash", () => {
     };
     document.body.innerHTML = `
       <div id="ploTreeContainer">
-        <li data-plo-id="other-program-plo" data-plo-number="3"></li>
+        <li data-plo-id="other'program]plo" data-plo-number="3"></li>
       </div>
     `;
 
-    PloTrend._updateHash("other-program-plo");
+    PloTrend._updateHash("other'program]plo");
 
     expect(history.replaceState).toHaveBeenCalledWith(null, "", "#plo=3");
+  });
+});
+
+describe("PloTrend._injectSummarySparklines", () => {
+  let originalToggleSummaryTrendPanel;
+
+  beforeEach(() => {
+    originalToggleSummaryTrendPanel = PloTrend._toggleSummaryTrendPanel;
+    PloTrend._toggleSummaryTrendPanel = jest.fn();
+    Chart.mockClear();
+    document.body.innerHTML = `
+      <div id="ploTreeContainer">
+        <div class="plo-summary-bar">
+          <div class="plo-summary-row stat-pass">
+            <div class="plo-summary-sparkline-group">
+              <span class="plo-summary-sparkline-slot" data-plo-id="plo-1">
+                <span class="plo-summary-sparkline-label">(1)</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  afterEach(() => {
+    PloTrend._toggleSummaryTrendPanel = originalToggleSummaryTrendPanel;
+    document.body.innerHTML = "";
+  });
+
+  test("forwards selectedTermIndex when opening a summary-bar trend panel", () => {
+    const container = document.getElementById("ploTreeContainer");
+    const terms = [
+      { term_id: "t1", term_name: "Fall 2024" },
+      { term_id: "t2", term_name: "Spring 2025" },
+      { term_id: "t3", term_name: "Fall 2025" },
+    ];
+    const plo = {
+      id: "plo-1",
+      plo_number: 1,
+      description: "PLO One",
+      trend: [{ pass_rate: 70 }, { pass_rate: 80 }, { pass_rate: 85 }],
+      clos: [],
+    };
+
+    PloTrend._injectSummarySparklines(container, [plo], terms, 1, "prog-1");
+
+    const canvas = document.querySelector(".plo-summary-sparkline-slot canvas");
+    canvas.click();
+
+    expect(PloTrend._toggleSummaryTrendPanel).toHaveBeenCalledWith(
+      document.querySelector(".plo-summary-sparkline-slot"),
+      plo,
+      terms,
+      "prog-1",
+      1,
+    );
   });
 });
 
