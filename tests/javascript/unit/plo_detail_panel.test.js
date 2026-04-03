@@ -47,6 +47,14 @@ describe("createDetailPanel — container", () => {
     expect(header.textContent).toContain("PLO 1");
     expect(header.textContent).toContain("Fall 2025");
   });
+
+  test("panel includes expand-all toggle when CLO data exists", () => {
+    const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
+    const toggle = panel.querySelector(".plo-detail-panel-toggle-all");
+    expect(toggle).not.toBeNull();
+    expect(toggle.textContent).toBe("Expand all CLOs");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -92,6 +100,39 @@ describe("createDetailPanel — CLO rows", () => {
     expect(firstClo.classList.contains("expanded")).toBe(true);
     header.click(); // collapse again
     expect(firstClo.classList.contains("expanded")).toBe(false);
+  });
+
+  test("expand-all toggle expands and collapses every CLO row", () => {
+    const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
+    const toggle = panel.querySelector(".plo-detail-panel-toggle-all");
+    const cloRows = panel.querySelectorAll(".plo-detail-clo");
+
+    toggle.click();
+    cloRows.forEach((row) => {
+      expect(row.classList.contains("expanded")).toBe(true);
+    });
+    expect(toggle.textContent).toBe("Collapse all CLOs");
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+
+    toggle.click();
+    cloRows.forEach((row) => {
+      expect(row.classList.contains("expanded")).toBe(false);
+    });
+    expect(toggle.textContent).toBe("Expand all CLOs");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  test("toggle label updates when individual CLO rows change", () => {
+    const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
+    const toggle = panel.querySelector(".plo-detail-panel-toggle-all");
+    const headers = panel.querySelectorAll(".plo-detail-clo-header");
+
+    headers[0].click();
+    expect(toggle.textContent).toBe("Expand all CLOs");
+
+    headers[1].click();
+    expect(toggle.textContent).toBe("Collapse all CLOs");
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
   });
 });
 
@@ -200,6 +241,11 @@ describe("createDetailPanel — no CLO data", () => {
     const panel = createDetailPanel(MOCK_PLO_NO_CLOS, MOCK_TERM_LABEL);
     const cloRows = panel.querySelectorAll(".plo-detail-clo");
     expect(cloRows.length).toBe(0);
+  });
+
+  test("no expand-all toggle is rendered when CLO list is empty", () => {
+    const panel = createDetailPanel(MOCK_PLO_NO_CLOS, MOCK_TERM_LABEL);
+    expect(panel.querySelector(".plo-detail-panel-toggle-all")).toBeNull();
   });
 });
 

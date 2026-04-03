@@ -26,6 +26,23 @@
     return wrap;
   }
 
+  function getCloRows(panel) {
+    return Array.from(panel.querySelectorAll(".plo-detail-clo"));
+  }
+
+  function syncToggleAllButton(panel) {
+    var btn = panel.querySelector(".plo-detail-panel-toggle-all");
+    if (!btn) return;
+    var cloRows = getCloRows(panel);
+    var allExpanded =
+      cloRows.length > 0 &&
+      cloRows.every(function (row) {
+        return row.classList.contains("expanded");
+      });
+    btn.textContent = allExpanded ? "Collapse all CLOs" : "Expand all CLOs";
+    btn.setAttribute("aria-expanded", allExpanded ? "true" : "false");
+  }
+
   function flagButton(storageKey) {
     var btn = document.createElement("button");
     btn.type = "button";
@@ -143,7 +160,7 @@
 
   /* ---- CLO row -------------------------------------------------------- */
 
-  function cloRow(clo) {
+  function cloRow(clo, onToggle) {
     const div = document.createElement("div");
     div.className = "plo-detail-clo";
 
@@ -189,6 +206,7 @@
     /* expand / collapse */
     header.addEventListener("click", function () {
       div.classList.toggle("expanded");
+      if (typeof onToggle === "function") onToggle();
     });
 
     return div;
@@ -222,6 +240,28 @@
       termLabel;
     panel.appendChild(header);
 
+    if (ploData.clos && ploData.clos.length > 0) {
+      var controls = document.createElement("div");
+      controls.className = "plo-detail-panel-controls";
+
+      var toggleAllBtn = document.createElement("button");
+      toggleAllBtn.type = "button";
+      toggleAllBtn.className = "plo-detail-panel-toggle-all";
+      toggleAllBtn.addEventListener("click", function () {
+        var cloRows = getCloRows(panel);
+        var shouldExpand = cloRows.some(function (row) {
+          return !row.classList.contains("expanded");
+        });
+        cloRows.forEach(function (row) {
+          row.classList.toggle("expanded", shouldExpand);
+        });
+        syncToggleAllButton(panel);
+      });
+
+      controls.appendChild(toggleAllBtn);
+      panel.appendChild(controls);
+    }
+
     /* CLO list or empty message */
     if (!ploData.clos || ploData.clos.length === 0) {
       var empty = document.createElement("div");
@@ -230,8 +270,13 @@
       panel.appendChild(empty);
     } else {
       ploData.clos.forEach(function (clo) {
-        panel.appendChild(cloRow(clo));
+        panel.appendChild(
+          cloRow(clo, function () {
+            syncToggleAllButton(panel);
+          }),
+        );
       });
+      syncToggleAllButton(panel);
     }
 
     return panel;

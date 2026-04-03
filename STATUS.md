@@ -1,5 +1,37 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR #72 Detail Panel Toggle + Demo Data Enrichment (2026-04-03)
+
+**Status**: ✅ Fixed locally, reseeded, validated in browser, ready to push
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Detail panel expand/collapse control**:
+   - Added a panel-level toggle button to expand/collapse every CLO row inside the PLO drill-through detail panel.
+   - Button label and `aria-expanded` state now stay in sync with individual row toggles.
+2. **Demo data backfill for rich drill-through content**:
+   - Added deterministic demo narrative/reviewer-feedback backfill logic in `scripts/seed_db.py`.
+   - Explicit manifest overrides still win; missing section narratives and outcome feedback are generated only for assessed demo data that lacked hand-authored content.
+   - Moved demo profile constants into `scripts/demo_seed_profiles.py` to keep `seed_db.py` under the code-sprawl limit.
+3. **Tests**:
+   - Added unit coverage for the panel toggle behavior.
+   - Added script tests for generated narrative/feedback payloads and for the backfill application path.
+
+**Validation**:
+
+- Focused tests passing: `29` tests green across `plo_detail_panel.test.js` and `test_seed_db_tail.py`
+- `sm swab --static` ✅ (`22` checks passed)
+- Local demo reseeded successfully:
+  - explicit overrides applied
+  - backfilled `18` section narrative set(s)
+  - backfilled `83` reviewer feedback item(s)
+- Browser validation ✅
+  - Detail panel now shows `Expand all CLOs` / `Collapse all CLOs`
+  - Expand-all toggles all `5` CLO rows in the live panel
+  - Reseeded Spring 2025 drill-through now shows `16` narrative blocks and `4` reviewer-feedback blocks in the selected PLO panel
+
 ## Latest Work: PR #72 Drill-Through Fixes (2026-04-03)
 
 **Status**: ✅ Fixed locally, validated in browser, ready to push

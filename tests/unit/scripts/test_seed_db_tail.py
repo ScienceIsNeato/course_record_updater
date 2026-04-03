@@ -163,3 +163,57 @@ def test_main_success_and_arg_error(monkeypatch: Any) -> None:
     monkeypatch.setattr(module.sys, "argv", ["seed_db.py", "--bad-flag"])
     with pytest.raises(SystemExit):
         module.main()
+
+
+def test_demo_story_builders_return_rich_content() -> None:
+    module = _load_seed_module()
+    seeder = module.DemoSeeder(env="local")
+
+    payload = seeder._build_demo_narrative_payload("BIOL-101", "FA2023", "001")
+    assert "narrative_celebrations" in payload
+    assert "BIOL-101" in payload["narrative_celebrations"]
+    assert payload["narrative_challenges"]
+    assert payload["narrative_changes"]
+
+    feedback = seeder._build_demo_feedback_comment("BIOL-101", "SP2025", "1", 22, 25)
+    assert "BIOL-101 CLO 1" in feedback
+    assert "88% pass rate" in feedback
+
+
+def test_backfill_demo_story_data_updates_missing_narratives_and_feedback() -> None:
+    module = _load_seed_module()
+    seeder = module.DemoSeeder(env="local")
+    seeder._resolve_section_id = Mock(return_value="section-1")
+    seeder._find_section_outcome = Mock(return_value={"id": "outcome-1"})
+
+    manifest = {
+        "section_outcome_overrides": [
+            {
+                "course_code": "BIOL-101",
+                "section_number": "001",
+                "term_code": "FA2023",
+                "clo_number": 1,
+                "students_took": 25,
+                "students_passed": 22,
+            }
+        ],
+        "section_narrative_overrides": [],
+        "section_feedback_overrides": [],
+    }
+
+    with (
+        patch.object(
+            module.database_service.db, "update_course_section", return_value=True
+        ) as update_section,
+        patch.object(
+            module.database_service.db, "update_section_outcome", return_value=True
+        ) as update_outcome,
+    ):
+        stats = seeder._backfill_demo_story_data(
+            manifest, "inst-1", {"FA2023": "term-1"}
+        )
+
+    assert stats == {"narratives": 1, "feedback": 1}
+    update_section.assert_called_once()
+    update_outcome.assert_called_once()
+    assert "feedback_comments" in update_outcome.call_args.args[1]
