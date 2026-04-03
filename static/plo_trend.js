@@ -12,17 +12,10 @@
 (function () {
   "use strict";
 
-  // Chart.js defaults for sparklines
-  const SPARK_WIDTH = 100;
-  const SPARK_HEIGHT = 32;
   const TREND_LINE_COLOR = "#0d6efd";
   const TREND_LINE_COLOR_FAIL = "#dc3545";
-  const TREND_LINE_COLOR_FUTURE = "rgba(160, 170, 180, 0.45)";
-  const TREND_FILL_ALPHA_TOP = 0.18;
-  const TREND_FILL_ALPHA_BOTTOM = 0.02;
   const TREND_FILL_COLOR = "rgba(13, 110, 253, 0.08)";
   const TREND_NULL_DASH = [4, 4];
-  const THRESHOLD_LINE_COLOR = "rgba(108, 117, 125, 0.3)";
   const trendPanelModule =
     typeof module !== "undefined" && module.exports
       ? require("./plo_trend_panel")
