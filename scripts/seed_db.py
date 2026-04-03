@@ -701,6 +701,7 @@ class DemoSeeder(BaselineSeeder):
             )
             for entry in narrative_overrides
             if not self._is_comment_only_entry(entry)
+            if entry.get("course_code") and entry.get("section_number")
         }
         explicit_feedback = {
             (
@@ -711,6 +712,7 @@ class DemoSeeder(BaselineSeeder):
             )
             for entry in feedback_overrides
             if not self._is_comment_only_entry(entry)
+            if entry.get("course_code") and entry.get("section_number")
             if entry.get("clo_number") is not None
         }
 
@@ -731,7 +733,7 @@ class DemoSeeder(BaselineSeeder):
 
             if not course_code or not section_number or not clo_number:
                 continue
-            if not students_took:
+            if students_took is None:
                 continue
 
             section_key = (course_code, section_number, term_code)

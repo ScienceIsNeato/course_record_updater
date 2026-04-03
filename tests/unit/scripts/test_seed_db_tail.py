@@ -512,6 +512,92 @@ def test_backfill_demo_story_data_caches_missing_section_resolution() -> None:
     )
 
 
+def test_backfill_demo_story_data_handles_zero_student_sections() -> None:
+    module = _load_seed_module()
+    seeder = module.DemoSeeder(env="local")
+    seeder._resolve_section_id = Mock(return_value="section-1")
+    seeder._find_section_outcome = Mock(return_value={"id": "outcome-1"})
+
+    manifest = {
+        "section_outcome_overrides": [
+            {
+                "course_code": "BIOL-101",
+                "section_number": "001",
+                "term_code": "FA2023",
+                "clo_number": 1,
+                "students_took": 0,
+                "students_passed": 0,
+            }
+        ]
+    }
+
+    with (
+        patch.object(
+            module.database_service.db, "update_course_section", return_value=True
+        ) as update_section,
+        patch.object(
+            module.database_service.db, "update_section_outcome", return_value=True
+        ) as update_outcome,
+    ):
+        stats = seeder._backfill_demo_story_data(
+            manifest, "inst-1", {"FA2023": "term-1"}
+        )
+
+    assert stats == {"narratives": 1, "feedback": 1}
+    update_section.assert_called_once()
+    update_outcome.assert_called_once()
+    assert (
+        "BIOL-101 CLO 1 is sitting at limited evidence"
+        in update_outcome.call_args.args[1]["feedback_comments"]
+    )
+
+
+def test_backfill_demo_story_data_ignores_incomplete_explicit_override_keys() -> None:
+    module = _load_seed_module()
+    seeder = module.DemoSeeder(env="local")
+    seeder._resolve_section_id = Mock(return_value="section-1")
+    seeder._find_section_outcome = Mock(return_value={"id": "outcome-1"})
+
+    manifest = {
+        "section_outcome_overrides": [
+            {
+                "course_code": "BIOL-101",
+                "section_number": "001",
+                "term_code": "FA2023",
+                "clo_number": 1,
+                "students_took": 25,
+                "students_passed": 22,
+            }
+        ],
+        "section_narrative_overrides": [
+            {"_comment": "context", "course_code": "BIOL-101"}
+        ],
+        "section_feedback_overrides": [
+            {
+                "_comment": "context",
+                "course_code": "BIOL-101",
+                "clo_number": 1,
+            }
+        ],
+    }
+
+    with (
+        patch.object(
+            module.database_service.db, "update_course_section", return_value=True
+        ) as update_section,
+        patch.object(
+            module.database_service.db, "update_section_outcome", return_value=True
+        ) as update_outcome,
+    ):
+        stats = seeder._backfill_demo_story_data(
+            manifest, "inst-1", {"FA2023": "term-1"}
+        )
+
+    assert stats == {"narratives": 1, "feedback": 1}
+    update_section.assert_called_once()
+    update_outcome.assert_called_once()
+
+
 def test_resolve_section_id_handles_missing_course_and_missing_course_id() -> None:
     module = _load_seed_module()
     seeder = module.DemoSeeder(env="local")
