@@ -517,7 +517,7 @@
 
 .plo-detail-panel {
   position: relative;
-  padding: 0.75rem 1rem;
+  padding: 0;
   margin-top: 0.5rem;
   background:
     linear-gradient(180deg, rgba(237, 245, 255, 0.9) 0%, #ffffff 22%),
@@ -681,6 +681,23 @@
 .plo-detail-panel-toggle-all:hover {
   background: #e9ecef;
   border-color: #adb5bd;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plo-detail-panel,
+  .plo-detail-panel--entering {
+    transition: none;
+    max-height: none;
+    opacity: 1;
+    padding: 0.75rem 1rem;
+  }
+
+  .plo-detail-clo-children,
+  .plo-detail-clo-toggle,
+  .plo-detail-panel-close,
+  .plo-detail-panel-toggle-all {
+    transition: none;
+  }
 }
 
 @media (max-width: 768px) {

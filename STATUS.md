@@ -1,5 +1,34 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR #72 Review Thread Remediation (2026-04-03)
+
+**Status**: ✅ Fixed locally, ready to commit/push and resolve PR threads
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Trend drill-through race guards**:
+   - Added per-container request generation tracking in `static/plo_trend.js` so stale detail-panel fetches are ignored.
+   - Hardened the detail fetch against both `data.plos` and legacy `data.tree.plos` response shapes.
+2. **Hash restore correctness**:
+   - `_restoreFromHash()` now waits until the requested PLO is actually found before setting `_hashRestored`.
+   - Hash restore now passes the active `programId` through to the trend panel so All Programs mode drills into the correct program after restore.
+3. **Detail panel UX fixes**:
+   - CLO headers now maintain `aria-expanded` and respond to Enter/Space.
+   - The detail panel entrance animation now starts after insertion instead of shipping both classes at creation time.
+   - Added reduced-motion handling and made the collapsed padding distinct from the entered state.
+4. **Docs / cleanup**:
+   - Updated the `/plo-dashboard` route docstring to describe `plo_id`.
+   - Updated the service docstring for `get_plo_dashboard_tree()` and clarified unknown-`plo_id` behavior.
+   - Renamed the internal mapping loop variable to avoid shadowing the `plo_id` parameter.
+   - Removed the stale "RED — module doesn't exist yet" wording from the detail-panel unit test header.
+
+**Validation**:
+
+- Focused JS tests ✅ (`115` passed across `plo_detail_panel.test.js` and `plo_trend.test.js`)
+- `sm swab --static` ✅ (`22` checks passed)
+
 ## Latest Work: PR #72 Drill-Through Summary + Expanded Default (2026-04-03)
 
 **Status**: ✅ Fixed locally, validated in browser, ready to push

@@ -43,6 +43,30 @@
     btn.setAttribute("aria-expanded", allExpanded ? "true" : "false");
   }
 
+  function setCloExpanded(row, header, expanded) {
+    row.classList.toggle("expanded", expanded);
+    if (header) {
+      header.setAttribute("aria-expanded", expanded ? "true" : "false");
+    }
+  }
+
+  function schedulePanelEntrance(panel) {
+    function enterPanel() {
+      if (panel.isConnected) {
+        panel.classList.add("plo-detail-panel--entering");
+      }
+    }
+
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(enterPanel);
+      });
+      return;
+    }
+
+    setTimeout(enterPanel, 0);
+  }
+
   function pluralize(count, singular, plural) {
     return count + " " + (count === 1 ? singular : plural || singular + "s");
   }
@@ -295,7 +319,6 @@
   function cloRow(clo, onToggle, expandedByDefault) {
     const div = document.createElement("div");
     div.className = "plo-detail-clo";
-    if (expandedByDefault) div.classList.add("expanded");
 
     const header = document.createElement("div");
     header.className = "plo-detail-clo-header";
@@ -336,9 +359,17 @@
     }
     div.appendChild(children);
 
+    setCloExpanded(div, header, Boolean(expandedByDefault));
+
     /* expand / collapse */
     header.addEventListener("click", function () {
-      div.classList.toggle("expanded");
+      setCloExpanded(div, header, !div.classList.contains("expanded"));
+      if (typeof onToggle === "function") onToggle();
+    });
+    header.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      setCloExpanded(div, header, !div.classList.contains("expanded"));
       if (typeof onToggle === "function") onToggle();
     });
 
@@ -349,7 +380,7 @@
 
   function createDetailPanel(ploData, termLabel) {
     var panel = document.createElement("div");
-    panel.className = "plo-detail-panel plo-detail-panel--entering";
+    panel.className = "plo-detail-panel";
 
     /* close button */
     var closeBtn = document.createElement("button");
@@ -388,7 +419,11 @@
           return !row.classList.contains("expanded");
         });
         cloRows.forEach(function (row) {
-          row.classList.toggle("expanded", shouldExpand);
+          setCloExpanded(
+            row,
+            row.querySelector(".plo-detail-clo-header"),
+            shouldExpand,
+          );
         });
         syncToggleAllButton(panel);
       });
@@ -417,6 +452,8 @@
       });
       syncToggleAllButton(panel);
     }
+
+    schedulePanelEntrance(panel);
 
     return panel;
   }

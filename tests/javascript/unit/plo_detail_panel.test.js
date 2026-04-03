@@ -1,5 +1,5 @@
 /**
- * Unit tests for static/plo_detail_panel.js (RED — module doesn't exist yet).
+ * Unit tests for static/plo_detail_panel.js.
  *
  * Tests define the DOM contract for the drill-down detail panel that
  * appears below the PLO trend chart when a user clicks a data point.
@@ -18,6 +18,34 @@ const {
   destroyDetailPanel,
 } = require("../../../static/plo_detail_panel");
 
+let originalRequestAnimationFrame;
+let queuedAnimationFrames;
+
+function flushAnimationFrames() {
+  while (queuedAnimationFrames.length > 0) {
+    const callbacks = queuedAnimationFrames.slice();
+    queuedAnimationFrames = [];
+    callbacks.forEach((cb) => cb());
+  }
+}
+
+beforeEach(() => {
+  originalRequestAnimationFrame = global.requestAnimationFrame;
+  queuedAnimationFrames = [];
+  global.requestAnimationFrame = (cb) => {
+    queuedAnimationFrames.push(cb);
+    return queuedAnimationFrames.length;
+  };
+});
+
+afterEach(() => {
+  if (typeof originalRequestAnimationFrame === "undefined") {
+    delete global.requestAnimationFrame;
+  } else {
+    global.requestAnimationFrame = originalRequestAnimationFrame;
+  }
+});
+
 // ---------------------------------------------------------------------------
 // createDetailPanel — container structure
 // ---------------------------------------------------------------------------
@@ -28,8 +56,13 @@ describe("createDetailPanel — container", () => {
     expect(panel.classList.contains("plo-detail-panel")).toBe(true);
   });
 
-  test("panel has entering animation class", () => {
+  test("panel adds entering animation class after insertion", () => {
+    setBody("<div id='host'></div>");
+    const host = document.getElementById("host");
     const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
+    expect(panel.classList.contains("plo-detail-panel--entering")).toBe(false);
+    host.appendChild(panel);
+    flushAnimationFrames();
     expect(panel.classList.contains("plo-detail-panel--entering")).toBe(true);
   });
 
@@ -124,8 +157,30 @@ describe("createDetailPanel — CLO rows", () => {
     const header = firstClo.querySelector(".plo-detail-clo-header");
     header.click(); // collapse
     expect(firstClo.classList.contains("expanded")).toBe(false);
+    expect(header.getAttribute("aria-expanded")).toBe("false");
     header.click(); // expand again
     expect(firstClo.classList.contains("expanded")).toBe(true);
+    expect(header.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  test("CLO header supports keyboard toggle", () => {
+    const panel = createDetailPanel(MOCK_PLO_DATA, MOCK_TERM_LABEL);
+    const firstClo = panel.querySelector(".plo-detail-clo");
+    const header = firstClo.querySelector(".plo-detail-clo-header");
+
+    expect(header.getAttribute("aria-expanded")).toBe("true");
+
+    header.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
+    expect(firstClo.classList.contains("expanded")).toBe(false);
+    expect(header.getAttribute("aria-expanded")).toBe("false");
+
+    header.dispatchEvent(
+      new KeyboardEvent("keydown", { key: " ", bubbles: true }),
+    );
+    expect(firstClo.classList.contains("expanded")).toBe(true);
+    expect(header.getAttribute("aria-expanded")).toBe("true");
   });
 
   test("expand-all toggle expands and collapses every CLO row", () => {

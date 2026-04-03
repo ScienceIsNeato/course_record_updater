@@ -886,6 +886,131 @@ describe("PloTrend._makePointClickHandler guard clauses", () => {
     expect(globalThis.PloDetailPanel.createDetailPanel).toHaveBeenCalled();
     expect(container.children.length).toBe(1);
   });
+
+  test("ignores stale detail responses when a newer click wins", async () => {
+    const container = document.createElement("div");
+    const ref = { el: container };
+    const handler = trend._makePointClickHandler("PLO-1", ref);
+
+    let resolveFirst;
+    let resolveSecond;
+    global.fetch = jest
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve;
+          }),
+      );
+
+    expect(handler({ term_id: "FA2024", name: "Fall 2024" })).toBe(true);
+    expect(handler({ term_id: "SP2025", name: "Spring 2025" })).toBe(true);
+
+    resolveSecond({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          success: true,
+          plos: [{ id: "PLO-1", plo_number: 1, description: "Test PLO" }],
+        }),
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    resolveFirst({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          success: true,
+          plos: [{ id: "PLO-1", plo_number: 1, description: "Test PLO" }],
+        }),
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(globalThis.PloDetailPanel.createDetailPanel).toHaveBeenCalledTimes(
+      1,
+    );
+    expect(globalThis.PloDetailPanel.createDetailPanel).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "PLO-1" }),
+      "Spring 2025",
+    );
+    expect(container.children.length).toBe(1);
+  });
+});
+
+describe("PloTrend._restoreFromHash", () => {
+  let originalToggleTrendPanel;
+
+  beforeEach(() => {
+    originalToggleTrendPanel = PloTrend._toggleTrendPanel;
+    PloTrend._toggleTrendPanel = jest.fn();
+    PloTrend._hashRestored = false;
+    PloTrend.programId = "prog-2";
+    document.body.innerHTML = `
+      <div id="ploTreeContainer">
+        <li data-plo-id="p2">
+          <div class="plo-tree-header"></div>
+        </li>
+      </div>
+    `;
+    window.location.hash = "#plo=2";
+  });
+
+  afterEach(() => {
+    PloTrend._toggleTrendPanel = originalToggleTrendPanel;
+    PloTrend._hashRestored = false;
+    window.location.hash = "";
+  });
+
+  test("keeps hash restoration pending until the matching PLO is present", () => {
+    PloTrend.trendData = {
+      terms: [{ term_id: "t1", term_name: "Fall 2024" }],
+      plos: [
+        {
+          id: "p1",
+          plo_number: 1,
+          description: "Other PLO",
+          trend: [{ pass_rate: 70 }, { pass_rate: 80 }],
+        },
+      ],
+    };
+
+    PloTrend._restoreFromHash();
+
+    expect(PloTrend._hashRestored).toBe(false);
+    expect(PloTrend._toggleTrendPanel).not.toHaveBeenCalled();
+
+    PloTrend.trendData = {
+      terms: [{ term_id: "t2", term_name: "Spring 2025" }],
+      plos: [
+        {
+          id: "p2",
+          plo_number: 2,
+          description: "Matched PLO",
+          trend: [{ pass_rate: 75 }, { pass_rate: 82 }],
+          clos: [],
+          discontinuities: [],
+        },
+      ],
+    };
+
+    PloTrend._restoreFromHash();
+
+    expect(PloTrend._hashRestored).toBe(true);
+    expect(PloTrend._toggleTrendPanel).toHaveBeenCalledWith(
+      document.querySelector("li[data-plo-id='p2']"),
+      [{ pass_rate: 75 }, { pass_rate: 82 }],
+      [{ term_id: "t2", term_name: "Spring 2025" }],
+      expect.objectContaining({ programId: "prog-2" }),
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------

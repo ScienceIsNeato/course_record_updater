@@ -532,6 +532,9 @@ def plo_dashboard(program_id: str) -> ResponseReturnValue:
     Query params:
       - term_id: optional term filter for section-outcome leaf nodes.
         When omitted, aggregates across all terms.
+            - plo_id: optional program outcome filter. When provided, the response
+                only includes that PLO; unknown IDs return a 200 response with an
+                empty ``plos`` list.
 
     Response shape is documented in plo_service.get_plo_dashboard_tree.
     """

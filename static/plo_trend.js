@@ -772,6 +772,11 @@
 
         var programId = programIdOverride || self.programId;
         if (!programId) return false;
+        if (!self._detailPanelRequestGen) {
+          self._detailPanelRequestGen = new WeakMap();
+        }
+        var requestGen = (self._detailPanelRequestGen.get(container) || 0) + 1;
+        self._detailPanelRequestGen.set(container, requestGen);
 
         var url =
           "/api/programs/" +
@@ -790,12 +795,19 @@
             return resp.json();
           })
           .then(function (data) {
+            if (self._detailPanelRequestGen.get(container) !== requestGen) {
+              return;
+            }
             if (!data || !data.success) return;
-            var plos = data.plos;
+            var plos = data.plos || (data.tree && data.tree.plos);
             if (!plos || plos.length === 0) return;
             var ploData = plos[0];
             var termLabel = term.term_name || term.name || "";
             var detailEl = DetailPanel.createDetailPanel(ploData, termLabel);
+
+            if (self._detailPanelRequestGen.get(container) !== requestGen) {
+              return;
+            }
 
             if (isShift && existingPanel) {
               var cw = container.querySelector(".plo-detail-compare");
@@ -1036,7 +1048,6 @@
       }
       var ploNum = params.get("plo");
       if (!ploNum || !this.trendData) return;
-      this._hashRestored = true;
 
       var plo = (this.trendData.plos || []).find(function (p) {
         return String(p.plo_number) === String(ploNum);
@@ -1049,10 +1060,12 @@
       if (!ploNode) return;
 
       ploNode.classList.add("expanded");
+      this._hashRestored = true;
       this._toggleTrendPanel(ploNode, plo.trend, this.trendData.terms, {
         title: "PLO-" + plo.plo_number + ": " + plo.description,
         clos: plo.clos || [],
         discontinuities: plo.discontinuities || [],
+        programId: this.programId,
       });
     },
   };
