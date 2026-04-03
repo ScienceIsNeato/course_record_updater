@@ -672,8 +672,12 @@ class DemoSeeder(BaselineSeeder):
         profile = self._demo_story_profile(course_code)
         context = self._demo_term_context(term_code).strip()
         rate_text = "limited evidence"
-        if students_took:
-            rate = round((float(students_passed or 0) / float(students_took)) * 100)
+        if students_took is not None:
+            rate = (
+                0
+                if float(students_took) == 0
+                else round((float(students_passed or 0) / float(students_took)) * 100)
+            )
             rate_text = f"{rate}% pass rate"
         return (
             f"{context} {course_code} CLO {clo_number} is sitting at {rate_text} in the seeded data. "

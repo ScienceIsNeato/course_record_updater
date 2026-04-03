@@ -179,6 +179,9 @@ def test_demo_story_builders_return_rich_content() -> None:
     assert "BIOL-101 CLO 1" in feedback
     assert "88% pass rate" in feedback
 
+    zero_feedback = seeder._build_demo_feedback_comment("BIOL-101", "SP2025", "1", 0, 0)
+    assert "0% pass rate" in zero_feedback
+
 
 def test_backfill_demo_story_data_updates_missing_narratives_and_feedback() -> None:
     module = _load_seed_module()
@@ -547,7 +550,7 @@ def test_backfill_demo_story_data_handles_zero_student_sections() -> None:
     update_section.assert_called_once()
     update_outcome.assert_called_once()
     assert (
-        "BIOL-101 CLO 1 is sitting at limited evidence"
+        "BIOL-101 CLO 1 is sitting at 0% pass rate"
         in update_outcome.call_args.args[1]["feedback_comments"]
     )
 
