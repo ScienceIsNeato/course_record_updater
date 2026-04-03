@@ -1,5 +1,25 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR #72 Seed Coverage Closeout (2026-04-03)
+
+**Status**: ✅ Fixed locally, full PR validation green, ready to commit/push
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Targeted seed coverage for changed lines**:
+   - Added focused tests for `_apply_demo_enrichments()` so the optional override, backfill, and PLO-manifest paths are exercised without broad integration setup.
+   - Added branch coverage for `_apply_section_narrative_overrides()` and `_apply_section_feedback_overrides()` covering skip, missing-target, and success paths.
+   - Added regression coverage for `_backfill_demo_story_data()` skip behavior and `_resolve_section_id()` fallback cases.
+2. **PR validation closeout**:
+   - Closed the remaining diff-coverage gap in `scripts/seed_db.py` that was blocking the PR-wide `myopia:just-this-once.py` gate.
+
+**Validation**:
+
+- `pytest tests/unit/scripts/test_seed_db_tail.py -q` ✅ (`13` passed)
+- `sm scour` ✅ (`26` checks passed)
+
 ## Latest Work: PR #72 Review Thread Remediation (2026-04-03)
 
 **Status**: ✅ Fixed locally, ready to commit/push and resolve PR threads
