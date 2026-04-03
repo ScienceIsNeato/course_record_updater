@@ -12,8 +12,8 @@
    - `injectSparklines()` no longer interpolates raw `plo.id` / `clo.outcome_id` into CSS selectors.
    - PLO and CLO node matching now iterates `[data-plo-id]` and `[data-clo-id]` elements by dataset value, consistent with the earlier `_updateHash()` / `_restoreFromHash()` hardening.
 2. **Code-sprawl root fix**:
-   - Extracted the sparkline rendering cluster from [static/plo_trend.js](/Users/pacey/Documents/SourceCode/loopcloser/static/plo_trend.js) into the new [static/plo_trend_sparkline.js](/Users/pacey/Documents/SourceCode/loopcloser/static/plo_trend_sparkline.js).
-   - Wired the new script into [templates/plo_dashboard.html](/Users/pacey/Documents/SourceCode/loopcloser/templates/plo_dashboard.html) ahead of [static/plo_trend.js](/Users/pacey/Documents/SourceCode/loopcloser/static/plo_trend.js).
+   - Extracted the sparkline rendering cluster from `static/plo_trend.js` into the new `static/plo_trend_sparkline.js`.
+   - Wired the new script into `templates/plo_dashboard.html` ahead of `static/plo_trend.js`.
    - This dropped `plo_trend.js` below the `myopia:code-sprawl` ceiling in both targeted and full uncached `sm scour` runs.
 3. **Tests**:
    - Added regression coverage proving `injectSparklines()` still decorates PLO/CLO nodes whose IDs contain selector-breaking characters.

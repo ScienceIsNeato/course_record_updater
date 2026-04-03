@@ -259,6 +259,32 @@ def test_apply_demo_enrichments_runs_all_optional_paths() -> None:
     plos.assert_called_once()
 
 
+def test_apply_demo_enrichments_skips_backfill_without_outcome_overrides() -> None:
+    module = _load_seed_module()
+    seeder = module.DemoSeeder(env="local")
+    seeder.log = Mock()
+
+    manifest = {
+        "section_narrative_overrides": [{"course_code": "BIOL-101"}],
+        "section_feedback_overrides": [{"course_code": "BIOL-101"}],
+    }
+
+    with (
+        patch.object(
+            seeder, "_apply_section_narrative_overrides", return_value=2
+        ) as narr,
+        patch.object(
+            seeder, "_apply_section_feedback_overrides", return_value=3
+        ) as feedback,
+        patch.object(seeder, "_backfill_demo_story_data") as backfill,
+    ):
+        seeder._apply_demo_enrichments(manifest, "inst-1", {"FA2023": "term-1"}, {})
+
+    narr.assert_called_once()
+    feedback.assert_called_once()
+    backfill.assert_not_called()
+
+
 def test_apply_section_narrative_overrides_covers_skip_and_success_paths() -> None:
     module = _load_seed_module()
     seeder = module.DemoSeeder(env="local")

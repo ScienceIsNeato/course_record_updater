@@ -418,15 +418,16 @@ class DemoSeeder(BaselineSeeder):
             )
             self.log(f"   ✅ Applied {fb_count} section feedback overrides")
 
-        self.log("🧠 Backfilling demo narratives + reviewer feedback...")
-        backfill_stats = self._backfill_demo_story_data(
-            manifest, institution_id, term_map
-        )
-        self.log(
-            "   ✅ Backfilled "
-            f"{backfill_stats['narratives']} section narrative set(s) and "
-            f"{backfill_stats['feedback']} reviewer feedback item(s)"
-        )
+        if manifest.get("section_outcome_overrides"):
+            self.log("🧠 Backfilling demo narratives + reviewer feedback...")
+            backfill_stats = self._backfill_demo_story_data(
+                manifest, institution_id, term_map
+            )
+            self.log(
+                "   ✅ Backfilled "
+                f"{backfill_stats['narratives']} section narrative set(s) and "
+                f"{backfill_stats['feedback']} reviewer feedback item(s)"
+            )
 
         if manifest.get("program_outcomes"):
             self.log("🗺️  Creating Program Learning Outcomes + mappings...")
