@@ -255,6 +255,14 @@ describe("Section Management - Create Section Modal", () => {
     });
 
     test("should close modal and reset form on success", async () => {
+      const modalEl = document.getElementById("createSectionModal");
+      modalEl.className = "modal show";
+      modalEl.style.display = "block";
+      document.body.classList.add("modal-open");
+      const backdrop = document.createElement("div");
+      backdrop.className = "modal-backdrop";
+      document.body.appendChild(backdrop);
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -280,6 +288,9 @@ describe("Section Management - Create Section Modal", () => {
 
       // Modal should be closed
       expect(bootstrap.Modal.getInstance).toHaveBeenCalled();
+      expect(modalEl.classList.contains("show")).toBe(false);
+      expect(modalEl.style.display).toBe("none");
+      expect(document.querySelector(".modal-backdrop")).toBeNull();
 
       // Form should be reset (section number should be back to default 001)
       expect(document.getElementById("sectionNumber").value).toBe("001");

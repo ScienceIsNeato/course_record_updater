@@ -1,5 +1,32 @@
 # LoopCloser - Current Status
 
+## Latest Work: PR #72 CI E2E + Seed Backfill Follow-Up (2026-04-03)
+
+**Status**: ✅ Fixed locally, ready to commit/push and resolve latest PR thread
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Seed backfill guard parity**:
+   - `_backfill_demo_story_data()` now uses the same missing-`clo_number` guard as `_apply_section_feedback_overrides()`.
+   - Both the `explicit_feedback` set and the outcome backfill loop now skip entries without a real `clo_number` instead of coercing them to `"None"`.
+2. **Section create modal hardening**:
+   - Successful section creation now force-dismisses `#createSectionModal` and removes stale backdrop/body modal state immediately after the Bootstrap hide call.
+   - This makes the success path deterministic for Playwright instead of relying on the modal fade transition to finish before later success handlers run.
+3. **Tests**:
+   - Extended seed-db backfill coverage for feedback overrides missing `clo_number`.
+   - Extended section management unit coverage to verify the modal/backdrop are actually cleared on successful create.
+   - Re-ran the exact E2E test that failed in CI: `test_tc_crud_pa_005_create_sections`.
+
+**Validation**:
+
+- `pytest tests/unit/scripts/test_seed_db_tail.py -q` ✅ (`13` passed)
+- `npx jest tests/javascript/unit/sectionManagement.test.js --runInBand` ✅ (`21` passed)
+- `pytest tests/e2e/test_crud_program_admin.py -k test_tc_crud_pa_005_create_sections -q` ✅ (`1` passed)
+- `sm swab --static` ✅ (`22` checks passed)
+- `sm scour` ✅ (`26` checks passed)
+
 ## Latest Work: PR #72 Post-CI Review Batch (2026-04-03)
 
 **Status**: ✅ Fixed locally, ready to commit/push and resolve latest PR threads

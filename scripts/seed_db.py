@@ -685,6 +685,9 @@ class DemoSeeder(BaselineSeeder):
         feedback_overrides = manifest.get("section_feedback_overrides") or []
         outcome_overrides = manifest.get("section_outcome_overrides") or []
 
+        def _coerce_clo_number(value: Any) -> Optional[str]:
+            return str(value) if value is not None else None
+
         explicit_narratives = {
             (
                 entry.get("course_code"),
@@ -698,11 +701,12 @@ class DemoSeeder(BaselineSeeder):
             (
                 entry.get("course_code"),
                 entry.get("section_number"),
-                str(entry.get("clo_number")),
+                _coerce_clo_number(entry.get("clo_number")),
                 entry.get("term_code"),
             )
             for entry in feedback_overrides
             if not ("_comment" in entry and len(entry) <= 2)
+            if entry.get("clo_number") is not None
         }
 
         narrative_count = 0
@@ -715,11 +719,11 @@ class DemoSeeder(BaselineSeeder):
             course_code = entry.get("course_code")
             section_number = entry.get("section_number")
             term_code = entry.get("term_code")
-            clo_number = str(entry.get("clo_number"))
+            clo_number = _coerce_clo_number(entry.get("clo_number"))
             students_took = entry.get("students_took")
             students_passed = entry.get("students_passed")
 
-            if not course_code or not section_number:
+            if not course_code or not section_number or not clo_number:
                 continue
             if not students_took:
                 continue

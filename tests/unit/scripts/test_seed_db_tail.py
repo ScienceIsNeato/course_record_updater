@@ -392,9 +392,15 @@ def test_backfill_demo_story_data_skips_explicit_missing_and_unassessed_entries(
                 "course_code": "BIOL-101",
                 "section_number": "001",
                 "term_code": "FA2023",
+                "feedback_comments": "Missing clo number should not register",
+            },
+            {
+                "course_code": "BIOL-101",
+                "section_number": "001",
+                "term_code": "FA2023",
                 "clo_number": 1,
                 "feedback_comments": "Already explicit",
-            }
+            },
         ],
     }
 
