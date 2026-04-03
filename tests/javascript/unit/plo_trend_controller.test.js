@@ -653,6 +653,56 @@ describe("PloTrend controller", () => {
       expect(nodeEl.querySelector(".plo-trend-panel")).toBeNull();
     });
 
+    test("adds expanded class to node so CSS does not hide panel", () => {
+      document.body.innerHTML = `
+        <li id="testNode" class="plo-tree-node">
+          <div class="plo-tree-header"></div>
+        </li>
+      `;
+      const nodeEl = document.getElementById("testNode");
+      expect(nodeEl.classList.contains("expanded")).toBe(false);
+
+      const terms = [
+        { term_name: "Fall 2024", is_current: false },
+        { term_name: "Spring 2025", is_current: false },
+      ];
+      const points = [{ pass_rate: 80 }, { pass_rate: 90 }];
+
+      PloTrend._toggleTrendPanel(nodeEl, points, terms, {});
+
+      expect(nodeEl.classList.contains("expanded")).toBe(true);
+      expect(nodeEl.querySelector(".plo-trend-panel")).not.toBeNull();
+    });
+
+    test("CLO-level node gets expanded so trend panel is visible", () => {
+      document.body.innerHTML = `
+        <li id="cloNode" class="plo-tree-node">
+          <div class="plo-tree-header">
+            <span class="plo-tree-meta">
+              <span class="plo-assessment-badge">S (100%)</span>
+            </span>
+          </div>
+          <ul><li class="plo-tree-node leaf">Section data</li></ul>
+        </li>
+      `;
+      const nodeEl = document.getElementById("cloNode");
+
+      const terms = [
+        { term_name: "Fall 2024", is_current: false },
+        { term_name: "Spring 2025", is_current: false },
+      ];
+      const points = [{ pass_rate: 90 }, { pass_rate: 95 }];
+
+      PloTrend._toggleTrendPanel(nodeEl, points, terms, {});
+
+      // Node must be expanded so the CSS rule
+      // .plo-tree-node:not(.expanded) > .plo-trend-panel { display: none }
+      // does NOT hide the panel.
+      expect(nodeEl.classList.contains("expanded")).toBe(true);
+      const panel = nodeEl.querySelector(".plo-trend-panel");
+      expect(panel).not.toBeNull();
+    });
+
     test("destroys Chart.js instances before removing panel", () => {
       document.body.innerHTML = `
         <div id="testNode">

@@ -238,6 +238,11 @@ describe("PloDashboard — PLO create/edit modal", () => {
     expect(alert.className).toContain("alert-danger");
     expect(alert.textContent).toContain("PLO number already exists");
   });
+
+  test("PLO form uses method=dialog to prevent accidental page reload", () => {
+    const form = document.getElementById("ploForm");
+    expect(form.getAttribute("method")).toBe("dialog");
+  });
 });
 
 describe("PloDashboard — Map CLO modal + publish", () => {
@@ -382,6 +387,11 @@ describe("PloDashboard — Map CLO modal + publish", () => {
     const alert = document.getElementById("mapCloModalAlert");
     expect(alert.className).toContain("alert-danger");
     expect(alert.textContent).toContain("Nothing to publish");
+  });
+
+  test("Map CLO form uses method=dialog to prevent accidental page reload", () => {
+    const form = document.getElementById("mapCloForm");
+    expect(form.getAttribute("method")).toBe("dialog");
   });
 });
 

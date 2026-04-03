@@ -941,6 +941,11 @@
 
       const panel = createTrendPanel(trendPoints, terms, mergedOpts);
       if (panelRef) panelRef.el = panel;
+
+      // Ensure the node is expanded so the CSS rule
+      // `.plo-tree-node:not(.expanded) > .plo-trend-panel` doesn't hide it.
+      nodeEl.classList.add("expanded");
+
       // Insert after the header, before children
       const header = nodeEl.querySelector(".plo-tree-header");
       if (header && header.nextSibling) {
