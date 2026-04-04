@@ -143,6 +143,25 @@ function setSectionButtonLoading(buttonEl, isLoading) {
   buttonEl.disabled = isLoading;
 }
 
+function dismissSectionModal(modalEl) {
+  if (!modalEl) return;
+
+  const modal = bootstrap?.Modal?.getInstance?.(modalEl);
+  if (modal) {
+    modal.hide();
+  }
+
+  modalEl.classList.remove("show");
+  modalEl.style.display = "none";
+  modalEl.setAttribute("aria-hidden", "true");
+  modalEl.removeAttribute("aria-modal");
+  document.body.classList.remove("modal-open");
+  document.body.style.removeProperty("padding-right");
+  document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
+    backdrop.remove();
+  });
+}
+
 function buildCreateSectionData(offeringSelect, instructorSelect) {
   const instructorValue = instructorSelect?.value || "";
   const capacityValue = document.getElementById("sectionCapacity")?.value;
@@ -257,18 +276,7 @@ function initializeCreateSectionModal() {
 
         // Success - close modal and reset form
         const modalEl = document.getElementById("createSectionModal");
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        if (modal) {
-          modal.hide();
-        } else if (modalEl) {
-          modalEl.classList.remove("show");
-          modalEl.style.display = "none";
-          modalEl.setAttribute("aria-hidden", "true");
-          modalEl.removeAttribute("aria-modal");
-          document.body.classList.remove("modal-open");
-          const backdrop = document.querySelector(".modal-backdrop");
-          if (backdrop) backdrop.remove();
-        }
+        dismissSectionModal(modalEl);
 
         resetCreateSectionForm(form, termSelect, offeringSelect);
 

@@ -1,32 +1,419 @@
 # LoopCloser - Current Status
 
-## Latest Work: PR #71 CI + Review Resolution (2026-03-31)
+## Latest Work: PR #72 Email Concurrency Stabilization + Loop-017 Follow-Up (2026-04-03)
 
-**Status**: 🔄 CI green, resolving Bugbot threads
+**Status**: ✅ Fixed locally, ready to commit/push with full uncached rails green
 
-**Branch**: `chore/post-main-sync-20260321-043046` (PR #71)
-**HEAD**: `718cd29` — fix: restore SARIF upload to CI workflow
+**Branch**: `feat/plo-drill-down` (PR #72)
 
-**What Changed (across sessions)**:
+**What Changed**:
 
-1. **Fixed e2e email test failures**: Created `ConsoleEmailProvider` fallback for CI (no SMTP creds)
-2. **Fixed missing re-exports** in `import_service.py` (`create_term`, `update_course_offering`)
-3. **Fixed diff-coverage**: `fetch-depth: 0` in CI checkout
-4. **Fixed E2E modal close failures**: DOM fallback when `bootstrap.Modal.getInstance()` returns null (audit_clo, sectionManagement, management_utils)
-5. **Fixed mypy str-unpack**: Added type ignore annotation
-6. **Fixed detect-secrets BrokenPipeError**: Added top-level `exclude.files` to `.secrets.baseline` for pre-scan exclusion
-7. **Set `swabbing_time: 0`**: Ensures all gates run to completion (no time budget skip)
-8. **Fixed Bugbot feedback**: Return type annotation (seed_db), f-strings (run_demo), institution_id source (advance_demo)
-9. **Restored SARIF upload**: Re-added `sm swab --sarif` + `upload-sarif@v3` step to consolidated CI job
+1. **Ethereal SMTP concurrency hardening**:
+   - `src/email_providers/ethereal_provider.py` now serializes SMTP sends across workers with a cross-process file lock.
+   - Increased retry headroom from `3` to `5` attempts and lengthened retry backoff to better absorb Ethereal throttling during the full 14-worker E2E suite.
+2. **Invitation/registration timing**:
+   - `tests/e2e/test_registration_password_workflow.py` now allows longer login-page redirect time after registration.
+   - `tests/e2e/test_admin_invitation_workflow.py` now waits for the success alert before asserting the delayed redirect back to login, with longer redirect timeouts under suite load.
+3. **Loop-017 review follow-up**:
+   - `scripts/seed_db.py` now reuses a single normalized `section_outcome_overrides` value so the override and backfill guards stay aligned, and the backfill log message explicitly says it is filling section narratives + reviewer feedback.
+   - `tests/javascript/unit/plo_trend_drilldown.test.js` now proves that an explicit `programId` override continues to win even if the singleton `programId` changes later, which is the key evidence for the remaining All Programs Bugbot false positive.
 
-**CI History**: 6 runs — 3 fail → 1 fail → 2 fail → pass → pass → pass (current)
+**Validation**:
+
+- `pytest tests/unit/test_ethereal_send.py -q` ✅ (`5` passed)
+- `pytest tests/unit/scripts/test_seed_db_tail.py -q` ✅ (`19` passed)
+- `npx jest tests/javascript/unit/plo_trend_drilldown.test.js --runInBand` ✅ (`22` passed)
+- `pytest tests/e2e/test_edge_cases.py tests/e2e/test_registration_password_workflow.py tests/e2e/test_admin_invitation_workflow.py -q` ✅ (`3` passed)
+- `sm swab -g overconfidence:e2e --no-cache --verbose` ✅ (`1` check passed)
+- `sm swab --static` ✅ (`22` checks passed)
+- `sm scour --no-cache` ✅ (`26` checks passed)
+
+## Latest Work: PR #72 Final Bugbot Follow-Up for PLO Trend Hash Restore (2026-04-03)
+
+**Status**: ✅ Fixed locally, ready to commit/push with full uncached rails green
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Exception-safe all-program hash restore**:
+   - `static/plo_trend.js::_restoreAllProgramsFromHash()` now wraps its temporary `trendData` / `programId` swap in a `try/finally` block.
+   - This guarantees singleton state is restored even if `_restoreFromHash()` throws while opening the drill-down panel.
+2. **Regression coverage**:
+   - `tests/javascript/unit/plo_trend_drilldown.test.js` now forces `_restoreFromHash()` to throw and asserts the original singleton state is still restored afterward.
+
+**Validation**:
+
+- `npx jest tests/javascript/unit/plo_trend_drilldown.test.js --runInBand` ✅ (`21` passed)
+- `sm swab --static` ✅ (`22` checks passed)
+- `sm scour --no-cache` ✅ (`26` checks passed)
+
+## Latest Work: PR #72 CI Follow-Up for Program Admin Section Creation (2026-04-03)
+
+**Status**: ✅ Fixed locally, ready to commit/push with full uncached rails green
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **CI-only section creation flake**:
+   - `tests/e2e/test_crud_program_admin.py::test_tc_crud_pa_005_create_sections` no longer hardcodes section number `999`.
+   - The test now generates a unique section number per run and waits for that exact value in the sections table, avoiding false negatives from long-suite data collisions on shared worker databases.
+2. **Bugbot triage**:
+   - Verified locally that Python’s built-in exception name is `AssertionError`, so the newly raised Bugbot thread on the invitation-alert tolerance block appears to be a false positive rather than a real runtime defect.
+
+**Validation**:
+
+- `pytest tests/e2e/test_crud_program_admin.py::test_tc_crud_pa_005_create_sections -q` ✅ (`1` passed)
+- `sm swab -g overconfidence:e2e --no-cache --verbose` ✅ (`1` check passed)
+- `sm swab --static` ✅ (`22` checks passed)
+- `sm scour --no-cache` ✅ (`26` checks passed)
+
+## Latest Work: PR #72 Loop-013 E2E Stabilization + Seed Backfill Retry Guard (2026-04-03)
+
+**Status**: ✅ Fixed locally, full targeted regressions green, running full uncached validation before commit/push
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Seed backfill retry guard**:
+   - `scripts/seed_db.py` now tracks attempted sections during `_backfill_demo_story_data()` so a failed `update_course_section()` does not trigger repeated no-op narrative update attempts for the same section.
+   - Added regression coverage in `tests/unit/scripts/test_seed_db_tail.py` proving failed narrative updates are not retried.
+2. **Institution-admin login hardening**:
+   - `tests/e2e/conftest.py` now uses the robust login flow for `authenticated_institution_admin_page`, matching the already-hardened generic admin fixture.
+   - The fixture now wraps submit with `page.expect_response(...)`, waits on `dashboard*`, and uses longer session-context timeouts before handing control to UI tests.
+   - Updated `tests/unit/e2e/test_conftest_db_paths.py` to match the new login contract.
+3. **Email-flow stabilization at the root**:
+   - `src/email_providers/ethereal_provider.py` now retries transient SMTP throttling/rate-limit failures instead of failing the entire send on the first `429`-class response.
+   - Added focused send-provider unit coverage for retryable vs terminal SMTP failures.
+   - Widened the most failure-prone IMAP polling windows in the admin invitation and registration/password-management E2E workflows, and made the registration workflow use a unique Ethereal address per run.
+4. **Admin invitation UX tolerance**:
+   - `tests/e2e/test_admin_invitation_workflow.py` no longer hard-fails solely on a missing transient success alert before checking the actual invitation email outcome.
+
+**Validation**:
+
+- `pytest tests/unit/test_ethereal_send.py tests/unit/e2e/test_conftest_db_paths.py tests/unit/scripts/test_seed_db_tail.py -q` ✅ (`29` passed)
+- `pytest tests/e2e/test_admin_invitation_workflow.py::TestAdminInvitationsAndMultiRole::test_complete_admin_invitation_workflow tests/e2e/test_bulk_reminders_workflow.py::TestBulkInstructorReminders::test_complete_bulk_reminder_workflow tests/e2e/test_edge_cases.py::TestEdgeCases::test_complete_edge_cases_workflow tests/e2e/test_registration_password_workflow.py::TestRegistrationAndPasswordManagement::test_complete_registration_and_password_workflow -q` ✅ (`4` passed)
+
+## Latest Work: PR #72 Final Selector + Sprawl Root Fix (2026-04-03)
+
+**Status**: ✅ Fixed locally, ready to commit/push and resolve latest PR thread
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Remaining selector-safety fix**:
+   - `injectSparklines()` no longer interpolates raw `plo.id` / `clo.outcome_id` into CSS selectors.
+   - PLO and CLO node matching now iterates `[data-plo-id]` and `[data-clo-id]` elements by dataset value, consistent with the earlier `_updateHash()` / `_restoreFromHash()` hardening.
+2. **Code-sprawl root fix**:
+   - Extracted the sparkline rendering cluster from `static/plo_trend.js` into the new `static/plo_trend_sparkline.js`.
+   - Wired the new script into `templates/plo_dashboard.html` ahead of `static/plo_trend.js`.
+   - This dropped `plo_trend.js` below the `myopia:code-sprawl` ceiling in both targeted and full uncached `sm scour` runs.
+3. **Tests**:
+   - Added regression coverage proving `injectSparklines()` still decorates PLO/CLO nodes whose IDs contain selector-breaking characters.
+   - Re-ran both core PLO trend JS suites after the extraction.
+
+**Validation**:
+
+- `npx jest tests/javascript/unit/plo_trend.test.js tests/javascript/unit/plo_trend_drilldown.test.js --runInBand` ✅ (`88` passed)
+- `sm scour -g myopia:code-sprawl` ✅ (`1` check passed)
+- `sm swab --static` ✅ (`22` checks passed)
+- `sm scour --no-cache` ✅ (`26` checks passed)
+
+## Latest Work: PR #72 Summary Panel + Safe Selector Follow-Up (2026-04-03)
+
+**Status**: ✅ Fixed locally, ready to commit/push and resolve latest PR threads
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Summary-bar selected term parity**:
+   - `_injectSummarySparklines()` now forwards `selectedTermIndex` into `_toggleSummaryTrendPanel()` for both click and keyboard activation.
+   - `_toggleSummaryTrendPanel()` now forwards that same `selectedTermIndex` into `createTrendPanel(...)`, matching the existing tree-node path.
+2. **Safe PLO node lookup**:
+   - `_updateHash()` and `_restoreFromHash()` no longer build CSS selectors by concatenating raw `ploId` strings.
+   - Both now locate `li[data-plo-id]` nodes by iterating dataset values, which handles IDs containing quotes or brackets safely.
+3. **Tests**:
+   - Added a regression proving `_restoreFromHash()` works when the matching `data-plo-id` contains selector-breaking characters.
+   - Added a regression proving `_updateHash()` can still resolve the DOM fallback with selector-breaking characters.
+   - Added a regression proving summary-bar sparkline activation forwards `selectedTermIndex` when opening the full trend panel.
+4. **Guardrail cleanup**:
+   - Reworked the safe lookup implementation to stay below the `myopia:code-sprawl` limit after the new fixes.
+
+**Validation**:
+
+- `npx jest tests/javascript/unit/plo_trend_drilldown.test.js --runInBand` ✅ (`18` passed)
+- `sm swab -g myopia:code-sprawl` ✅ (`1` check passed)
+- `sm swab --static` ✅ (`22` checks passed)
+- `sm scour` ✅ (`26` checks passed)
+
+## Latest Work: PR #72 CI E2E + Seed Backfill Follow-Up (2026-04-03)
+
+**Status**: ✅ Fixed locally, ready to commit/push and resolve latest PR thread
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Seed backfill guard parity**:
+   - `_backfill_demo_story_data()` now uses the same missing-`clo_number` guard as `_apply_section_feedback_overrides()`.
+   - Both the `explicit_feedback` set and the outcome backfill loop now skip entries without a real `clo_number` instead of coercing them to `"None"`.
+2. **Section create modal hardening**:
+   - Successful section creation now force-dismisses `#createSectionModal` and removes stale backdrop/body modal state immediately after the Bootstrap hide call.
+   - This makes the success path deterministic for Playwright instead of relying on the modal fade transition to finish before later success handlers run.
+3. **Tests**:
+   - Extended seed-db backfill coverage for feedback overrides missing `clo_number`.
+   - Extended section management unit coverage to verify the modal/backdrop are actually cleared on successful create.
+   - Re-ran the exact E2E test that failed in CI: `test_tc_crud_pa_005_create_sections`.
+
+**Validation**:
+
+- `pytest tests/unit/scripts/test_seed_db_tail.py -q` ✅ (`13` passed)
+- `npx jest tests/javascript/unit/sectionManagement.test.js --runInBand` ✅ (`21` passed)
+- `pytest tests/e2e/test_crud_program_admin.py -k test_tc_crud_pa_005_create_sections -q` ✅ (`1` passed)
+- `sm swab --static` ✅ (`22` checks passed)
+- `sm scour` ✅ (`26` checks passed)
+
+## Latest Work: PR #72 Post-CI Review Batch (2026-04-03)
+
+**Status**: ✅ Fixed locally, ready to commit/push and resolve latest PR threads
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Seed feedback override guard**:
+   - `_apply_section_feedback_overrides()` now treats missing `clo_number` as missing data instead of converting it to the string `"None"` and logging a spurious missing-outcome warning.
+2. **All Programs hash fallback**:
+   - PLO tree nodes now carry `data-plo-number`.
+   - `PloTrend._updateHash()` now falls back to the DOM node's `data-plo-number` when `this.trendData` belongs to a different program, preserving hash updates in All Programs mode.
+3. **Tests**:
+   - Added seed-db coverage for the missing-`clo_number` feedback override case.
+   - Added drilldown coverage proving `_updateHash()` can restore the hash from the DOM when `trendData` points at the last loaded program instead of the clicked one.
+
+**Validation**:
+
+- `pytest tests/unit/scripts/test_seed_db_tail.py -q` ✅ (`13` passed)
+- `npx jest tests/javascript/unit/plo_trend_drilldown.test.js --runInBand` ✅ (`17` passed)
+- `sm swab --static` ✅ (`22` checks passed)
+- `sm scour` ✅ (`26` checks passed)
+
+## Latest Work: PR #72 CI Follow-Up After Push (2026-04-03)
+
+**Status**: ✅ Fixed locally, ready to commit/push and resolve new PR threads
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Detached compare-panel guard**:
+   - Updated `static/plo_trend.js` so shift-click compare uses the current in-DOM detail panel after the async fetch resolves instead of relying on a stale pre-fetch reference.
+   - If the original panel was closed while the request was in flight, the new detail panel now falls back to normal single-panel rendering instead of throwing against a detached node.
+2. **Hash restore term highlighting**:
+   - `_restoreFromHash()` now forwards `selectedTermIndex` to `_toggleTrendPanel()` so restored charts still highlight the active term filter.
+3. **Test maintenance / sprawl cleanup**:
+   - Added regressions for the detached compare-panel case and selected-term restore behavior.
+   - Split the oversized `plo_trend.test.js` file by moving drill-down/controller coverage into `tests/javascript/unit/plo_trend_drilldown.test.js`.
+
+**Validation**:
+
+- `npx jest tests/javascript/unit/plo_trend.test.js tests/javascript/unit/plo_trend_drilldown.test.js --runInBand` ✅
+- `sm swab --static` ✅ (`22` checks passed)
+- `sm scour` ✅ (`26` checks passed)
+
+## Latest Work: PR #72 Seed Coverage Closeout (2026-04-03)
+
+**Status**: ✅ Fixed locally, full PR validation green, ready to commit/push
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Targeted seed coverage for changed lines**:
+   - Added focused tests for `_apply_demo_enrichments()` so the optional override, backfill, and PLO-manifest paths are exercised without broad integration setup.
+   - Added branch coverage for `_apply_section_narrative_overrides()` and `_apply_section_feedback_overrides()` covering skip, missing-target, and success paths.
+   - Added regression coverage for `_backfill_demo_story_data()` skip behavior and `_resolve_section_id()` fallback cases.
+2. **PR validation closeout**:
+   - Closed the remaining diff-coverage gap in `scripts/seed_db.py` that was blocking the PR-wide `myopia:just-this-once.py` gate.
+
+**Validation**:
+
+- `pytest tests/unit/scripts/test_seed_db_tail.py -q` ✅ (`13` passed)
+- `sm scour` ✅ (`26` checks passed)
+
+## Latest Work: PR #72 Review Thread Remediation (2026-04-03)
+
+**Status**: ✅ Fixed locally, ready to commit/push and resolve PR threads
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Trend drill-through race guards**:
+   - Added per-container request generation tracking in `static/plo_trend.js` so stale detail-panel fetches are ignored.
+   - Hardened the detail fetch against both `data.plos` and legacy `data.tree.plos` response shapes.
+2. **Hash restore correctness**:
+   - `_restoreFromHash()` now waits until the requested PLO is actually found before setting `_hashRestored`.
+   - Hash restore now passes the active `programId` through to the trend panel so All Programs mode drills into the correct program after restore.
+3. **Detail panel UX fixes**:
+   - CLO headers now maintain `aria-expanded` and respond to Enter/Space.
+   - The detail panel entrance animation now starts after insertion instead of shipping both classes at creation time.
+   - Added reduced-motion handling and made the collapsed padding distinct from the entered state.
+4. **Docs / cleanup**:
+   - Updated the `/plo-dashboard` route docstring to describe `plo_id`.
+   - Updated the service docstring for `get_plo_dashboard_tree()` and clarified unknown-`plo_id` behavior.
+   - Renamed the internal mapping loop variable to avoid shadowing the `plo_id` parameter.
+   - Removed the stale "RED — module doesn't exist yet" wording from the detail-panel unit test header.
+
+**Validation**:
+
+- Focused JS tests ✅ (`115` passed across `plo_detail_panel.test.js` and `plo_trend.test.js`)
+- `sm swab --static` ✅ (`22` checks passed)
+
+## Latest Work: PR #72 Drill-Through Summary + Expanded Default (2026-04-03)
+
+**Status**: ✅ Fixed locally, validated in browser, ready to push
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Useful term summary instead of filler copy**:
+   - Replaced the generic drill-through sentence with term-specific summary text derived from the loaded payload.
+   - Added compact summary chips for CLO count, section count, instructor-note coverage, and reviewer-comment coverage.
+2. **Open by default**:
+   - Drill-through panels now render with every CLO row expanded on first open.
+   - The panel-level control now starts as `Collapse all CLOs`, matching the default visible state.
+3. **Tests**:
+   - Updated DOM contract tests for the new summary content and expanded-by-default behavior.
+
+**Validation**:
+
+- `plo_detail_panel.test.js` ✅ (`30` tests passed)
+- `sm swab --static` ✅ (`22` checks passed)
+- Browser validation ✅
+  - Live drill-through now shows summaries like `2 mapped CLOs - 1 assessed section - 22 students assessed - 77% meeting target`
+  - Context chips render for CLO count, section count, notes coverage, and reviewer comments
+  - CLO rows open expanded by default and the live button starts at `Collapse all CLOs`
+
+## Latest Work: PR #72 Drill-Through Visual Grouping (2026-04-03)
+
+**Status**: ✅ Fixed locally, validated in browser, ready to push
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Sharper drill-through grouping**:
+   - Added a dedicated drill-through context block at the top of the detail panel.
+   - Promoted the clicked term into a separate high-contrast badge with a `Selected term` eyebrow label.
+   - Strengthened the panel card styling with a top accent, softer blue-tinted surface, and more explicit visual separation from the rest of the tree.
+2. **Tests**:
+   - Added DOM contract coverage for the new context block and selected-term badge in `plo_detail_panel.test.js`.
+3. **Quality**:
+   - Refactored the new panel context markup into a helper so `createDetailPanel()` stays under the repo's function-length limit.
+
+**Validation**:
+
+- `plo_detail_panel.test.js` ✅ (`30` tests passed)
+- `sm swab --static` ✅ (`22` checks passed)
+- Browser validation ✅
+  - Live panel now exposes `Chart drill-through`
+  - `Selected term` badge renders as `Spring 2025` for the clicked point
+  - Expand/collapse-all control still works after the visual regrouping
+
+## Latest Work: PR #72 Detail Panel Toggle + Demo Data Enrichment (2026-04-03)
+
+**Status**: ✅ Fixed locally, reseeded, validated in browser, ready to push
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **Detail panel expand/collapse control**:
+   - Added a panel-level toggle button to expand/collapse every CLO row inside the PLO drill-through detail panel.
+   - Button label and `aria-expanded` state now stay in sync with individual row toggles.
+2. **Demo data backfill for rich drill-through content**:
+   - Added deterministic demo narrative/reviewer-feedback backfill logic in `scripts/seed_db.py`.
+   - Explicit manifest overrides still win; missing section narratives and outcome feedback are generated only for assessed demo data that lacked hand-authored content.
+   - Moved demo profile constants into `scripts/demo_seed_profiles.py` to keep `seed_db.py` under the code-sprawl limit.
+3. **Tests**:
+   - Added unit coverage for the panel toggle behavior.
+   - Added script tests for generated narrative/feedback payloads and for the backfill application path.
+
+**Validation**:
+
+- Focused tests passing: `29` tests green across `plo_detail_panel.test.js` and `test_seed_db_tail.py`
+- `sm swab --static` ✅ (`22` checks passed)
+- Local demo reseeded successfully:
+  - explicit overrides applied
+  - backfilled `18` section narrative set(s)
+  - backfilled `83` reviewer feedback item(s)
+- Browser validation ✅
+  - Detail panel now shows `Expand all CLOs` / `Collapse all CLOs`
+  - Expand-all toggles all `5` CLO rows in the live panel
+  - Reseeded Spring 2025 drill-through now shows `16` narrative blocks and `4` reviewer-feedback blocks in the selected PLO panel
+
+## Latest Work: PR #72 Drill-Through Fixes (2026-04-03)
+
+**Status**: ✅ Fixed locally, validated in browser, ready to push
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+
+**What Changed**:
+
+1. **PLO selector collision fix**: `plo_trend.js` now targets `li[data-plo-id="..."]` so tree nodes are not shadowed by summary-bar sparkline slots.
+2. **All Programs drill-through fix**: PLO trend point clicks now capture the correct `program_id` at injection time instead of reading the singleton `PloTrend.programId` later.
+3. **Removed red herring modal change**: Reverted `method="dialog"` from Bootstrap modal forms.
+4. **Regression tests**:
+    - Added a DOM-shape regression test for summary-slot vs tree-node `data-plo-id` collisions.
+    - Added coverage proving All Programs trend injection carries the correct `programId` per program.
+    - Added coverage proving `_makePointClickHandler()` honors an explicit program-id override.
+
+**Validation**:
+
+- Focused JS tests passing: `150` tests green across `plo_dashboard_interactions`, `plo_trend`, and `plo_trend_controller`
+- `sm swab --static` ✅ (`22` checks passed)
+- Browser validation ✅
+   - Single-program mode: clicking a PLO badge opens the chart; clicking a chart point opens the detail panel.
+   - All Programs mode: clicking a PLO badge opens the chart; clicking a chart point opens the detail panel instead of switching the term filter.
+
+**Root Causes Closed**:
+
+- Tree selectors were matching summary-bar nodes first, so PLO trend controls never appeared on the real tree.
+- All Programs mode injected multiple programs through one singleton controller, so point-click drill-through lost the originating `program_id` and fell back to changing the term.
+
+## Latest Work: PLO Drill-Down Detail Panel (PR #72)
+
+**Status**: ✅ Pushed, CI running
+
+**Branch**: `feat/plo-drill-down` (PR #72)
+**HEAD**: `837d0f1` — feat: add PLO drill-down detail panel to trend charts
+
+**What Changed**:
+
+1. **Backend plo_id filter**: Added `plo_id` query param to `/plo-dashboard` endpoint, filters response to single PLO
+2. **Frontend detail panel**: New `plo_detail_panel.js` IIFE module — `createDetailPanel(ploData, termLabel)` builds CLO → section breakdown DOM
+3. **Click handler wiring**: Extended `buildTrendOptions` with `onPointClick` callback; `plo_trend.js` passes handler that fetches detail data and renders panel
+4. **CSS slide animation**: New styles in `plo_dashboard.css` with `max-height` transition, collapsible CLO rows, section links
+5. **Template**: Added `<script>` tag for `plo_detail_panel.js` in `plo_dashboard.html`
+
+**Tests (TDD)**:
+- 13 characterization tests for `plo_trend_panel.js`
+- 20 unit tests for `plo_detail_panel.js` DOM contract
+- 2 tests for `onPointClick` callback in `buildTrendOptions`
+- 7 Python tests for `plo_id` filter (3 route, 4 service)
+
+**Quality**: `sm swab` all 22 gates green locally
 
 **Next Steps**:
-- Resolve any remaining Bugbot threads from latest push
-- Confirm `sm buff verify` + `sm buff status` both clean
-- PR ready for merge
+- Monitor CI on PR #72
+- Address any review feedback
 
-## Previous: PR 71 Comment + Gate Remediation (2026-03-26)
+## Previous: PR #71 CI + Review Resolution (2026-03-31)
 
 **What Changed**:
 

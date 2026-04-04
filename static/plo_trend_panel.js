@@ -185,6 +185,17 @@
       filter: (item) => item.raw !== null && !isNaN(item.raw),
       afterBody: (items) =>
         buildDiscontinuityTooltip(items, model.discontinuities),
+      footer: function (items) {
+        if (!items || items.length === 0) return "";
+        var chart = items[0].chart;
+        if (!chart || !chart.canvas) return "";
+        var parent = chart.canvas.closest(".plo-trend-panel");
+        if (!parent) return "";
+        if (parent.querySelector(".plo-detail-panel, .plo-detail-compare")) {
+          return "\u21e7 Shift+click to compare terms";
+        }
+        return "";
+      },
     };
   }
 
@@ -225,12 +236,14 @@
     chart.update();
   }
 
-  function buildTrendOptions(terms, trendPoints, model, datasets, deps) {
+  function buildTrendOptions(terms, trendPoints, model, datasets, deps, extra) {
+    var callbacks = extra || {};
     const { computeYRange } = deps;
     return {
       responsive: true,
       maintainAspectRatio: false,
       animation: { duration: 300 },
+      interaction: { mode: "index", intersect: false },
       plugins: {
         legend: {
           display: model.clos.length > 0,
@@ -272,15 +285,29 @@
           grid: { color: "rgba(0,0,0,0.05)" },
         },
       },
-      onClick(_event, elements) {
+      onClick(event, elements) {
         if (!elements || elements.length === 0) return;
         const idx = elements[0].index;
         const term = terms[idx];
         if (!term) return;
-        const termFilter = document.getElementById("ploTermFilter");
-        if (termFilter) {
-          termFilter.value = term.term_id;
-          termFilter.dispatchEvent(new Event("change"));
+        var handled = false;
+        if (callbacks.onPointClick) {
+          handled = callbacks.onPointClick(term, event);
+        }
+        if (!handled) {
+          // Fallback: change term filter (gives user immediate feedback)
+          const termFilter = document.getElementById("ploTermFilter");
+          if (termFilter) {
+            termFilter.value = term.term_id;
+            termFilter.dispatchEvent(new Event("change"));
+          }
+        }
+      },
+      onHover(event, elements) {
+        var canvas = event.native ? event.native.target : null;
+        if (canvas) {
+          canvas.style.cursor =
+            elements && elements.length > 0 ? "pointer" : "default";
         }
       },
     };
@@ -348,13 +375,28 @@
     });
   }
 
-  function renderTrendChart(canvas, terms, trendPoints, model, datasets, deps) {
+  function renderTrendChart(
+    canvas,
+    terms,
+    trendPoints,
+    model,
+    datasets,
+    deps,
+    extra,
+  ) {
     requestAnimationFrame(() => {
       if (typeof Chart === "undefined") return;
       new Chart(canvas, {
         type: "line",
         data: { labels: model.labels, datasets },
-        options: buildTrendOptions(terms, trendPoints, model, datasets, deps),
+        options: buildTrendOptions(
+          terms,
+          trendPoints,
+          model,
+          datasets,
+          deps,
+          extra,
+        ),
         plugins: buildTrendPlugins(model),
       });
     });
@@ -379,12 +421,16 @@
 
     const model = getTrendPanelModel(trendPoints, terms, opts, deps);
     const datasets = buildTrendDatasets(model, deps, opts);
-    renderTrendChart(canvas, terms, trendPoints, model, datasets, deps);
+    var extra =
+      opts && opts.onPointClick
+        ? { onPointClick: opts.onPointClick }
+        : undefined;
+    renderTrendChart(canvas, terms, trendPoints, model, datasets, deps, extra);
     appendCompositionBar(body, model, terms, createCompositionBar);
     return panel;
   }
 
-  const exportsObj = { createTrendPanel };
+  const exportsObj = { buildTrendOptions, createTrendPanel };
   if (typeof globalThis !== "undefined") {
     globalThis.PloTrendPanel = exportsObj;
   }

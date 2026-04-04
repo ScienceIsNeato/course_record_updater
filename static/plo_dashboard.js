@@ -462,8 +462,15 @@
       if (termId) pt.selectedTermId = termId;
       for (const data of results) {
         if (!data) continue;
+        pt.programId = data.program_id || null;
         pt.trendData = data;
-        pt.injectSparklines();
+        pt.injectSparklines({ restoreFromHash: false });
+      }
+
+      if (typeof pt._restoreAllProgramsFromHash === "function") {
+        pt._restoreAllProgramsFromHash(results.filter(Boolean));
+      } else if (typeof pt._restoreFromHash === "function") {
+        pt._restoreFromHash();
       }
     },
 
@@ -620,6 +627,7 @@
       const li = document.createElement("li");
       li.className = "plo-tree-node";
       li.dataset.ploId = plo.id;
+      li.dataset.ploNumber = plo.plo_number;
 
       const header = this._buildHeader(
         `PLO-${plo.plo_number}`,
@@ -628,6 +636,15 @@
         { level: "plo", plo },
       );
       li.appendChild(header);
+
+      /* narrative progress indicator */
+      var pillFn =
+        typeof globalThis !== "undefined" && globalThis.narrativeProgressPill;
+      var pill = pillFn ? pillFn(plo) : null;
+      if (pill) {
+        var meta = header.querySelector(".plo-tree-meta");
+        if (meta) meta.insertBefore(pill, meta.firstChild);
+      }
 
       const children = document.createElement("ul");
       children.className = "plo-tree-children";

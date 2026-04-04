@@ -512,3 +512,384 @@
   margin-left: 0;
   margin-right: 0;
 }
+
+/* ---- PLO Detail Panel (drill-down from trend chart click) ---- */
+
+.plo-detail-panel {
+  position: relative;
+  padding: 0;
+  margin-top: 0.5rem;
+  background:
+    linear-gradient(180deg, rgba(237, 245, 255, 0.9) 0%, #ffffff 22%),
+    #fff;
+  border: 1px solid #c7d7ee;
+  border-top: 4px solid #2f6fed;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(47, 111, 237, 0.08);
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.35s ease, opacity 0.25s ease, padding 0.35s ease;
+}
+
+.plo-detail-panel--entering {
+  max-height: 2000px;
+  opacity: 1;
+  padding: 0.75rem 1rem;
+}
+
+.plo-detail-panel-close {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.5rem;
+  border: none;
+  background: none;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.plo-detail-panel-close:hover {
+  opacity: 1;
+}
+
+.plo-detail-panel-context {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  margin: 0 1.75rem 0.75rem 0;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(47, 111, 237, 0.14);
+  border-radius: 0.5rem;
+}
+
+.plo-detail-panel-context-copy {
+  min-width: 0;
+}
+
+.plo-detail-panel-context-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #2f6fed;
+  margin-bottom: 0.15rem;
+}
+
+.plo-detail-panel-context-hint {
+  font-size: 0.78rem;
+  color: #5b6470;
+  line-height: 1.35;
+}
+
+.plo-detail-panel-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.plo-detail-panel-metric {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.6rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(47, 111, 237, 0.08);
+  color: #36506f;
+  font-size: 0.73rem;
+  font-weight: 600;
+}
+
+.plo-detail-panel-metric--notes {
+  background: rgba(25, 135, 84, 0.1);
+  color: #16603d;
+}
+
+.plo-detail-panel-metric--feedback {
+  background: rgba(111, 66, 193, 0.1);
+  color: #5a36a3;
+}
+
+.plo-detail-panel-term {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+
+.plo-detail-panel-term-eyebrow {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6c757d;
+}
+
+.plo-detail-panel-term-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2f6fed 0%, #5aa0ff 100%);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  box-shadow: 0 6px 14px rgba(47, 111, 237, 0.22);
+}
+
+.plo-detail-panel-header {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: #2f3440;
+  margin-bottom: 0.65rem;
+  padding-right: 1.5rem;
+  line-height: 1.4;
+}
+
+.plo-detail-panel-controls {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.plo-detail-panel-toggle-all {
+  border: 1px solid #ced4da;
+  background: #f8f9fa;
+  color: #495057;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.625rem;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.plo-detail-panel-toggle-all:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plo-detail-panel,
+  .plo-detail-panel--entering {
+    transition: none;
+    max-height: none;
+    opacity: 1;
+    padding: 0.75rem 1rem;
+  }
+
+  .plo-detail-clo-children,
+  .plo-detail-clo-toggle,
+  .plo-detail-panel-close,
+  .plo-detail-panel-toggle-all {
+    transition: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .plo-detail-panel-context {
+    flex-direction: column;
+    align-items: stretch;
+    margin-right: 1.5rem;
+  }
+
+  .plo-detail-panel-term {
+    align-items: flex-start;
+  }
+}
+
+.plo-detail-clo {
+  border: 1px solid #e9ecef;
+  border-radius: 0.375rem;
+  margin-bottom: 0.375rem;
+  overflow: hidden;
+}
+
+.plo-detail-clo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: #f8f9fa;
+  cursor: pointer;
+  user-select: none;
+  gap: 0.5rem;
+}
+
+.plo-detail-clo-header:hover {
+  background: #e9ecef;
+}
+
+.plo-detail-clo-label {
+  flex: 1;
+  font-size: 0.85rem;
+  color: #212529;
+}
+
+.plo-detail-clo-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.25s ease;
+}
+
+.plo-detail-clo.expanded > .plo-detail-clo-children {
+  max-height: 1000px;
+}
+
+.plo-detail-section {
+  padding: 0.375rem 0.75rem 0.375rem 1.5rem;
+  border-top: 1px solid #f0f0f0;
+  font-size: 0.8rem;
+}
+
+.plo-detail-section-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.plo-detail-section a {
+  color: #0d6efd;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.plo-detail-section a:hover {
+  text-decoration: underline;
+}
+
+.plo-detail-section-info {
+  flex: 1;
+  color: #6c757d;
+}
+
+.plo-detail-section .plo-assessment-badge {
+  font-size: 0.75rem;
+}
+
+.plo-detail-section-method {
+  font-size: 0.75rem;
+  color: #6c757d;
+  font-style: italic;
+  padding-left: 0;
+  margin-top: 0.125rem;
+}
+
+.plo-detail-narrative {
+  font-size: 0.78rem;
+  margin-top: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: #f8f9fa;
+  border-radius: 0.25rem;
+  border-left: 3px solid #dee2e6;
+}
+
+.plo-detail-narrative-label {
+  font-weight: 600;
+  color: #495057;
+  margin-right: 0.375rem;
+}
+
+.plo-detail-narrative-text {
+  color: #495057;
+}
+
+.plo-detail-empty {
+  padding: 0.75rem;
+  text-align: center;
+  color: #6c757d;
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+/* --- Color-coded narrative borders --- */
+.plo-detail-narrative--celebrations {
+  border-left-color: #198754;
+}
+.plo-detail-narrative--challenges {
+  border-left-color: #fd7e14;
+}
+.plo-detail-narrative--changes {
+  border-left-color: #0d6efd;
+}
+.plo-detail-narrative--reconciliation {
+  border-left-color: #6f42c1;
+}
+.plo-detail-narrative--feedback {
+  border-left-color: #6f42c1;
+}
+
+/* --- Side-by-side comparison --- */
+.plo-detail-compare {
+  display: flex;
+  gap: 0.75rem;
+}
+.plo-detail-compare .plo-detail-panel {
+  flex: 1;
+  min-width: 0;
+}
+
+/* --- Flag for follow-up --- */
+.plo-detail-flag-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: #adb5bd;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
+  flex-shrink: 0;
+}
+.plo-detail-flag-btn:hover {
+  color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.08);
+}
+.plo-detail-flag-btn.flagged {
+  color: #dc3545;
+}
+
+/* --- CLO collapse indicator --- */
+.plo-detail-clo-toggle {
+  font-size: 0.65rem;
+  color: #6c757d;
+  margin-right: 0.25rem;
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+.plo-detail-clo.expanded .plo-detail-clo-toggle {
+  transform: rotate(90deg);
+}
+
+/* --- Narrative progress pill --- */
+.plo-narrative-progress {
+  font-size: 0.7rem;
+  color: #6c757d;
+  padding: 0.1rem 0.4rem;
+  background-color: #f8f9fa;
+  border-radius: 0.75rem;
+  white-space: nowrap;
+}
+.plo-narrative-progress.complete {
+  background-color: rgba(25, 135, 84, 0.1);
+  color: #198754;
+}

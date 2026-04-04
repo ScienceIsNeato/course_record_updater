@@ -24,6 +24,7 @@ sys.path.insert(0, str(project_root))
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from scripts.demo_seed_profiles import DEMO_STORY_PROFILES, DEMO_TERM_CONTEXT
 from scripts.seed_db_baseline import BaselineSeeder
 from src.database import database_service
 from src.services.password_service import hash_password
@@ -396,12 +397,39 @@ class DemoSeeder(BaselineSeeder):
         program_map: Dict[str, str],
     ) -> None:
         """Apply post-seeding enrichments: section CLO overrides and PLOs."""
-        if "section_outcome_overrides" in manifest:
+        section_outcome_overrides = manifest.get("section_outcome_overrides") or []
+
+        if section_outcome_overrides:
             self.log("🔧 Applying section-specific CLO overrides...")
             override_count = self.apply_section_outcome_overrides(
-                manifest["section_outcome_overrides"], institution_id, term_map
+                section_outcome_overrides, institution_id, term_map
             )
             self.log(f"   ✅ Applied {override_count} section outcome overrides")
+
+        if manifest.get("section_narrative_overrides"):
+            self.log("📝 Applying instructor narrative overrides...")
+            narr_count = self._apply_section_narrative_overrides(
+                manifest["section_narrative_overrides"], institution_id, term_map
+            )
+            self.log(f"   ✅ Applied {narr_count} section narrative overrides")
+
+        if manifest.get("section_feedback_overrides"):
+            self.log("💬 Applying reviewer feedback overrides...")
+            fb_count = self._apply_section_feedback_overrides(
+                manifest["section_feedback_overrides"], institution_id, term_map
+            )
+            self.log(f"   ✅ Applied {fb_count} section feedback overrides")
+
+        if section_outcome_overrides:
+            self.log("🧠 Backfilling demo section narratives + reviewer feedback...")
+            backfill_stats = self._backfill_demo_story_data(
+                manifest, institution_id, term_map
+            )
+            self.log(
+                "   ✅ Backfilled "
+                f"{backfill_stats['narratives']} section narrative set(s) and "
+                f"{backfill_stats['feedback']} reviewer feedback item(s)"
+            )
 
         if manifest.get("program_outcomes"):
             self.log("🗺️  Creating Program Learning Outcomes + mappings...")
@@ -445,7 +473,7 @@ class DemoSeeder(BaselineSeeder):
 
         for override in overrides:
             # Skip JSON comment-only entries
-            if "_comment" in override and len(override) == 1:
+            if self._is_comment_only_entry(override):
                 continue
             course_code = override.get("course_code")
             section_number = override.get("section_number")
@@ -519,6 +547,263 @@ class DemoSeeder(BaselineSeeder):
                     )
 
         return applied_count
+
+    def _apply_section_narrative_overrides(
+        self,
+        overrides: List[Dict[str, Any]],
+        institution_id: str,
+        term_map: Optional[Dict[str, str]] = None,
+    ) -> int:
+        """Update CourseSection records with instructor narrative text.
+
+        Each override specifies a course_code + section_number + term_code and
+        one or more narrative fields to set on the section row.
+        """
+        narrative_fields = {
+            "narrative_celebrations",
+            "narrative_challenges",
+            "narrative_changes",
+            "reconciliation_note",
+            "students_passed",
+            "students_dfic",
+        }
+        applied = 0
+        for entry in overrides:
+            if self._is_comment_only_entry(entry):
+                continue
+            course_code = entry.get("course_code")
+            section_number = entry.get("section_number")
+            term_code = entry.get("term_code")
+            if not course_code or not section_number:
+                continue
+
+            term_id = (term_map or {}).get(term_code) if term_code else None
+            section_id = self._resolve_section_id(
+                course_code, section_number, institution_id, term_id
+            )
+            if not section_id:
+                self.log(
+                    f"   ⚠️ Section not found: {course_code} Sec {section_number}"
+                    + (f" term={term_code}" if term_code else "")
+                )
+                continue
+
+            updates = {k: v for k, v in entry.items() if k in narrative_fields}
+            if not updates:
+                continue
+            if database_service.db.update_course_section(section_id, updates):
+                applied += 1
+        return applied
+
+    def _apply_section_feedback_overrides(
+        self,
+        overrides: List[Dict[str, Any]],
+        institution_id: str,
+        term_map: Optional[Dict[str, str]] = None,
+    ) -> int:
+        """Set feedback_comments on specific CourseSectionOutcome records."""
+        applied = 0
+        for entry in overrides:
+            if self._is_comment_only_entry(entry):
+                continue
+            course_code = entry.get("course_code")
+            section_number = entry.get("section_number")
+            clo_number_raw = entry.get("clo_number")
+            clo_number = str(clo_number_raw) if clo_number_raw is not None else None
+            feedback = entry.get("feedback_comments")
+            if not course_code or not section_number or not clo_number or not feedback:
+                continue
+
+            term_code = entry.get("term_code")
+            term_id = (term_map or {}).get(term_code) if term_code else None
+
+            section_outcome = self._find_section_outcome(
+                course_code, section_number, clo_number, institution_id, term_id
+            )
+            if not section_outcome:
+                self.log(
+                    f"   ⚠️ Section outcome not found: {course_code} "
+                    f"Sec {section_number} CLO {clo_number}"
+                )
+                continue
+
+            if database_service.db.update_section_outcome(
+                section_outcome["id"], {"feedback_comments": feedback}
+            ):
+                applied += 1
+        return applied
+
+    @staticmethod
+    def _demo_story_profile(course_code: str) -> Dict[str, str]:
+        return DEMO_STORY_PROFILES.get(course_code, DEMO_STORY_PROFILES["_default"])
+
+    @staticmethod
+    def _demo_term_context(term_code: Optional[str]) -> str:
+        return DEMO_TERM_CONTEXT.get(term_code or "", DEMO_TERM_CONTEXT[""])
+
+    @staticmethod
+    def _is_comment_only_entry(entry: Dict[str, Any]) -> bool:
+        return "_comment" in entry and len(entry) == 1
+
+    def _build_demo_narrative_payload(
+        self, course_code: str, term_code: Optional[str], section_number: str
+    ) -> Dict[str, Any]:
+        profile = self._demo_story_profile(course_code)
+        context = self._demo_term_context(term_code)
+        section_ref = f"Section {section_number} in {course_code}"
+        return {
+            "narrative_celebrations": (
+                f"{context}{profile['celebration']}. {section_ref} gave us a stable, repeatable demo example rather than a one-off success story."
+            ),
+            "narrative_challenges": (
+                f"{context}{profile['challenge']}. The pattern is consistent enough that it should show up clearly in the drill-through panel."
+            ),
+            "narrative_changes": (
+                f"{context}{profile['change']}. That gives the seeded data a visible 'what we will do next' thread instead of stopping at diagnosis."
+            ),
+        }
+
+    def _build_demo_feedback_comment(
+        self,
+        course_code: str,
+        term_code: Optional[str],
+        clo_number: str,
+        students_passed: Optional[int],
+        students_took: Optional[int],
+    ) -> str:
+        profile = self._demo_story_profile(course_code)
+        context = self._demo_term_context(term_code).strip()
+        rate_text = "limited evidence"
+        if students_took is not None:
+            rate = (
+                0
+                if float(students_took) == 0
+                else round((float(students_passed or 0) / float(students_took)) * 100)
+            )
+            rate_text = f"{rate}% pass rate"
+        return (
+            f"{context} {course_code} CLO {clo_number} is sitting at {rate_text} in the seeded data. "
+            f"{profile['feedback']}"
+        )
+
+    def _backfill_demo_story_data(
+        self,
+        manifest: Dict[str, Any],
+        institution_id: str,
+        term_map: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, int]:
+        narrative_overrides = manifest.get("section_narrative_overrides") or []
+        feedback_overrides = manifest.get("section_feedback_overrides") or []
+        outcome_overrides = manifest.get("section_outcome_overrides") or []
+
+        def _coerce_clo_number(value: Any) -> Optional[str]:
+            return str(value) if value is not None else None
+
+        explicit_narratives = {
+            (
+                entry.get("course_code"),
+                entry.get("section_number"),
+                entry.get("term_code"),
+            )
+            for entry in narrative_overrides
+            if not self._is_comment_only_entry(entry)
+            if entry.get("course_code") and entry.get("section_number")
+        }
+        explicit_feedback = {
+            (
+                entry.get("course_code"),
+                entry.get("section_number"),
+                _coerce_clo_number(entry.get("clo_number")),
+                entry.get("term_code"),
+            )
+            for entry in feedback_overrides
+            if not self._is_comment_only_entry(entry)
+            if entry.get("course_code") and entry.get("section_number")
+            if entry.get("clo_number") is not None
+        }
+
+        narrative_count = 0
+        feedback_count = 0
+        seen_sections: set[tuple[str, str, Optional[str]]] = set()
+        attempted_sections: set[tuple[str, str, Optional[str]]] = set()
+        resolved_section_ids: Dict[tuple[str, str, Optional[str]], Optional[str]] = {}
+
+        for entry in outcome_overrides:
+            if self._is_comment_only_entry(entry):
+                continue
+            course_code = entry.get("course_code")
+            section_number = entry.get("section_number")
+            term_code = entry.get("term_code")
+            clo_number = _coerce_clo_number(entry.get("clo_number"))
+            students_took = entry.get("students_took")
+            students_passed = entry.get("students_passed")
+
+            if not course_code or not section_number or not clo_number:
+                continue
+            if students_took is None:
+                continue
+
+            section_key = (course_code, section_number, term_code)
+            feedback_key = (course_code, section_number, clo_number, term_code)
+            term_id = (term_map or {}).get(term_code) if term_code else None
+
+            if (
+                section_key not in explicit_narratives
+                and section_key not in seen_sections
+                and section_key not in attempted_sections
+            ):
+                attempted_sections.add(section_key)
+                if section_key not in resolved_section_ids:
+                    resolved_section_ids[section_key] = self._resolve_section_id(
+                        course_code, section_number, institution_id, term_id
+                    )
+                section_id = resolved_section_ids[section_key]
+                if section_id:
+                    updates = self._build_demo_narrative_payload(
+                        course_code, term_code, section_number
+                    )
+                    if database_service.db.update_course_section(section_id, updates):
+                        narrative_count += 1
+                        seen_sections.add(section_key)
+
+            if feedback_key in explicit_feedback:
+                continue
+
+            section_outcome = self._find_section_outcome(
+                course_code, section_number, clo_number, institution_id, term_id
+            )
+            if not section_outcome:
+                continue
+
+            feedback = self._build_demo_feedback_comment(
+                course_code,
+                term_code,
+                clo_number,
+                students_passed,
+                students_took,
+            )
+            if database_service.db.update_section_outcome(
+                section_outcome["id"], {"feedback_comments": feedback}
+            ):
+                feedback_count += 1
+
+        return {"narratives": narrative_count, "feedback": feedback_count}
+
+    def _resolve_section_id(
+        self,
+        course_code: str,
+        section_number: str,
+        institution_id: str,
+        term_id: Optional[str] = None,
+    ) -> Optional[str]:
+        """Find a section ID by course code and section number."""
+        course = database_service.db.get_course_by_number(course_code, institution_id)
+        if not course:
+            return None
+        course_id = course.get("id") or course.get("course_id")
+        if not course_id:
+            return None
+        return self._find_section_id(course_id, section_number, term_id)
 
     def _create_plos_from_manifest(
         self,

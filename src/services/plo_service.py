@@ -295,17 +295,22 @@ def get_plo_dashboard_tree(
     program_id: str,
     institution_id: str,
     term_id: Optional[str] = None,
+    plo_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Build the hierarchical PLO → CLO → section-outcome tree for the dashboard.
 
-    For each active PLO in the program, gathers the CLO templates mapped to it
-    (using the latest published mapping, falling back to the draft) and then
-    attaches the section-level assessment records for those CLOs, scoped to
-    *term_id* when given.
+    For each active PLO in the program, or just the requested ``plo_id`` when
+    provided, gathers the CLO templates mapped to it (using the latest
+    published mapping, falling back to the draft) and then attaches the
+    section-level assessment records for those CLOs, scoped to ``term_id``
+    when given.
 
     Assessment data is aggregated per-PLO (students_took / students_passed
     summed across all contributing section outcomes) so the UI can show a
     single pass-rate badge at each tree level before the user drills in.
+
+    Unknown ``plo_id`` values are not treated as errors; the mapping metadata
+    is still returned, but the ``plos`` list is empty.
 
     Returns::
 
@@ -345,20 +350,22 @@ def get_plo_dashboard_tree(
         mapping_status = "draft" if mapping else "none"
 
     plos = database_service.get_program_outcomes(program_id)
+    if plo_id:
+        plos = [p for p in plos if p["id"] == plo_id]
     entries = _mapping_entries(mapping)
 
     # Build plo_id → [clo_id, ...] and collect the universe of mapped CLOs
     plo_to_clos: Dict[str, List[str]] = {p["id"]: [] for p in plos}
     all_clo_ids: set[str] = set()
     for entry in entries:
-        plo_id = entry.get("program_outcome_id")
+        entry_plo_id = entry.get("program_outcome_id")
         clo_id = entry.get("course_outcome_id")
         if (
-            isinstance(plo_id, str)
+            isinstance(entry_plo_id, str)
             and isinstance(clo_id, str)
-            and plo_id in plo_to_clos
+            and entry_plo_id in plo_to_clos
         ):
-            plo_to_clos[plo_id].append(clo_id)
+            plo_to_clos[entry_plo_id].append(clo_id)
             all_clo_ids.add(clo_id)
 
     # Fetch all section outcomes for the mapped CLOs in one batched query.

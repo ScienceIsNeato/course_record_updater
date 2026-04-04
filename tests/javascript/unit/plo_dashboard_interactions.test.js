@@ -238,6 +238,17 @@ describe("PloDashboard — PLO create/edit modal", () => {
     expect(alert.className).toContain("alert-danger");
     expect(alert.textContent).toContain("PLO number already exists");
   });
+
+  test("PLO form submit handler calls preventDefault", async () => {
+    setBody(SKELETON);
+    resetDashboardState(PloDashboard);
+    PloDashboard._cacheSelectors();
+    PloDashboard.currentProgramId = "prog-1";
+    const mockEvent = { preventDefault: jest.fn() };
+    // _submitPloForm calls e.preventDefault() as its first action
+    await PloDashboard._submitPloForm(mockEvent);
+    expect(mockEvent.preventDefault).toHaveBeenCalled();
+  });
 });
 
 describe("PloDashboard — Map CLO modal + publish", () => {
@@ -382,6 +393,13 @@ describe("PloDashboard — Map CLO modal + publish", () => {
     const alert = document.getElementById("mapCloModalAlert");
     expect(alert.className).toContain("alert-danger");
     expect(alert.textContent).toContain("Nothing to publish");
+  });
+
+  test("Map CLO form submit handler calls preventDefault", async () => {
+    const mockEvent = { preventDefault: jest.fn() };
+    // _submitMapCloForm calls e.preventDefault() as its first action
+    await PloDashboard._submitMapCloForm(mockEvent);
+    expect(mockEvent.preventDefault).toHaveBeenCalled();
   });
 });
 
@@ -692,9 +710,15 @@ describe("PloDashboard — _loadAllTrendData", () => {
     const injectCalls = [];
     global.PloTrend = {
       trendData: null,
+      programId: null,
       selectedTermId: null,
-      injectSparklines: jest.fn(function () {
-        injectCalls.push(this.trendData);
+      _restoreAllProgramsFromHash: jest.fn(),
+      injectSparklines: jest.fn(function (opts) {
+        injectCalls.push({
+          options: opts,
+          trendData: this.trendData,
+          programId: this.programId,
+        });
       }),
     };
 
@@ -727,8 +751,20 @@ describe("PloDashboard — _loadAllTrendData", () => {
     await PloDashboard._loadAllTrendData();
 
     expect(global.PloTrend.injectSparklines).toHaveBeenCalledTimes(2);
-    expect(injectCalls[0]).toBe(trendProg1);
-    expect(injectCalls[1]).toBe(trendProg2);
+    expect(injectCalls[0]).toEqual({
+      options: { restoreFromHash: false },
+      trendData: trendProg1,
+      programId: "prog-1",
+    });
+    expect(injectCalls[1]).toEqual({
+      options: { restoreFromHash: false },
+      trendData: trendProg2,
+      programId: "prog-2",
+    });
+    expect(global.PloTrend._restoreAllProgramsFromHash).toHaveBeenCalledWith([
+      trendProg1,
+      trendProg2,
+    ]);
     expect(global.PloTrend.selectedTermId).toBe("t-1");
   });
 

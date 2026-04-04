@@ -1166,3 +1166,99 @@ class TestPLODashboardRoute:
         # No section outcomes exist → empty sections + zero aggregate
         assert clo["sections"] == []
         assert clo["aggregate"]["students_took"] == 0
+
+
+class TestPLODashboardPloIdFilter:
+    """Tests for the optional plo_id query param on /plo-dashboard."""
+
+    def test_plo_id_filter_returns_single_plo(self, client: Any) -> None:
+        """?plo_id=<id> restricts response to that single PLO."""
+        inst_id, prog_id, courses = _setup_program_with_courses(
+            "PLOF1", num_courses=1, clos_per_course=2
+        )
+        _auth(client, institution_id=inst_id)
+        _, clo_ids = courses[0]
+
+        plo1 = database_service.create_program_outcome(
+            {
+                "program_id": prog_id,
+                "institution_id": inst_id,
+                "plo_number": 1,
+                "description": "PLO filter test 1",
+            }
+        )
+        plo2 = database_service.create_program_outcome(
+            {
+                "program_id": prog_id,
+                "institution_id": inst_id,
+                "plo_number": 2,
+                "description": "PLO filter test 2",
+            }
+        )
+        _publish_mapping(client, prog_id, [(plo1, clo_ids[0]), (plo2, clo_ids[1])])
+
+        # Without filter: both PLOs
+        resp_all = client.get(f"/api/programs/{prog_id}/plo-dashboard")
+        assert len(resp_all.get_json()["plos"]) == 2
+
+        # With filter: only plo1
+        resp = client.get(
+            f"/api/programs/{prog_id}/plo-dashboard",
+            query_string={"plo_id": plo1},
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["success"] is True
+        assert len(data["plos"]) == 1
+        assert data["plos"][0]["id"] == plo1
+
+    def test_plo_id_filter_with_invalid_id_returns_empty(self, client: Any) -> None:
+        """Unknown plo_id yields empty plos list, not 404."""
+        inst_id, prog_id = _setup_program("PLOF2")
+        _auth(client, institution_id=inst_id)
+
+        database_service.create_program_outcome(
+            {
+                "program_id": prog_id,
+                "institution_id": inst_id,
+                "plo_number": 1,
+                "description": "PLO filter test",
+            }
+        )
+
+        resp = client.get(
+            f"/api/programs/{prog_id}/plo-dashboard",
+            query_string={"plo_id": "no-such-plo-id"},
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["success"] is True
+        assert data["plos"] == []
+
+    def test_plo_id_combined_with_term_id(self, client: Any) -> None:
+        """Both plo_id and term_id can be provided together."""
+        inst_id, prog_id, courses = _setup_program_with_courses(
+            "PLOF3", num_courses=1, clos_per_course=1
+        )
+        _auth(client, institution_id=inst_id)
+        _, clo_ids = courses[0]
+
+        plo1 = database_service.create_program_outcome(
+            {
+                "program_id": prog_id,
+                "institution_id": inst_id,
+                "plo_number": 1,
+                "description": "PLO filter + term",
+            }
+        )
+        _publish_mapping(client, prog_id, [(plo1, clo_ids[0])])
+
+        resp = client.get(
+            f"/api/programs/{prog_id}/plo-dashboard",
+            query_string={"plo_id": plo1, "term_id": "some-term"},
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert len(data["plos"]) == 1
+        assert data["plos"][0]["id"] == plo1
+        assert data["term_id"] == "some-term"

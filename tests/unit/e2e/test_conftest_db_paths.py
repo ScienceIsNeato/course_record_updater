@@ -40,6 +40,7 @@ class _DummyPage:
         self.load_states: list[str] = []
         self.fill_calls: list[tuple[str, str]] = []
         self.click_calls: list[str] = []
+        self.expect_response_calls: list[str] = []
         self.wait_for_url_calls: list[tuple[str, dict[str, Any]]] = []
         self.wait_for_function_calls: list[tuple[str, dict[str, Any]]] = []
 
@@ -54,6 +55,10 @@ class _DummyPage:
 
     def click(self, selector: str) -> None:
         self.click_calls.append(selector)
+
+    def expect_response(self, predicate: Any) -> Any:
+        self.expect_response_calls.append("called")
+        return nullcontext()
 
     def wait_for_url(self, url: str, **kwargs: Any) -> None:
         self.wait_for_url_calls.append((url, kwargs))
@@ -125,7 +130,7 @@ def test_authenticated_login_fixtures_use_robust_dashboard_waits() -> None:
             module.authenticated_page.__wrapped__,
             module.INSTITUTION_ADMIN_EMAIL,
             module.INSTITUTION_ADMIN_PASSWORD,
-            15000,
+            30000,
             True,
         ),
         (
@@ -139,7 +144,7 @@ def test_authenticated_login_fixtures_use_robust_dashboard_waits() -> None:
             module.authenticated_institution_admin_page.__wrapped__,
             module.INSTITUTION_ADMIN_EMAIL,
             module.INSTITUTION_ADMIN_PASSWORD,
-            15000,
+            30000,
             True,
         ),
         (
@@ -178,16 +183,42 @@ def test_authenticated_login_fixtures_use_robust_dashboard_waits() -> None:
             ('input[name="password"]', expected_password),
         ]
         assert page.click_calls == ['button[type="submit"]']
+        if fixture_func in {
+            module.authenticated_page.__wrapped__,
+            module.authenticated_institution_admin_page.__wrapped__,
+        }:
+            assert page.expect_response_calls == ["called"]
+        else:
+            assert page.expect_response_calls == []
         assert page.wait_for_url_calls == [
             (
-                f"{module.BASE_URL}/dashboard",
+                (
+                    f"{module.BASE_URL}/dashboard*"
+                    if fixture_func
+                    in {
+                        module.authenticated_page.__wrapped__,
+                        module.authenticated_institution_admin_page.__wrapped__,
+                    }
+                    else f"{module.BASE_URL}/dashboard"
+                ),
                 {"timeout": timeout, "wait_until": "domcontentloaded"},
             )
         ]
         if expects_context:
             assert page.load_states[-1] == "networkidle"
             assert len(page.wait_for_function_calls) == 1
-            assert page.wait_for_function_calls[0][1] == {"timeout": 15000}
+            expected_context_timeout = (
+                30000
+                if fixture_func
+                in {
+                    module.authenticated_page.__wrapped__,
+                    module.authenticated_institution_admin_page.__wrapped__,
+                }
+                else 15000
+            )
+            assert page.wait_for_function_calls[0][1] == {
+                "timeout": expected_context_timeout
+            }
         else:
             assert page.wait_for_function_calls == []
 

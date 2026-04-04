@@ -345,3 +345,55 @@ class TestDisplayMode:
         assert tree["assessment_display_mode"] == "both"
         assert tree["mapping_status"] == "none"
         assert tree["plos"] == []
+
+
+# ---------------------------------------------------------------------------
+# plo_id filter
+# ---------------------------------------------------------------------------
+
+
+class TestPloIdFilter:
+    def test_plo_id_returns_single_plo(self, monkeypatch: Any) -> None:
+        """plo_id kwarg filters the tree to only that PLO."""
+        inst_id, prog_id, clo_ids = _wire("PF1", num_clos=2)
+        plo1 = _make_plo(prog_id, inst_id, 1)
+        plo2 = _make_plo(prog_id, inst_id, 2)
+        _publish(prog_id, [(plo1, clo_ids[0]), (plo2, clo_ids[1])])
+        _fake_sections(monkeypatch, [])
+
+        tree = get_plo_dashboard_tree(prog_id, inst_id, plo_id=plo1)
+        assert len(tree["plos"]) == 1
+        assert tree["plos"][0]["id"] == plo1
+
+    def test_plo_id_invalid_returns_empty(self, monkeypatch: Any) -> None:
+        """Unknown plo_id → empty plos list."""
+        inst_id, prog_id, clo_ids = _wire("PF2", num_clos=1)
+        plo1 = _make_plo(prog_id, inst_id, 1)
+        _publish(prog_id, [(plo1, clo_ids[0])])
+        _fake_sections(monkeypatch, [])
+
+        tree = get_plo_dashboard_tree(prog_id, inst_id, plo_id="no-such-id")
+        assert tree["plos"] == []
+
+    def test_plo_id_with_term_id(self, monkeypatch: Any) -> None:
+        """plo_id and term_id work together."""
+        inst_id, prog_id, clo_ids = _wire("PF3", num_clos=1)
+        plo1 = _make_plo(prog_id, inst_id, 1)
+        _publish(prog_id, [(plo1, clo_ids[0])])
+        calls = _fake_sections(monkeypatch, [])
+
+        tree = get_plo_dashboard_tree(prog_id, inst_id, term_id="t-xyz", plo_id=plo1)
+        assert len(tree["plos"]) == 1
+        assert tree["term_id"] == "t-xyz"
+        assert calls[0]["term_id"] == "t-xyz"
+
+    def test_no_plo_id_returns_all(self, monkeypatch: Any) -> None:
+        """Without plo_id, all PLOs are returned (existing behavior)."""
+        inst_id, prog_id, clo_ids = _wire("PF4", num_clos=2)
+        plo1 = _make_plo(prog_id, inst_id, 1)
+        plo2 = _make_plo(prog_id, inst_id, 2)
+        _publish(prog_id, [(plo1, clo_ids[0]), (plo2, clo_ids[1])])
+        _fake_sections(monkeypatch, [])
+
+        tree = get_plo_dashboard_tree(prog_id, inst_id)
+        assert len(tree["plos"]) == 2

@@ -173,13 +173,13 @@ describe("PloTrend controller", () => {
     test("injects trend indicator into PLO node", () => {
       document.body.innerHTML = `
         <div id="ploTreeContainer">
-          <div data-plo-id="plo-1">
+          <li data-plo-id="plo-1">
             <div class="plo-tree-header">
               <div class="plo-tree-meta">
                 <span class="plo-assessment-badge">90%</span>
               </div>
             </div>
-          </div>
+          </li>
         </div>
       `;
 
@@ -211,7 +211,7 @@ describe("PloTrend controller", () => {
     test("injects trend indicator into CLO node", () => {
       document.body.innerHTML = `
         <div id="ploTreeContainer">
-          <div data-plo-id="plo-1">
+          <li data-plo-id="plo-1">
             <div class="plo-tree-header">
               <div class="plo-tree-meta"></div>
             </div>
@@ -222,7 +222,7 @@ describe("PloTrend controller", () => {
                 </div>
               </div>
             </div>
-          </div>
+          </li>
         </div>
       `;
 
@@ -261,13 +261,13 @@ describe("PloTrend controller", () => {
     test("removes existing trend indicators before re-injecting", () => {
       document.body.innerHTML = `
         <div id="ploTreeContainer">
-          <div data-plo-id="plo-1">
+          <li data-plo-id="plo-1">
             <div class="plo-tree-header">
               <span class="plo-trend-indicator">old</span>
               <div class="plo-tree-meta"></div>
             </div>
             <div class="plo-trend-panel">old panel</div>
-          </div>
+          </li>
         </div>
       `;
 
@@ -302,11 +302,11 @@ describe("PloTrend controller", () => {
     test("skips PLO nodes with fewer than 2 trend points", () => {
       document.body.innerHTML = `
         <div id="ploTreeContainer">
-          <div data-plo-id="plo-1">
+          <li data-plo-id="plo-1">
             <div class="plo-tree-header">
               <div class="plo-tree-meta"></div>
             </div>
-          </div>
+          </li>
         </div>
       `;
 
@@ -332,6 +332,67 @@ describe("PloTrend controller", () => {
       expect(wrap).toBeNull();
     });
 
+    test("PLO tree nodes get trend indicators even when summary bar has same data-plo-id", () => {
+      // Regression: summary bar sparkline slots have data-plo-id which
+      // shadowed tree <li> nodes in querySelector. The selector must
+      // target li[data-plo-id] to skip summary bar spans.
+      document.body.innerHTML = `
+        <div id="ploTreeContainer">
+          <div class="plo-summary-bar">
+            <div class="plo-summary-row stat-pass">
+              <div class="plo-summary-sparkline-group">
+                <span class="plo-summary-sparkline-slot" data-plo-id="plo-1">
+                  <span class="plo-summary-sparkline-label">(1)</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <ul>
+            <li data-plo-id="plo-1" class="plo-tree-node">
+              <div class="plo-tree-header">
+                <div class="plo-tree-meta">
+                  <span class="plo-assessment-badge">S (85%)</span>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      `;
+
+      PloTrend.trendData = {
+        terms: [
+          { term_name: "Fall 2024", is_current: false },
+          { term_name: "Spring 2025", is_current: false },
+        ],
+        plos: [
+          {
+            id: "plo-1",
+            plo_number: 1,
+            description: "Test PLO",
+            trend: [{ pass_rate: 70 }, { pass_rate: 85 }],
+            clos: [],
+          },
+        ],
+      };
+
+      PloTrend.injectSparklines();
+
+      // The tree node must have a clickable trend indicator
+      const treeNode = document.querySelector("li[data-plo-id='plo-1']");
+      const treeIndicator = treeNode.querySelector(
+        ".plo-tree-header .plo-trend-indicator",
+      );
+      expect(treeIndicator).not.toBeNull();
+      expect(treeIndicator.getAttribute("role")).toBe("button");
+      expect(treeIndicator.querySelector(".plo-trend-delta").textContent).toBe(
+        "+15%",
+      );
+
+      // Summary bar should also have its sparkline (independent)
+      const slot = document.querySelector(".plo-summary-sparkline-slot");
+      expect(slot.querySelector(".plo-sparkline")).not.toBeNull();
+    });
+
     test("injects sparklines into summary bar slots", () => {
       document.body.innerHTML = `
         <div id="ploTreeContainer">
@@ -348,16 +409,16 @@ describe("PloTrend controller", () => {
               </div>
             </div>
           </div>
-          <div data-plo-id="plo-1">
+          <li data-plo-id="plo-1">
             <div class="plo-tree-header">
               <div class="plo-tree-meta"></div>
             </div>
-          </div>
-          <div data-plo-id="plo-2">
+          </li>
+          <li data-plo-id="plo-2">
             <div class="plo-tree-header">
               <div class="plo-tree-meta"></div>
             </div>
-          </div>
+          </li>
         </div>
       `;
 
@@ -448,11 +509,11 @@ describe("PloTrend controller", () => {
               </div>
             </div>
           </div>
-          <div data-plo-id="plo-1">
+          <li data-plo-id="plo-1">
             <div class="plo-tree-header">
               <div class="plo-tree-meta"></div>
             </div>
-          </div>
+          </li>
         </div>
       `;
 
@@ -485,13 +546,13 @@ describe("PloTrend controller", () => {
     test("trend badge in tree node reflects data up to selectedTermId only", () => {
       document.body.innerHTML = `
         <div id="ploTreeContainer">
-          <div data-plo-id="plo-1">
+          <li data-plo-id="plo-1">
             <div class="plo-tree-header">
               <div class="plo-tree-meta">
                 <span class="plo-assessment-badge">65%</span>
               </div>
             </div>
-          </div>
+          </li>
         </div>
       `;
 
@@ -535,13 +596,13 @@ describe("PloTrend controller", () => {
               </div>
             </div>
           </div>
-          <div data-plo-id="plo-1">
+          <li data-plo-id="plo-1">
             <div class="plo-tree-header">
               <div class="plo-tree-meta">
                 <span class="plo-assessment-badge">65%</span>
               </div>
             </div>
-          </div>
+          </li>
         </div>
       `;
 
@@ -578,7 +639,7 @@ describe("PloTrend controller", () => {
     test("CLO trend badge reflects data up to selectedTermId only", () => {
       document.body.innerHTML = `
         <div id="ploTreeContainer">
-          <div data-plo-id="plo-1">
+          <li data-plo-id="plo-1">
             <div class="plo-tree-header">
               <div class="plo-tree-meta"></div>
             </div>
@@ -589,7 +650,7 @@ describe("PloTrend controller", () => {
                 </div>
               </div>
             </div>
-          </div>
+          </li>
         </div>
       `;
 
@@ -653,6 +714,56 @@ describe("PloTrend controller", () => {
       expect(nodeEl.querySelector(".plo-trend-panel")).toBeNull();
     });
 
+    test("adds expanded class to node so CSS does not hide panel", () => {
+      document.body.innerHTML = `
+        <li id="testNode" class="plo-tree-node">
+          <div class="plo-tree-header"></div>
+        </li>
+      `;
+      const nodeEl = document.getElementById("testNode");
+      expect(nodeEl.classList.contains("expanded")).toBe(false);
+
+      const terms = [
+        { term_name: "Fall 2024", is_current: false },
+        { term_name: "Spring 2025", is_current: false },
+      ];
+      const points = [{ pass_rate: 80 }, { pass_rate: 90 }];
+
+      PloTrend._toggleTrendPanel(nodeEl, points, terms, {});
+
+      expect(nodeEl.classList.contains("expanded")).toBe(true);
+      expect(nodeEl.querySelector(".plo-trend-panel")).not.toBeNull();
+    });
+
+    test("CLO-level node gets expanded so trend panel is visible", () => {
+      document.body.innerHTML = `
+        <li id="cloNode" class="plo-tree-node">
+          <div class="plo-tree-header">
+            <span class="plo-tree-meta">
+              <span class="plo-assessment-badge">S (100%)</span>
+            </span>
+          </div>
+          <ul><li class="plo-tree-node leaf">Section data</li></ul>
+        </li>
+      `;
+      const nodeEl = document.getElementById("cloNode");
+
+      const terms = [
+        { term_name: "Fall 2024", is_current: false },
+        { term_name: "Spring 2025", is_current: false },
+      ];
+      const points = [{ pass_rate: 90 }, { pass_rate: 95 }];
+
+      PloTrend._toggleTrendPanel(nodeEl, points, terms, {});
+
+      // Node must be expanded so the CSS rule
+      // .plo-tree-node:not(.expanded) > .plo-trend-panel { display: none }
+      // does NOT hide the panel.
+      expect(nodeEl.classList.contains("expanded")).toBe(true);
+      const panel = nodeEl.querySelector(".plo-trend-panel");
+      expect(panel).not.toBeNull();
+    });
+
     test("destroys Chart.js instances before removing panel", () => {
       document.body.innerHTML = `
         <div id="testNode">
@@ -686,13 +797,13 @@ describe("PloTrend controller", () => {
     test("trend indicator responds to Enter key", () => {
       document.body.innerHTML = `
         <div id="ploTreeContainer">
-          <div data-plo-id="p1">
+          <li data-plo-id="p1">
             <div class="plo-tree-header">
               <span class="plo-tree-meta">
                 <span class="plo-assessment-badge">badge</span>
               </span>
             </div>
-          </div>
+          </li>
         </div>
       `;
       PloTrend.trendData = {

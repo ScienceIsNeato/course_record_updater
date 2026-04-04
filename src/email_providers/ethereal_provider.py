@@ -8,19 +8,26 @@ Perfect for E2E testing where you need to verify email delivery and content.
 See: https://ethereal.email/
 """
 
+import fcntl
 import imaplib
 import smtplib
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from email import message_from_bytes
 from email.message import Message
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from pathlib import Path
+from tempfile import gettempdir
 from typing import Any, Dict, Optional, cast
 
 from src.email_providers.base_provider import EmailProvider
 from src.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+SMTP_SEND_LOCK_PATH = Path(gettempdir()) / "loopcloser_ethereal_smtp.lock"
 
 
 class EtherealProvider(EmailProvider):
@@ -45,6 +52,50 @@ class EtherealProvider(EmailProvider):
         self._username: Optional[str] = None
         self._password: Optional[str] = None
         self._from_email: Optional[str] = None
+        self._max_send_attempts = 5
+
+    @contextmanager
+    def _smtp_send_lock(self) -> Iterator[None]:
+        """Serialize Ethereal SMTP sends across workers to reduce provider throttling."""
+        SMTP_SEND_LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with SMTP_SEND_LOCK_PATH.open("w", encoding="utf-8") as lock_file:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+    @staticmethod
+    def _extract_smtp_error_code(exc: smtplib.SMTPException) -> Optional[int]:
+        """Return the SMTP status code for retry classification when available."""
+        if isinstance(exc, smtplib.SMTPDataError):
+            return int(exc.smtp_code)
+
+        if isinstance(exc, smtplib.SMTPConnectError):
+            return int(exc.smtp_code)
+
+        if isinstance(exc, smtplib.SMTPRecipientsRefused):
+            for recipient_error in exc.recipients.values():
+                if isinstance(recipient_error, tuple) and recipient_error:
+                    code = recipient_error[0]
+                    if isinstance(code, int):
+                        return code
+
+        return None
+
+    @classmethod
+    def _is_retryable_smtp_error(cls, exc: smtplib.SMTPException) -> bool:
+        """Return True for transient SMTP failures worth retrying."""
+        code = cls._extract_smtp_error_code(exc)
+        if code is not None:
+            return code in {421, 429, 450, 451, 452}
+
+        return isinstance(exc, smtplib.SMTPServerDisconnected)
+
+    @staticmethod
+    def _retry_delay_seconds(attempt_number: int) -> int:
+        """Use short linear backoff to absorb Ethereal throttling without stalling tests."""
+        return min(attempt_number * 2, 8)
 
     def configure(self, config: Dict[str, Any]) -> None:
         """
@@ -117,56 +168,74 @@ class EtherealProvider(EmailProvider):
             logger.error("[Ethereal Provider] Provider not properly configured")
             return False
 
-        try:
-            # Type guards for configuration
-            if not (
-                self._smtp_host
-                and self._smtp_port
-                and self._username
-                and self._password
-                and self._from_email
-            ):
-                raise ValueError("Provider not properly configured")
+        # Type guards for configuration
+        if not (
+            self._smtp_host
+            and self._smtp_port
+            and self._username
+            and self._password
+            and self._from_email
+        ):
+            raise ValueError("Provider not properly configured")
 
-            # Create MIME multipart message
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = subject
-            msg["From"] = self._from_email
-            msg["To"] = to_email
+        # Create MIME multipart message
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = self._from_email
+        msg["To"] = to_email
 
-            # Attach both text and HTML versions
-            part1 = MIMEText(text_body, "plain")
-            part2 = MIMEText(html_body, "html")
-            msg.attach(part1)
-            msg.attach(part2)
+        # Attach both text and HTML versions
+        part1 = MIMEText(text_body, "plain")
+        part2 = MIMEText(html_body, "html")
+        msg.attach(part1)
+        msg.attach(part2)
 
-            # Connect to SMTP server and send (with 10s timeout to prevent hanging)
-            with smtplib.SMTP(self._smtp_host, self._smtp_port, timeout=10) as server:
-                server.starttls()  # Upgrade to TLS
-                server.login(self._username, self._password)
-                server.send_message(msg)
+        for attempt in range(1, self._max_send_attempts + 1):
+            try:
+                # Connect to SMTP server and send (with 10s timeout to prevent hanging)
+                with self._smtp_send_lock():
+                    with smtplib.SMTP(
+                        self._smtp_host, self._smtp_port, timeout=10
+                    ) as server:
+                        server.starttls()  # Upgrade to TLS
+                        server.login(self._username, self._password)
+                        server.send_message(msg)
 
-            logger.info(
-                f"[Ethereal Provider] Email sent successfully: {subject} -> {to_email}"
-            )
-            logger.debug(
-                f"[Ethereal Provider] View at: https://ethereal.email/messages "
-                f"(login as {self._username})"
-            )
+                logger.info(
+                    f"[Ethereal Provider] Email sent successfully: {subject} -> {to_email}"
+                )
+                logger.debug(
+                    f"[Ethereal Provider] View at: https://ethereal.email/messages "
+                    f"(login as {self._username})"
+                )
+                return True
 
-            return True
+            except smtplib.SMTPAuthenticationError as e:
+                logger.error(f"[Ethereal Provider] SMTP authentication failed: {e}")
+                raise
+            except smtplib.SMTPException as e:
+                if (
+                    self._is_retryable_smtp_error(e)
+                    and attempt < self._max_send_attempts
+                ):
+                    delay = self._retry_delay_seconds(attempt)
+                    logger.warning(
+                        "[Ethereal Provider] Transient SMTP error on attempt %s/%s; retrying in %ss: %s",
+                        attempt,
+                        self._max_send_attempts,
+                        delay,
+                        e,
+                    )
+                    time.sleep(delay)
+                    continue
 
-        except smtplib.SMTPAuthenticationError as e:
-            logger.error(f"[Ethereal Provider] SMTP authentication failed: {e}")
-            raise
+                logger.error(f"[Ethereal Provider] SMTP error: {e}")
+                raise
+            except Exception as e:
+                logger.error(f"[Ethereal Provider] Failed to send email: {e}")
+                raise
 
-        except smtplib.SMTPException as e:
-            logger.error(f"[Ethereal Provider] SMTP error: {e}")
-            raise
-
-        except Exception as e:
-            logger.error(f"[Ethereal Provider] Failed to send email: {e}")
-            raise
+        return False
 
     def _connect_to_imap(self) -> Optional[imaplib.IMAP4_SSL]:
         """Connect to IMAP server and select INBOX"""
